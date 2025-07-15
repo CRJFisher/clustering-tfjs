@@ -97,6 +97,10 @@ export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
     // Numerical stability: max(dist², 0)
     const zero = tf.scalar(0, "float32");
     const distancesSquaredClamped = tf.maximum(distancesSquared, zero);
-    return distancesSquaredClamped.sqrt() as tf.Tensor2D;
+    // Cast to distances and enforce symmetry by averaging with its transpose.
+    const dist = distancesSquaredClamped.sqrt();
+    // Numerical discrepancies can lead to slight asymmetry (~1e-4). We correct
+    // this deterministically instead of relying on tolerances in callers.
+    return dist.add(dist.transpose()).div(2) as tf.Tensor2D;
   });
 }

@@ -1,4 +1,5 @@
-export function hello(name: string = "world"): string {
-  return `Hello, ${name}!`;
-}
+/* ------------------------------------------------------------------------- */
+/*                           Public Type Exports                             */
+/* ------------------------------------------------------------------------- */
 
+export * from "./clustering/types";
