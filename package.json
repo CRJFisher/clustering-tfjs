@@ -1,5 +1,5 @@
 {
-  "name": "spectral-clustering-ts",
+  "name": "clustering-js",
   "version": "0.1.0",
   "description": "Native TypeScript implementation of clustering algorithms (Agglomerative & Spectral) powered by TensorFlow.js",
   "license": "MIT",
