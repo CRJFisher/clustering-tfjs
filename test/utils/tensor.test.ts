@@ -54,32 +54,6 @@ describe("tensor utilities", () => {
     });
   });
 
-  it("pairwiseEuclideanMatrix matches naive implementation", () => {
-    const points = tf.tensor2d(
-      [
-        [0, 0],
-        [3, 4],
-        [6, 8],
-      ],
-      [3, 2],
-    );
-
-    const distMat = pairwiseEuclideanMatrix(points).arraySync() as number[][];
-
-    // naive double loop
-    const expected: number[][] = [];
-    const data = points.arraySync();
-    for (let i = 0; i < data.length; i++) {
-      expected[i] = [];
-      for (let j = 0; j < data.length; j++) {
-        const dx = data[i][0] - data[j][0];
-        const dy = data[i][1] - data[j][1];
-        expected[i][j] = Math.hypot(dx, dy);
-      }
-    }
-
-    expect(closeTo(distMat, expected)).toBe(true);
-  });
 
   describe("edge cases & broadcasting", () => {
     it("arrayToTensor respects dtype", () => {
@@ -129,15 +103,6 @@ describe("tensor utilities", () => {
       expect(closeTo(dOrtho, 1)).toBe(true);
     });
 
-    it("pairwiseEuclideanMatrix returns symmetric matrix with zero diagonal", () => {
-      const pts = tf.randomUniform([5, 4]);
-      const dist = pairwiseEuclideanMatrix(pts as tf.Tensor2D).arraySync() as number[][];
-      for (let i = 0; i < 5; i++) {
-        expect(closeTo(dist[i][i], 0)).toBe(true);
-        for (let j = 0; j < 5; j++) {
-          expect(closeTo(dist[i][j], dist[j][i], 1e-3)).toBe(true);
-        }
-      }
-    });
+    // pairwise Euclidean matrix tests moved to pairwise.test.ts
   });
 });

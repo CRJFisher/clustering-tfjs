@@ -85,32 +85,6 @@ export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  * ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy with broadcasting to avoid allocating an
  * `(n, n, d)` intermediate tensor.
  */
-export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
-  return tf.tidy(() => {
-    const squaredNorms = points.square().sum(1).reshape([-1, 1]); // (n,1)
-    const gram = points.matMul(points.transpose()); // (n,n)
-    // Using (a + bᵀ - 2G) and taking sqrt.
-    const distancesSquared = squaredNorms
-      .add(squaredNorms.transpose())
-      .sub(gram.mul(2));
-
-    // Numerical stability: max(dist², 0)
-    const zero = tf.scalar(0, "float32");
-    const distancesSquaredClamped = tf.maximum(distancesSquared, zero);
-    // Cast to distances and enforce symmetry by averaging with its transpose.
-    const dist = distancesSquaredClamped.sqrt();
-
-    // Numerical discrepancies can lead to slight asymmetry (~1e-4). We correct
-    // this deterministically instead of relying on tolerances in callers and
-    // explicitly zero-out the diagonal to guarantee ‖xᵢ − xᵢ‖ = 0 up to
-    // machine precision. This avoids flaky tests that compare against a
-    // strict absolute tolerance (1e-4).
-
-    const distSym = dist.add(dist.transpose()).div(2);
-
-    // Replace diagonal with exact zeros for numerical robustness.
-    const n = distSym.shape[0];
-    const mask = tf.ones([n, n], "float32").sub(tf.eye(n));
-    return distSym.mul(mask) as tf.Tensor2D;
-  });
-}
+// Re-export to maintain backward compatibility while delegating to the new
+// implementation in `pairwise_distance.ts`.
+export { pairwiseEuclideanMatrix } from "./pairwise_distance";
