@@ -34,6 +34,7 @@ export class SpectralClustering
   private static readonly VALID_AFFINITIES = [
     "rbf",
     "nearest_neighbors",
+    "precomputed",
   ] as const;
 
   constructor(params: SpectralClusteringParams) {
@@ -43,24 +44,74 @@ export class SpectralClustering
     SpectralClustering.validateParams(this.params);
   }
 
-  /** Fit the model to X (stub – no real computation yet). */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  /**
+   * Fits the Spectral Clustering model to the input data and stores the
+   * resulting cluster labels in {@link labels_}.
+   *
+   * Pipeline (Ng et al., 2001):
+   *   1. Build similarity graph – affinity matrix A (task-9)
+   *   2. Compute normalised Laplacian L = I − D^{-1/2} A D^{-1/2} (task-10)
+   *   3. Obtain k smallest eigenvectors of L → embedding U (n × k) (task-10.1)
+   *   4. Row-normalise U to unit length (spectral embedding)
+   *   5. Run K-Means on the rows of U to obtain final labels (task-11)
+   */
   async fit(_X: DataMatrix): Promise<void> {
-    // In task-9 we implement the first step of Spectral Clustering: building
-    // the affinity (similarity) matrix according to the configured metric.
 
-    // Convert input to a 2-D float32 tensor if necessary.
-    const Xtensor =
-      _X instanceof tf.Tensor ? (_X as tf.Tensor2D) : tf.tensor2d(_X, undefined, "float32");
 
-    // Compute affinity matrix and cache the result
+    /* ---------------------------- 0) Input -------------------------------- */
+    const Xtensor: tf.Tensor2D = _X instanceof tf.Tensor
+      ? (tf.cast(_X as tf.Tensor2D, "float32") as tf.Tensor2D)
+      : tf.tensor2d(_X as number[][], undefined, "float32");
+
+    /* ---------------------------- 1) Affinity ----------------------------- */
     this.affinityMatrix_ = SpectralClustering.computeAffinityMatrix(
       Xtensor,
       this.params,
     );
 
-    // Labels will be produced in later tasks – set placeholder null.
-    this.labels_ = null;
+    const affinitySum = (await this.affinityMatrix_.sum().data())[0];
+    if (affinitySum === 0) {
+      throw new Error(
+        "Affinity matrix contains only zeros – cannot perform spectral clustering.",
+      );
+    }
+
+    /* ---------------------------- 2) Laplacian ---------------------------- */
+    const { normalised_laplacian } = await import("../utils/laplacian");
+    const laplacian: tf.Tensor2D = tf.tidy(() =>
+      normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D),
+    ) as tf.Tensor2D;
+
+    /* --------------------- 3) Smallest eigenvectors ----------------------- */
+    const { smallest_eigenvectors } = await import("../utils/laplacian");
+    const U = smallest_eigenvectors(laplacian, this.params.nClusters);
+
+    /* ------------------------ 4) Row normalise ---------------------------- */
+    const eps = 1e-10;
+    const U_norm: tf.Tensor2D = tf.tidy(() => {
+      const rowNorm = U.norm("euclidean", 1).expandDims(1);
+      return U.div(rowNorm.add(eps));
+    }) as tf.Tensor2D;
+
+    /* -------------------------- 5) K-Means -------------------------------- */
+    const { KMeans } = await import("./kmeans");
+    const km = new KMeans({
+      nClusters: this.params.nClusters,
+      randomState: this.params.randomState,
+    });
+
+    await km.fit(U_norm);
+
+    this.labels_ = km.labels_;
+
+    /* --------------------------- Clean-up --------------------------------- */
+    laplacian.dispose();
+    U.dispose();
+    U_norm.dispose();
+
+    if (!(_X instanceof tf.Tensor)) {
+      Xtensor.dispose();
+    }
   }
 
   async fitPredict(X: DataMatrix): Promise<LabelVector> {
@@ -117,6 +168,16 @@ export class SpectralClustering
         "nNeighbors is only applicable when affinity is 'nearest_neighbors'.",
       );
     }
+
+    // precomputed: gamma / nNeighbors not allowed
+    if (!isCallable && affinity === "precomputed") {
+      if (gamma !== undefined) {
+        throw new Error("gamma is not applicable when affinity is 'precomputed'.");
+      }
+      if (nNeighbors !== undefined) {
+        throw new Error("nNeighbors is not applicable when affinity is 'precomputed'.");
+      }
+    }
   }
 
   /* ------------------------------------------------------------------- */
@@ -129,8 +190,17 @@ export class SpectralClustering
   ): tf.Tensor2D {
     const { affinity = "rbf" } = params;
 
+    // -------------------------- Callable affinity ------------------------ //
     if (typeof affinity === "function") {
-      return affinity(X);
+      const A = affinity(X);
+      SpectralClustering.validateAffinityMatrix(A);
+      return A;
+    }
+
+    // ---------------------------- Precomputed ---------------------------- //
+    if (affinity === "precomputed") {
+      SpectralClustering.validateAffinityMatrix(X);
+      return X;
     }
 
     // Import on-demand to avoid circular deps when this file is imported by
@@ -148,5 +218,35 @@ export class SpectralClustering
     // nearest_neighbors
     const k = params.nNeighbors ?? 10; // Default consistent with scikit-learn
     return compute_knn_affinity(X, k);
+  }
+
+  /**
+   * Validates that the provided tensor is a proper affinity / similarity
+   * matrix suitable for spectral clustering.
+   *   • Must be 2-D & **square**
+   *   • Must be **symmetric** (within tolerance)
+   *   • Must be **non-negative** (entries ≥ 0)
+   */
+  private static validateAffinityMatrix(A: tf.Tensor2D): void {
+    if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
+      throw new Error("Affinity matrix must be square (n × n).");
+    }
+
+    const n = A.shape[0];
+
+    // Check symmetry & non-negativity using small tolerances.
+    tf.tidy(() => {
+      const tol = 1e-6;
+      const diff = A.sub(A.transpose()).abs();
+      const maxDiff = diff.max().dataSync()[0];
+      if (maxDiff > tol) {
+        throw new Error("Affinity matrix must be symmetric.");
+      }
+
+      const minVal = A.min().dataSync()[0];
+      if (minVal < -tol) {
+        throw new Error("Affinity matrix must be non-negative.");
+      }
+    });
   }
 }

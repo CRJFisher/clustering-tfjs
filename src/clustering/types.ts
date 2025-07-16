@@ -66,7 +66,11 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Either one of the pre-defined strings or a callable returning an
    * affinity matrix.
    */
-  affinity?: "rbf" | "nearest_neighbors" | ((X: DataMatrix) => tf.Tensor2D);
+  affinity?:
+    | "rbf"
+    | "nearest_neighbors"
+    | "precomputed"
+    | ((X: DataMatrix) => tf.Tensor2D);
 
   /**
    * Scaling parameter for the RBF kernel (if selected).
