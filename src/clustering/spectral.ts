@@ -46,12 +46,21 @@ export class SpectralClustering
   /** Fit the model to X (stub – no real computation yet). */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async fit(_X: DataMatrix): Promise<void> {
-    // Not implemented in this task. We keep the stub asynchronous so that the
-    // future implementation can run GPU kernels / web-workers without API
-    // breakage.
-    throw new Error(
-      "SpectralClustering.fit not implemented – placeholder for future tasks.",
+    // In task-9 we implement the first step of Spectral Clustering: building
+    // the affinity (similarity) matrix according to the configured metric.
+
+    // Convert input to a 2-D float32 tensor if necessary.
+    const Xtensor =
+      _X instanceof tf.Tensor ? (_X as tf.Tensor2D) : tf.tensor2d(_X, undefined, "float32");
+
+    // Compute affinity matrix and cache the result
+    this.affinityMatrix_ = SpectralClustering.computeAffinityMatrix(
+      Xtensor,
+      this.params,
     );
+
+    // Labels will be produced in later tasks – set placeholder null.
+    this.labels_ = null;
   }
 
   async fitPredict(X: DataMatrix): Promise<LabelVector> {
@@ -109,5 +118,35 @@ export class SpectralClustering
       );
     }
   }
-}
 
+  /* ------------------------------------------------------------------- */
+  /*                       Affinity matrix utilities                       */
+  /* ------------------------------------------------------------------- */
+
+  private static computeAffinityMatrix(
+    X: tf.Tensor2D,
+    params: SpectralClusteringParams,
+  ): tf.Tensor2D {
+    const { affinity = "rbf" } = params;
+
+    if (typeof affinity === "function") {
+      return affinity(X);
+    }
+
+    // Import on-demand to avoid circular deps when this file is imported by
+    // the utils module (which is unlikely but safe).
+    // eslint-disable-next-line @typescript-eslint/no-var-requires, node/no-missing-import
+    const {
+      compute_rbf_affinity,
+      compute_knn_affinity,
+    } = require("../utils/affinity") as typeof import("../utils/affinity");
+
+    if (affinity === "rbf") {
+      return compute_rbf_affinity(X, params.gamma);
+    }
+
+    // nearest_neighbors
+    const k = params.nNeighbors ?? 10; // Default consistent with scikit-learn
+    return compute_knn_affinity(X, k);
+  }
+}
