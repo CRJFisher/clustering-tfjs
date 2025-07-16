@@ -10,3 +10,11 @@ export { SpectralClustering } from "./clustering/spectral";
 
 // Utilities
 export { pairwiseDistanceMatrix } from "./utils/pairwise_distance";
+
+// Graph Laplacian helpers (task-10)
+export {
+  degree_vector,
+  normalised_laplacian,
+  jacobi_eigen_decomposition,
+  smallest_eigenvectors,
+} from "./utils/laplacian";
