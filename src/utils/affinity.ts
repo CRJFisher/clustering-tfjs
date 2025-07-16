@@ -59,44 +59,86 @@ export function compute_knn_affinity(
     throw new Error("k (nNeighbors) must be a positive integer.");
   }
 
-  return tf.tidy(() => {
-    const nSamples = points.shape[0];
+  const nSamples = points.shape[0];
 
-    // Compute full distance matrix (n, n)
-    const dist = pairwiseEuclideanMatrix(points);
+  if (nSamples === 0) {
+    throw new Error("Input points tensor must contain at least one sample.");
+  }
 
-    // We want the k *smallest* distances, so we invert the sign and use tf.topk
-    // which selects the k *largest* elements.
-    const { indices } = tf.topk(dist.neg(), k + 1); // +1 to account for the self-distance 0
+  if (k >= nSamples) {
+    throw new Error("k (nNeighbors) must be smaller than the number of samples.");
+  }
 
-    // Build coordinates for edges excluding the first index in each row which
-    // corresponds to the sample itself (distance 0).
-    const coords: number[][] = [];
-    const indArr = indices.arraySync() as number[][];
-    for (let i = 0; i < nSamples; i++) {
-      for (let j = 1; j < indArr[i].length; j++) {
-        const nb = indArr[i][j];
-        coords.push([i, nb]);
+  /* --------------------------------------------------------------------- */
+  /*  Implementation note – memory-efficient block-wise distance scanning    */
+  /* --------------------------------------------------------------------- */
+  // A naive implementation constructs the full pair-wise distance matrix
+  // (n×n) and then selects the k closest entries per row.  This requires
+  // O(n²) memory which becomes prohibitive for large datasets.
+  //
+  // Instead we process the data in reasonable row-blocks: for each block of
+  // b rows we compute the distances to *all* samples (b×n) which has a peak
+  // memory footprint of O(b·n).  With a modest block size (e.g. 1024) this
+  // scales to tens of thousands of samples while maintaining GPU/CPU
+  // efficiency thanks to matrix operations.
+
+  // Keep tensors that are required across blocks to avoid accidental disposal.
+  const pointsKept = tf.keep(points) as tf.Tensor2D;
+  const squaredNormsKept = tf.keep(pointsKept.square().sum(1)) as tf.Tensor1D; // (n)
+
+  const coords: number[][] = [];
+
+  // Empirically chosen – small enough to fit typical accelerator memory while
+  // large enough to utilise BLAS throughput.
+  const BLOCK_SIZE = 1024;
+
+  for (let start = 0; start < nSamples; start += BLOCK_SIZE) {
+    const b = Math.min(BLOCK_SIZE, nSamples - start);
+
+    tf.tidy(() => {
+      // Slice current block (b,d)
+      const block = pointsKept.slice([start, 0], [b, -1]);
+
+      // Efficient squared Euclidean distances using the identity
+      // ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy
+      const blockNorms = squaredNormsKept.slice([start], [b]).reshape([b, 1]); // (b,1)
+      const allNormsRow = squaredNormsKept.reshape([1, nSamples]); // (1,n)
+
+      const cross = block.matMul(pointsKept.transpose()); // (b,n)
+      const distsSquared = blockNorms.add(allNormsRow).sub(cross.mul(2)); // (b,n)
+
+      // We can avoid the costly sqrt, distances squared preserve ordering.
+      const negDists = distsSquared.neg(); // Want k smallest ⇒ largest of negative values.
+
+      // topk on each row (b,k+1) – self-distance will always be the largest.
+      const { indices } = tf.topk(negDists, k + 1);
+
+      const indArr = indices.arraySync() as number[][];
+      for (let i = 0; i < b; i++) {
+        const rowGlobal = start + i;
+        for (let j = 1; j < indArr[i].length; j++) {
+          coords.push([rowGlobal, indArr[i][j]]);
+        }
       }
-    }
+    }); // tidy – dispose temporaries for this block
+  }
 
-    if (coords.length === 0) {
-      // Degenerate case when nSamples == 1
-      return tf.zeros([nSamples, nSamples]);
-    }
+  // Release kept tensors
+  pointsKept.dispose();
+  squaredNormsKept.dispose();
 
-    // Values for connected edges (all ones)
+  if (coords.length === 0) {
+    return tf.zeros([nSamples, nSamples]);
+  }
+
+  // Scatter ones into a dense zero matrix – TensorFlow.js scatterND expects
+  // typed arrays / tensors for the indices as well as values.  Passing plain
+  // JS arrays is fine, the backend converts them on the fly.
+  return tf.tidy(() => {
     const values = tf.ones([coords.length]);
-
-    // Create sparse representation then densify.  TensorFlow.js currently has
-    // experimental support for sparse tensors. We fallback to scatterND into a
-    // dense zero matrix which is supported in the core API.
     const dense = tf.scatterND(coords, values, [nSamples, nSamples]) as tf.Tensor2D;
-
     // Symmetrise: A = max(A, Aᵀ)
-    const sym = tf.maximum(dense, dense.transpose()) as tf.Tensor2D;
-
-    return sym;
+    return tf.maximum(dense, dense.transpose()) as tf.Tensor2D;
   });
 }
 
@@ -115,4 +157,3 @@ export function compute_affinity_matrix(
   // nearest neighbours
   return compute_knn_affinity(points, options.nNeighbors);
 }
-
