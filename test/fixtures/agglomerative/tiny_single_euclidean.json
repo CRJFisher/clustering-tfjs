@@ -1,0 +1,6 @@
+{
+  "X": [[0, 0], [0, 0.1], [5, 5], [5.1, 5]],
+  "params": {"nClusters": 2, "linkage": "single", "metric": "euclidean"},
+  "labels": [0, 0, 1, 1]
+}
+

@@ -1,4 +1,12 @@
-import type { DataMatrix, LabelVector, AgglomerativeClusteringParams, BaseClustering } from "./types";
+import type {
+  DataMatrix,
+  LabelVector,
+  AgglomerativeClusteringParams,
+  BaseClustering,
+} from "./types";
+import * as tf from "@tensorflow/tfjs-node";
+import { pairwiseDistanceMatrix } from "../utils/pairwise_distance";
+import { update_distance_matrix } from "./linkage";
 
 /**
  * Agglomerative (hierarchical) clustering estimator skeleton.
@@ -69,14 +77,125 @@ export class AgglomerativeClustering
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async fit(_X: DataMatrix): Promise<void> {
-    throw new Error("AgglomerativeClustering.fit is not implemented yet.");
+    // Convert input to a tf.Tensor2D for distance computation if necessary.
+
+    // Early exit for edge-cases ------------------------------------------------
+    if (Array.isArray(_X) && _X.length === 0) {
+      throw new Error("Input X must contain at least one sample.");
+    }
+
+    const points: tf.Tensor2D = Array.isArray(_X)
+      ? tf.tensor2d(_X as number[][])
+      : (_X as tf.Tensor2D);
+
+    const nSamples = points.shape[0];
+
+    // Handle trivial case of single sample separately
+    if (nSamples === 1) {
+      this.labels_ = [0];
+      this.children_ = [];
+      this.nLeaves_ = 1;
+      points.dispose?.();
+      return;
+    }
+
+    const { metric = "euclidean", linkage = "ward", nClusters } = this.params;
+
+    // -----------------------------------------------------------------------
+    // Compute initial pairwise distance matrix (plain number[][] for fast JS
+    // level manipulation). We leverage the existing helper in utils.
+    // -----------------------------------------------------------------------
+    const distanceTensor = pairwiseDistanceMatrix(points, metric);
+    const D: number[][] = (await distanceTensor.array()) as number[][];
+    distanceTensor.dispose();
+
+    /*  ------------------------------------------------------------------
+     *  Hierarchical agglomeration loop                                   
+     *  ------------------------------------------------------------------ */
+
+    // Cluster bookkeeping arrays. Index i corresponds to row/col i in D.
+    let clusterIds: number[] = Array.from({ length: nSamples }, (_, i) => i);
+    const clusterSizes: number[] = Array(nSamples).fill(1);
+    let nextClusterId = nSamples; // new clusters get incremental ids
+
+    const children: number[][] = [];
+
+    // Track current cluster label for each sample (global cluster ids)
+    const sampleLabels: number[] = Array.from({ length: nSamples }, (_, i) => i);
+
+    // Merge until the desired number of clusters is reached.
+    while (clusterIds.length > nClusters) {
+      // -------------------------------------------------------------------
+      // Find closest pair (i,j)
+      // -------------------------------------------------------------------
+      let minDist = Number.POSITIVE_INFINITY;
+      let minI = 0;
+      let minJ = 1;
+
+      for (let i = 0; i < D.length; i++) {
+        for (let j = i + 1; j < D.length; j++) {
+          const d = D[i][j];
+          if (d < minDist) {
+            minDist = d;
+            minI = i;
+            minJ = j;
+          }
+        }
+      }
+
+      // Store merge in children_ (using global cluster ids)
+      const idI = clusterIds[minI];
+      const idJ = clusterIds[minJ];
+      children.push([idI, idJ]);
+
+      // Update distance matrix & auxiliary arrays
+      update_distance_matrix(D, clusterSizes, minI, minJ, linkage);
+
+      // Assign a new cluster id to the merged entity (row minI after update)
+      const newId = nextClusterId++;
+      clusterIds[minI] = newId;
+      clusterIds.splice(minJ, 1);
+
+      // Propagate new labels to samples that belonged to idI or idJ
+      for (let s = 0; s < nSamples; s++) {
+        const lbl = sampleLabels[s];
+        if (lbl === idI || lbl === idJ) {
+          sampleLabels[s] = newId;
+        }
+      }
+
+      // Loop continues with contracted D.
+    }
+
+    // ---------------------------------------------------------------------
+    // Derive flat cluster labels by cutting dendrogram at desired number of
+    // clusters. The simplest approach is to recreate cluster membership from
+    // bottom-up using the recorded merges.
+    // ---------------------------------------------------------------------
+
+    const labels = sampleLabels;
+    // Relabel to contiguous range 0 .. nClusters-1
+    const uniqueOld = Array.from(new Set(labels));
+    const mapping = new Map<number, number>();
+    uniqueOld.forEach((oldLabel, newLabel) => mapping.set(oldLabel, newLabel));
+    this.labels_ = labels.map((old) => mapping.get(old)!) as number[];
+
+    this.children_ = children;
+    this.nLeaves_ = nSamples;
+
+    // Dispose created tensor if we have created one from array input.
+    if (Array.isArray(_X)) {
+      points.dispose();
+    }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async fitPredict(_X: DataMatrix): Promise<LabelVector> {
-    // A real implementation would call `fit` and return `labels_`. For now we
-    // simply make it clear to callers that the functionality is missing.
-    throw new Error("AgglomerativeClustering.fitPredict is not implemented yet.");
+    await this.fit(_X);
+    if (this.labels_ == null) {
+      throw new Error("AgglomerativeClustering failed to compute labels.");
+    }
+    return this.labels_;
   }
 
   /* --------------------------------------------------------------------- */
@@ -111,4 +230,3 @@ export class AgglomerativeClustering
     }
   }
 }
-

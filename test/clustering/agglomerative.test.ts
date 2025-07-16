@@ -27,9 +27,18 @@ describe("AgglomerativeClustering class structure & validation", () => {
     ).toThrow();
   });
 
-  it("fit and fitPredict stubs throw informative error", async () => {
-    const model = new AgglomerativeClustering({ nClusters: 2 });
-    await expect(model.fit([[0, 0]])).rejects.toThrow("not implemented");
-    await expect(model.fitPredict([[0, 0]])).rejects.toThrow("not implemented");
+  it("fit and fitPredict run and produce expected labels", async () => {
+    const X = [
+      [0, 0],
+      [0, 0.1],
+      [5, 5],
+      [5.1, 5],
+    ];
+    const model = new AgglomerativeClustering({ nClusters: 2, linkage: "single" });
+    const labels = (await model.fitPredict(X)) as number[];
+    expect(labels.length).toBe(4);
+    // Expect exactly two unique labels 0 and 1
+    const uniq = Array.from(new Set(labels as number[]));
+    expect(uniq.length).toBe(2);
   });
 });
