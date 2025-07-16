@@ -93,7 +93,37 @@ export function jacobi_eigen_decomposition(
   const A = matrix.arraySync() as number[][];
   const n = A.length;
 
-  // Deep copy to avoid mutating the original matrix.
+  // ---------------------------------------------------------------------
+  // Fast-path: if the matrix is already (almost) diagonal we can return
+  //            immediately.  This situation commonly arises for
+  //            *disconnected* graphs where the *normalised* Laplacian is
+  //            the identity matrix or block-diagonal with very small
+  //            off-diagonal entries (numerical noise).
+  // ---------------------------------------------------------------------
+
+  const isApproximatelyDiagonal = (): boolean => {
+    const nDiagTolerance = tolerance * 10;
+    for (let i = 0; i < matrix.shape[0]; i++) {
+      for (let j = 0; j < matrix.shape[0]; j++) {
+        if (i === j) continue;
+        if (Math.abs(A[i][j]) > nDiagTolerance) return false;
+      }
+    }
+    return true;
+  };
+
+  if (isApproximatelyDiagonal()) {
+    warn(
+      "Input matrix is (almost) diagonal – skipped iterative Jacobi rotations for efficiency.",
+    );
+    const diag = A.map((row, i) => row[i]);
+    const V = A.map((_, i) =>
+      Array.from({ length: matrix.shape[0] }, (_, j) => (i === j ? 1 : 0)),
+    );
+    return { eigenvalues: diag, eigenvectors: V };
+  }
+
+  // Deep copy to avoid mutating the original matrix during rotations.
   const D: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => A[i][j]),
   );
@@ -138,6 +168,21 @@ export function jacobi_eigen_decomposition(
     const a_pq = D[p][q];
 
     // Compute rotation angle
+    // When a_pq is extremely small we risk dividing by ~0 which would blow
+    // up `tau`.  In that situation the Jacobi rotation angle can be set to
+    // 0 because the off-diagonal entry is already tiny compared with the
+    // tolerance threshold (and will therefore be eliminated in the next
+    // iteration criterion).  This guards against `Infinity` / `NaN`
+    // propagation that would otherwise terminate the algorithm.
+    if (Math.abs(a_pq) < tolerance) {
+      warn(
+        `Jacobi pivot below tolerance (|a_pq|≈${Math.abs(a_pq)}). Skipping rotation.`,
+      );
+      D[p][q] = D[q][p] = 0;
+      iter += 1;
+      continue;
+    }
+
     const tau = (a_qq - a_pp) / (2 * a_pq);
     let t: number;
     if (tau === 0) {
@@ -179,7 +224,18 @@ export function jacobi_eigen_decomposition(
     iter += 1;
   }
 
-  const eigenvalues: number[] = D.map((row, i) => row[i]);
+  let eigenvalues: number[] = D.map((row, i) => row[i]);
+
+  // Clamp very small negative values arising from numerical noise to 0.
+  eigenvalues = eigenvalues.map((v) => {
+    if (v < 0 && v > -tolerance) {
+      warn(
+        `Negative eigenvalue ${v} clamped to 0 (within numeric tolerance).`,
+      );
+      return 0;
+    }
+    return v;
+  });
 
   // Re-order eigenvalues (and corresponding eigenvectors) ascending to match
   // common linear algebra library conventions.
@@ -197,6 +253,14 @@ export function jacobi_eigen_decomposition(
   }
 
   return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
+
+  /* istanbul ignore next */
+  function warn(msg: string): void {
+    // Centralised helper – could be swapped for a proper logger later.
+    // Users may suppress by overriding console.warn if desired.
+    // We add a prefix to make it searchable in logs.
+    console.warn(`[spectral] ${msg}`);
+  }
 }
 
 /**
