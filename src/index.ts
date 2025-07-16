@@ -7,6 +7,7 @@ export * from "./clustering/types";
 // Public estimators
 export { AgglomerativeClustering } from "./clustering/agglomerative";
 export { SpectralClustering } from "./clustering/spectral";
+export { KMeans } from "./clustering/kmeans";
 
 // Utilities
 export { pairwiseDistanceMatrix } from "./utils/pairwise_distance";
