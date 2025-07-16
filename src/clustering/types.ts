@@ -72,6 +72,12 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Scaling parameter for the RBF kernel (if selected).
    */
   gamma?: number;
+
+  /**
+   * Number of nearest neighbours to connect in the k-NN similarity graph.
+   * Only used when `affinity` is set to "nearest_neighbors".
+   */
+  nNeighbors?: number;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {
@@ -111,4 +117,3 @@ export interface BaseClustering<Params extends BaseClusteringParams = BaseCluste
    */
   fitPredict(X: DataMatrix): Promise<LabelVector>;
 }
-
