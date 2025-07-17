@@ -20,8 +20,8 @@ export function compute_rbf_affinity(
   return tf.tidy(() => {
     const nFeatures = points.shape[1];
 
-    // Default gamma mirrors scikit-learn: 1 / n_features
-    const gammaVal = gamma ?? 1 / nFeatures;
+    // Default gamma mirrors scikit-learn: 1.0
+    const gammaVal = gamma ?? 1.0;
 
     const distances = pairwiseEuclideanMatrix(points); // (n, n)
 

@@ -58,6 +58,13 @@ export interface KMeansParams extends BaseClusteringParams {
    * Relative tolerance with regards to inertia to declare convergence.
    */
   tol?: number;
+
+  /**
+   * Number of random initialisations to perform. The algorithm will run
+   * k-means++ `nInit` times and keep the solution with the lowest inertia.
+   * Mirrors scikit-learn’s `n_init` parameter. Must be ≥ 1. Defaults to 10.
+   */
+  nInit?: number;
 }
 
 export interface SpectralClusteringParams extends BaseClusteringParams {

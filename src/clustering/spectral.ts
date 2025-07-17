@@ -17,6 +17,13 @@ import * as tf from "@tensorflow/tfjs-node";
  * The heavy lifting – affinity matrix construction, graph Laplacian
  * computation, eigen-decomposition and the final k-means step – will be
  * implemented in subsequent tasks (see backlog).
+ *
+ * Updates introduced in *task-12*:
+ *   • Support for `affinity = "precomputed"` and user-supplied callable
+ *     affinities with rigorous matrix validation (square, symmetric,
+ *     non-negative).
+ *   • Public `dispose()` method and automatic clean-up on repeated `fit`
+ *     calls to prevent tensor memory leaks.
  */
 export class SpectralClustering
   implements BaseClustering<SpectralClusteringParams>
@@ -25,10 +32,33 @@ export class SpectralClustering
   public readonly params: SpectralClusteringParams;
 
   /** Lazy-filled cluster labels after calling `fit`. */
-  public labels_: LabelVector | null = null;
+  public labels_: number[] | null = null;
 
   /** Cached affinity matrix (shape: nSamples × nSamples). */
   public affinityMatrix_: tf.Tensor2D | null = null;
+
+  /* ------------------------------------------------------------------- */
+  /*                      Resource / memory management                    */
+  /* ------------------------------------------------------------------- */
+
+  /**
+   * Disposes any tensors kept as instance state and resets internal caches.
+   *
+   * The estimator instance can still be reused after calling `dispose()` by
+   * invoking `fit` again.
+   */
+  public dispose(): void {
+    if (this.affinityMatrix_ != null) {
+      this.affinityMatrix_.dispose();
+      this.affinityMatrix_ = null;
+    }
+
+    if (this.labels_ != null && (this.labels_ as any).dispose instanceof Function) {
+      // Only dispose if the labels are a Tensor (not plain array)
+      (this.labels_ as unknown as tf.Tensor).dispose();
+    }
+    this.labels_ = null;
+  }
 
   // Allowed affinity options when provided as a string
   private static readonly VALID_AFFINITIES = [
@@ -57,6 +87,10 @@ export class SpectralClustering
    */
   async fit(_X: DataMatrix): Promise<void> {
 
+    // Dispose previous state if the estimator is re-used.
+    this.dispose();
+
+
 
     /* ---------------------------- 0) Input -------------------------------- */
     const Xtensor: tf.Tensor2D = _X instanceof tf.Tensor
@@ -77,13 +111,16 @@ export class SpectralClustering
     }
 
     /* ---------------------------- 2) Laplacian ---------------------------- */
-    const { normalised_laplacian } = await import("../utils/laplacian");
+    const {
+      normalised_laplacian,
+      smallest_eigenvectors,
+    } = await import("../utils/laplacian");
+
     const laplacian: tf.Tensor2D = tf.tidy(() =>
       normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D),
     ) as tf.Tensor2D;
 
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    const { smallest_eigenvectors } = await import("../utils/laplacian");
     const U = smallest_eigenvectors(laplacian, this.params.nClusters);
 
     /* ------------------------ 4) Row normalise ---------------------------- */
@@ -102,7 +139,7 @@ export class SpectralClustering
 
     await km.fit(U_norm);
 
-    this.labels_ = km.labels_;
+    this.labels_ = km.labels_ as number[];
 
     /* --------------------------- Clean-up --------------------------------- */
     laplacian.dispose();
@@ -159,7 +196,7 @@ export class SpectralClustering
 
     // nNeighbors checks for nearest_neighbors affinity
     if (!isCallable && affinity === "nearest_neighbors") {
-      const k = nNeighbors ?? 10; // default will be set later
+      const k = SpectralClustering.defaultNeighbors(params);
       if (!Number.isInteger(k) || k < 1) {
         throw new Error("nNeighbors must be a positive integer (>= 1).");
       }
@@ -216,8 +253,13 @@ export class SpectralClustering
     }
 
     // nearest_neighbors
-    const k = params.nNeighbors ?? 10; // Default consistent with scikit-learn
+    const k = SpectralClustering.defaultNeighbors(params);
     return compute_knn_affinity(X, k);
+  }
+
+  /** Returns defaulted k when undefined */
+  private static defaultNeighbors(params: SpectralClusteringParams): number {
+    return params.nNeighbors ?? 10;
   }
 
   /**
