@@ -39,16 +39,10 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /*                               Internals                                */
   /* --------------------------------------------------------------------- */
 
-  /** Performs a single deterministic PRNG step – Linear Congruential Gen. */
-  private static makeRandomFn(seed?: number): () => number {
-    if (seed === undefined) return Math.random;
-
-    let s = Math.floor(seed) % 2147483647;
-    if (s <= 0) s += 2147483646;
-    return () => {
-      s = (s * 16807) % 2147483647;
-      return (s - 1) / 2147483646;
-    };
+  /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
+  private static makeRandomStream(seed?: number) {
+    const { make_random_stream } = require("../utils/rng");
+    return make_random_stream(seed);
   }
 
   private static validateParams(params: KMeansParams): void {
@@ -94,8 +88,13 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
     const nInit = this.params.nInit ?? KMeans.DEFAULT_N_INIT;
 
-    // Pre-compute helper structures reused across inits
-    const pointsArr: number[][] = (await Xtensor.array()) as number[][];
+    // Pre-compute helper structures reused across inits (use full precision
+    // original data when available to avoid float32 rounding affecting
+    // k-means++ probabilities).
+
+    const pointsArr: number[][] = Array.isArray(X)
+      ? (X as number[][])
+      : ((await Xtensor.array()) as number[][]);
 
     // Store best solution across runs
     let bestInertia = Number.POSITIVE_INFINITY;
@@ -112,13 +111,18 @@ export class KMeans implements BaseClustering<KMeansParams> {
       labels: Int32Array;
       centroids: tf.Tensor2D;
     }> => {
-      const rand = KMeans.makeRandomFn(baseSeed !== undefined ? baseSeed + seedOffset : undefined);
+      const randStream = KMeans.makeRandomStream(
+        baseSeed !== undefined ? baseSeed + seedOffset : undefined,
+      );
+
+      const rand = randStream.rand;
 
       // ----------------------- k-means++ seeding ----------------------- //
       const centroidIdxs: number[] = [];
-      centroidIdxs.push(Math.floor(rand() * nSamples));
+      centroidIdxs.push(randStream.randInt(nSamples));
 
       while (centroidIdxs.length < K) {
+        // 1) Compute squared distance to nearest existing centroid for each point
         const distances: number[] = pointsArr.map((p, idx) => {
           if (centroidIdxs.includes(idx)) return 0;
           let minD2 = Number.POSITIVE_INFINITY;
@@ -134,8 +138,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
           return minD2;
         });
 
-        const sum = distances.reduce((a, b) => a + b, 0);
-        if (sum === 0) {
+        const currentPot = distances.reduce((a, b) => a + b, 0);
+        if (currentPot === 0) {
+          // All remaining points identical to existing centroids – pick first unused index deterministically
           for (let i = 0; i < nSamples; i++) {
             if (!centroidIdxs.includes(i)) {
               centroidIdxs.push(i);
@@ -145,17 +150,56 @@ export class KMeans implements BaseClustering<KMeansParams> {
           continue;
         }
 
-        const r = rand() * sum;
-        let cumulative = 0;
-        let chosen = 0;
-        for (let i = 0; i < nSamples; i++) {
-          cumulative += distances[i];
-          if (r <= cumulative) {
-            chosen = i;
-            break;
+        // 2) Sample candidate indices according to probability proportional to distance^2
+        const localTrials = 2 + Math.floor(Math.log(K));
+        const cumulativeDistances: number[] = [];
+        let cumSum = 0;
+        for (let d of distances) {
+          cumSum += d;
+          cumulativeDistances.push(cumSum);
+        }
+
+        const candidates: number[] = [];
+        for (let t = 0; t < localTrials; t++) {
+          const r = rand() * currentPot;
+          // binary search
+          let lo = 0;
+          let hi = nSamples - 1;
+          while (lo < hi) {
+            const mid = Math.floor((lo + hi) / 2);
+            if (r <= cumulativeDistances[mid]) {
+              hi = mid;
+            } else {
+              lo = mid + 1;
+            }
+          }
+          candidates.push(lo);
+        }
+
+        // 3) Compute potential for each candidate and choose best
+        let bestCandidate = candidates[0];
+        let bestPotential = Number.POSITIVE_INFINITY;
+
+        for (const cand of candidates) {
+          let pot = 0;
+          const candPoint = pointsArr[cand];
+          for (let i = 0; i < nSamples; i++) {
+            const p = pointsArr[i];
+            let d2 = 0;
+            for (let j = 0; j < nFeatures; j++) {
+              const diff = p[j] - candPoint[j];
+              d2 += diff * diff;
+            }
+            const minD2 = Math.min(distances[i], d2);
+            pot += minD2;
+          }
+          if (pot < bestPotential) {
+            bestPotential = pot;
+            bestCandidate = cand;
           }
         }
-        centroidIdxs.push(chosen);
+
+        centroidIdxs.push(bestCandidate);
       }
 
       let centroids = tf.tensor2d(centroidIdxs.map((i) => pointsArr[i]), [K, nFeatures], "float32");

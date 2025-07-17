@@ -135,6 +135,7 @@ export class SpectralClustering
     const km = new KMeans({
       nClusters: this.params.nClusters,
       randomState: this.params.randomState,
+      // keep single initialisation – multi-init addressed in task-12.1
     });
 
     await km.fit(U_norm);
