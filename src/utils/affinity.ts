@@ -20,8 +20,12 @@ export function compute_rbf_affinity(
   return tf.tidy(() => {
     const nFeatures = points.shape[1];
 
-    // Default gamma mirrors scikit-learn: 1.0
-    const gammaVal = gamma ?? 1.0;
+    // Default gamma mirrors scikit-learn behaviour for its RBF kernel used
+    // inside SpectralClustering: gamma = 1.0 / n_features when the user does
+    // not specify a value.  We align with that default to ensure parity with
+    // reference fixtures.
+
+    const gammaVal = gamma ?? 1.0 / nFeatures;
 
     const distances = pairwiseEuclideanMatrix(points); // (n, n)
 

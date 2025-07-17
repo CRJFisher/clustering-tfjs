@@ -1,4 +1,12 @@
-# task-12.2 - Deterministic k-means++ seeding aligned with NumPy
+---
+id: task-12.2
+title: Deterministic k-means++ seeding aligned with NumPy
+status: Done
+assignee: []
+created_date: '2025-07-17'
+labels: []
+dependencies: [task-12]
+---
 
 ## Description (the why)
 
@@ -9,12 +17,12 @@ Our TypeScript implementation currently delegates all RNG needs to a small utili
 Providing _bit-for-bit_ deterministic seeding that mimics NumPy’s random stream will allow us to reproduce scikit-learn’s reference labelings exactly (in combination with tasks 12.1, 12.3 and 12.4).
 
 ## Acceptance Criteria (the what)
-#
+
 - [x] Introduce a portable, seedable RNG that matches NumPy’s legacy `MT19937` algorithm (e.g. via a small, self-contained TypeScript port).
 - [x] `kMeansPlusPlusInit` uses this RNG whenever a user supplies `randomState` (falls back to current fast RNG when `randomState` is `undefined`).
-- [x] For a fixed dataset and `randomState = 42`, the initial centroids returned by our implementation are identical (within `1e-12` for float64) to those returned by `sklearn.cluster.k_means_._kmeans_plusplus` in Python 3.12 / scikit-learn 1.5. *(manually validated; automated fixture parity will arrive in task-12.5)*
+- [x] For a fixed dataset and `randomState = 42`, the initial centroids returned by our implementation are identical (within `1e-12` for float64) to those returned by `sklearn.cluster.k_means_._kmeans_plusplus` in Python 3.12 / scikit-learn 1.5. _(manually validated; automated fixture parity will arrive in task-12.5)_
 - [x] Unit test compares sequences and deterministic behaviour of RNG (`test/utils/rng.test.ts`).
-- [ ] Public docs updated: explain deterministic parity guarantees and performance trade-offs. *(will be handled in consolidated docs task)*
+- [ ] ~~Public docs updated: explain deterministic parity guarantees and performance trade-offs.~~ _(will be handled in consolidated docs task)_
 
 ## Implementation Plan (the how)
 
@@ -70,8 +78,8 @@ Relates to task-12 (SpectralClustering parity) and complements task-12.1 (multi-
 
 ### Tests / validation
 
-* Added `test/utils/rng.test.ts` covering deterministic float/int sequences and seed independence.
-* Spectral parity tests still fail (expected until later subtasks) – all other suites green.
+- Added `test/utils/rng.test.ts` covering deterministic float/int sequences and seed independence.
+- Spectral parity tests still fail (expected until later subtasks) – all other suites green.
 
 ## Status
 

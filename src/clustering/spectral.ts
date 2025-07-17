@@ -121,7 +121,13 @@ export class SpectralClustering
     ) as tf.Tensor2D;
 
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    const U = smallest_eigenvectors(laplacian, this.params.nClusters);
+    // Fetch k + 1 vectors then drop the trivial constant component (col 0)
+    const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
+
+    const U: tf.Tensor2D = tf.tidy(() =>
+      // slice starting at column 1, take nClusters columns
+      tf.slice(U_full, [0, 1], [-1, this.params.nClusters]) as tf.Tensor2D,
+    );
 
     /* ------------------------ 4) Row normalise ---------------------------- */
     const eps = 1e-10;
@@ -135,7 +141,9 @@ export class SpectralClustering
     const km = new KMeans({
       nClusters: this.params.nClusters,
       randomState: this.params.randomState,
-      // keep single initialisation – multi-init addressed in task-12.1
+      // Multiple initialisations significantly increase robustness of the
+      // final clustering outcome.  Keep k-means default (nInit = 10) when
+      // user did not override.
     });
 
     await km.fit(U_norm);
@@ -143,6 +151,7 @@ export class SpectralClustering
     this.labels_ = km.labels_ as number[];
 
     /* --------------------------- Clean-up --------------------------------- */
+    U_full.dispose();
     laplacian.dispose();
     U.dispose();
     U_norm.dispose();

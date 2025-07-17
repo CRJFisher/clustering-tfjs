@@ -28,7 +28,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
   // Reasonable defaults mirroring scikit-learn
   private static readonly DEFAULT_MAX_ITER = 300;
   private static readonly DEFAULT_TOL = 1e-4;
-  private static readonly DEFAULT_N_INIT = 1;
+  // scikit-learn defaults to 10 initialisations which results in more
+  // stable solutions, especially for small ambiguous datasets.  Matching
+  // the reference implementation improves parity for downstream spectral
+  // clustering tests.
+  private static readonly DEFAULT_N_INIT = 10;
 
   constructor(params: KMeansParams) {
     this.params = { ...params };

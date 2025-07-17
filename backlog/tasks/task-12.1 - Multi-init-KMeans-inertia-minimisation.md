@@ -1,4 +1,12 @@
-# task-12.1 - Multi-init K-Means inertia minimisation
+---
+id: task-12.1
+title: Multi-init K-Means inertia minimisation
+status: In Progress
+assignee: []
+created_date: '2025-07-17'
+labels: []
+dependencies: [task-12]
+---
 
 ## Description (the why)
 
@@ -6,9 +14,9 @@ scikit-learn runs K-Means `n_init` times with different k-means++ seeds and sele
 
 ## Acceptance Criteria (the what)
 
-- [ ] `KMeansParams` gains optional `nInit` (int ≥ 1, default 10).
-- [ ] `KMeans` runs k-means++ initialisation `nInit` times, keeps the solution with the smallest inertia.
-- [ ] Behaviour is deterministic when `randomState` is supplied (each init must derive its own PRNG stream from the base seed).
+- [x] `KMeansParams` gains optional `nInit` (int ≥ 1, **default 10**).
+- [x] `KMeans` runs k-means++ initialisation `nInit` times and keeps the solution with the smallest inertia.
+- [x] Behaviour is deterministic when `randomState` is supplied (each init must derive its own PRNG stream from the base seed).
 - [ ] Unit tests:
   - [ ] With `randomState` fixed, `nInit=1` vs `nInit=10` produce equal inertia when the single run already finds the global minimum.
   - [ ] For a contrived dataset, `nInit=10` achieves lower (or equal) inertia than `nInit=1` in ≥ 95 % of trials.
@@ -32,11 +40,9 @@ Relates to: task-12 (SpectralClustering core parity).
 
 ## Implementation Notes (to fill after completion)
 
-### Approach taken
+### Approach taken (partial – work-in-progress)
 
-The existing `fit()` implementation was wrapped in an inner async `runOnce()` helper. The outer loop now repeats that
-helper `nInit` times (default = 10) while creating a fresh deterministic RNG stream via `seed + run_index`. The solution
-with the smallest inertia is kept and exposed via the public `centroids_`, `labels_` and `inertia_` fields.
+Code changes introducing `nInit` and the outer loop were shipped in commit `12.3.6` while addressing random-state propagation. The outstanding work is **testing & documentation** (boxes above still unchecked). Once the new tests are added this task can be closed.
 
 ### Features implemented / modified
 

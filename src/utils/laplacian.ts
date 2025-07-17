@@ -1,5 +1,7 @@
 import * as tf from "@tensorflow/tfjs-node";
 
+import { deterministic_eigenpair_processing } from "./eigen_post";
+
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
 /* -------------------------------------------------------------------------- */
@@ -237,8 +239,10 @@ export function jacobi_eigen_decomposition(
     return v;
   });
 
-  // Re-order eigenvalues (and corresponding eigenvectors) ascending to match
-  // common linear algebra library conventions.
+  // Sort eigen-pairs ascending (deterministic sign handling is applied later
+  // in `smallest_eigenvectors` for the subset actually used in the spectral
+  // pipeline – avoids unnecessary sign flips for callers that do not care).
+
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
@@ -274,20 +278,28 @@ export function smallest_eigenvectors(
   if (!Number.isInteger(k) || k < 1) {
     throw new Error("k must be a positive integer.");
   }
-  const { eigenvalues, eigenvectors } = jacobi_eigen_decomposition(matrix);
 
-  // Pair values with indices → sort ascending
-  const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
-  indexed.sort((a, b) => a.val - b.val);
+  return tf.tidy(() => {
+    // 1) Full eigendecomposition (Jacobi)
+    const { eigenvalues, eigenvectors } = jacobi_eigen_decomposition(matrix);
 
-  const n = eigenvalues.length;
-  const selected: number[][] = Array.from({ length: n }, () => new Array(k));
+    // 2) Deterministic ordering & sign fixing (task-12.3.1 helper)
+    const { eigenvectors: vecSorted } = deterministic_eigenpair_processing({
+      eigenvalues,
+      eigenvectors,
+    });
 
-  for (let col = 0; col < k; col++) {
-    for (let row = 0; row < n; row++) {
-      selected[row][col] = eigenvectors[row][col];
+    // 3) Slice first k + 1 columns (including trivial constant vector)
+    const n = vecSorted.length;
+    const sliceCols = k + 1;
+    const selected: number[][] = Array.from({ length: n }, () => new Array(sliceCols));
+
+    for (let col = 0; col < sliceCols; col++) {
+      for (let row = 0; row < n; row++) {
+        selected[row][col] = vecSorted[row][col];
+      }
     }
-  }
 
-  return tf.tensor2d(selected, [n, k], "float32");
+    return tf.tensor2d(selected, [n, sliceCols], "float32");
+  });
 }

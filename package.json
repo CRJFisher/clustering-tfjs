@@ -12,7 +12,8 @@
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node src/index.ts",
     "test": "node -r ./disableFsWrites.js ./node_modules/.bin/jest --runInBand --no-cache",
-    "lint": "eslint 'src/**/*.{ts,tsx}'"
+    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "debug:spectral": "ts-node scripts/debug_spectral_parity.ts"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",

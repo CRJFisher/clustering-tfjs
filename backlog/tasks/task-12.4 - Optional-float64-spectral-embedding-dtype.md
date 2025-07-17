@@ -1,4 +1,12 @@
-# task-12.4 - Optional `dtype` parameter for float64 spectral embedding
+---
+id: task-12.4
+title: Optional `dtype` parameter for float64 spectral embedding
+status: To Do
+assignee: []
+created_date: '2025-07-17'
+labels: []
+dependencies: [task-12]
+---
 
 ## Description (the why)
 
@@ -31,4 +39,3 @@ Completes parity chain with tasks 12.1, 12.2 and 12.3.
 ## Implementation Notes (to fill after completion)
 
 *TBD*
-

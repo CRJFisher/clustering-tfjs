@@ -19,3 +19,6 @@ export {
   jacobi_eigen_decomposition,
   smallest_eigenvectors,
 } from "./utils/laplacian";
+
+// Deterministic eigenpair post-processing
+export { deterministic_eigenpair_processing } from "./utils/eigen_post";
