@@ -289,10 +289,13 @@ export function smallest_eigenvectors(
       eigenvectors,
     });
 
-    // 3) Slice first k + 1 columns (including trivial constant vector)
+    // 3) Slice first k + 1 columns (include trivial constant vector).  Caller
+    //    can decide whether to drop the first column or not.
     const n = vecSorted.length;
     const sliceCols = k + 1;
-    const selected: number[][] = Array.from({ length: n }, () => new Array(sliceCols));
+    const selected: number[][] = Array.from({ length: n }, () =>
+      new Array(sliceCols),
+    );
 
     for (let col = 0; col < sliceCols; col++) {
       for (let row = 0; row < n; row++) {

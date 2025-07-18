@@ -21,8 +21,23 @@ export interface EigenPairInput {
 }
 
 export interface EigenPairOutput {
+  /**
+   * Eigen-values sorted in ascending order.  We expose them under two
+   * property names to stay compatible with the acceptance criteria drafted
+   * in task-12.3.1 (valuesSorted) *and* with existing internal call-sites
+   * (eigenvalues).
+   */
   eigenvalues: number[];
-  eigenvectors: number[][]; // same shape, processed per rules above
+  /** Alias – kept for backwards-compatibility with task spec */
+  valuesSorted: number[];
+
+  /**
+   * Column-wise eigen-vectors after sign correction.
+   * Same dual naming scheme as for the eigen-values.
+   */
+  eigenvectors: number[][]; // shape (n,n)
+  /** Alias matching task spec wording */
+  vectorsSorted: number[][];
 }
 
 /**
@@ -34,7 +49,12 @@ export function deterministic_eigenpair_processing(
   const { eigenvalues, eigenvectors } = input;
 
   if (eigenvectors.length === 0) {
-    return { eigenvalues: [], eigenvectors: [] };
+    return {
+      eigenvalues: [],
+      valuesSorted: [],
+      eigenvectors: [],
+      vectorsSorted: [],
+    };
   }
 
   const n = eigenvectors.length;
@@ -51,7 +71,9 @@ export function deterministic_eigenpair_processing(
   indexed.sort((a, b) => a.val - b.val);
 
   const eigenvaluesSorted: number[] = indexed.map((p) => p.val);
-  const eigenvectorsSorted: number[][] = Array.from({ length: n }, () => new Array(n));
+  const eigenvectorsSorted: number[][] = Array.from({ length: n }, () =>
+    new Array(n),
+  );
 
   // Step 2: for each eigenvector apply sign fix while copying into new matrix
   for (let newCol = 0; newCol < n; newCol++) {
@@ -75,5 +97,10 @@ export function deterministic_eigenpair_processing(
     }
   }
 
-  return { eigenvalues: eigenvaluesSorted, eigenvectors: eigenvectorsSorted };
+  return {
+    eigenvalues: eigenvaluesSorted,
+    valuesSorted: eigenvaluesSorted,
+    eigenvectors: eigenvectorsSorted,
+    vectorsSorted: eigenvectorsSorted,
+  };
 }

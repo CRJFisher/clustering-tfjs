@@ -89,6 +89,14 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Only used when `affinity` is set to "nearest_neighbors".
    */
   nNeighbors?: number;
+
+  /**
+   * Number of random initialisations for the inner K-Means step. Mirrors
+   * scikit-learn’s `n_init` parameter. If omitted the algorithm defaults to
+   * **10** which yields considerably more robust cluster assignments on
+   * challenging spectra than a single initialisation.
+   */
+  nInit?: number;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {

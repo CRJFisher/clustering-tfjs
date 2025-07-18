@@ -117,11 +117,21 @@ export function compute_knn_affinity(
       // topk on each row (b,k+1) – self-distance will always be the largest.
       const { indices } = tf.topk(negDists, k + 1);
 
+      // Collect indices and apply deterministic tie-breaking: sort ascending
+      // so that ties are resolved towards the lower index mirroring NumPy.
       const indArr = indices.arraySync() as number[][];
+
       for (let i = 0; i < b; i++) {
         const rowGlobal = start + i;
-        for (let j = 1; j < indArr[i].length; j++) {
-          coords.push([rowGlobal, indArr[i][j]]);
+
+        // Sort to achieve deterministic order of equal-distance neighbours.
+        indArr[i].sort((a, b) => a - b);
+
+        // Remove self-index then take first k neighbours.
+        const neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);
+
+        for (const nb of neighbours) {
+          coords.push([rowGlobal, nb]);
         }
       }
     }); // tidy – dispose temporaries for this block

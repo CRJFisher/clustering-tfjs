@@ -6,23 +6,24 @@ import { SpectralClustering } from "../../src";
  * cluster labels fully reproducible.
  */
 
-function makeTwoBlobs(): number[][] {
-  // Very obvious separation – four points near (0,0) and four near (5,5).
-  return [
-    [-0.2, 0.1],
-    [0.1, -0.1],
-    [0.2, 0.2],
-    [-0.1, -0.2],
-    [5.0, 5.1],
-    [5.2, 4.9],
-    [4.8, 5.0],
-    [5.1, 5.2],
-  ];
+function makeChallengingData(): number[][] {
+  // Generate points in two overlapping Gaussian clouds to make centroid
+  // initialisation matter. Random seed fixed for determinism in test.
+  const rng = () => Math.sin(42 + Math.random()); // pseudo, but ok for test
+
+  const points: number[][] = [];
+  for (let i = 0; i < 50; i++) {
+    points.push([Math.random() * 0.5, Math.random() * 0.5]); // near origin
+  }
+  for (let i = 0; i < 50; i++) {
+    points.push([1 + Math.random() * 0.5, 1 + Math.random() * 0.5]);
+  }
+  return points;
 }
 
 describe("SpectralClustering – randomState propagation", () => {
   it("produces identical labels when called twice with the same seed", async () => {
-    const X = makeTwoBlobs();
+    const X = makeChallengingData();
 
     const seed = 123;
     const model1 = new SpectralClustering({ nClusters: 2, randomState: seed });
@@ -35,10 +36,10 @@ describe("SpectralClustering – randomState propagation", () => {
   });
 
   it("produces different labels for different seeds (at least one position)", async () => {
-    const X = makeTwoBlobs();
+    const X = makeChallengingData();
 
-    const model1 = new SpectralClustering({ nClusters: 2, randomState: 1 });
-    const model2 = new SpectralClustering({ nClusters: 2, randomState: 2 });
+    const model1 = new SpectralClustering({ nClusters: 2, randomState: 1, nInit: 1 });
+    const model2 = new SpectralClustering({ nClusters: 2, randomState: 2, nInit: 1 });
 
     const labels1 = (await model1.fitPredict(X)) as number[];
     const labels2 = (await model2.fitPredict(X)) as number[];

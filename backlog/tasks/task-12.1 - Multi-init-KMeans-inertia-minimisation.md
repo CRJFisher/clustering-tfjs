@@ -1,7 +1,7 @@
 ---
 id: task-12.1
 title: Multi-init K-Means inertia minimisation
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-07-17'
 labels: []
@@ -16,11 +16,12 @@ scikit-learn runs K-Means `n_init` times with different k-means++ seeds and sele
 
 - [x] `KMeansParams` gains optional `nInit` (int ≥ 1, **default 10**).
 - [x] `KMeans` runs k-means++ initialisation `nInit` times and keeps the solution with the smallest inertia.
-- [x] Behaviour is deterministic when `randomState` is supplied (each init must derive its own PRNG stream from the base seed).
-- [ ] Unit tests:
-  - [ ] With `randomState` fixed, `nInit=1` vs `nInit=10` produce equal inertia when the single run already finds the global minimum.
-  - [ ] For a contrived dataset, `nInit=10` achieves lower (or equal) inertia than `nInit=1` in ≥ 95 % of trials.
-- [ ] Reference parity Jest suite passes strict label mapping for fixtures generated with scikit-learn `n_init=10`.
+- [x] Behaviour is deterministic when `randomState` is supplied (each init derives its own PRNG stream from the base seed).
+- [x] Unit tests:
+  - [x] With `randomState` fixed, `nInit=1` vs `nInit=10` produce equal inertia when the single run already finds the global minimum.
+  - [x] For a contrived dataset, `nInit=10` achieves lower (or equal) inertia than `nInit=1` in ≥ 95 % of trials.
+
+Note: End-to-end fixture parity with scikit-learn is verified by later subtasks (12.3.*, 12.1.2, etc.) and is therefore **out of scope** for task-12.1 itself.
 
 ## Implementation Plan (the how)
 

@@ -1,7 +1,7 @@
 ---
 id: task-12.3.1
 title: Extract deterministicEigenpairProcessing utility
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-07-17'
 labels: []
@@ -14,13 +14,13 @@ dependencies: [task-12]
 
 ## Acceptance Criteria (the what)
 
-- [ ] New file `src/utils/linalg/eigen_post.ts` exports function `deterministic_eigenpair_processing(values, vectors)` with the signature
+- [x] New file `src/utils/linalg/eigen_post.ts` exports function `deterministic_eigenpair_processing(values, vectors)` with the signature
       `({ eigenvalues: number[]; eigenvectors: number[][] })  →  { valuesSorted: number[]; vectorsSorted: number[][] }`.
-- [ ] Function behaviour:
+- [x] Function behaviour:
   1. Sorts pairs by ascending eigen-value.
   2. For every eigen-vector flips sign so that the component with largest absolute magnitude is positive.
-- [ ] Covered by unit test – 3 × 3 matrix with repeated eigen-values verifies order & sign.
-- [ ] Utility is re-exported via `src/utils/index.ts` to keep public API coherent.
+- [x] Covered by unit test – 3 × 3 matrix with repeated eigen-values verifies order & sign.
+- [x] Utility is re-exported via `src/utils/index.ts` to keep public API coherent.
 
 ## Implementation Plan (the how)
 
@@ -42,3 +42,10 @@ Implemented in PR (2025-07-17):
 • Added unit test `test/unit/eigen_post.test.ts` confirming order & sign rules on a 3×3 matrix.
 • Refactored Jacobi solver return path in `laplacian.ts` to delegate ordering/sign where appropriate (only sorting kept for generic use; full helper used in downstream functions).
 • All existing tests green aside from expected SpectralClustering parity cases pending later subtasks.
+
+2025-07-18 – follow-up patch:
+
+• Provided thin wrapper file `src/utils/linalg/eigen_post.ts` so the helper is available under the exact path asked by the backlog while keeping the main implementation one directory higher (avoids deep nesting).
+• Extended return type with alias fields `valuesSorted` / `vectorsSorted` to strictly satisfy signature in acceptance criteria while preserving existing internal property names (`eigenvalues`/`eigenvectors`).
+• Updated unit tests remain green; type checks satisfied after alias addition.
+• Discovered downstream parity and robustness tests still failing – root cause not this task but missing trivial-eigenvector handling (addressed in later subtasks).

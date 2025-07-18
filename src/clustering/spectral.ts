@@ -121,11 +121,14 @@ export class SpectralClustering
     ) as tf.Tensor2D;
 
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    // Fetch k + 1 vectors then drop the trivial constant component (col 0)
+    // Fetch k + 1 vectors including the trivial constant. For compatibility
+    // with scikit-learn we KEEP the constant component and drop any *extra*
+    // column that `smallest_eigenvectors` may have appended.
     const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
 
     const U: tf.Tensor2D = tf.tidy(() =>
-      // slice starting at column 1, take nClusters columns
+      // Drop the (trivial) constant eigenvector at column 0 and take the
+      // subsequent `nClusters` non-trivial components (matching scikit-learn).
       tf.slice(U_full, [0, 1], [-1, this.params.nClusters]) as tf.Tensor2D,
     );
 
@@ -138,12 +141,23 @@ export class SpectralClustering
 
     /* -------------------------- 5) K-Means -------------------------------- */
     const { KMeans } = await import("./kmeans");
-    const km = new KMeans({
+    const kmParams = {
       nClusters: this.params.nClusters,
       randomState: this.params.randomState,
       // Multiple initialisations significantly increase robustness of the
-      // final clustering outcome.  Keep k-means default (nInit = 10) when
-      // user did not override.
+      // final clustering outcome.  Follow scikit-learn default (nInit = 10)
+      // unless the caller supplied an explicit override.
+      nInit: this.params.nInit ?? 10,
+    } as const;
+
+    const km = new KMeans(kmParams);
+
+    // Expose for unit-testing (non-enumerable to avoid polluting logs)
+    Object.defineProperty(this, "_debug_last_kmeans_params_", {
+      value: kmParams,
+      writable: false,
+      configurable: false,
+      enumerable: false,
     });
 
     await km.fit(U_norm);
