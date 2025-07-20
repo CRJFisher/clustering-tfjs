@@ -1,5 +1,5 @@
 ---
-id: task-12.13
+id: task-12.15
 title: Handle disconnected graph components in spectral clustering
 status: To Do
 assignee: []

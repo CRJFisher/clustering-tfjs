@@ -336,7 +336,9 @@ export function smallest_eigenvectors(
     }
 
     const n = vecSorted.length;
-    const sliceCols = Math.min(k + c, n);
+    // For spectral clustering, we want exactly k eigenvectors
+    // INCLUDING any with zero eigenvalues (they encode component structure)
+    const sliceCols = Math.min(k, n);
     const selected: number[][] = Array.from({ length: n }, () =>
       new Array(sliceCols),
     );

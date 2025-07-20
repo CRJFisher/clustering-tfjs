@@ -1,5 +1,5 @@
 ---
-id: task-12.11
+id: task-12.14
 title: Fix RBF gamma scaling for fixture data
 status: To Do
 assignee: []
@@ -14,6 +14,7 @@ parent_task_id: task-12
 Task 12.5 discovered that RBF fixtures use gamma=1.0 but sklearn actually needs much smaller values (0.1-0.7) for the data scales. Either fix the fixtures or implement proper gamma auto-scaling.
 
 **Insights from cluster analysis**:
+
 - RBF affinity generally performs worse than k-NN on overlapping clusters
 - All RBF fixtures with overlapping clusters (circles, moons) are failing
 - The gamma parameter is critical for handling different cluster densities and overlaps

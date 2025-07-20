@@ -5,6 +5,7 @@
 
 ## Practices
 
+- When starting a new sub-task, first read the parent task and any preceding sub-tasks e.g. if starting task-12.10, read task-12 and task-12.1-9. This way you can understand the context and the overall plan.
 - When you discover things during debugging, write them up in the task (or sub-task) you are working on.
 
 <!-- BACKLOG.MD GUIDELINES START -->
