@@ -32,9 +32,17 @@ function adjustedRandIndex(labelsA: number[], labelsB: number[]): number {
 
     if (!labelToIndexB.has(b)) {
       labelToIndexB.set(b, nextB++);
-      for (const row of contingency) row.push(0);
+      // Ensure all rows have the same length
+      for (const row of contingency) {
+        while (row.length < nextB) row.push(0);
+      }
     }
     const idxB = labelToIndexB.get(b)!;
+
+    // Ensure this row has enough columns
+    while (contingency[idxA].length <= idxB) {
+      contingency[idxA].push(0);
+    }
 
     contingency[idxA][idxB] = (contingency[idxA][idxB] || 0) + 1;
   }

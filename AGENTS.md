@@ -1,26 +1,29 @@
+# Rules
+
+- Use snake_case for all naming (variables, functions, files, etc.) except for class names which should be PascalCase.
 
 <!-- BACKLOG.MD GUIDELINES START -->
-# Instructions for the usage of Backlog.md CLI Tool
+## Instructions for the usage of Backlog.md CLI Tool
 
-## 1. Source of Truth
+### 1. Source of Truth
 
 - Tasks live under **`backlog/tasks/`** (drafts under **`backlog/drafts/`**).
 - Every implementation decision starts with reading the corresponding Markdown task file.
 - Project documentation is in **`backlog/docs/`**.
 - Project decisions are in **`backlog/decisions/`**.
 
-## 2. Defining Tasks
+### 2. Defining Tasks
 
-### **Title**
+#### **Title**
 
 Use a clear brief title that summarizes the task.
 
-### **Description**: (The **"why"**)
+#### **Description**: (The **"why"**)
 
 Provide a concise summary of the task purpose and its goal. Do not add implementation details here. It
 should explain the purpose and context of the task. Code snippets should be avoided.
 
-### **Acceptance Criteria**: (The **"what"**)
+#### **Acceptance Criteria**: (The **"what"**)
 
 List specific, measurable outcomes that define what means to reach the goal from the description. Use checkboxes (`- [ ]`) for tracking.
 When defining `## Acceptance Criteria` for a task, focus on **outcomes, behaviors, and verifiable requirements** rather
@@ -39,12 +42,12 @@ They should be testable and confirm that the core purpose of the task is achieve
     - *Good Example:* "- [ ] System processes 1000 requests per second without errors."
     - *Bad Example (Implementation Step):* "- [ ] Add a new function `handleLogin()` in `auth.ts`."
 
-### Task file
+#### Task file
 
 Once a task is created it will be stored in `backlog/tasks/` directory as a Markdown file with the format
 `task-<id> - <title>.md` (e.g. `task-42 - Add GraphQL resolver.md`).
 
-### Additional task requirements
+#### Additional task requirements
 
 - Tasks must be **atomic** and **testable**. If a task is too large, break it down into smaller subtasks.
   Each task should represent a single unit of work that can be completed in a single PR.
@@ -59,7 +62,7 @@ Once a task is created it will be stored in `backlog/tasks/` directory as a Mark
   Example of correct tasks splitting: task 1: "Add system for handling API requests", task 2: "Add user model and DB
   schema", task 3: "Add API endpoint for user data".
 
-## 3. Recommended Task Anatomy
+### 3. Recommended Task Anatomy
 
 ```markdown
 # task‑42 - Add GraphQL resolver
@@ -90,7 +93,7 @@ Short, imperative explanation of the goal of the task and why it is needed.
 - Modified or added files
 ```
 
-## 6. Implementing Tasks
+### 4. Implementing Tasks
 
 Mandatory sections for every task:
 
@@ -104,7 +107,7 @@ Mandatory sections for every task:
 **IMPORTANT**: Do not implement anything else that deviates from the **Acceptance Criteria**. If you need to
 implement something that is not in the AC, update the AC first and then implement it or create a new task for it.
 
-## 2. Typical Workflow
+### 5. Typical Workflow
 
 ```bash
 # 1 Identify work
@@ -128,7 +131,7 @@ backlog task create "Refactor DB layer" -p 42 -a @{yourself} -d "Description" --
 backlog task edit 42 -s Done --notes "Implemented GraphQL resolver with error handling and performance monitoring"
 ```
 
-### 7. Final Steps Before Marking a Task as Done
+### 6. Final Steps Before Marking a Task as Done
 
 Always ensure you have:
 
@@ -137,7 +140,7 @@ Always ensure you have:
 3. ✅ Run all tests and linting checks
 4. ✅ Updated relevant documentation
 
-## 8. Definition of Done (DoD)
+### 7. Definition of Done (DoD)
 
 A task is **Done** only when **ALL** of the following are complete:
 
@@ -158,7 +161,7 @@ A task is **Done** only when **ALL** of the following are complete:
 
 ⚠️ **IMPORTANT**: Never mark a task as Done without completing ALL items above.
 
-## 9. Handy CLI Commands
+### 8. Handy CLI Commands
 
 | Purpose          | Command                                                                |
 |------------------|------------------------------------------------------------------------|
@@ -179,7 +182,7 @@ A task is **Done** only when **ALL** of the following are complete:
 | Draft flow       | `backlog draft create "Spike GraphQL"` → `backlog draft promote 3.1`   |
 | Demote to draft  | `backlog task demote <task-id>`                                        |
 
-## 10. Tips for AI Agents
+### 9. Tips for AI Agents
 
 - **Always use `--plain` flag** when listing or viewing tasks for AI-friendly text output instead of using Backlog.md
   interactive UI.

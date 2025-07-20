@@ -45,10 +45,11 @@ export function compute_rbf_affinity(
 /**
  * Builds a (k-)nearest-neighbour adjacency / affinity matrix.
  *
- * For each sample the `k` closest neighbours (excluding itself) are connected
- * with affinity value **1**. The final matrix is **symmetrised** via
- * `max(A, Aᵀ)` so that an edge is present when either sample appears in the
- * other's neighbourhood.
+ * For each sample the `k` closest neighbours are connected with affinity 
+ * value **1**. Self-loops are included to ensure connectivity, matching
+ * sklearn's behavior. The final matrix is **symmetrised** via `max(A, Aᵀ)` 
+ * so that an edge is present when either sample appears in the other's 
+ * neighbourhood.
  *
  * The result is returned as a dense `tf.Tensor2D` containing zeros for
  * non-connected pairs.  While a sparse representation would be more memory
@@ -58,6 +59,7 @@ export function compute_rbf_affinity(
 export function compute_knn_affinity(
   points: tf.Tensor2D,
   k: number,
+  includeSelf: boolean = true,
 ): tf.Tensor2D {
   if (!Number.isInteger(k) || k < 1) {
     throw new Error("k (nNeighbors) must be a positive integer.");
@@ -114,8 +116,9 @@ export function compute_knn_affinity(
       // We can avoid the costly sqrt, distances squared preserve ordering.
       const negDists = distsSquared.neg(); // Want k smallest ⇒ largest of negative values.
 
-      // topk on each row (b,k+1) – self-distance will always be the largest.
-      const { indices } = tf.topk(negDists, k + 1);
+      // topk on each row - get k+1 if excluding self, k if including self
+      const topK = includeSelf ? k : k + 1;
+      const { indices } = tf.topk(negDists, topK);
 
       // Collect indices and apply deterministic tie-breaking: sort ascending
       // so that ties are resolved towards the lower index mirroring NumPy.
@@ -127,8 +130,14 @@ export function compute_knn_affinity(
         // Sort to achieve deterministic order of equal-distance neighbours.
         indArr[i].sort((a, b) => a - b);
 
-        // Remove self-index then take first k neighbours.
-        const neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);
+        let neighbours: number[];
+        if (includeSelf) {
+          // Keep self-index and take first k neighbours
+          neighbours = indArr[i].slice(0, k);
+        } else {
+          // Remove self-index then take first k neighbours
+          neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);
+        }
 
         for (const nb of neighbours) {
           coords.push([rowGlobal, nb]);
@@ -152,6 +161,7 @@ export function compute_knn_affinity(
     const values = tf.ones([coords.length]);
     const dense = tf.scatterND(coords, values, [nSamples, nSamples]) as tf.Tensor2D;
     // Symmetrise: A = max(A, Aᵀ)
+    // This ensures binary values (0 or 1) while making the matrix symmetric
     return tf.maximum(dense, dense.transpose()) as tf.Tensor2D;
   });
 }
@@ -168,6 +178,6 @@ export function compute_affinity_matrix(
     return compute_rbf_affinity(points, options.gamma);
   }
 
-  // nearest neighbours
-  return compute_knn_affinity(points, options.nNeighbors);
+  // nearest neighbours - include self-loops for connectivity
+  return compute_knn_affinity(points, options.nNeighbors, true);
 }

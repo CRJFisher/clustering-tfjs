@@ -78,12 +78,14 @@ export class SpectralClustering
    * Fits the Spectral Clustering model to the input data and stores the
    * resulting cluster labels in {@link labels_}.
    *
-   * Pipeline (Ng et al., 2001):
-   *   1. Build similarity graph – affinity matrix A (task-9)
-   *   2. Compute normalised Laplacian L = I − D^{-1/2} A D^{-1/2} (task-10)
-   *   3. Obtain k smallest eigenvectors of L → embedding U (n × k) (task-10.1)
-   *   4. Row-normalise U to unit length (spectral embedding)
-   *   5. Run K-Means on the rows of U to obtain final labels (task-11)
+   * Pipeline (following scikit-learn implementation):
+   *   1. Build similarity graph – affinity matrix A
+   *   2. Compute normalised Laplacian L = I − D^{-1/2} A D^{-1/2}
+   *   3. Obtain k smallest eigenvectors of L → embedding U (n × k)
+   *   4. Run K-Means directly on the rows of U (no row normalization)
+   *
+   * Note: Row normalization to unit length is only applied when using
+   * assign_labels='discretize', not for the default k-means approach.
    */
   async fit(_X: DataMatrix): Promise<void> {
 
@@ -114,6 +116,7 @@ export class SpectralClustering
     const {
       normalised_laplacian,
       smallest_eigenvectors,
+      degree_vector,
     } = await import("../utils/laplacian");
 
     const laplacian: tf.Tensor2D = tf.tidy(() =>
@@ -121,25 +124,36 @@ export class SpectralClustering
     ) as tf.Tensor2D;
 
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    // Fetch k + 1 vectors including the trivial constant. For compatibility
-    // with scikit-learn we KEEP the constant component and drop any *extra*
-    // column that `smallest_eigenvectors` may have appended.
-    const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
+    // Fetch k + c columns: `smallest_eigenvectors` internally counts the
+    // number `c` of near–zero eigenvalues and appends them to the requested
+    // `nClusters` informative vectors.  We then remove *all* those trivial
+    // components before continuing – this matches scikit-learn behaviour for
+    // disconnected graphs with multiple constant eigenvectors.
 
-    const U: tf.Tensor2D = tf.tidy(() =>
-      // Drop the (trivial) constant eigenvector at column 0 and take the
-      // subsequent `nClusters` non-trivial components (matching scikit-learn).
-      tf.slice(U_full, [0, 1], [-1, this.params.nClusters]) as tf.Tensor2D,
-    );
+    const U_full_raw = smallest_eigenvectors(laplacian, this.params.nClusters);
+    
+    // Apply the normalization to recover u = D^-1/2 x from eigenvector x
+    // This matches sklearn's spectral_embedding normalization
+    const deg = degree_vector(this.affinityMatrix_ as tf.Tensor2D);
+    const U_full = tf.tidy(() => {
+      const invSqrtDeg = tf.where(
+        deg.equal(0),
+        tf.zerosLike(deg),
+        deg.pow(-0.5),
+      ) as tf.Tensor1D;
+      // Divide each row by the corresponding degree^(-1/2)
+      return U_full_raw.div(invSqrtDeg.expandDims(1)) as tf.Tensor2D;
+    });
 
-    /* ------------------------ 4) Row normalise ---------------------------- */
-    const eps = 1e-10;
-    const U_norm: tf.Tensor2D = tf.tidy(() => {
-      const rowNorm = U.norm("euclidean", 1).expandDims(1);
-      return U.div(rowNorm.add(eps));
-    }) as tf.Tensor2D;
+    // Use the first nClusters columns directly, including constant eigenvectors
+    // This matches sklearn's behavior which does NOT remove constant eigenvectors
+    const U: tf.Tensor2D = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]) as tf.Tensor2D;
 
-    /* -------------------------- 5) K-Means -------------------------------- */
+    /* -------------------------- 4) K-Means -------------------------------- */
+    // IMPORTANT: sklearn does NOT row-normalize when using k-means!
+    // Row normalization is only applied when assign_labels='discretize'
+    // We pass the embedding directly to k-means without row normalization,
+    // matching sklearn's default behavior
     const { KMeans } = await import("./kmeans");
     const kmParams = {
       nClusters: this.params.nClusters,
@@ -160,15 +174,17 @@ export class SpectralClustering
       enumerable: false,
     });
 
-    await km.fit(U_norm);
+    // Pass the embedding directly to k-means without row normalization
+    await km.fit(U);
 
     this.labels_ = km.labels_ as number[];
 
     /* --------------------------- Clean-up --------------------------------- */
+    U_full_raw.dispose();
     U_full.dispose();
+    deg.dispose();
     laplacian.dispose();
     U.dispose();
-    U_norm.dispose();
 
     if (!(_X instanceof tf.Tensor)) {
       Xtensor.dispose();
@@ -220,10 +236,11 @@ export class SpectralClustering
 
     // nNeighbors checks for nearest_neighbors affinity
     if (!isCallable && affinity === "nearest_neighbors") {
-      const k = SpectralClustering.defaultNeighbors(params);
-      if (!Number.isInteger(k) || k < 1) {
+      // If nNeighbors is provided, validate it
+      if (nNeighbors !== undefined && (!Number.isInteger(nNeighbors) || nNeighbors < 1)) {
         throw new Error("nNeighbors must be a positive integer (>= 1).");
       }
+      // Default will be computed at fit time based on n_samples
     } else if (nNeighbors !== undefined) {
       throw new Error(
         "nNeighbors is only applicable when affinity is 'nearest_neighbors'.",
@@ -276,14 +293,22 @@ export class SpectralClustering
       return compute_rbf_affinity(X, params.gamma);
     }
 
-    // nearest_neighbors
-    const k = SpectralClustering.defaultNeighbors(params);
-    return compute_knn_affinity(X, k);
+    // nearest_neighbors - include self-loops for connectivity
+    const nSamples = X.shape[0];
+    const k = SpectralClustering.defaultNeighbors(params, nSamples);
+    return compute_knn_affinity(X, k, true);
   }
 
   /** Returns defaulted k when undefined */
-  private static defaultNeighbors(params: SpectralClusteringParams): number {
-    return params.nNeighbors ?? 10;
+  private static defaultNeighbors(params: SpectralClusteringParams, nSamples: number): number {
+    if (params.nNeighbors !== undefined) {
+      return params.nNeighbors;
+    }
+    
+    // Match sklearn's default: round(log2(n_samples))
+    // Handle edge case: ensure at least 1 neighbor
+    const defaultK = Math.round(Math.log2(nSamples));
+    return Math.max(1, defaultK);
   }
 
   /**

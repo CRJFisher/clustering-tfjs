@@ -4,6 +4,7 @@ title: Complete SpectralClustering implementation
 status: In Progress
 assignee: []
 created_date: '2025-07-15'
+updated_date: '2025-07-19'
 labels: []
 dependencies: []
 ---
@@ -21,6 +22,43 @@ Integrate all components of SpectralClustering to create the complete algorithm 
 - [ ] Validation against scikit-learn SpectralClustering
 - [ ] Performance benchmarks on various datasets
 - [ ] Documentation of numerical considerations
+
+## Implementation Notes
+
+## Implementation Notes (Updated 2025-07-19 - Part 2)
+
+### Critical findings on sklearn parity issues:
+
+1. **Row normalization investigation**: Initially suspected that sklearn applies row normalization before k-means, but investigation showed that sklearn only applies row normalization when using assign_labels='discretize', NOT for the default k-means approach. ✅ Fixed
+
+2. **Spectral embedding normalization**: Found that sklearn's spectral_embedding function applies a critical normalization step: where dd is the square root of the degree vector. This recovers u = D^{-1/2} x from the eigenvector output x when using the normalized Laplacian. ✅ Implemented
+
+3. **Constant eigenvector handling**: **CRITICAL FINDING** - sklearn KEEPS constant eigenvectors and runs k-means on them\! Our implementation was removing all constant eigenvectors, which is incorrect. ✅ Fixed - now keeping first nClusters eigenvectors
+
+4. **Normalized Laplacian computation**: **CRITICAL FINDING** - Our normalized Laplacian implementation was incorrect. scipy/sklearn:
+   - Zeros out diagonal of affinity matrix before computing degrees
+   - Ensures diagonal of normalized Laplacian is exactly 1
+   - For isolated nodes (degree=0), uses 1 instead of 0 for inverse sqrt
+     ✅ Fixed our implementation to match this behavior
+
+5. **Eigenvalue solver convergence**: **CRITICAL FINDING** - Our Jacobi solver is NOT converging properly:
+   - With 100 iterations: off-diagonal norm = 0.378, smallest eigenvalue = 0.039
+   - With 1000 iterations: off-diagonal norm = 0.005, smallest eigenvalue = 8.7e-7
+   - sklearn/scipy gets eigenvalue ≈ 4.4e-16
+   - The Jacobi solver needs significantly more iterations but is very slow
+
+6. **Current status after all fixes**:
+   - ✅ Fixed normalized Laplacian computation
+   - ✅ Removed constant eigenvector filtering
+   - ✅ Added D^{-1/2} normalization
+   - ❌ Jacobi solver still not converging to required precision
+   - ❌ Tests still failing due to inaccurate eigendecomposition
+
+7. **Next steps**:
+   - Consider alternative eigensolver (e.g., power iteration for smallest eigenvalues)
+   - Or increase Jacobi tolerance/iterations further
+   - Or use TensorFlow.js linalg operations if available
+   - Profile to see if we can make Jacobi faster for more iterations
 
 ## Implementation Plan (the how)
 
@@ -62,8 +100,8 @@ Reference implementation analysed: https://github.com/scikit-learn/scikit-learn/
 The upstream implementation offers a far richer parameter surface. Key differences and feature gaps identified so far:
 
 1. Affinity options
-   • scikit-learn: 'rbf', 'nearest_neighbors', 'precomputed', 'precomputed_nearest_neighbors', plus any callable kernel.
-   • Ours: only 'rbf', 'nearest_neighbors', or callable returning matrix. Missing the two _precomputed_ aliases and other kernels.
+   • scikit-learn: 'rbf', 'nearest*neighbors', 'precomputed', 'precomputed_nearest_neighbors', plus any callable kernel.
+   • Ours: only 'rbf', 'nearest_neighbors', or callable returning matrix. Missing the two \_precomputed* aliases and other kernels.
 
 2. Gamma default
    • scikit-learn default γ = 1.0.
@@ -108,14 +146,37 @@ These insights will guide which features to prioritise next while staying within
    • Re-use model with different randomState produces different labels.
 7. Expand public docs / README on memory management & new params.
 
-## Future work for exact scikit-learn parity
+## Subtasks for sklearn parity (REFOCUSED)
 
-Although the current implementation reaches an Adjusted Rand Index ≥ 0.95 on all reference datasets, achieving **exact label equivalence** will require additional precision-oriented improvements.  These are deferred to new tasks:
+Based on analysis of test failures, particularly k-NN affinity (ARI 0.08-0.63), the following prioritized subtasks address the root causes:
 
-- [ ] Task-12.1: Multi-initialisation K-Means (`nInit` = 10) with inertia minimisation.
-- [ ] Task-12.2: Deterministic k-means++ seeding identical to NumPy’s RNG stream.
-- [ ] Task-12.3: Eigenpair post-processing: sort by eigenvalue, deterministic sign flipping.
-- [ ] Task-12.4: Optional `dtype` parameter to enable `float64` spectral embedding for reduced rounding error.
-- [ ] Once the above are done, switch `spectral_reference.test.ts` back to strict label-mapping equality.
+**Phase 1: k-NN Affinity Fixes (CRITICAL)**
 
-Each bullet should be promoted to its own Backlog task to keep scopes manageable.
+- [ ] Task-12.1: Fix k-NN default nNeighbors to match sklearn: `round(log2(n_samples))`
+- [ ] Task-12.2: Add k-NN graph connectivity check with self-loops for disconnected graphs
+
+**Phase 2: Core Algorithm Fixes**
+
+- [ ] Task-12.3: Drop ALL trivial eigenvectors in spectral embedding (not just first)
+- [ ] Task-12.4: Fix row normalization to use `max(norm, eps)` instead of `norm + eps`
+- [ ] Task-12.5: Throw error instead of zero-padding when insufficient eigenvectors
+
+**Phase 3: Additional Parity Fixes**
+
+- [ ] Task-12.6: Align k-means empty cluster handling with sklearn
+- [ ] Task-12.7: Complete randomState propagation throughout pipeline (Jacobi solver, etc.)
+
+Once all subtasks are complete, all fixtures should pass with ARI ≥ 0.95.
+
+## Implementation Notes (Updated)
+
+Many determinism and algorithm fixes have been completed:
+
+- ✅ Multi-init k-means with inertia minimization (nInit=10 default)
+- ✅ Deterministic k-means++ seeding aligned with NumPy
+- ✅ Deterministic KNN tie-breaking
+- ✅ Basic eigenpair processing with sign flipping
+- ✅ RandomState propagation to k-means
+- ✅ RBF gamma default aligned to 1/n_features
+
+The remaining subtasks focus on the critical differences preventing k-NN parity.

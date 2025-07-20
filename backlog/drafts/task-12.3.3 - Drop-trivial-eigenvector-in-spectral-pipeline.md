@@ -37,3 +37,36 @@ Initial implementation (2025-07-17):
 • Code compiles and other unit tests pass; reference-parity fixtures improve but still below 0.95 and robustness ‘two blobs’ test fails – indicates further adjustments required (possibly normalisation or sign alignment).
 
 Next steps: deeper debug with upcoming task-12.3.5 to inspect embeddings; ensure sign convention consistent after slicing.
+
+---
+
+Progress update (2025-07-18):
+
+• Discovered that requesting `k + 1` eigenvectors can exceed the matrix
+  dimension for very small input datasets (e.g. `nSamples ≤ k`).  This led
+  to out-of-bounds `tf.slice` calls which surfaced as `Invalid TF_Status`
+  errors in unit test *spectral_ninit_default*.
+
+  → Patched `src/utils/laplacian.ts` so that
+  `smallest_eigenvectors()` now caps the returned column count at `n`.
+
+• Refined the *trivial eigenvector removal* logic inside
+  `src/clustering/spectral.ts`:
+
+  1. Added robust slicing that only drops column 0 when another column is
+     actually present.
+  2. Implemented automatic zero-padding when fewer than `nClusters`
+     informative components are available so that downstream K-Means always
+     receives an embedding with the expected dimensionality.
+
+  This fixed the TF slicing runtime error and all `spectral_ninit_default`
+  tests now pass.
+
+• Confirmed that no NaNs are produced in the embeddings for the reference
+  fixtures (`debug_fixture.ts` helper).  However, ARI scores are still below
+  the 0.95 threshold for several datasets and the “two obvious blobs”
+  robustness test remains red.
+
+• Preliminary investigation suggests that row-normalisation (step 4) and/or
+  sign consistency after zero-padding may require further tweaks.  These
+  will be explored in task 12.3.5 together with intermediate tensor dumps.
