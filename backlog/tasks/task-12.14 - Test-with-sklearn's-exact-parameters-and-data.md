@@ -4,6 +4,7 @@ title: Test with sklearn's exact parameters and data
 status: To Do
 assignee: []
 created_date: '2025-07-20'
+updated_date: '2025-07-20'
 labels:
   - spectral
   - testing
@@ -13,11 +14,18 @@ parent_task_id: task-12
 
 ## Description
 
-Create a test that uses the exact same input data and parameters as sklearn's fixture tests. Export intermediate results from sklearn (affinity matrix, Laplacian, eigenvalues/vectors, embedding) and compare at each step to identify where the divergence occurs.
+After implementing all fixes, create a comprehensive comparison framework with sklearn to understand any remaining differences. This should test both fixture data and synthetic datasets to ensure our implementation achieves parity or document acceptable differences.
+
+**Expected results based on cluster analysis**:
+- Blobs datasets should achieve near-perfect scores due to excellent separation
+- Circles and moons datasets are inherently challenging due to overlapping, non-convex shapes
+- k-NN affinity is expected to outperform RBF on overlapping clusters
+- Focus on understanding why sklearn succeeds on these challenging cases
 
 ## Acceptance Criteria
 
-- [ ] Test framework for comparing with sklearn intermediates
-- [ ] Intermediate results exported from sklearn
-- [ ] Exact divergence point identified
-- [ ] Root cause analysis documented
+- [ ] Create side-by-side comparison framework
+- [ ] Test with fixture data AND synthetic data
+- [ ] Profile numerical differences at each pipeline step
+- [ ] Document all remaining differences
+- [ ] Achieve 10/12 fixture tests passing or document why not

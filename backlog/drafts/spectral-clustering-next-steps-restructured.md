@@ -8,11 +8,11 @@ After completing tasks 12.1-12.8 and 12.11, we've made significant progress but 
 
 The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)`) improved results from 5/12 to 6/12 passing tests. This shows that subtle implementation differences have major impacts.
 
-## Restructured Priority Tasks
+## Restructured Priority Tasks (In Implementation Order)
 
-### Priority 1: Debug Two-Cluster Special Case (Current 12.10 → Refocus)
+### Priority 1: Debug Two-Cluster Special Case
 
-**Task 12.10 - Debug blobs_n2 low ARI issue**
+**Task 12.10 - Debug two-cluster special case**
 - **Rationale**: Both blobs_n2 tests have ARI = 0.088, suggesting a fundamental n=2 issue
 - **Approach**:
   1. Create minimal reproduction with 2-cluster blobs data
@@ -21,9 +21,9 @@ The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)
   4. Verify k-means behaves correctly with 2D embeddings
 - **Success Metric**: blobs_n2_* tests achieve ARI > 0.95
 
-### Priority 2: RBF Affinity Deep Dive (Current 12.5 → Already Done, Create 12.15)
+### Priority 2: RBF Affinity Deep Dive
 
-**NEW Task 12.15 - Fix RBF gamma scaling for fixture data**
+**Task 12.11 - Fix RBF gamma scaling for fixture data**
 - **Rationale**: Task 12.5 discovered fixtures use gamma=1.0 but need ~0.1-0.7
 - **Approach**:
   1. Update test fixtures with correct gamma values
@@ -31,9 +31,9 @@ The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)
   3. Test RBF performance with properly scaled gamma
 - **Success Metric**: RBF tests perform comparably to k-NN tests
 
-### Priority 3: Complete Pipeline Determinism (Current 12.12 → Keep)
+### Priority 3: Complete Pipeline Determinism
 
-**Task 12.12 - Verify random state propagation**
+**Task 12.12 - Complete random state propagation**
 - **Rationale**: Some randomness may remain causing test instability
 - **Approach**:
   1. Audit all random operations in pipeline
@@ -41,9 +41,9 @@ The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)
   3. Ensure tie-breaking is consistent
 - **Success Metric**: Identical results for same random seed
 
-### Priority 4: Disconnected Components Handling (NEW)
+### Priority 4: Disconnected Components Handling
 
-**NEW Task 12.16 - Handle disconnected graph components**
+**Task 12.13 - Handle disconnected graph components**
 - **Rationale**: Debug output shows some graphs have multiple components
 - **Approach**:
   1. Add connected components check before spectral embedding
@@ -51,9 +51,9 @@ The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)
   3. Test with artificially disconnected data
 - **Success Metric**: Robust handling of disconnected cases
 
-### Priority 5: Final sklearn Comparison (Current 12.14 → Enhance)
+### Priority 5: Final sklearn Comparison
 
-**Task 12.14 - Comprehensive sklearn comparison**
+**Task 12.14 - Final comprehensive sklearn comparison**
 - **Rationale**: Need systematic comparison after all fixes
 - **Enhanced Approach**:
   1. Create side-by-side comparison framework
@@ -65,26 +65,26 @@ The k-NN symmetrization bug fix (changing from `max(A, A^T)` to `0.5 * (A + A^T)
 ## Deprioritized/Removed Tasks
 
 ### Task 12.8 - Float64 precision
-- **Status**: COMPLETED - Not possible with TensorFlow.js
-- **Action**: Mark as Won't Do with explanation
+- **Status**: COMPLETED - Won't Do (TensorFlow.js limitation)
+- **Action**: Already marked as Won't Do
 
-### Task 12.9 - K-means initialization
-- **Status**: DEPRIORITIZE
+### Task 12.15 - Debug k-means initialization (was 12.9)
+- **Status**: DEPRIORITIZED
 - **Rationale**: K-means++ already implemented and working correctly
-- **Action**: Move to backlog, only revisit if needed after Priority 1-3
+- **Action**: Moved to lower priority
 
-### Task 12.13 - Affinity matrix sparsity
-- **Status**: DEPRIORITIZE  
+### Task 12.16 - Investigate affinity matrix sparsity (was 12.13)
+- **Status**: DEPRIORITIZED  
 - **Rationale**: Current dense implementation works; sparsity is optimization
-- **Action**: Move to future optimization work
+- **Action**: Moved to future optimization work
 
 ## Recommended Execution Order
 
-1. **Immediate**: Task 12.10 (two-cluster debugging) - Most likely to unlock multiple test fixes
-2. **Next**: Create and execute Task 12.15 (RBF gamma fix) - Simple fix with high impact
-3. **Then**: Task 12.12 (determinism) - Ensure consistent results
-4. **Then**: Create and execute Task 12.16 (disconnected components) - Handle edge cases
-5. **Finally**: Task 12.14 (comprehensive comparison) - Verify all improvements
+1. **Task 12.10**: Debug two-cluster special case - Most likely to unlock multiple test fixes
+2. **Task 12.11**: Fix RBF gamma scaling - Simple fix with high impact
+3. **Task 12.12**: Complete random state propagation - Ensure consistent results
+4. **Task 12.13**: Handle disconnected graph components - Handle edge cases
+5. **Task 12.14**: Final comprehensive sklearn comparison - Verify all improvements
 
 ## Expected Outcomes
 

@@ -1,9 +1,10 @@
 ---
 id: task-12.12
-title: Verify random state propagation throughout pipeline
+title: Complete random state propagation and verify determinism
 status: To Do
 assignee: []
 created_date: '2025-07-20'
+updated_date: '2025-07-20'
 labels:
   - spectral
   - determinism
@@ -17,7 +18,8 @@ Ensure that the random state is properly propagated and used consistently throug
 
 ## Acceptance Criteria
 
-- [ ] Random state is used in k-means++ initialization
-- [ ] Random state is used in k-NN tie-breaking if applicable
-- [ ] Random state usage matches sklearn's pattern
-- [ ] Results are deterministic for same random seed
+- [ ] Audit all random operations in spectral pipeline
+- [ ] Verify k-NN tie-breaking uses randomState
+- [ ] Ensure Jacobi solver is deterministic
+- [ ] Add multi-seed determinism tests
+- [ ] Document all sources of randomness

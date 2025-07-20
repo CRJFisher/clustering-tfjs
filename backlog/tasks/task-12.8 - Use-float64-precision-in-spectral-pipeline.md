@@ -1,7 +1,7 @@
 ---
 id: task-12.8
 title: Use float64 precision in spectral pipeline
-status: Done
+status: Won't Do
 assignee:
   - '@chuck'
 created_date: '2025-07-20'
@@ -58,3 +58,5 @@ However, these changes cannot be used due to TensorFlow.js limitations.
 **Precision difference is NOT the cause of fixture failures**. We cannot match sklearn's float64 precision due to TensorFlow.js limitations. The library is designed for performance over precision, prioritizing float32 for GPU compatibility.
 
 This rules out precision as the cause of the low ARI scores (0.088) on blobs datasets. We need to investigate other causes.
+
+TensorFlow.js does not support float64 operations. Investigation confirmed that numerical precision is not the bottleneck - the issues are algorithmic differences with sklearn. See task 12.11 findings for details.
