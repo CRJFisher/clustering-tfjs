@@ -208,7 +208,7 @@ export function tridiagonal_qr_eigen(
         }
         
         d[i] -= p;
-        e[i] = g2;
+        e[i] = g;
         e[m] = 0;
       }
     } while (m !== i);

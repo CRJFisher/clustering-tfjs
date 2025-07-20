@@ -160,9 +160,9 @@ export function compute_knn_affinity(
   return tf.tidy(() => {
     const values = tf.ones([coords.length]);
     const dense = tf.scatterND(coords, values, [nSamples, nSamples]) as tf.Tensor2D;
-    // Symmetrise: A = max(A, Aᵀ)
-    // This ensures binary values (0 or 1) while making the matrix symmetric
-    return tf.maximum(dense, dense.transpose()) as tf.Tensor2D;
+    // Symmetrise: A = 0.5 * (A + Aᵀ) to match sklearn
+    // This gives 0.5 for edges that only appear in one direction
+    return dense.add(dense.transpose()).mul(0.5) as tf.Tensor2D;
   });
 }
 

@@ -237,15 +237,39 @@ export class KMeans implements BaseClustering<KMeansParams> {
           }
         }
 
+        // Handle empty clusters using sklearn's strategy
+        const emptyClusters: number[] = [];
         for (let kIdx = 0; kIdx < K; kIdx++) {
           if (counts[kIdx] === 0) {
+            emptyClusters.push(kIdx);
+            // Keep old centroid temporarily
             newCentroidsArr[kIdx] = Array.from(
               await centroids.slice([kIdx, 0], [1, nFeatures]).array()
             )[0] as number[];
-            continue;
+          } else {
+            for (let j = 0; j < nFeatures; j++) {
+              newCentroidsArr[kIdx][j] /= counts[kIdx];
+            }
           }
-          for (let j = 0; j < nFeatures; j++) {
-            newCentroidsArr[kIdx][j] /= counts[kIdx];
+        }
+        
+        // If there are empty clusters, reassign them to points farthest from their nearest center
+        if (emptyClusters.length > 0) {
+          // Compute distances from all points to their nearest center
+          const distToNearest = new Float32Array(nSamples);
+          for (let i = 0; i < nSamples; i++) {
+            distToNearest[i] = minDistSq[i];
+          }
+          
+          // Find indices of points with largest distances
+          const indices = Array.from({length: nSamples}, (_, i) => i);
+          indices.sort((a, b) => distToNearest[b] - distToNearest[a]);
+          
+          // Assign farthest points as new centers for empty clusters
+          for (let i = 0; i < emptyClusters.length && i < nSamples; i++) {
+            const farthestIdx = indices[i];
+            const emptyClusterIdx = emptyClusters[i];
+            newCentroidsArr[emptyClusterIdx] = [...pointsArr[farthestIdx]];
           }
         }
 

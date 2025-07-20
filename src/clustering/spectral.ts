@@ -115,8 +115,6 @@ export class SpectralClustering
     /* ---------------------------- 2) Laplacian ---------------------------- */
     const {
       normalised_laplacian,
-      smallest_eigenvectors,
-      degree_vector,
     } = await import("../utils/laplacian");
 
     const laplacian: tf.Tensor2D = tf.tidy(() =>
@@ -126,27 +124,13 @@ export class SpectralClustering
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
     // Fetch k + c columns: `smallest_eigenvectors` internally counts the
     // number `c` of near–zero eigenvalues and appends them to the requested
-    // `nClusters` informative vectors.  We then remove *all* those trivial
-    // components before continuing – this matches scikit-learn behaviour for
-    // disconnected graphs with multiple constant eigenvectors.
-
-    const U_full_raw = smallest_eigenvectors(laplacian, this.params.nClusters);
+    // `nClusters` informative vectors.
+    const { smallest_eigenvectors } = await import("../utils/laplacian");
+    const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
     
-    // Apply the normalization to recover u = D^-1/2 x from eigenvector x
-    // This matches sklearn's spectral_embedding normalization
-    const deg = degree_vector(this.affinityMatrix_ as tf.Tensor2D);
-    const U_full = tf.tidy(() => {
-      const invSqrtDeg = tf.where(
-        deg.equal(0),
-        tf.zerosLike(deg),
-        deg.pow(-0.5),
-      ) as tf.Tensor1D;
-      // Divide each row by the corresponding degree^(-1/2)
-      return U_full_raw.div(invSqrtDeg.expandDims(1)) as tf.Tensor2D;
-    });
-
-    // Use the first nClusters columns directly, including constant eigenvectors
-    // This matches sklearn's behavior which does NOT remove constant eigenvectors
+    // Use the first nClusters columns directly
+    // IMPORTANT: sklearn's SpectralClustering uses raw eigenvectors from the
+    // normalized Laplacian WITHOUT any additional scaling or normalization
     const U: tf.Tensor2D = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]) as tf.Tensor2D;
 
     /* -------------------------- 4) K-Means -------------------------------- */
@@ -180,9 +164,7 @@ export class SpectralClustering
     this.labels_ = km.labels_ as number[];
 
     /* --------------------------- Clean-up --------------------------------- */
-    U_full_raw.dispose();
     U_full.dispose();
-    deg.dispose();
     laplacian.dispose();
     U.dispose();
 
