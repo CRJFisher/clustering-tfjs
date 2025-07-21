@@ -60,7 +60,24 @@ Integrate all components of SpectralClustering to create the complete algorithm 
    - Or use TensorFlow.js linalg operations if available
    - Profile to see if we can make Jacobi faster for more iterations
 
-Current Status (2025-07-21):\n- 7/12 tests passing (58%)\n- All k-NN tests pass (disconnected graphs handled correctly)\n- 5 RBF tests fail due to eigenvector numerical accuracy differences\n- Root cause: Jacobi eigensolver produces slightly different results than sklearn's ARPACK\n- Failing tests have ARI ~0.87-0.93 (close but below 0.95 threshold)\n\nNext steps:\n1. Try making k-means more robust (task 12.22)\n2. Investigate alternative eigensolvers (task 12.23)\n3. If above fail, consider ARPACK bindings (task 12.21)
+Current Status (2025-07-21):
+- 7/12 tests passing (58%)
+- All k-NN tests pass (disconnected graphs handled correctly)
+- 5 RBF tests fail due to eigenvector numerical accuracy differences
+- Root cause: Jacobi eigensolver produces slightly different results than sklearn's ARPACK
+- Failing tests have ARI ~0.77-0.93 (close but below 0.95 threshold)
+
+Task 12.22 completed:
+- Implemented consensus clustering approach
+- Works well for 2-cluster cases (achieves perfect ARI)
+- Fails for 3-cluster cases due to label switching issues
+- Increasing nInit doesn't help - results are deterministic
+- Fundamental issue remains: eigenvector differences
+
+Next steps:
+1. Investigate alternative eigensolvers (task 12.23)
+2. Try discretization label assignment instead of k-means
+3. If above fail, consider ARPACK bindings or accept lower accuracy
 ## Implementation Plan (the how)
 
 1. Study scikit-learn reference (link below) to ensure feature parity and identify edge-case handling patterns.
