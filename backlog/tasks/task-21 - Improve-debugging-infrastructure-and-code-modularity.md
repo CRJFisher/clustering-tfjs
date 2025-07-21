@@ -1,9 +1,11 @@
 ---
 id: task-21
 title: Improve debugging infrastructure and code modularity
-status: To Do
-assignee: []
+status: Done
+assignee:
+  - '@me'
 created_date: '2025-07-21'
+updated_date: '2025-07-21'
 labels:
   - infrastructure
   - debugging
@@ -13,17 +15,17 @@ dependencies: []
 
 ## Description
 
-Following the discovery of a critical issue where tests were passing with an outdated implementation (src/*.js files) while the actual distributed code was failing, we need to improve our debugging infrastructure and code modularity. This task addresses systematic improvements to prevent similar issues and make the codebase more maintainable and debuggable.
+Following the discovery of a critical issue where tests were passing with an outdated implementation (src/\*.js files) while the actual distributed code was failing, we need to improve our debugging infrastructure and code modularity. This task addresses systematic improvements to prevent similar issues and make the codebase more maintainable and debuggable.
 
 ## Acceptance Criteria
 
-- [ ] Remove all compiled JS files from git tracking and update .gitignore
-- [ ] Refactor SpectralClustering to expose intermediate computation steps
-- [ ] Create organized debugging tools directory structure
-- [ ] Implement debug mode for capturing intermediate results
-- [ ] Add integration tests that verify individual algorithmic steps
-- [ ] Document debugging procedures and tools
-- [ ] Ensure consistent import paths in all tests
+- [x] Remove all compiled JS files from git tracking and update .gitignore
+- [x] Refactor SpectralClustering to expose intermediate computation steps
+- [x] Create organized debugging tools directory structure
+- [x] Implement debug mode for capturing intermediate results
+- [x] Add integration tests that verify individual algorithmic steps
+- [x] Document debugging procedures and tools
+- [x] Ensure consistent import paths in all tests
 
 ## Implementation Plan
 
@@ -46,17 +48,18 @@ Refactor `SpectralClustering` class to expose intermediate steps:
 ```typescript
 export class SpectralClustering {
   // Expose intermediate steps as public methods
-  computeAffinityMatrix(X: DataMatrix): tf.Tensor2D
-  computeLaplacian(affinity: tf.Tensor2D): LaplacianResult
-  computeSpectralEmbedding(laplacian: tf.Tensor2D): EmbeddingResult
-  performClustering(embedding: tf.Tensor2D): number[]
-  
+  computeAffinityMatrix(X: DataMatrix): tf.Tensor2D;
+  computeLaplacian(affinity: tf.Tensor2D): LaplacianResult;
+  computeSpectralEmbedding(laplacian: tf.Tensor2D): EmbeddingResult;
+  performClustering(embedding: tf.Tensor2D): number[];
+
   // Main pipeline orchestrates the steps
-  fitPredict(X: DataMatrix): number[]
+  fitPredict(X: DataMatrix): number[];
 }
 ```
 
 This enables:
+
 - Testing individual steps in isolation
 - Comparing intermediate results with reference implementations
 - Debugging specific transformations
@@ -65,6 +68,7 @@ This enables:
 ### 3. Organize Debugging Infrastructure
 
 Create directory structure:
+
 ```
 tools/
 ├── debug/
@@ -94,7 +98,7 @@ export class SpectralClustering {
   constructor(params: SpectralParams & { captureDebugInfo?: boolean }) {
     this.captureDebugInfo = params.captureDebugInfo ?? false;
   }
-  
+
   getDebugInfo(): DebugInfo | undefined {
     return this.debugInfo;
   }
@@ -108,14 +112,17 @@ Add step-by-step comparison tests:
 ```typescript
 // test/integration/spectral_steps.test.ts
 describe('SpectralClustering step verification', () => {
-  test.each(fixtures)('affinity matrix computation - %s', async (fixtureName) => {
-    const { X, expectedAffinity } = loadFixture(fixtureName);
-    const spectral = new SpectralClustering(params);
-    const affinity = await spectral.computeAffinityMatrix(X);
-    
-    expect(affinity).toMatchMatrixStatistics(expectedAffinity);
-  });
-  
+  test.each(fixtures)(
+    'affinity matrix computation - %s',
+    async (fixtureName) => {
+      const { X, expectedAffinity } = loadFixture(fixtureName);
+      const spectral = new SpectralClustering(params);
+      const affinity = await spectral.computeAffinityMatrix(X);
+
+      expect(affinity).toMatchMatrixStatistics(expectedAffinity);
+    },
+  );
+
   // Similar tests for each step...
 });
 ```
@@ -123,16 +130,36 @@ describe('SpectralClustering step verification', () => {
 ### 6. Document Debugging Procedures
 
 Create `docs/debugging-guide.md`:
+
 - How to use debug scripts
 - Common issues and solutions
 - How to capture sklearn intermediates
 - How to add new comparison tests
 
+
+## Implementation Notes
+
+Successfully implemented all debugging infrastructure improvements:
+
+1. Removed src/*.js files from git tracking (git rm)
+2. Updated .gitignore to prevent future issues
+3. Created SpectralClusteringModular with exposed intermediate steps
+4. Organized debug scripts into tools/debug and tools/sklearn_comparison
+5. Added captureDebugInfo mode to capture intermediate results
+6. Created integration tests in test/integration/spectral_steps.test.ts
+7. Documented procedures in docs/debugging-guide.md
+
+Key improvements:
+- Tests now correctly reflect actual implementation status (5/12 passing)
+- Modular design allows testing individual algorithmic steps
+- Debug tools are organized and reusable
+- Clear separation between source and build artifacts
 ## Background and Lessons Learned
 
 ### The Incident
 
 During task 12.14, we discovered that:
+
 1. Compiled JS files (`src/*.js`) were tracked in git alongside TypeScript sources
 2. Tests imported from `src/` and used old implementations
 3. Production code in `dist/` had different implementations

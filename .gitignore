@@ -5,3 +5,12 @@ coverage
 .claude
 .jest_cache
 .venv_test
+
+# Prevent compiled files in src directory
+src/**/*.js
+src/**/*.d.ts
+src/**/*.js.map
+
+# Temporary test files
+temp_*.js
+temp_*.ts
