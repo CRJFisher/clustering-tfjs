@@ -1,9 +1,10 @@
 ---
 id: task-12.20
 title: Implement shift-invert eigenvalue computation
-status: To Do
+status: Won't Do
 assignee: []
 created_date: '2025-07-21'
+updated_date: '2025-07-21'
 labels: []
 dependencies: []
 parent_task_id: task-12
@@ -98,6 +99,11 @@ Shift-invert mode finds eigenvalues near a specified shift value (σ) by solving
    - Works well for clearly disconnected graphs
    - No need for complex linear solvers
 
+## Implementation Notes
+
+After investigation in task 12.20.1, determined that shift-invert is NOT needed for the remaining failing tests. All 5 remaining failures are connected graphs where sklearn achieves perfect results using standard eigendecomposition. The issue is numerical accuracy in our eigendecomposition, not the algorithm.
+
+After investigation, shift-invert is not needed. All disconnected graph tests (k-NN) now pass using component indicators implemented in task 12.20.1. The remaining failures are connected graphs with numerical accuracy issues.
 ## Technical Details
 
 ### Why Shift-Invert Works
@@ -155,3 +161,5 @@ Start with Option 3 (approximate solution) as it's most pragmatic:
 4. This should fix all current failing tests
 
 Later, if needed for more complex cases, implement Option 1 (pure TypeScript shift-invert).
+
+This was completed in task 12.20.1.

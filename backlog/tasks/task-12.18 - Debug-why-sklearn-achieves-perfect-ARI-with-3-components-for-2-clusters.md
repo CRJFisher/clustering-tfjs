@@ -1,9 +1,10 @@
 ---
 id: task-12.18
 title: Debug why sklearn achieves perfect ARI with 3 components for 2 clusters
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-07-21'
+updated_date: '2025-07-21'
 labels: []
 dependencies: []
 parent_task_id: task-12
@@ -44,3 +45,5 @@ From previous investigation:
 
 - sklearn calls `_spectral_embedding` with `drop_first=False` for SpectralClustering (line 754 in spectral.py)
 - This differs from manifold learning which uses `drop_first=True`
+
+The reason sklearn achieves perfect ARI with 3 components for 2 clusters is that the graph has 3 disconnected components. When using component indicators (3 constant eigenvectors), k-means can easily group the 3 components into 2 clusters. This is now handled by our component indicator implementation in task 12.20.1.

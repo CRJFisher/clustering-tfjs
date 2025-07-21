@@ -4,10 +4,9 @@ title: Complete random state propagation and verify determinism
 status: To Do
 assignee: []
 created_date: '2025-07-20'
-updated_date: '2025-07-20'
+updated_date: '2025-07-21'
 labels:
-  - spectral
-  - determinism
+  - low-priority
 dependencies: []
 parent_task_id: task-12
 ---
@@ -23,3 +22,7 @@ Ensure that the random state is properly propagated and used consistently throug
 - [ ] Ensure Jacobi solver is deterministic
 - [ ] Add multi-seed determinism tests
 - [ ] Document all sources of randomness
+
+## Implementation Notes
+
+Not critical for fixing failing tests. All tests use fixed random seeds already. Can be addressed later for general robustness.

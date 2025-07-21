@@ -9,11 +9,13 @@ This guide provides procedures and best practices for debugging clustering imple
 **Symptom**: Tests pass but manual execution of the same code fails.
 
 **Possible Causes**:
+
 - Compiled files in unexpected locations (e.g., `src/*.js`)
 - Different import paths between tests and manual runs
 - Stale build artifacts
 
 **Solution**:
+
 1. Check for compiled JS files in src directory: `find src -name "*.js"`
 2. Ensure tests import from consistent location
 3. Run `npm run build` before testing
@@ -24,17 +26,19 @@ This guide provides procedures and best practices for debugging clustering imple
 **Symptom**: Results are close but not exactly matching sklearn.
 
 **Possible Causes**:
+
 - Different numerical precision (float32 vs float64)
 - Different algorithm parameters or defaults
 - Different random initialization
 
 **Solution**:
+
 1. Use debug mode to capture intermediate results:
    ```typescript
    const spectral = new SpectralClusteringModular({
      nClusters: 2,
      affinity: 'rbf',
-     captureDebugInfo: true
+     captureDebugInfo: true,
    });
    ```
 2. Compare step-by-step with reference:
@@ -47,6 +51,7 @@ This guide provides procedures and best practices for debugging clustering imple
 **Symptom**: k-NN graphs create more connected components than desired clusters.
 
 **Debugging Steps**:
+
 1. Check number of components:
    ```python
    from scipy.sparse.csgraph import connected_components
@@ -64,10 +69,10 @@ This guide provides procedures and best practices for debugging clustering imple
 
 ```typescript
 // JavaScript/TypeScript
-const spectral = new SpectralClusteringModular({ 
-  nClusters: 2, 
+const spectral = new SpectralClusteringModular({
+  nClusters: 2,
   affinity: 'rbf',
-  captureDebugInfo: true 
+  captureDebugInfo: true,
 });
 const affinity = await spectral.computeAffinityMatrix(X);
 console.log('Affinity stats:', spectral.getDebugInfo()?.affinityStats);
@@ -95,9 +100,13 @@ console.log('First 5 eigenvalues:', debugInfo?.laplacianSpectrum?.slice(0, 5));
 
 ```typescript
 // Compare embedding properties
-const { embedding, eigenvalues } = await spectral.computeSpectralEmbedding(laplacian);
+const { embedding, eigenvalues } =
+  await spectral.computeSpectralEmbedding(laplacian);
 console.log('Embedding shape:', embedding.shape);
-console.log('Unique values per dimension:', debugInfo?.embeddingStats?.uniqueValuesPerDim);
+console.log(
+  'Unique values per dimension:',
+  debugInfo?.embeddingStats?.uniqueValuesPerDim,
+);
 ```
 
 ## Using Debug Scripts
@@ -158,7 +167,7 @@ affinity = rbf_kernel(X, gamma=1.0)
 
 # Get spectral embedding
 embedding = spectral_embedding(
-    affinity, 
+    affinity,
     n_components=n_clusters,
     drop_first=False,
     random_state=42
