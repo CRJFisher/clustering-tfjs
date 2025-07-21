@@ -61,23 +61,29 @@ Integrate all components of SpectralClustering to create the complete algorithm 
    - Profile to see if we can make Jacobi faster for more iterations
 
 Current Status (2025-07-21):
-- 7/12 tests passing (58%)
-- All k-NN tests pass (disconnected graphs handled correctly)
-- 5 RBF tests fail due to eigenvector numerical accuracy differences
-- Root cause: Jacobi eigensolver produces slightly different results than sklearn's ARPACK
-- Failing tests have ARI ~0.77-0.93 (close but below 0.95 threshold)
 
-Task 12.22 completed:
-- Implemented consensus clustering approach
-- Works well for 2-cluster cases (achieves perfect ARI)
-- Fails for 3-cluster cases due to label switching issues
-- Increasing nInit doesn't help - results are deterministic
-- Fundamental issue remains: eigenvector differences
+- 9/12 tests passing (75%) - improved from 7/12
+- All k-NN tests pass (disconnected graphs handled correctly)
+- All 2-cluster tests now pass after normalization fix
+- 3 tests fail, all are 3-cluster problems:
+  - circles_n3_knn: ARI = 0.899 (need ≥0.95)
+  - circles_n3_rbf: ARI = 0.685 (need ≥0.95)
+  - moons_n3_rbf: ARI = 0.946 (need ≥0.95)
+
+Task 12.23 completed - key findings:
+
+- Eigenvectors were actually correct all along
+- Issue was post-processing normalization, not eigenvector accuracy
+- sklearn doesn't apply diffusion map scaling for spectral clustering
+- Fixed by dividing by degree vector D instead of sqrt(1-eigenvalue) scaling
+- ml-matrix is 10x faster than our Jacobi (34ms vs 347ms) with identical results
 
 Next steps:
-1. Investigate alternative eigensolvers (task 12.23)
-2. Try discretization label assignment instead of k-means
-3. If above fail, consider ARPACK bindings or accept lower accuracy
+
+1. Migrate to ml-matrix for 10x performance boost (task 12.24)
+2. Investigate why 3-cluster scenarios fail (task 12.25)
+3. Complete random state propagation (task 12.17)
+
 ## Implementation Plan (the how)
 
 1. Study scikit-learn reference (link below) to ensure feature parity and identify edge-case handling patterns.
@@ -191,12 +197,14 @@ Once all subtasks are complete, all fixtures should pass with ARI ≥ 0.95.
 As of task 12.13, we have 12 fixture tests in `test/fixtures/spectral/`:
 
 **Currently Passing (4/12):**
+
 - `blobs_n2_knn.json` - ARI = 1.0 ✓
 - `blobs_n2_rbf.json` - ARI = 1.0 ✓
 - `blobs_n3_knn.json` - ARI = 1.0 ✓
 - `blobs_n3_rbf.json` - ARI = 1.0 ✓
 
 **Currently Failing (8/12):**
+
 - `circles_n2_knn.json` - ARI = 0.3094 ✗
 - `circles_n2_rbf.json` - ARI = 0.9333 ✗
 - `circles_n3_knn.json` - ARI = 0.8992 ✗

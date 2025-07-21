@@ -1,7 +1,7 @@
 ---
 id: task-12.21
 title: Improve eigendecomposition numerical accuracy for connected graphs
-status: In Progress
+status: Won't Do
 assignee:
   - '@me'
 created_date: '2025-07-21'
@@ -49,6 +49,7 @@ After extensive investigation, found that:
 4. The issue is NOT about constant eigenvector replacement or scaling
 5. We need to either: (a) use ARPACK like sklearn, or (b) improve our Jacobi solver accuracy
 
+Superseded by task 12.23 which found the real issue was normalization, not eigenvector accuracy
 ## Detailed Investigation Results
 
 ### Initial Hypothesis: Constant Eigenvector Issue
