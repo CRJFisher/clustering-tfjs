@@ -1,5 +1,5 @@
 ---
-id: task-12.21
+id: task-12.19
 title: Improve spectral clustering for overlapping clusters
 status: To Do
 assignee: []

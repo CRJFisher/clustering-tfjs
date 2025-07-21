@@ -1,5 +1,5 @@
 ---
-id: task-12.14
+id: task-12.18
 title: Debug why sklearn achieves perfect ARI with 3 components for 2 clusters
 status: To Do
 assignee: []
@@ -25,6 +25,7 @@ Even with correct eigenvectors (3 unique values each), we still get ARI=0.0876 w
 ### Prior Findings to Consider
 
 From Task 12.12/12.18 investigation:
+
 1. **Confirmed**: Even with eigenvector recovery (giving 3 unique values), ARI = 0.0876
 2. **sklearn achieves ARI = 1.0** with the same data and recovered eigenvectors
 3. **Key insight**: The embedding has 3 unique values per dimension, effectively encoding which of the 3 components each point belongs to
@@ -40,5 +41,6 @@ From Task 12.12/12.18 investigation:
 ### Key Code Locations
 
 From previous investigation:
+
 - sklearn calls `_spectral_embedding` with `drop_first=False` for SpectralClustering (line 754 in spectral.py)
 - This differs from manifold learning which uses `drop_first=True`

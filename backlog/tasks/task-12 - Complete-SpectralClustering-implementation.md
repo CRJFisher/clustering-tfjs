@@ -168,6 +168,28 @@ Based on analysis of test failures, particularly k-NN affinity (ARI 0.08-0.63), 
 
 Once all subtasks are complete, all fixtures should pass with ARI ≥ 0.95.
 
+## Specific Test Fixtures We're Trying to Fix
+
+As of task 12.13, we have 12 fixture tests in `test/fixtures/spectral/`:
+
+**Currently Passing (4/12):**
+- `blobs_n2_knn.json` - ARI = 1.0 ✓
+- `blobs_n2_rbf.json` - ARI = 1.0 ✓
+- `blobs_n3_knn.json` - ARI = 1.0 ✓
+- `blobs_n3_rbf.json` - ARI = 1.0 ✓
+
+**Currently Failing (8/12):**
+- `circles_n2_knn.json` - ARI = 0.3094 ✗
+- `circles_n2_rbf.json` - ARI = 0.9333 ✗
+- `circles_n3_knn.json` - ARI = 0.8992 ✗
+- `circles_n3_rbf.json` - ARI = 0.7675 ✗
+- `moons_n2_knn.json` - ARI = 0.6339 ✗
+- `moons_n2_rbf.json` - ARI = 0.9333 ✗
+- `moons_n3_knn.json` - ARI = 0.9453 ✗
+- `moons_n3_rbf.json` - ARI = 0.4144 ✗
+
+The goal is to achieve ARI ≥ 0.95 for all 12 fixtures to match sklearn's performance.
+
 ## Implementation Notes (Updated)
 
 Many determinism and algorithm fixes have been completed:

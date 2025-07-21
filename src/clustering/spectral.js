@@ -112,17 +112,29 @@ class SpectralClustering {
         }
         /* ---------------------------- 2) Laplacian ---------------------------- */
         const { normalised_laplacian, } = await Promise.resolve().then(() => __importStar(require("../utils/laplacian")));
-        const laplacian = tf.tidy(() => normalised_laplacian(this.affinityMatrix_));
+        // Get both Laplacian and sqrt(degrees) for eigenvector recovery
+        const { laplacian, sqrtDegrees } = tf.tidy(() => normalised_laplacian(this.affinityMatrix_, true));
         /* --------------------- 3) Smallest eigenvectors ----------------------- */
         // Fetch k + c columns: `smallest_eigenvectors` internally counts the
         // number `c` of near–zero eigenvalues and appends them to the requested
         // `nClusters` informative vectors.
         const { smallest_eigenvectors } = await Promise.resolve().then(() => __importStar(require("../utils/laplacian")));
         const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
-        // Use the first nClusters columns directly
-        // IMPORTANT: sklearn's SpectralClustering uses raw eigenvectors from the
-        // normalized Laplacian WITHOUT any additional scaling or normalization
-        const U = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]);
+        // Perform eigenvector recovery: divide by sqrt(degrees)
+        // This transforms eigenvectors from the normalized Laplacian to the random walk Laplacian
+        // For disconnected components, this produces eigenvectors with k unique values for k components
+        const U_recovered = tf.tidy(() => {
+            // sqrtDegrees is D^(-1/2), so we divide by it to recover
+            const sqrtDegrees2D = sqrtDegrees.reshape([-1, 1]);
+            return U_full.div(sqrtDegrees2D);
+        });
+        // Use the first nClusters columns
+        const U = tf.slice(U_recovered, [0, 0], [-1, this.params.nClusters]);
+        // Clean up intermediate tensors
+        laplacian.dispose();
+        sqrtDegrees.dispose();
+        U_full.dispose();
+        U_recovered.dispose();
         /* -------------------------- 4) K-Means -------------------------------- */
         // IMPORTANT: sklearn does NOT row-normalize when using k-means!
         // Row normalization is only applied when assign_labels='discretize'
@@ -149,8 +161,6 @@ class SpectralClustering {
         await km.fit(U);
         this.labels_ = km.labels_;
         /* --------------------------- Clean-up --------------------------------- */
-        U_full.dispose();
-        laplacian.dispose();
         U.dispose();
         if (!(_X instanceof tf.Tensor)) {
             Xtensor.dispose();

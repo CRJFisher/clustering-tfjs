@@ -2,21 +2,28 @@
 
 This document compiles all findings related to eigenvectors, eigenvalues, and eigenvector computation from the SpectralClustering implementation effort (Task 12 and its subtasks).
 
-## Critical Discovery: Eigenvector Recovery
+## CRITICAL UPDATE (Task 12.13): sklearn Uses Diffusion Map Scaling, NOT Eigenvector Recovery!
 
-The most important finding is that we're missing a critical post-processing step called **eigenvector recovery** that sklearn performs for normalized Laplacian eigenvectors.
+After extensive investigation in Task 12.13, we discovered that our initial understanding was incorrect:
 
-### What sklearn does:
+### What sklearn ACTUALLY does:
 
 1. Computes eigenvectors of normalized Laplacian: `L = I - D^(-1/2) * A * D^(-1/2)`
-2. **Recovers eigenvectors** by dividing by `D^(1/2)`: `u = v / sqrt(degree)`
-3. This transforms eigenvectors to have exactly k unique values for k connected components
+2. **Applies diffusion map scaling**: scales eigenvectors by `sqrt(1 - eigenvalue)`
+3. This is the standard diffusion map embedding for normalized Laplacian
+4. **Does NOT use eigenvector recovery** (dividing by sqrt(degrees))
 
-### Impact:
+### The Confusion:
 
-- **Without recovery**: Eigenvectors have many unique values (e.g., 39 for blobs_n2)
-- **With recovery**: Eigenvectors have exactly k unique values (e.g., 3 for 3 components)
-- This is critical for handling disconnected or weakly connected graphs
+- **Initial belief**: sklearn divides by sqrt(degrees) for eigenvector recovery
+- **Reality**: sklearn scales by sqrt(1 - eigenvalue) for diffusion maps
+- **Why it matters**: Eigenvector recovery helps disconnected graphs but hurts connected ones
+
+### Impact of Diffusion Map Scaling:
+
+- Fixed all "blobs" datasets (disconnected components) - ARI = 1.0
+- Improved but didn't fix "moons" and "circles" datasets - ARI > 0.93 but < 0.95
+- k-NN graphs remain problematic due to graph structure issues
 
 ## Timeline of Discoveries
 
@@ -74,26 +81,23 @@ The most important finding is that we're missing a critical post-processing step
 
 ## Key Implementation Issues
 
-### Current Problems:
+### Updated Understanding (Task 12.13):
 
-1. **Missing eigenvector recovery** in `SpectralClustering.fit()`
-2. **Incorrect comment** claiming sklearn uses "raw eigenvectors" (line 132-133 in spectral.ts)
-3. **No component-aware logic** for when #components > #clusters
+1. **sklearn uses diffusion map scaling**: `eigenvectors * sqrt(1 - eigenvalue)`
+2. **NOT eigenvector recovery**: Does not divide by sqrt(degrees)
+3. **Our initial comment was actually correct**: sklearn does use "raw eigenvectors" (plus diffusion scaling)
 
-### Required Fixes:
+### What We Implemented:
 
-1. **Immediate (Task 12.13)**:
-   - Add degree vector computation to normalized Laplacian
-   - Implement eigenvector recovery: `embedding = eigenvectors / sqrt(degrees)`
-   - Update misleading comments
+1. **Created `smallest_eigenvectors_with_values`** to return both eigenvectors and eigenvalues
+2. **Implemented diffusion map scaling** in SpectralClustering.fit()
+3. **Removed incorrect eigenvector recovery** that was hurting connected graphs
 
-2. **Investigation (Task 12.14)**:
-   - Trace sklearn's exact handling of 3 components → 2 clusters
-   - Understand why recovery alone doesn't achieve ARI = 1.0
+### Remaining Issues:
 
-3. **Component Handling (Task 12.15)**:
-   - Implement logic for components > clusters
-   - Consider sklearn's `drop_first` approach
+1. **k-NN graphs produce non-constant eigenvectors**: The constant vector 1/sqrt(n) is NOT an eigenvector
+2. **sklearn somehow gets constant first embedding**: Suggesting additional processing or different eigensolver
+3. **Several tests are close but not perfect**: ARI > 0.93 but < 0.95
 
 ## Technical Details
 
@@ -113,19 +117,28 @@ The most important finding is that we're missing a critical post-processing step
 - ANY orthonormal basis is mathematically valid
 - Component indicators are the "natural" choice
 
-## Conclusions
+## Conclusions (Updated after Task 12.13)
 
-1. **Eigensolver is fine**: Jacobi solver works correctly; no need to switch to ARPACK
-2. **Recovery is essential**: Must implement eigenvector recovery for normalized Laplacian
-3. **Components need special handling**: When #components > #clusters, additional logic required
+1. **Eigensolver is mostly fine**: Jacobi solver works correctly for most cases
+2. **Diffusion map scaling is essential**: Must scale by sqrt(1 - eigenvalue), NOT eigenvector recovery
+3. **k-NN graphs have structural issues**: The graph connectivity prevents ideal spectral embeddings
 4. **Not a precision issue**: float32 is sufficient; problems are algorithmic
+5. **Progress made**: Fixed all disconnected component cases (blobs), improved connected cases (moons/circles)
+
+## Key Lesson from Task 12.13
+
+The journey from eigenvector recovery to diffusion map scaling illustrates the importance of:
+- Testing hypotheses thoroughly before implementation
+- Understanding that different graph types (connected vs disconnected) may need different approaches
+- Recognizing that sklearn's implementation has subtleties not apparent from documentation alone
+
+The diffusion map scaling is the correct foundation, but perfect sklearn parity requires addressing the k-NN graph structure issues that remain.
 
 ## Next Steps
 
-1. Implement eigenvector recovery (Task 12.13)
-2. Debug why sklearn achieves perfect clustering (Task 12.14)
-3. Add component-aware eigenvector selection (Task 12.15)
-
----
+1. ~~Implement eigenvector recovery (Task 12.13)~~ ✓ Implemented diffusion map scaling instead
+2. Investigate why sklearn gets better embeddings for k-NN graphs (Task 12.14+)
+3. Consider alternative eigensolvers or preprocessing for k-NN cases
+4. Explore component-aware strategies when components > clusters
 
 _Document compiled from Tasks 12.1-12.21 findings on 2025-07-21_

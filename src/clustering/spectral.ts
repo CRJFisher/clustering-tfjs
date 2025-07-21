@@ -117,21 +117,45 @@ export class SpectralClustering
       normalised_laplacian,
     } = await import("../utils/laplacian");
 
-    const laplacian: tf.Tensor2D = tf.tidy(() =>
+    // Compute normalized Laplacian
+    const laplacian = tf.tidy(() =>
       normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D),
-    ) as tf.Tensor2D;
+    );
 
     /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    // Fetch k + c columns: `smallest_eigenvectors` internally counts the
-    // number `c` of near–zero eigenvalues and appends them to the requested
-    // `nClusters` informative vectors.
-    const { smallest_eigenvectors } = await import("../utils/laplacian");
-    const U_full = smallest_eigenvectors(laplacian, this.params.nClusters);
+    // Get eigenvectors AND eigenvalues for diffusion map scaling
+    const { smallest_eigenvectors_with_values } = await import("../utils/smallest_eigenvectors_with_values");
     
-    // Use the first nClusters columns directly
-    // IMPORTANT: sklearn's SpectralClustering uses raw eigenvectors from the
-    // normalized Laplacian WITHOUT any additional scaling or normalization
-    const U: tf.Tensor2D = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]) as tf.Tensor2D;
+    const { eigenvectors: U_full, eigenvalues } = smallest_eigenvectors_with_values(
+      laplacian, 
+      this.params.nClusters
+    );
+    
+    // Apply diffusion map scaling: scale by sqrt(1 - eigenvalue)
+    // This is what sklearn does for normalized Laplacian spectral embedding
+    const U_scaled = tf.tidy(() => {
+      // Get first nClusters eigenvalues
+      const eigenvals = tf.slice(eigenvalues, [0], [this.params.nClusters]) as tf.Tensor1D;
+      
+      // Compute scaling factors: sqrt(max(0, 1 - eigenvalue))
+      const scalingFactors = tf.sqrt(
+        tf.maximum(tf.scalar(0), tf.sub(tf.scalar(1), eigenvals))
+      ) as tf.Tensor1D;
+      
+      // Apply scaling to each eigenvector column
+      const scalingFactors2D = scalingFactors.reshape([1, -1]) as tf.Tensor2D;
+      const U_selected = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]) as tf.Tensor2D;
+      
+      return U_selected.mul(scalingFactors2D) as tf.Tensor2D;
+    });
+    
+    // Use the scaled eigenvectors
+    const U = U_scaled;
+    
+    // Clean up intermediate tensors
+    laplacian.dispose();
+    eigenvalues.dispose();
+    U_full.dispose();
 
     /* -------------------------- 4) K-Means -------------------------------- */
     // IMPORTANT: sklearn does NOT row-normalize when using k-means!
@@ -164,8 +188,6 @@ export class SpectralClustering
     this.labels_ = km.labels_ as number[];
 
     /* --------------------------- Clean-up --------------------------------- */
-    U_full.dispose();
-    laplacian.dispose();
     U.dispose();
 
     if (!(_X instanceof tf.Tensor)) {

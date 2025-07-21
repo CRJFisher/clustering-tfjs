@@ -1,5 +1,5 @@
 ---
-id: task-12.20
+id: task-12.17
 title: Complete random state propagation and verify determinism
 status: To Do
 assignee: []

@@ -1,7 +1,7 @@
 ---
 id: task-12.16
 title: Investigate eigensolver differences with sklearn
-status: To Do
+status: Obsolete
 assignee: []
 created_date: '2025-07-20'
 labels: []

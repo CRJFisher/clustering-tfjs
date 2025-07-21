@@ -1,7 +1,7 @@
 ---
 id: task-12.18
 title: Handle disconnected graph components in spectral clustering
-status: To Do
+status: Merged into 12.16
 assignee: []
 created_date: '2025-07-20'
 labels: []

@@ -38,7 +38,9 @@ export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
  * `D^{-1/2}` as **0** for the corresponding diagonal entry which leaves the
  * row & column of `L` equal to the identity matrix (no connections).
  */
-export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D {
+export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D;
+export function normalised_laplacian(A: tf.Tensor2D, returnDiag: true): { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D };
+export function normalised_laplacian(A: tf.Tensor2D, returnDiag = false): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D } {
   return tf.tidy(() => {
     const n = A.shape[0];
     
@@ -68,7 +70,18 @@ export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D {
     // L = I - scaledAffinity
     // This ensures diagonal entries are exactly 1 for non-isolated nodes
     const I = tf.eye(n);
-    return I.sub(scaledAffinity) as tf.Tensor2D;
+    const laplacian = I.sub(scaledAffinity) as tf.Tensor2D;
+    
+    if (returnDiag) {
+      // Return both Laplacian and sqrt(degrees) for eigenvector recovery
+      // Note: we return invSqrt which is D^(-1/2), so for recovery we need to divide by it
+      return { 
+        laplacian: laplacian,
+        sqrtDegrees: invSqrt
+      };
+    }
+    
+    return laplacian;
   });
 }
 

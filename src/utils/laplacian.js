@@ -59,20 +59,7 @@ function degree_vector(A) {
     // Sum along axis 1 (rows) – (n)
     return tf.tidy(() => A.sum(1));
 }
-/**
- * Computes the *symmetric normalised* graph Laplacian
- *
- *     L = I  −  D^{-1/2} · A · D^{-1/2}
- *
- * where
- *   • `A` is the affinity / adjacency matrix
- *   • `D` is the diagonal *degree* matrix with `D[i,i] = Σ_j A[i,j]`
- *
- * Isolated vertices (zero degree) are handled gracefully by treating
- * `D^{-1/2}` as **0** for the corresponding diagonal entry which leaves the
- * row & column of `L` equal to the identity matrix (no connections).
- */
-function normalised_laplacian(A) {
+function normalised_laplacian(A, returnDiag = false) {
     return tf.tidy(() => {
         const n = A.shape[0];
         // First, zero out the diagonal of A to match scipy behavior
@@ -92,7 +79,16 @@ function normalised_laplacian(A) {
         // L = I - scaledAffinity
         // This ensures diagonal entries are exactly 1 for non-isolated nodes
         const I = tf.eye(n);
-        return I.sub(scaledAffinity);
+        const laplacian = I.sub(scaledAffinity);
+        if (returnDiag) {
+            // Return both Laplacian and sqrt(degrees) for eigenvector recovery
+            // Note: we return invSqrt which is D^(-1/2), so for recovery we need to divide by it
+            return {
+                laplacian: laplacian,
+                sqrtDegrees: invSqrt
+            };
+        }
+        return laplacian;
     });
 }
 /* -------------------------------------------------------------------------- */
