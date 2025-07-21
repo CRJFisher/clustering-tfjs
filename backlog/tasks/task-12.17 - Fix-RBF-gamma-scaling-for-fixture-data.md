@@ -1,5 +1,5 @@
 ---
-id: task-12.14
+id: task-12.17
 title: Fix RBF gamma scaling for fixture data
 status: To Do
 assignee: []

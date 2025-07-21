@@ -132,8 +132,8 @@ export function compute_knn_affinity(
 
         let neighbours: number[];
         if (includeSelf) {
-          // Keep self-index and take first k neighbours
-          neighbours = indArr[i].slice(0, k);
+          // Keep self-index and take k+1 total (self + k neighbors)
+          neighbours = indArr[i].slice(0, k + 1);
         } else {
           // Remove self-index then take first k neighbours
           neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);

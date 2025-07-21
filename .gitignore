@@ -4,3 +4,4 @@ dist
 coverage
 .claude
 .jest_cache
+.venv_test
