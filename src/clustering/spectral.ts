@@ -116,6 +116,10 @@ export class SpectralClustering
     const {
       normalised_laplacian,
     } = await import("../utils/laplacian");
+    
+    // Check graph connectivity and warn if disconnected
+    const { checkGraphConnectivity } = await import("../utils/connected_components");
+    checkGraphConnectivity(this.affinityMatrix_ as tf.Tensor2D);
 
     // Compute normalized Laplacian
     const laplacian = tf.tidy(() =>
@@ -126,16 +130,32 @@ export class SpectralClustering
     // Get eigenvectors AND eigenvalues for diffusion map scaling
     const { smallest_eigenvectors_with_values } = await import("../utils/smallest_eigenvectors_with_values");
     
+    // Detect number of connected components
+    const { detectConnectedComponents } = await import("../utils/connected_components");
+    const { numComponents } = detectConnectedComponents(this.affinityMatrix_ as tf.Tensor2D);
+    
+    // When we have more components than clusters, we need to get more eigenvectors
+    // to ensure we capture all component indicators
+    const numEigenvectors = Math.max(this.params.nClusters, numComponents);
+    
     const { eigenvectors: U_full, eigenvalues } = smallest_eigenvectors_with_values(
       laplacian, 
-      this.params.nClusters
+      numEigenvectors
     );
     
     // Apply diffusion map scaling: scale by sqrt(1 - eigenvalue)
     // This is what sklearn does for normalized Laplacian spectral embedding
     const U_scaled = tf.tidy(() => {
-      // Get first nClusters eigenvalues
-      const eigenvals = tf.slice(eigenvalues, [0], [this.params.nClusters]) as tf.Tensor1D;
+      // For spectral clustering, sklearn uses drop_first=False,
+      // so we keep all eigenvectors including the first one
+      
+      // However, we only use nClusters eigenvectors for the final clustering
+      // If numComponents > nClusters, we still only use nClusters eigenvectors
+      // This allows k-means to group multiple components into fewer clusters
+      const numToUse = this.params.nClusters;
+      
+      // Get first numToUse eigenvalues
+      const eigenvals = tf.slice(eigenvalues, [0], [numToUse]) as tf.Tensor1D;
       
       // Compute scaling factors: sqrt(max(0, 1 - eigenvalue))
       const scalingFactors = tf.sqrt(
@@ -144,7 +164,7 @@ export class SpectralClustering
       
       // Apply scaling to each eigenvector column
       const scalingFactors2D = scalingFactors.reshape([1, -1]) as tf.Tensor2D;
-      const U_selected = tf.slice(U_full, [0, 0], [-1, this.params.nClusters]) as tf.Tensor2D;
+      const U_selected = tf.slice(U_full, [0, 0], [-1, numToUse]) as tf.Tensor2D;
       
       return U_selected.mul(scalingFactors2D) as tf.Tensor2D;
     });

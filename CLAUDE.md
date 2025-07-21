@@ -7,6 +7,7 @@
 
 - When starting a new sub-task, first read the parent task and any preceding sub-tasks e.g. if starting task-12.10, read task-12 and task-12.1-9. This way you can understand the context and the overall plan.
 - At the end of a work cycle and at significant milestones during work, write up significant findings in the relevant task document.
+- Before a debugging task, consult the `docs/debugging-guide.md` file.
 
 <!-- BACKLOG.MD GUIDELINES START -->
 
