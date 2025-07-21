@@ -11,51 +11,52 @@ import * as tf from "@tensorflow/tfjs-node";
  * @returns Object containing:
  *   - numComponents: Number of connected components
  *   - isFullyConnected: Whether the graph has only 1 component
+ *   - componentLabels: Array indicating which component each node belongs to
  */
 export function detectConnectedComponents(
   affinity: tf.Tensor2D,
   tolerance: number = 1e-2
-): { numComponents: number; isFullyConnected: boolean } {
-  return tf.tidy(() => {
-    // Import Laplacian computation
-    const { normalised_laplacian } = require("./laplacian");
+): { numComponents: number; isFullyConnected: boolean; componentLabels: Int32Array } {
+  const n = affinity.shape[0];
+  const componentLabels = new Int32Array(n).fill(-1);
+  
+  // Get affinity data for graph traversal
+  const affinityData = affinity.arraySync();
+  
+  // BFS to find connected components
+  let currentComponent = 0;
+  
+  for (let startNode = 0; startNode < n; startNode++) {
+    if (componentLabels[startNode] !== -1) continue; // Already assigned
     
-    // Compute normalized Laplacian
-    const laplacian = normalised_laplacian(affinity);
+    // BFS from this node
+    const queue: number[] = [startNode];
+    componentLabels[startNode] = currentComponent;
     
-    // Get eigenvalues using our improved eigen solver
-    // We only need a few smallest eigenvalues to count components
-    const k = Math.min(10, laplacian.shape[0]); // Check at most 10 smallest eigenvalues
-    const { improved_jacobi_eigen } = require("./eigen_improved");
-    
-    const { eigenvalues } = improved_jacobi_eigen(laplacian, {
-      isPSD: true,
-      maxIterations: 1000,
-      tolerance: 1e-10,
-    });
-    
-    // Count eigenvalues that are approximately zero
-    let numComponents = 0;
-    
-    // eigenvalues is already sorted in ascending order
-    for (let i = 0; i < Math.min(k, eigenvalues.length); i++) {
-      if (Math.abs(eigenvalues[i]) < tolerance) {
-        numComponents++;
-      } else {
-        break; // Stop counting once we hit non-zero eigenvalues
+    while (queue.length > 0) {
+      const node = queue.shift()!;
+      
+      // Check all neighbors
+      for (let neighbor = 0; neighbor < n; neighbor++) {
+        if (neighbor !== node && 
+            componentLabels[neighbor] === -1 && 
+            affinityData[node][neighbor] > tolerance) {
+          componentLabels[neighbor] = currentComponent;
+          queue.push(neighbor);
+        }
       }
     }
     
-    // If no zero eigenvalues found, assume 1 component (fully connected)
-    if (numComponents === 0) {
-      numComponents = 1;
-    }
-    
-    return {
-      numComponents,
-      isFullyConnected: numComponents === 1
-    };
-  });
+    currentComponent++;
+  }
+  
+  const numComponents = currentComponent;
+  
+  return {
+    numComponents,
+    isFullyConnected: numComponents === 1,
+    componentLabels
+  };
 }
 
 /**

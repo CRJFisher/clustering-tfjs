@@ -112,70 +112,91 @@ export class SpectralClustering
       );
     }
 
-    /* ---------------------------- 2) Laplacian ---------------------------- */
-    const {
-      normalised_laplacian,
-    } = await import("../utils/laplacian");
-    
-    // Check graph connectivity and warn if disconnected
-    const { checkGraphConnectivity } = await import("../utils/connected_components");
-    checkGraphConnectivity(this.affinityMatrix_ as tf.Tensor2D);
-
-    // Compute normalized Laplacian
-    const laplacian = tf.tidy(() =>
-      normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D),
-    );
-
-    /* --------------------- 3) Smallest eigenvectors ----------------------- */
-    // Get eigenvectors AND eigenvalues for diffusion map scaling
-    const { smallest_eigenvectors_with_values } = await import("../utils/smallest_eigenvectors_with_values");
-    
-    // Detect number of connected components
+    /* ---------------------------- 2) Component Detection ---------------------- */
+    // Detect connected components
     const { detectConnectedComponents } = await import("../utils/connected_components");
-    const { numComponents } = detectConnectedComponents(this.affinityMatrix_ as tf.Tensor2D);
+    const { numComponents, isFullyConnected, componentLabels } = 
+      detectConnectedComponents(this.affinityMatrix_ as tf.Tensor2D);
     
-    // When we have more components than clusters, we need to get more eigenvectors
-    // to ensure we capture all component indicators
-    const numEigenvectors = Math.max(this.params.nClusters, numComponents);
-    
-    const { eigenvectors: U_full, eigenvalues } = smallest_eigenvectors_with_values(
-      laplacian, 
-      numEigenvectors
-    );
-    
-    // Apply diffusion map scaling: scale by sqrt(1 - eigenvalue)
-    // This is what sklearn does for normalized Laplacian spectral embedding
-    const U_scaled = tf.tidy(() => {
-      // For spectral clustering, sklearn uses drop_first=False,
-      // so we keep all eigenvectors including the first one
+    // Warn if disconnected
+    if (!isFullyConnected) {
+      console.warn(
+        "Graph is not fully connected, spectral embedding may not work as expected."
+      );
+    }
+
+    let U: tf.Tensor2D;
+
+    // If graph is disconnected and has enough components, use component indicators
+    if (!isFullyConnected && numComponents >= this.params.nClusters) {
+      /* ------------------------ Use Component Indicators -------------------- */
+      const { createComponentIndicators } = await import("../utils/component_indicators");
       
-      // However, we only use nClusters eigenvectors for the final clustering
-      // If numComponents > nClusters, we still only use nClusters eigenvectors
-      // This allows k-means to group multiple components into fewer clusters
-      const numToUse = this.params.nClusters;
+      // Use all component indicators, not just nClusters
+      // This allows k-means to properly group components into clusters
+      U = createComponentIndicators(
+        componentLabels,
+        numComponents,
+        numComponents  // Use all components, not this.params.nClusters
+      );
       
-      // Get first numToUse eigenvalues
-      const eigenvals = tf.slice(eigenvalues, [0], [numToUse]) as tf.Tensor1D;
+      // Component indicators are already normalized, no scaling needed
+    } else {
+      /* ---------------------------- Standard Approach ------------------------ */
+      // Compute Laplacian and eigenvectors as before
+      const { normalised_laplacian } = await import("../utils/laplacian");
       
-      // Compute scaling factors: sqrt(max(0, 1 - eigenvalue))
-      const scalingFactors = tf.sqrt(
-        tf.maximum(tf.scalar(0), tf.sub(tf.scalar(1), eigenvals))
-      ) as tf.Tensor1D;
+      // Compute normalized Laplacian
+      const laplacian = tf.tidy(() =>
+        normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D),
+      );
+
+      // Get eigenvectors AND eigenvalues for diffusion map scaling
+      const { smallest_eigenvectors_with_values } = await import("../utils/smallest_eigenvectors_with_values");
       
-      // Apply scaling to each eigenvector column
-      const scalingFactors2D = scalingFactors.reshape([1, -1]) as tf.Tensor2D;
-      const U_selected = tf.slice(U_full, [0, 0], [-1, numToUse]) as tf.Tensor2D;
+      // When we have more components than clusters, we need to get more eigenvectors
+      // to ensure we capture all component indicators
+      const numEigenvectors = Math.max(this.params.nClusters, numComponents);
       
-      return U_selected.mul(scalingFactors2D) as tf.Tensor2D;
-    });
-    
-    // Use the scaled eigenvectors
-    const U = U_scaled;
-    
-    // Clean up intermediate tensors
-    laplacian.dispose();
-    eigenvalues.dispose();
-    U_full.dispose();
+      const { eigenvectors: U_full, eigenvalues } = smallest_eigenvectors_with_values(
+        laplacian, 
+        numEigenvectors
+      );
+      
+      // Apply diffusion map scaling: scale by sqrt(1 - eigenvalue)
+      // This is what sklearn does for normalized Laplacian spectral embedding
+      const U_scaled = tf.tidy(() => {
+        // For spectral clustering, sklearn uses drop_first=False,
+        // so we keep all eigenvectors including the first one
+        
+        // However, we only use nClusters eigenvectors for the final clustering
+        // If numComponents > nClusters, we still only use nClusters eigenvectors
+        // This allows k-means to group multiple components into fewer clusters
+        const numToUse = this.params.nClusters;
+        
+        // Get first numToUse eigenvalues
+        const eigenvals = tf.slice(eigenvalues, [0], [numToUse]) as tf.Tensor1D;
+        
+        // Compute scaling factors: sqrt(max(0, 1 - eigenvalue))
+        const scalingFactors = tf.sqrt(
+          tf.maximum(tf.scalar(0), tf.sub(tf.scalar(1), eigenvals))
+        ) as tf.Tensor1D;
+        
+        // Apply scaling to each eigenvector column
+        const scalingFactors2D = scalingFactors.reshape([1, -1]) as tf.Tensor2D;
+        const U_selected = tf.slice(U_full, [0, 0], [-1, numToUse]) as tf.Tensor2D;
+        
+        return U_selected.mul(scalingFactors2D) as tf.Tensor2D;
+      });
+      
+      // Use the scaled eigenvectors
+      U = U_scaled;
+      
+      // Clean up intermediate tensors
+      laplacian.dispose();
+      eigenvalues.dispose();
+      U_full.dispose();
+    }
 
     /* -------------------------- 4) K-Means -------------------------------- */
     // IMPORTANT: sklearn does NOT row-normalize when using k-means!

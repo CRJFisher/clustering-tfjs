@@ -3,84 +3,42 @@ import * as tf from "@tensorflow/tfjs-node";
 /**
  * Creates component indicator features for disconnected graphs.
  * 
- * For a graph with k connected components, this creates k indicator features
+ * For a graph with k connected components, this creates indicator features
  * where each feature has a constant value for all nodes in that component.
+ * This mimics the behavior of sklearn's shift-invert eigenvectors.
  * 
- * This is an alternative to using eigenvectors when the graph is disconnected.
- * 
- * @param affinity - Affinity matrix
- * @param numComponents - Number of connected components 
- * @returns Component indicator matrix (n_samples x numComponents)
+ * @param componentLabels - Array indicating which component each node belongs to
+ * @param numComponents - Total number of components detected
+ * @param maxIndicators - Maximum number of indicator vectors to create (usually nClusters)
+ * @returns Component indicator matrix (n_samples x min(numComponents, maxIndicators))
  */
 export function createComponentIndicators(
-  affinity: tf.Tensor2D,
-  numComponents: number
+  componentLabels: Int32Array,
+  numComponents: number,
+  maxIndicators: number
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const n = affinity.shape[0];
+    const n = componentLabels.length;
+    const numIndicators = Math.min(numComponents, maxIndicators);
     
-    // Initialize component labels
-    const componentLabels = new Int32Array(n);
+    // Count nodes per component for normalization
+    const componentSizes = new Array(numComponents).fill(0);
     for (let i = 0; i < n; i++) {
-      componentLabels[i] = -1; // Unassigned
-    }
-    
-    // Get affinity data
-    const affinityData = affinity.arraySync();
-    
-    // Find connected components using BFS
-    let currentComponent = 0;
-    
-    for (let startNode = 0; startNode < n; startNode++) {
-      if (componentLabels[startNode] !== -1) continue; // Already assigned
-      
-      // BFS from this node
-      const queue: number[] = [startNode];
-      componentLabels[startNode] = currentComponent;
-      
-      while (queue.length > 0) {
-        const node = queue.shift()!;
-        
-        // Check all neighbors
-        for (let neighbor = 0; neighbor < n; neighbor++) {
-          if (affinityData[node][neighbor] > 0 && componentLabels[neighbor] === -1) {
-            componentLabels[neighbor] = currentComponent;
-            queue.push(neighbor);
-          }
-        }
-      }
-      
-      currentComponent++;
+      componentSizes[componentLabels[i]]++;
     }
     
     // Create indicator matrix
-    const indicators = Array(n).fill(null).map(() => Array(numComponents).fill(0));
+    const indicators = new Float32Array(n * numIndicators);
     
+    // Fill indicators with normalized values
+    // Using 1/sqrt(component_size) normalization to match eigenvector normalization
     for (let i = 0; i < n; i++) {
       const comp = componentLabels[i];
-      if (comp >= 0 && comp < numComponents) {
-        // Set a unique value for each component to match sklearn's behavior
-        // Using 1/sqrt(component_size) to normalize
-        indicators[i][comp] = 1.0;
+      if (comp < numIndicators) {
+        indicators[i * numIndicators + comp] = 1.0 / Math.sqrt(componentSizes[comp]);
       }
     }
     
-    // Normalize each indicator by component size
-    const componentSizes = new Array(numComponents).fill(0);
-    for (let i = 0; i < n; i++) {
-      const comp = componentLabels[i];
-      if (comp >= 0 && comp < numComponents) {
-        componentSizes[comp]++;
-      }
-    }
-    
-    for (let i = 0; i < n; i++) {
-      const comp = componentLabels[i];
-      if (comp >= 0 && comp < numComponents) {
-        indicators[i][comp] = 1.0 / Math.sqrt(componentSizes[comp]);
-      }
-    }
-    
-    return tf.tensor2d(indicators, [n, numComponents], "float32");
+    return tf.tensor2d(indicators, [n, numIndicators], "float32");
   });
 }
