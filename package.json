@@ -17,7 +17,8 @@
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow/tfjs-node": "^4.20.0"
+    "@tensorflow/tfjs-node": "^4.20.0",
+    "ml-matrix": "^6.12.1"
   },
   "devDependencies": {
     "@types/jest": "^29.5.0",
