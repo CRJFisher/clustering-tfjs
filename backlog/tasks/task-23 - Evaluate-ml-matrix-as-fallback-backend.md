@@ -28,7 +28,7 @@ Evaluate whether to keep ml-matrix as a fallback linear algebra backend when Ten
   - [ ] For specific operations where it's consistently faster
 - [ ] Evaluate package size impact
 - [ ] Decision: Keep ml-matrix, remove it, or make it optional
-- [ ] Also evaluate `eigen.js`'s `Solvers.eigenSolve` for eigendecomposition. Check the ARI and numerical stability of fixture tests SpectralClustering with ml-matrix and eigen.js.
+- [ ] Also evaluate `eigen.js`'s `Solvers.eigenSolve` for eigendecomposition. Check the ARI and numerical stability of fixture tests SpectralClustering with ml-matrix and eigen.js. `eigen.js` also has `Decompositions` for matrix decompositions algorithms.
 
 ## Implementation Plan
 

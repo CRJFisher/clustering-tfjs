@@ -116,7 +116,9 @@ export function compute_knn_affinity(
       // We can avoid the costly sqrt, distances squared preserve ordering.
       const negDists = distsSquared.neg(); // Want k smallest ⇒ largest of negative values.
 
-      // topk on each row - get k+1 if excluding self, k if including self
+      // topk on each row
+      // When includeSelf=true, k neighbors include self
+      // When includeSelf=false, we need k+1 to later filter out self
       const topK = includeSelf ? k : k + 1;
       const { indices } = tf.topk(negDists, topK);
 
@@ -132,10 +134,10 @@ export function compute_knn_affinity(
 
         let neighbours: number[];
         if (includeSelf) {
-          // Keep self-index and take k+1 total (self + k neighbors)
-          neighbours = indArr[i].slice(0, k + 1);
+          // When includeSelf=true, the k neighbors already include self
+          neighbours = indArr[i];
         } else {
-          // Remove self-index then take first k neighbours
+          // Remove self-index to get exactly k neighbors (excluding self)
           neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);
         }
 
