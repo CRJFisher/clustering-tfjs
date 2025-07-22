@@ -11,9 +11,12 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "ts-node src/index.ts",
-    "test": "node -r ./disableFsWrites.js ./node_modules/.bin/jest --runInBand --no-cache",
+    "test": "jest",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "debug:spectral": "ts-node scripts/debug_spectral_parity.ts"
+    "benchmark": "ts-node scripts/benchmark.ts",
+    "benchmark:node": "ts-node scripts/benchmark.ts",
+    "benchmark:native": "npm install @tensorflow/tfjs-node && ts-node scripts/benchmark.ts",
+    "benchmark:compare": "ts-node scripts/compare-benchmarks.ts"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",

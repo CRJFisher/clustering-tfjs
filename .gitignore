@@ -29,3 +29,6 @@ investigate_*.py
 trace_*.py
 *_debug.json
 *_results.json
+
+# Benchmark results (kept locally)
+benchmarks/

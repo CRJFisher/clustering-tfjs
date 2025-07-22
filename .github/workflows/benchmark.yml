@@ -1,0 +1,100 @@
+name: Benchmark
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize]
+  workflow_dispatch:
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node-version }}
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Run CPU/WASM benchmarks
+      run: npm run benchmark:node
+    
+    - name: Upload benchmark results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-results-${{ matrix.node-version }}
+        path: benchmarks/
+    
+    - name: Comment PR with results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const results = fs.readdirSync('benchmarks')
+            .filter(f => f.endsWith('.md'))
+            .sort()
+            .pop();
+          
+          if (results) {
+            const content = fs.readFileSync(`benchmarks/${results}`, 'utf8');
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Benchmark Results\n\n${content}`
+            });
+          }
+
+  benchmark-native:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            install-cmd: npm ci
+          - os: macos-latest
+            install-cmd: npm ci
+          - os: windows-latest
+            install-cmd: npm ci --build-from-source
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Use Node.js 20.x
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20.x
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Install tfjs-node
+      run: npm install @tensorflow/tfjs-node
+      continue-on-error: true
+    
+    - name: Build
+      run: npm run build
+    
+    - name: Run benchmarks with native backend
+      run: npm run benchmark:native
+      continue-on-error: true
+    
+    - name: Upload results
+      uses: actions/upload-artifact@v3
+      with:
+        name: benchmark-native-${{ matrix.os }}
+        path: benchmarks/
