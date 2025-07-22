@@ -5,7 +5,10 @@ status: To Do
 assignee: []
 created_date: '2025-07-15'
 labels: []
-dependencies: []
+dependencies:
+  - task-17
+  - task-19
+  - task-20
 ---
 
 ## Description
