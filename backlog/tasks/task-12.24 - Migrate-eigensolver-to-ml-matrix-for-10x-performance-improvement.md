@@ -11,7 +11,7 @@ parent_task_id: task-12
 
 ## Description
 
-Replace our Jacobi eigensolver with ml-matrix's EigenvalueDecomposition which is 10x faster (34ms vs 347ms) and produces identical results
+Replace our Jacobi eigensolver with ml-matrix's EigenvalueDecomposition which is 10x faster (34ms vs 347ms) and produces identical results. Also see if there are any other performance improvements that can be made by using ml-matrix in other places.
 
 ## Acceptance Criteria
 

@@ -14,3 +14,18 @@ src/**/*.js.map
 # Temporary test files
 temp_*.js
 temp_*.ts
+
+# Debug and analysis scripts
+tmp/
+*.npy
+debug_*.ts
+debug_*.py
+test_*.ts
+test_*.py
+analyze_*.py
+compare_*.py
+verify_*.py
+investigate_*.py
+trace_*.py
+*_debug.json
+*_results.json
