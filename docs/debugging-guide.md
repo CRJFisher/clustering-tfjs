@@ -115,10 +115,10 @@ console.log(
 
 ```bash
 # Activate sklearn environment
-source tools/sklearn_fixtures/.venv/bin/activate
+source tmp/sklearn_fixtures/.venv/bin/activate
 
 # Run comprehensive comparison
-python tools/debug/compare_implementations.py
+python tmp/debug/compare_implementations.py
 
 # Output shows side-by-side comparison of:
 # - Affinity matrix statistics
@@ -131,7 +131,7 @@ python tools/debug/compare_implementations.py
 
 ```bash
 # Visualize clustering results
-python tools/debug/visualize_clustering.py
+python tmp/debug/visualize_clustering.py
 
 # Creates plots showing:
 # - True labels
@@ -144,7 +144,7 @@ python tools/debug/visualize_clustering.py
 
 ```bash
 # Deep dive into eigenvector properties
-python tools/debug/analyze_eigenvectors.py
+python tmp/debug/analyze_eigenvectors.py
 
 # Shows:
 # - Number of unique values per eigenvector
@@ -174,8 +174,8 @@ embedding = spectral_embedding(
 )
 
 # Save for comparison
-np.save('sklearn_affinity.npy', affinity)
-np.save('sklearn_embedding.npy', embedding)
+np.save('tmp/sklearn_affinity.npy', affinity)
+np.save('tmp/sklearn_embedding.npy', embedding)
 ```
 
 ## Best Practices
@@ -191,7 +191,7 @@ np.save('sklearn_embedding.npy', embedding)
 
 When creating new debug scripts:
 
-1. Place in appropriate directory (`tools/debug/` or `tools/sklearn_comparison/`)
+1. Place in appropriate directory (`tmp/debug/` or `tmp/sklearn_comparison/`)
 2. Include clear docstring explaining purpose
 3. Make runnable from project root
 4. Use relative paths for file access
