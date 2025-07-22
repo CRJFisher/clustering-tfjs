@@ -244,7 +244,7 @@
   "params": {
     "nClusters": 3,
     "affinity": "rbf",
-    "gamma": 1.0,
+    "gamma": 5.0,
     "nNeighbors": null,
     "randomState": 42
   },

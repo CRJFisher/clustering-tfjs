@@ -97,6 +97,56 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * challenging spectra than a single initialisation.
    */
   nInit?: number;
+
+  /**
+   * Whether to use validation metrics to optimize clustering parameters.
+   * When enabled, the algorithm will try multiple parameter combinations
+   * and k-means initializations, selecting the best result based on
+   * Calinski-Harabasz score. Particularly useful for 3+ cluster problems.
+   */
+  useValidation?: boolean;
+
+  /**
+   * Number of different random seeds to try when useValidation is enabled.
+   * Each seed generates a different k-means++ initialization.
+   * Default: 20
+   */
+  validationAttempts?: number;
+
+  /**
+   * Whether to also optimize affinity parameters (gamma for RBF, nNeighbors for kNN)
+   * when useValidation is enabled. This performs a grid search over parameter values.
+   * Default: false
+   */
+  optimizeAffinityParams?: boolean;
+
+  /**
+   * Which validation metric to use for optimization when useValidation is enabled.
+   * - 'calinski-harabasz': Fast O(n·k), higher is better (default)
+   * - 'davies-bouldin': O(n·k + k²), lower is better
+   * - 'silhouette': Most accurate but O(n²), higher is better
+   * Default: 'calinski-harabasz'
+   */
+  validationMetric?: 'calinski-harabasz' | 'davies-bouldin' | 'silhouette';
+
+  /**
+   * Enable intensive parameter sweep for difficult clustering problems.
+   * When enabled, performs grid search over:
+   * - Multiple gamma values (for RBF affinity)
+   * - Multiple validation attempts
+   * - All validation metrics
+   * WARNING: This is computationally expensive and should only be used
+   * for small datasets or when accuracy is critical.
+   * Default: false
+   */
+  intensiveParameterSweep?: boolean;
+
+  /**
+   * Custom gamma values to test during intensive parameter sweep.
+   * Only used when intensiveParameterSweep is true and affinity is 'rbf'.
+   * Default: [0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
+   */
+  gammaRange?: number[];
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {

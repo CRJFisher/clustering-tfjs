@@ -205,29 +205,80 @@ export class SpectralClustering
     // We pass the embedding directly to k-means without row normalization,
     // matching sklearn's default behavior
     const { KMeans } = await import("./kmeans");
-    const kmParams = {
-      nClusters: this.params.nClusters,
-      randomState: this.params.randomState,
-      // Multiple initialisations significantly increase robustness of the
-      // final clustering outcome.  Follow scikit-learn default (nInit = 10)
-      // unless the caller supplied an explicit override.
-      nInit: this.params.nInit ?? 10,
-    } as const;
+    
+    // Check if we should use intensive parameter sweep
+    if (this.params.intensiveParameterSweep && this.params.affinity === 'rbf') {
+      // Intensive parameter sweep for difficult cases
+      const { intensiveParameterSweep } = await import("./spectral_optimization");
+      
+      const result = await intensiveParameterSweep(
+        Xtensor,
+        this.params,
+        this.computeEmbeddingFromAffinity.bind(this),
+        SpectralClustering.computeAffinityMatrix
+      );
+      
+      this.labels_ = result.labels;
+      
+      // Store debug info
+      Object.defineProperty(this, "_debug_intensive_sweep_config_", {
+        value: result.config,
+        writable: false,
+        configurable: false,
+        enumerable: false,
+      });
+    }
+    // Check if we should use validation-based optimization
+    else if (this.params.useValidation && this.params.nClusters >= 3) {
+      // Use validation metrics to find best clustering
+      const { validationBasedOptimization } = await import("./spectral_optimization");
+      
+      const metric = this.params.validationMetric ?? 'calinski-harabasz';
+      const attempts = this.params.validationAttempts ?? 20;
+      
+      const result = await validationBasedOptimization(
+        U,
+        this.params.nClusters,
+        metric,
+        attempts,
+        this.params.randomState
+      );
+      
+      this.labels_ = result.labels;
+      
+      // Store debug info
+      Object.defineProperty(this, "_debug_validation_score_", {
+        value: result.score,
+        writable: false,
+        configurable: false,
+        enumerable: false,
+      });
+    } else {
+      // Standard k-means without validation
+      const kmParams = {
+        nClusters: this.params.nClusters,
+        randomState: this.params.randomState,
+        // Multiple initialisations significantly increase robustness of the
+        // final clustering outcome.  Follow scikit-learn default (nInit = 10)
+        // unless the caller supplied an explicit override.
+        nInit: this.params.nInit ?? 10,
+      } as const;
 
-    const km = new KMeans(kmParams);
+      const km = new KMeans(kmParams);
 
-    // Expose for unit-testing (non-enumerable to avoid polluting logs)
-    Object.defineProperty(this, "_debug_last_kmeans_params_", {
-      value: kmParams,
-      writable: false,
-      configurable: false,
-      enumerable: false,
-    });
+      // Expose for unit-testing (non-enumerable to avoid polluting logs)
+      Object.defineProperty(this, "_debug_last_kmeans_params_", {
+        value: kmParams,
+        writable: false,
+        configurable: false,
+        enumerable: false,
+      });
 
-    // Pass the embedding directly to k-means without row normalization
-    await km.fit(U);
+      // Pass the embedding directly to k-means without row normalization
+      await km.fit(U);
 
-    this.labels_ = km.labels_ as number[];
+      this.labels_ = km.labels_ as number[];
+    }
 
     /* --------------------------- Clean-up --------------------------------- */
     U.dispose();
@@ -357,6 +408,55 @@ export class SpectralClustering
     return Math.max(1, defaultK);
   }
 
+
+  /**
+   * Compute spectral embedding from affinity matrix.
+   * Extracted to support parameter sweep.
+   */
+  private async computeEmbeddingFromAffinity(affinityMatrix: tf.Tensor2D): Promise<tf.Tensor2D> {
+    const { detectConnectedComponents } = await import("../utils/connected_components");
+    const { numComponents, isFullyConnected, componentLabels } = 
+      detectConnectedComponents(affinityMatrix);
+    
+    if (!isFullyConnected && numComponents >= this.params.nClusters) {
+      const { createComponentIndicators } = await import("../utils/component_indicators");
+      return createComponentIndicators(
+        componentLabels,
+        numComponents,
+        numComponents
+      );
+    } else {
+      const { normalised_laplacian } = await import("../utils/laplacian");
+      const { smallest_eigenvectors_with_values } = await import("../utils/smallest_eigenvectors_with_values");
+      
+      const { laplacian, sqrtDegrees } = tf.tidy(() =>
+        normalised_laplacian(affinityMatrix, true),
+      );
+      
+      const numEigenvectors = Math.max(this.params.nClusters, numComponents);
+      const { eigenvectors: U_full, eigenvalues } = smallest_eigenvectors_with_values(
+        laplacian, 
+        numEigenvectors
+      );
+      
+      const U_scaled = tf.tidy(() => {
+        const numToUse = this.params.nClusters;
+        const U_selected = tf.slice(U_full, [0, 0], [-1, numToUse]) as tf.Tensor2D;
+        const degrees = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
+        const degreesCol = degrees.reshape([-1, 1]) as tf.Tensor2D;
+        const U_normalized = U_selected.div(degreesCol) as tf.Tensor2D;
+        return U_normalized;
+      });
+      
+      laplacian.dispose();
+      sqrtDegrees.dispose();
+      eigenvalues.dispose();
+      U_full.dispose();
+      
+      return U_scaled;
+    }
+  }
+
   /**
    * Validates that the provided tensor is a proper affinity / similarity
    * matrix suitable for spectral clustering.
@@ -368,8 +468,6 @@ export class SpectralClustering
     if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
       throw new Error("Affinity matrix must be square (n × n).");
     }
-
-    const n = A.shape[0];
 
     // Check symmetry & non-negativity using small tolerances.
     tf.tidy(() => {

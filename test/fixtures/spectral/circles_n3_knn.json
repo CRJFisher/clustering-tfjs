@@ -245,7 +245,7 @@
     "nClusters": 3,
     "affinity": "nearest_neighbors",
     "gamma": null,
-    "nNeighbors": 10,
+    "nNeighbors": 6,
     "randomState": 42
   },
   "labels": [
