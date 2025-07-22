@@ -38,37 +38,43 @@ Based on analysis of the three validation metrics, Calinski-Harabasz (CH) Index 
 
 ```typescript
 // Pseudo-code for optimization approach
-async function optimizeSpectralClustering(X: DataMatrix, baseParams: SpectralClusteringParams) {
+async function optimizeSpectralClustering(
+  X: DataMatrix,
+  baseParams: SpectralClusteringParams,
+) {
   let bestScore = -Infinity;
   let bestLabels = null;
-  
+
   // For RBF affinity, try different gamma values
-  const gammaRange = baseParams.gamma 
+  const gammaRange = baseParams.gamma
     ? [baseParams.gamma * 0.5, baseParams.gamma, baseParams.gamma * 2]
     : [0.1, 0.5, 1.0, 5.0, 10.0];
-  
+
   for (const gamma of gammaRange) {
     // Compute embedding with this gamma
-    const embedding = await computeSpectralEmbedding(X, { ...baseParams, gamma });
-    
+    const embedding = await computeSpectralEmbedding(X, {
+      ...baseParams,
+      gamma,
+    });
+
     // Try multiple k-means runs (different seeds)
     for (let seed = 0; seed < 20; seed++) {
       const labels = await runKMeans(embedding, {
         nClusters: baseParams.nClusters,
         randomState: baseParams.randomState + seed,
-        nInit: 1  // Single run per seed
+        nInit: 1, // Single run per seed
       });
-      
+
       // Fast evaluation with CH index
       const score = calinskiHarabasz(embedding, labels);
-      
+
       if (score > bestScore) {
         bestScore = score;
         bestLabels = labels;
       }
     }
   }
-  
+
   return bestLabels;
 }
 ```
@@ -86,28 +92,29 @@ async function optimizeSpectralClustering(X: DataMatrix, baseParams: SpectralClu
    - **Tertiary**: Davies-Bouldin as a sanity check
 
 3. **Special Handling for 3+ Clusters**
+
    ```typescript
    if (this.params.nClusters >= 3 && this.params.useValidation) {
      // Multiple attempts with validation scoring
      let bestLabels = null;
      let bestScore = -Infinity;
-     
+
      for (let attempt = 0; attempt < 20; attempt++) {
        const km = new KMeans({
          nClusters: this.params.nClusters,
          randomState: this.params.randomState + attempt,
-         nInit: 1
+         nInit: 1,
        });
-       
+
        const labels = await km.fit(embedding);
        const score = calinskiHarabasz(embedding, labels);
-       
+
        if (score > bestScore) {
          bestScore = score;
          bestLabels = labels;
        }
      }
-     
+
      this.labels_ = bestLabels;
    }
    ```
@@ -115,8 +122,9 @@ async function optimizeSpectralClustering(X: DataMatrix, baseParams: SpectralClu
 ### Expected Impact
 
 For the failing 3-cluster tests:
+
 - **circles_n3_knn**: Currently 0.899 → Target ≥0.95
-- **circles_n3_rbf**: Currently 0.722 → Target ≥0.95  
+- **circles_n3_rbf**: Currently 0.722 → Target ≥0.95
 - **moons_n3_rbf**: Currently 0.946 → Target ≥0.95
 
 By selecting the best clustering from multiple attempts based on CH score rather than relying on random initialization luck, we should achieve the target ARI threshold.
@@ -124,6 +132,7 @@ By selecting the best clustering from multiple attempts based on CH score rather
 ### Why This Will Work
 
 Our investigation in task 12.25 showed that:
+
 - Different random seeds produce wildly different results (ARI 0.24 to 0.95)
 - sklearn achieves perfect results with lucky parameter combinations
 - The embeddings are correct; it's purely a k-means initialization issue
