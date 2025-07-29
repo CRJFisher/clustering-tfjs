@@ -35,7 +35,7 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: benchmark-results-${{ matrix.node-version }}
-        path: benchmarks/
+        path: benchmark-results/
     
     - name: Comment PR with results
       if: github.event_name == 'pull_request'
@@ -43,13 +43,13 @@ jobs:
       with:
         script: |
           const fs = require('fs');
-          const results = fs.readdirSync('benchmarks')
+          const results = fs.readdirSync('benchmark-results')
             .filter(f => f.endsWith('.md'))
             .sort()
             .pop();
           
           if (results) {
-            const content = fs.readFileSync(`benchmarks/${results}`, 'utf8');
+            const content = fs.readFileSync(`benchmark-results/${results}`, 'utf8');
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
@@ -97,4 +97,4 @@ jobs:
       uses: actions/upload-artifact@v3
       with:
         name: benchmark-native-${{ matrix.os }}
-        path: benchmarks/
+        path: benchmark-results/

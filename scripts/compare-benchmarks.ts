@@ -3,11 +3,12 @@ import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { BenchmarkResult } from '../src/benchmarks';
 import { analyzeBackendPerformance, generateBackendRecommendations } from '../src/benchmarks/compare';
+import * as yaml from 'js-yaml';
 
 function loadLatestBenchmark(): BenchmarkResult[] {
   const benchmarkDir = join(process.cwd(), 'benchmarks');
   const files = readdirSync(benchmarkDir)
-    .filter(f => f.endsWith('.json'))
+    .filter(f => f.endsWith('.yaml') || f.endsWith('.json'))
     .sort()
     .reverse();
   
@@ -19,7 +20,11 @@ function loadLatestBenchmark(): BenchmarkResult[] {
   console.log(`Loading benchmark results from: ${latestFile}\n`);
   
   const content = readFileSync(join(benchmarkDir, latestFile), 'utf8');
-  return JSON.parse(content);
+  if (latestFile.endsWith('.yaml')) {
+    return yaml.load(content) as BenchmarkResult[];
+  } else {
+    return JSON.parse(content);
+  }
 }
 
 async function main() {

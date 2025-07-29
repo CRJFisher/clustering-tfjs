@@ -31,4 +31,4 @@ trace_*.py
 *_results.json
 
 # Benchmark results (kept locally)
-benchmarks/
+benchmark-results/

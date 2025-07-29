@@ -1,0 +1,200 @@
+[
+  {
+    "algorithm": "kmeans",
+    "backend": "cpu",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 238.7095810174942,
+    "memoryUsed": 21000,
+    "memoryPeak": 29124,
+    "tensorCount": 101,
+    "backendInitTime": 0.5320260524749756
+  },
+  {
+    "algorithm": "kmeans",
+    "backend": "cpu",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 337.13861405849457,
+    "memoryUsed": 201080,
+    "memoryPeak": 631208,
+    "tensorCount": 101,
+    "backendInitTime": 0.7545040845870972
+  },
+  {
+    "algorithm": "kmeans",
+    "backend": "cpu",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 6116.828884959221,
+    "memoryUsed": 1764080,
+    "memoryPeak": 10399292,
+    "tensorCount": 101,
+    "backendInitTime": 0.41703200340270996
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "cpu",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 140.63116002082825,
+    "memoryUsed": 52800,
+    "memoryPeak": 10460216,
+    "tensorCount": 54,
+    "backendInitTime": 0.22877895832061768
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "cpu",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 1409.6114130020142,
+    "memoryUsed": 4282144,
+    "memoryPeak": 15143364,
+    "tensorCount": 54,
+    "backendInitTime": 0.48455703258514404
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "cpu",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 140738.003516078,
+    "memoryUsed": 404808444,
+    "memoryPeak": 427955812,
+    "tensorCount": 54,
+    "backendInitTime": 0.24457204341888428
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "cpu",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 15.93892502784729,
+    "memoryUsed": 0,
+    "memoryPeak": 427963936,
+    "tensorCount": 0,
+    "backendInitTime": 0.4610719680786133
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "cpu",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 1076.598582983017,
+    "memoryUsed": 0,
+    "memoryPeak": 428364940,
+    "tensorCount": 0,
+    "backendInitTime": 0.26108992099761963
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "cpu",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 415635.3885229826,
+    "memoryUsed": 0,
+    "memoryPeak": 436368944,
+    "tensorCount": 0,
+    "backendInitTime": 0.28175604343414307
+  },
+  {
+    "algorithm": "kmeans",
+    "backend": "tensorflow",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 130.71653497219086,
+    "memoryUsed": 21000,
+    "memoryPeak": 436398068,
+    "tensorCount": 101,
+    "backendInitTime": 0.4033440351486206
+  },
+  {
+    "algorithm": "kmeans",
+    "backend": "tensorflow",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 88.39887297153473,
+    "memoryUsed": 201080,
+    "memoryPeak": 437000152,
+    "tensorCount": 101,
+    "backendInitTime": 0.22418200969696045
+  },
+  {
+    "algorithm": "kmeans",
+    "backend": "tensorflow",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 5029.45159304142,
+    "memoryUsed": 1764080,
+    "memoryPeak": 446768236,
+    "tensorCount": 101,
+    "backendInitTime": 0.37628400325775146
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "tensorflow",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 27.752306938171387,
+    "memoryUsed": 52800,
+    "memoryPeak": 446829160,
+    "tensorCount": 54,
+    "backendInitTime": 0.1805260181427002
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "tensorflow",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 66.540030002594,
+    "memoryUsed": 4282144,
+    "memoryPeak": 451512308,
+    "tensorCount": 54,
+    "backendInitTime": 0.29025304317474365
+  },
+  {
+    "algorithm": "spectral",
+    "backend": "tensorflow",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 5391.9298260211945,
+    "memoryUsed": 404808444,
+    "memoryPeak": 864324756,
+    "tensorCount": 54,
+    "backendInitTime": 0.19644808769226074
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "tensorflow",
+    "datasetSize": 100,
+    "features": 10,
+    "executionTime": 20.159914016723633,
+    "memoryUsed": 0,
+    "memoryPeak": 864332880,
+    "tensorCount": 0,
+    "backendInitTime": 0.43805205821990967
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "tensorflow",
+    "datasetSize": 1000,
+    "features": 50,
+    "executionTime": 331.0577880144119,
+    "memoryUsed": 0,
+    "memoryPeak": 864733884,
+    "tensorCount": 0,
+    "backendInitTime": 0.19067800045013428
+  },
+  {
+    "algorithm": "agglomerative",
+    "backend": "tensorflow",
+    "datasetSize": 10000,
+    "features": 100,
+    "executionTime": 331771.40760207176,
+    "memoryUsed": 0,
+    "memoryPeak": 872737888,
+    "tensorCount": 0,
+    "backendInitTime": 0.19221103191375732
+  }
+]
