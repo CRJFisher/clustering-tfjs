@@ -150,7 +150,7 @@ export function daviesBouldinEfficient(
   
   // Validate
   if (k <= 1) {
-    if (!X.hasOwnProperty('dispose')) {
+    if (!(X instanceof tf.Tensor)) {
       data.dispose();
     }
     throw new Error("Davies-Bouldin score requires at least 2 clusters");
@@ -184,7 +184,7 @@ export function daviesBouldinEfficient(
   }
   
   // Clean up data tensor if we created it
-  if (!X.hasOwnProperty('dispose')) {
+  if (!(X instanceof tf.Tensor)) {
     data.dispose();
   }
   

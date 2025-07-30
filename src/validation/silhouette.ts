@@ -149,7 +149,7 @@ export function silhouetteScoreSubset(
   
   // Validate
   if (k <= 1) {
-    if (!X.hasOwnProperty('dispose')) {
+    if (!(X instanceof tf.Tensor)) {
       data.dispose();
     }
     throw new Error("Silhouette score requires at least 2 clusters");
@@ -227,7 +227,7 @@ export function silhouetteScoreSubset(
   }
   
   // Clean up data tensor if we created it
-  if (!X.hasOwnProperty('dispose')) {
+  if (!(X instanceof tf.Tensor)) {
     data.dispose();
   }
   

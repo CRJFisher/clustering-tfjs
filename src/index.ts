@@ -12,6 +12,13 @@ export { KMeans } from "./clustering/kmeans";
 
 // Utilities
 export { pairwiseDistanceMatrix } from "./utils/pairwise_distance";
+export { findOptimalClusters } from "./utils/findOptimalClusters";
+export type { ClusterEvaluation, FindOptimalClustersOptions } from "./utils/findOptimalClusters";
+
+// Validation metrics
+export { silhouetteScore, silhouetteScoreSubset } from "./validation/silhouette";
+export { daviesBouldin, daviesBouldinEfficient } from "./validation/davies_bouldin";
+export { calinskiHarabasz, calinskiHarabaszEfficient } from "./validation/calinski_harabasz";
 
 // Graph Laplacian helpers (task-10)
 export {

@@ -125,11 +125,15 @@ export function calinskiHarabaszEfficient(
   
   // Validate
   if (k <= 1) {
-    data.dispose();
+    if (!(X instanceof tf.Tensor)) {
+      data.dispose();
+    }
     throw new Error("Calinski-Harabasz score requires at least 2 clusters");
   }
   if (k >= n) {
-    data.dispose();
+    if (!(X instanceof tf.Tensor)) {
+      data.dispose();
+    }
     throw new Error("Number of clusters must be less than number of samples");
   }
   
@@ -165,7 +169,7 @@ export function calinskiHarabaszEfficient(
   
   // Clean up
   globalCentroid.dispose();
-  if (!X.hasOwnProperty('dispose')) {
+  if (!(X instanceof tf.Tensor)) {
     data.dispose();
   }
   
