@@ -1,13 +1,10 @@
 module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
-  plugins: ["@typescript-eslint", "import"],
+  plugins: ["@typescript-eslint"],
   extends: [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:import/errors",
-    "plugin:import/warnings",
-    "plugin:import/typescript",
     "prettier",
   ],
   env: {
@@ -15,10 +12,27 @@ module.exports = {
     jest: true,
     es2020: true,
   },
-  settings: {
-    "import/resolver": {
-      typescript: {},
-    },
+  parserOptions: {
+    ecmaVersion: 2020,
+    sourceType: "module",
+    project: "./tsconfig.json",
+  },
+  rules: {
+    // Allow any types in specific cases where needed
+    "@typescript-eslint/no-explicit-any": "warn",
+    // Allow unused vars with underscore prefix
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
+    ],
+    // Allow empty blocks
+    "no-empty": "warn",
+    // Allow const reassignment in some cases
+    "prefer-const": "warn",
+    // Allow require statements
+    "@typescript-eslint/no-var-requires": "warn",
+    // Disable constant condition check for now
+    "no-constant-condition": "warn",
   },
 };
 

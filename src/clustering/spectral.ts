@@ -380,7 +380,7 @@ export class SpectralClustering
 
     // Import on-demand to avoid circular deps when this file is imported by
     // the utils module (which is unlikely but safe).
-    // eslint-disable-next-line @typescript-eslint/no-var-requires, node/no-missing-import
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const {
       compute_rbf_affinity,
       compute_knn_affinity,
