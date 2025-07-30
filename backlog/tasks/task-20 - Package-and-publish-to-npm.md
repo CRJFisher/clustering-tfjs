@@ -30,6 +30,7 @@ Prepare the library for publication to npm with proper packaging, versioning, an
   - [x] Optional peer dependencies for tfjs-node and tfjs-node-gpu
   - [x] Prebuilt binaries strategy evaluated
 - [x] Package size optimization (exclude unnecessary files)
+- [ ] Set NPM_TOKEN in GitHub Actions secrets
 
 ## Implementation Plan
 
@@ -122,6 +123,7 @@ Prepare the library for publication to npm with proper packaging, versioning, an
 
 - Test installation in a fresh project
 - Backend documentation for README (installation guides, performance comparison)
+- Create release script for automated workflow (task 20.1)
 
 ### Technical Decisions
 

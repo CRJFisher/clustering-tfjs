@@ -33,8 +33,18 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.esm.js",
-      "require": "./dist/index.js"
+      "browser": {
+        "import": "./dist/index.browser.esm.js",
+        "require": "./dist/index.browser.js"
+      },
+      "node": {
+        "import": "./dist/index.esm.js",
+        "require": "./dist/index.js"
+      },
+      "default": {
+        "import": "./dist/index.esm.js",
+        "require": "./dist/index.js"
+      }
     }
   },
   "files": [
