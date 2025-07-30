@@ -1,6 +1,6 @@
 import * as tf from "@tensorflow/tfjs-node";
 import { SpectralClustering } from "./spectral";
-import { DataMatrix, LabelVector, SpectralClusteringParams } from "./types";
+import { DataMatrix, LabelVector as _LabelVector, SpectralClusteringParams } from "./types";
 
 /**
  * SpectralClustering with consensus clustering to improve robustness.
