@@ -1,8 +1,9 @@
 ---
 id: task-24
 title: Implement flexible backend system with browser support
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@chuck'
 created_date: '2025-07-30'
 updated_date: '2025-07-30'
 labels: []
@@ -50,38 +51,116 @@ Refactor the library to support dynamic backend selection, enabling automatic de
 
 The main remaining work is to replace all hard-coded imports of `@tensorflow/tfjs-node` with dynamic imports that detect the environment and available backends. Currently, all source files import tfjs-node directly, which prevents browser usage.
 
-## Implementation Plan
+## Implementation Notes
 
-### Backend Auto-Detection Strategy
+### Research Findings (2024-01-30)
 
-From the original task 20 planning:
+After investigating different approaches, here are the common patterns for handling multiple TensorFlow.js backends:
 
-```typescript
-// Detect and use best available backend
-async function initializeBackend() {
-  if (typeof window === 'undefined') {
-    // Node.js environment
-    try {
-      await import('@tensorflow/tfjs-node-gpu');
-      console.log('Using GPU backend');
-    } catch {
-      try {
-        await import('@tensorflow/tfjs-node');
-        console.log('Using native CPU backend');
-      } catch {
-        console.log('Using WASM backend');
-      }
-    }
+1. **Conditional Exports in package.json** - Modern approach using "browser" and "node" fields
+2. **Dynamic imports with environment detection** - Runtime detection
+3. **Separate entry points** - Different builds for browser vs Node.js
+4. **Peer dependencies** - Let users choose which backend to install
+
+### Challenges Encountered
+
+1. **TypeScript namespace imports**: The `tf` namespace doesn't work well with dynamic imports
+2. **Synchronous vs async initialization**: Current code expects synchronous access to tf
+3. **Backward compatibility**: Need to maintain existing API while adding flexibility
+4. **Build complexity**: Need separate builds for browser and Node.js
+
+### Recommended Approach
+
+Based on research, the best approach would be:
+
+1. Create separate entry points for browser and Node.js
+2. Use webpack or rollup to create browser bundles that import @tensorflow/tfjs
+3. Keep Node.js builds using @tensorflow/tfjs-node with dynamic fallback
+4. Use conditional exports in package.json to serve the right build
+
+This is a significant architectural change that needs careful planning and might be better suited for a major version bump.
+
+## Research Summary: Recommended Architecture
+
+Based on comprehensive research of TensorFlow.js multi-platform patterns, the recommended approach is:
+
+### 1. Platform Adapter Pattern
+- Create `src/tf-adapter.ts` as a single import point for all TensorFlow operations
+- Use build-time module aliasing to swap implementations (not runtime detection)
+- Separate bundles for browser (`dist/clustering.browser.js`) and Node.js (`dist/clustering.node.js`)
+
+### 2. Dependency Architecture
+```json
+{
+  "dependencies": {
+    "@tensorflow/tfjs-core": "^4.x.x"  // Only core as dependency
+  },
+  "peerDependencies": {
+    "@tensorflow/tfjs": "^4.x.x",
+    "@tensorflow/tfjs-backend-wasm": "^4.x.x",
+    "@tensorflow/tfjs-node": "^4.x.x",
+    "@tensorflow/tfjs-node-gpu": "^4.x.x"
+  },
+  "peerDependenciesMeta": {
+    // All marked as optional
   }
 }
 ```
 
-### Implementation Steps
+### 3. Public API Design
+```typescript
+import { Clustering } from 'clustering-js';
+import '@tensorflow/tfjs-backend-webgl';  // User imports their backend
 
-1. Create a central backend manager module
-2. Replace all `import * as tf from "@tensorflow/tfjs-node"` with dynamic imports
-3. Ensure all algorithms initialize the backend before use
-4. Add configuration options for manual backend selection
-5. Update build process to create browser-compatible bundles
-6. Add browser-specific tests
-7. Update documentation with backend usage guide
+await Clustering.init({ backend: 'webgl' });
+const kmeans = new Clustering.KMeans({ k: 5 });
+```
+
+### 4. Build Configuration
+- Use webpack `resolve.alias` or rollup `@rollup/plugin-alias`
+- Create separate configs for browser and Node.js targets
+- Configure package.json with `main`, `module`, and `browser` fields
+
+### 5. TypeScript Strategy
+- Use module augmentation for platform-specific types
+- Conditional types for backend-aware API
+- Maintain full type safety across platforms
+
+## Updated Implementation Plan
+
+Since the library is still in v0.1.x and hasn't been published to npm yet, this architectural change can be implemented as v0.2.0. Implementation phases:
+
+### Phase 1: Decouple core logic (task 24.1)
+- Remove hardcoded tfjs-node imports
+- Create tf-adapter pattern
+- Update dependencies
+
+### Phase 2: Platform loaders and API (task 24.2)
+- Create browser/node loader modules
+- Implement async init() function
+- Singleton pattern for tf instance
+
+### Phase 3: Build system (task 24.3)
+- Configure webpack/rollup
+- Module aliasing for build-time resolution
+- Separate browser/node bundles
+
+### Phase 4: TypeScript enhancements (task 24.4)
+- Module augmentation
+- Conditional types
+- Backend-aware type safety
+
+### Phase 5: Testing and docs (task 24.5)
+- Dual platform testing
+- Migration guide
+- Updated examples
+
+## Decision
+
+Given the complexity of this change:
+1. Could be implemented for v0.2.0 since no users depend on the current API yet
+2. Should still be implemented carefully in phases
+3. Thoroughly tested on both platforms
+4. Well-documented with clear examples
+
+Alternative: Ship v0.1.0 as Node.js-only first to get feedback, then implement multi-platform support in v0.2.0.
