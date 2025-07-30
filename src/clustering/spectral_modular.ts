@@ -290,6 +290,7 @@ export class SpectralClusteringModular
     params: SpectralClusteringParams
   ): tf.Tensor2D {
     // Import the original implementation to avoid code duplication
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { SpectralClustering } = require("./spectral") as typeof import("./spectral");
     return (SpectralClustering as any).computeAffinityMatrix(X, params);
   }

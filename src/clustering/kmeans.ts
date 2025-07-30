@@ -45,6 +45,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
   /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
   private static makeRandomStream(seed?: number) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { make_random_stream } = require("../utils/rng");
     return make_random_stream(seed);
   }
