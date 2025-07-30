@@ -28,7 +28,6 @@ Prepare the library for publication to npm with proper packaging, versioning, an
 - [x] Backend packaging strategy implemented:
   - [x] Core package with CPU/WASM backends (no native dependencies)
   - [x] Optional peer dependencies for tfjs-node and tfjs-node-gpu
-  - [ ] Clear documentation on backend installation
   - [x] Prebuilt binaries strategy evaluated
 - [x] Package size optimization (exclude unnecessary files)
 
@@ -61,35 +60,13 @@ Prepare the library for publication to npm with proper packaging, versioning, an
    - **Optimized Node.js**: `npm install @clustering/core @tensorflow/tfjs-node`
    - **GPU Accelerated**: `npm install @clustering/core @tensorflow/tfjs-node-gpu`
 
-3. **Backend Auto-Detection**:
-
-   ```typescript
-   // Detect and use best available backend
-   async function initializeBackend() {
-     if (typeof window === 'undefined') {
-       // Node.js environment
-       try {
-         await import('@tensorflow/tfjs-node-gpu');
-         console.log('Using GPU backend');
-       } catch {
-         try {
-           await import('@tensorflow/tfjs-node');
-           console.log('Using native CPU backend');
-         } catch {
-           console.log('Using WASM backend');
-         }
-       }
-     }
-   }
-   ```
-
-4. **Prebuilt Binaries Consideration**:
+3. **Prebuilt Binaries Consideration**:
    - TensorFlow.js handles prebuilt binaries for tfjs-node via @mapbox/node-pre-gyp
    - We don't need to manage native compilation ourselves
    - Users get prebuilt binaries for common platforms automatically
    - Fallback to source compilation only on unsupported platforms
 
-5. **Documentation Requirements**:
+4. **Documentation Requirements**:
    - Clear README section on backend options
    - Performance comparison table
    - Platform-specific installation guides
@@ -145,8 +122,6 @@ Prepare the library for publication to npm with proper packaging, versioning, an
 
 - Test installation in a fresh project
 - Backend documentation for README (installation guides, performance comparison)
-- Browser compatibility verification
-- Implement backend auto-detection (depends on task 24)
 
 ### Technical Decisions
 
