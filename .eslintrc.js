@@ -18,21 +18,16 @@ module.exports = {
     project: "./tsconfig.json",
   },
   rules: {
-    // Allow any types in specific cases where needed
-    "@typescript-eslint/no-explicit-any": "warn",
-    // Allow unused vars with underscore prefix
+    // Strict rules for code quality
+    "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": [
-      "warn",
+      "error",
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
     ],
-    // Allow empty blocks
-    "no-empty": "warn",
-    // Allow const reassignment in some cases
-    "prefer-const": "warn",
-    // Allow require statements
-    "@typescript-eslint/no-var-requires": "warn",
-    // Disable constant condition check for now
-    "no-constant-condition": "warn",
+    "no-empty": "error",
+    "prefer-const": "error",
+    "@typescript-eslint/no-var-requires": "error",
+    "no-constant-condition": "error",
   },
 };
 

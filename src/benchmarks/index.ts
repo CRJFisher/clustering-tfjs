@@ -55,7 +55,7 @@ export async function benchmarkAlgorithm(
   
   // Run clustering
   const start = performance.now();
-  let labels: number[];
+  let _labels: number[];
   
   switch (algorithm) {
     case 'kmeans': {
@@ -81,7 +81,7 @@ export async function benchmarkAlgorithm(
         linkage: 'average' 
       });
       await agglo.fit(X);
-      labels = Array.isArray(agglo.labels_) ? agglo.labels_ : 
+      _labels = Array.isArray(agglo.labels_) ? agglo.labels_ : 
                await agglo.labels_!.array() as number[];
       break;
     }
@@ -117,13 +117,17 @@ export async function getAvailableBackends(): Promise<string[]> {
   try {
     await import('@tensorflow/tfjs-node');
     backends.push('tensorflow');
-  } catch {}
+  } catch {
+    // tfjs-node not available, skip
+  }
   
   // Check if tfjs-node-gpu is available
   try {
-    const module = await import('@tensorflow/tfjs-node-gpu' as any);
-    if (module) backends.push('tensorflow-gpu');
-  } catch {}
+    await import('@tensorflow/tfjs-node-gpu');
+    backends.push('tensorflow-gpu');
+  } catch {
+    // tfjs-node-gpu not available, skip
+  }
   
   return backends;
 }

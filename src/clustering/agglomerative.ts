@@ -114,7 +114,7 @@ export class AgglomerativeClustering
      *  ------------------------------------------------------------------ */
 
     // Cluster bookkeeping arrays. Index i corresponds to row/col i in D.
-    let clusterIds: number[] = Array.from({ length: nSamples }, (_, i) => i);
+    const clusterIds: number[] = Array.from({ length: nSamples }, (_, i) => i);
     const clusterSizes: number[] = Array(nSamples).fill(1);
     let nextClusterId = nSamples; // new clusters get incremental ids
 

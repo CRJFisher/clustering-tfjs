@@ -158,7 +158,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
         const localTrials = 2 + Math.floor(Math.log(K));
         const cumulativeDistances: number[] = [];
         let cumSum = 0;
-        for (let d of distances) {
+        for (const d of distances) {
           cumSum += d;
           cumulativeDistances.push(cumSum);
         }
