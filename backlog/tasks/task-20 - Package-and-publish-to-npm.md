@@ -4,10 +4,12 @@ title: Package and publish to npm
 status: To Do
 assignee: []
 created_date: '2025-07-15'
+updated_date: '2025-07-30'
 labels: []
 dependencies:
   - task-19
   - task-23
+  - task-24
 ---
 
 ## Description
