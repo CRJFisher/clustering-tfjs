@@ -60,9 +60,10 @@
     "version": "npm run format && git add -A src",
     "postversion": "git push && git push --tags",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "release": "npm version patch && npm publish",
-    "release:minor": "npm version minor && npm publish",
-    "release:major": "npm version major && npm publish"
+    "release": "node scripts/release.js",
+    "release:patch": "npm version patch && node scripts/release.js",
+    "release:minor": "npm version minor && node scripts/release.js",
+    "release:major": "npm version major && node scripts/release.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",
