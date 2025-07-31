@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Initial release of clustering-js
+- Initial release of clustering-tfjs
 - K-Means clustering algorithm with K-means++ initialization
 - Spectral Clustering with RBF and k-NN affinity options
 - Agglomerative Clustering with multiple linkage methods (ward, complete, average, single)
@@ -34,4 +34,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CommonJS and ES module builds
 - Zero required native dependencies (optional tfjs-node for better performance)
 
-[0.1.0]: https://github.com/yourusername/clustering-js/releases/tag/v0.1.0
+[0.1.0]: https://github.com/yourusername/clustering-tfjs/releases/tag/v0.1.0

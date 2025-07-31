@@ -1,4 +1,4 @@
-project_name: "clustering-js"
+project_name: "clustering-tfjs"
 default_status: "To Do"
 statuses: ["To Do", "In Progress", "Done"]
 labels: []

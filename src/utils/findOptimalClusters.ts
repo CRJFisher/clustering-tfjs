@@ -53,7 +53,7 @@ export interface FindOptimalClustersOptions {
  *
  * @example
  * ```typescript
- * import { findOptimalClusters } from 'clustering-js';
+ * import { findOptimalClusters } from 'clustering-tfjs';
  *
  * const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
  * const result = await findOptimalClusters(data, { maxClusters: 5 });
