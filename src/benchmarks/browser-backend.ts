@@ -89,7 +89,7 @@ export async function benchmarkInBrowser(
   });
   
   const address = server.address();
-  const port = address && typeof address === 'object' ? address.port : 3000;
+  const port = address && typeof address === 'object' ? address.port : DEFAULT_PORT;
   
   // Launch headless browser
   const browser = await puppeteer.launch({
