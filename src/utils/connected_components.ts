@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 
 /**
  * Detects the number of connected components in a graph based on its affinity matrix.

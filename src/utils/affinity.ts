@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 
 import { pairwiseEuclideanMatrix } from "./pairwise_distance";
 

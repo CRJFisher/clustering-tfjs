@@ -4,7 +4,7 @@ import type {
   SpectralClusteringParams,
   BaseClustering,
 } from "./types";
-import * as tf from "../utils/tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 import { compute_rbf_affinity, compute_knn_affinity } from "../utils/affinity";
 
 /**

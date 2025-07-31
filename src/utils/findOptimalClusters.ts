@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 import { KMeans } from "../clustering/kmeans";
 import { SpectralClustering } from "../clustering/spectral";
 import { AgglomerativeClustering } from "../clustering/agglomerative";

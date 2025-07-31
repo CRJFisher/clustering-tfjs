@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 
 /**
  * Converts a regular (nested) JavaScript array into a TensorFlow.js tensor

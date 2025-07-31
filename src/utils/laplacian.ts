@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 
 import { deterministic_eigenpair_processing } from "./eigen_post";
 

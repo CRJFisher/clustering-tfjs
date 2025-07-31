@@ -1,4 +1,4 @@
-import * as tf from "./tensorflow";
+import * as tf from "@tensorflow/tfjs-node";
 
 /**
  * Improved Jacobi eigendecomposition for symmetric matrices.
