@@ -1,7 +1,7 @@
 import { findOptimalClusters } from "../../src/utils/findOptimalClusters";
 import { KMeans } from "../../src/clustering/kmeans";
 import { makeBlobs } from "../../src/datasets/synthetic";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 
 describe("findOptimalClusters", () => {
   beforeAll(() => {

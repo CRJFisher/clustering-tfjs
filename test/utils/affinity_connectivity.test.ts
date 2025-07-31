@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 import { compute_knn_affinity } from "../../src/utils/affinity";
 
 describe("k-NN affinity connectivity", () => {

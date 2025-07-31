@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 import { silhouetteScore, silhouetteScoreSubset } from "../../src/validation/silhouette";
 
 describe("Silhouette Score", () => {
