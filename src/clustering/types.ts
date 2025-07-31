@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
 /**
  * ----------------------------------------------------------------------------
@@ -74,9 +74,9 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * affinity matrix.
    */
   affinity?:
-    | "rbf"
-    | "nearest_neighbors"
-    | "precomputed"
+    | 'rbf'
+    | 'nearest_neighbors'
+    | 'precomputed'
     | ((X: DataMatrix) => tf.Tensor2D);
 
   /**
@@ -153,12 +153,12 @@ export interface AgglomerativeClusteringParams extends BaseClusteringParams {
   /**
    * Linkage criterion used to merge clusters.
    */
-  linkage?: "ward" | "complete" | "average" | "single";
+  linkage?: 'ward' | 'complete' | 'average' | 'single';
 
   /**
    * Metric to compute linkage.
    */
-  metric?: "euclidean" | "manhattan" | "cosine";
+  metric?: 'euclidean' | 'manhattan' | 'cosine';
 }
 
 /**
@@ -167,7 +167,9 @@ export interface AgglomerativeClusteringParams extends BaseClusteringParams {
  * ----------------------------------------------------------------------------
  */
 
-export interface BaseClustering<Params extends BaseClusteringParams = BaseClusteringParams> {
+export interface BaseClustering<
+  Params extends BaseClusteringParams = BaseClusteringParams,
+> {
   /**
    * Hyper-parameters used by the estimator instance.
    */

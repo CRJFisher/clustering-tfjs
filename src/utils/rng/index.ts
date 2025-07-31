@@ -1,4 +1,4 @@
-import { MT19937 } from "./mt19937";
+import { MT19937 } from './mt19937';
 
 /** Lightweight interface used throughout the codebase for deterministic RNG. */
 export interface RandomStream {
@@ -22,4 +22,3 @@ export function make_random_stream(seed?: number): RandomStream {
     randInt: (max: number) => engine.nextInt(max),
   };
 }
-

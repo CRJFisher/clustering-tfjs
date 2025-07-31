@@ -1,6 +1,6 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
-import { pairwiseEuclideanMatrix } from "./pairwise_distance";
+import { pairwiseEuclideanMatrix } from './pairwise_distance';
 
 /**
  * Computes the RBF (Gaussian) kernel affinity matrix for the given points.
@@ -45,10 +45,10 @@ export function compute_rbf_affinity(
 /**
  * Builds a (k-)nearest-neighbour adjacency / affinity matrix.
  *
- * For each sample the `k` closest neighbours are connected with affinity 
+ * For each sample the `k` closest neighbours are connected with affinity
  * value **1**. Self-loops are included to ensure connectivity, matching
- * sklearn's behavior. The final matrix is **symmetrised** via `max(A, Aᵀ)` 
- * so that an edge is present when either sample appears in the other's 
+ * sklearn's behavior. The final matrix is **symmetrised** via `max(A, Aᵀ)`
+ * so that an edge is present when either sample appears in the other's
  * neighbourhood.
  *
  * The result is returned as a dense `tf.Tensor2D` containing zeros for
@@ -62,17 +62,19 @@ export function compute_knn_affinity(
   includeSelf: boolean = true,
 ): tf.Tensor2D {
   if (!Number.isInteger(k) || k < 1) {
-    throw new Error("k (nNeighbors) must be a positive integer.");
+    throw new Error('k (nNeighbors) must be a positive integer.');
   }
 
   const nSamples = points.shape[0];
 
   if (nSamples === 0) {
-    throw new Error("Input points tensor must contain at least one sample.");
+    throw new Error('Input points tensor must contain at least one sample.');
   }
 
   if (k >= nSamples) {
-    throw new Error("k (nNeighbors) must be smaller than the number of samples.");
+    throw new Error(
+      'k (nNeighbors) must be smaller than the number of samples.',
+    );
   }
 
   /* --------------------------------------------------------------------- */
@@ -161,7 +163,10 @@ export function compute_knn_affinity(
   // JS arrays is fine, the backend converts them on the fly.
   return tf.tidy(() => {
     const values = tf.ones([coords.length]);
-    const dense = tf.scatterND(coords, values, [nSamples, nSamples]) as tf.Tensor2D;
+    const dense = tf.scatterND(coords, values, [
+      nSamples,
+      nSamples,
+    ]) as tf.Tensor2D;
     // Symmetrise: A = 0.5 * (A + Aᵀ) to match sklearn
     // This gives 0.5 for edges that only appear in one direction
     return dense.add(dense.transpose()).mul(0.5) as tf.Tensor2D;
@@ -174,9 +179,11 @@ export function compute_knn_affinity(
  */
 export function compute_affinity_matrix(
   points: tf.Tensor2D,
-  options: { affinity: "rbf"; gamma?: number } | { affinity: "nearest_neighbors"; nNeighbors: number },
+  options:
+    | { affinity: 'rbf'; gamma?: number }
+    | { affinity: 'nearest_neighbors'; nNeighbors: number },
 ): tf.Tensor2D {
-  if (options.affinity === "rbf") {
+  if (options.affinity === 'rbf') {
     return compute_rbf_affinity(points, options.gamma);
   }
 

@@ -2,13 +2,21 @@
 
 /**
  * Release automation script
- * Handles tag creation, monitors GitHub Actions, and updates release notes
+ * Handles version incrementing, tag creation, monitors GitHub Actions, and updates release notes
  * 
  * Usage:
- *   node scripts/release.js <version> <description>
- *   node scripts/release.js <version> --file <path-to-release-notes.md>
- *   node scripts/release.js v0.1.0 "Initial release with clustering algorithms"
- *   node scripts/release.js v0.1.1 --file RELEASE_NOTES.md
+ *   npm run release patch "Bug fixes and performance improvements"
+ *   npm run release minor "New features and enhancements"
+ *   npm run release major "Breaking changes"
+ *   npm run release patch --file RELEASE_NOTES.md
+ *   
+ *   # Or specify exact version
+ *   npm run release v0.1.1 "Initial release"
+ *   npm run release 0.2.0 --file ./docs/release-notes.md
+ * 
+ * Examples:
+ *   npm run release patch "Fixed Windows compatibility and ESLint errors"
+ *   npm run release minor "Added clustering algorithms and validation metrics"
  */
 
 const { execSync } = require('child_process');
@@ -18,22 +26,41 @@ const path = require('path');
 // Parse command line arguments
 const args = process.argv.slice(2);
 if (args.length < 2) {
-  console.error('Usage: node scripts/release.js <version> <description>');
+  console.error('Usage: node scripts/release.js patch|minor|major <description>');
+  console.error('       node scripts/release.js patch|minor|major --file <path>');
+  console.error('       node scripts/release.js <version> <description>');
   console.error('       node scripts/release.js <version> --file <path>');
   process.exit(1);
 }
 
-const version = args[0];
+const versionArg = args[0];
 const isFile = args[1] === '--file';
 const descriptionOrPath = isFile ? args[2] : args.slice(1).join(' ');
 
-if (!version.match(/^v?\d+\.\d+\.\d+/)) {
-  console.error('Error: Invalid version format. Use v0.1.0 or 0.1.0');
-  process.exit(1);
-}
+// Determine if we need to increment version or use specific version
+let version;
+let tagName;
 
-// Ensure version starts with 'v'
-const tagName = version.startsWith('v') ? version : `v${version}`;
+if (['patch', 'minor', 'major'].includes(versionArg)) {
+  // Increment version using npm
+  console.log(`📦 Incrementing ${versionArg} version...`);
+  const output = execSync(`npm version ${versionArg} --no-git-tag-version`, { encoding: 'utf8' });
+  version = output.trim().replace(/^v/, '');
+  tagName = `v${version}`;
+  console.log(`   New version: ${version}`);
+} else {
+  // Use specific version
+  if (!versionArg.match(/^v?\d+\.\d+\.\d+/)) {
+    console.error('Error: Invalid version format. Use v0.1.0 or 0.1.0');
+    process.exit(1);
+  }
+  version = versionArg.replace(/^v/, '');
+  tagName = `v${version}`;
+  
+  // Update package.json with the new version
+  console.log(`📦 Setting version to ${version}...`);
+  execSync(`npm version ${version} --no-git-tag-version`, { encoding: 'utf8' });
+}
 
 // Get release description
 let releaseNotes = '';
@@ -113,11 +140,17 @@ async function release() {
     process.exit(1);
   }
 
+  // Commit the version change
+  console.log('💾 Committing version change...');
+  run('git add package.json package-lock.json');
+  run(`git commit -m "chore: release ${version}"`);
+
   // Create and push tag
   console.log(`🏷️  Creating tag ${tagName}...`);
   run(`git tag ${tagName}`);
   
-  console.log('📤 Pushing tag to GitHub...');
+  console.log('📤 Pushing changes and tag to GitHub...');
+  run('git push origin main');
   run(`git push origin ${tagName}`);
 
   // Get the workflow run ID

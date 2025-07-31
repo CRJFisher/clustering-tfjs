@@ -1,8 +1,8 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
 /**
  * Improved Jacobi eigendecomposition for symmetric matrices.
- * 
+ *
  * Enhancements over the basic Jacobi method:
  * 1. Cyclic Jacobi - systematically sweep through all pairs
  * 2. Threshold scaling - adapt threshold as we converge
@@ -18,7 +18,7 @@ export function improved_jacobi_eigen(
   }: { maxIterations?: number; tolerance?: number; isPSD?: boolean } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   if (matrix.shape.length !== 2 || matrix.shape[0] !== matrix.shape[1]) {
-    throw new Error("Input tensor must be square (n × n).");
+    throw new Error('Input tensor must be square (n × n).');
   }
 
   const A = matrix.arraySync() as number[][];
@@ -44,8 +44,8 @@ export function improved_jacobi_eigen(
   }
 
   // Deep copy for working matrix
-  const D: number[][] = A.map(row => [...row]);
-  
+  const D: number[][] = A.map((row) => [...row]);
+
   // Eigenvector accumulator
   const V: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
@@ -64,31 +64,32 @@ export function improved_jacobi_eigen(
 
   let sweep = 0;
   let changed = true;
-  
+
   // Adaptive threshold based on matrix norm
-  const matrixNorm = Math.sqrt(A.reduce((sum, row) => 
-    sum + row.reduce((s, v) => s + v * v, 0), 0));
+  const matrixNorm = Math.sqrt(
+    A.reduce((sum, row) => sum + row.reduce((s, v) => s + v * v, 0), 0),
+  );
   let threshold = tolerance * matrixNorm;
 
   while (sweep < maxIterations && changed) {
     changed = false;
-    
+
     // Cyclic Jacobi: sweep through all pairs
     for (let p = 0; p < n - 1; p++) {
       for (let q = p + 1; q < n; q++) {
         const a_pq = D[p][q];
-        
+
         // Skip if already small
         if (Math.abs(a_pq) < threshold) continue;
-        
+
         changed = true;
         const a_pp = D[p][p];
         const a_qq = D[q][q];
-        
+
         // Compute rotation angle
         const diff = a_qq - a_pp;
         let t: number;
-        
+
         if (Math.abs(a_pq) < Math.abs(diff) * 1e-15) {
           // Very small angle - use approximation
           t = a_pq / diff;
@@ -97,16 +98,16 @@ export function improved_jacobi_eigen(
           t = 1 / (Math.abs(theta) + Math.sqrt(1 + theta * theta));
           if (theta < 0) t = -t;
         }
-        
+
         const c = 1 / Math.sqrt(1 + t * t);
         const s = t * c;
         const tau = s / (1 + c);
-        
+
         // Update diagonal elements
         D[p][p] = a_pp - t * a_pq;
         D[q][q] = a_qq + t * a_pq;
         D[p][q] = D[q][p] = 0;
-        
+
         // Update row p and column p (j < p)
         for (let j = 0; j < p; j++) {
           const g = D[j][p];
@@ -114,7 +115,7 @@ export function improved_jacobi_eigen(
           D[j][p] = D[p][j] = g - s * (h + g * tau);
           D[j][q] = D[q][j] = h + s * (g - h * tau);
         }
-        
+
         // Update row p and column p (p < j < q)
         for (let j = p + 1; j < q; j++) {
           const g = D[p][j];
@@ -122,7 +123,7 @@ export function improved_jacobi_eigen(
           D[p][j] = D[j][p] = g - s * (h + g * tau);
           D[j][q] = D[q][j] = h + s * (g - h * tau);
         }
-        
+
         // Update row p and column p (j > q)
         for (let j = q + 1; j < n; j++) {
           const g = D[p][j];
@@ -130,7 +131,7 @@ export function improved_jacobi_eigen(
           D[p][j] = D[j][p] = g - s * (h + g * tau);
           D[q][j] = D[j][q] = h + s * (g - h * tau);
         }
-        
+
         // Update eigenvectors
         for (let j = 0; j < n; j++) {
           const g = V[j][p];
@@ -140,9 +141,9 @@ export function improved_jacobi_eigen(
         }
       }
     }
-    
+
     sweep++;
-    
+
     // Adaptive threshold reduction
     if (sweep % 5 === 0) {
       const currentNorm = offDiagNorm(D);
@@ -155,7 +156,7 @@ export function improved_jacobi_eigen(
   if (sweep === maxIterations) {
     console.warn(
       `Improved Jacobi solver reached max iterations (${maxIterations}). ` +
-      `Final off-diagonal norm: ${offDiagNorm(D).toExponential(3)}`
+        `Final off-diagonal norm: ${offDiagNorm(D).toExponential(3)}`,
     );
   }
 
@@ -168,15 +169,18 @@ export function improved_jacobi_eigen(
     // For normalized Laplacians, eigenvalues should be in [0, 2]
     // Any negative value is due to numerical error
     const threshold = 1e-8; // More relaxed threshold for PSD matrices
-    eigenvalues = eigenvalues.map(v => v < threshold ? 0 : v);
+    eigenvalues = eigenvalues.map((v) => (v < threshold ? 0 : v));
   }
 
   // Sort eigen-pairs
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
-  const sortedValues = indexed.map(p => p.val);
-  const sortedVectors: number[][] = Array.from({ length: n }, () => new Array(n));
+  const sortedValues = indexed.map((p) => p.val);
+  const sortedVectors: number[][] = Array.from(
+    { length: n },
+    () => new Array(n),
+  );
 
   for (let newIdx = 0; newIdx < n; newIdx++) {
     const oldIdx = indexed[newIdx].idx;
@@ -201,14 +205,11 @@ export function laplacian_eigen_decomposition(
   k: number,
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(
-      laplacian,
-      {
-        isPSD: true,
-        maxIterations: 3000,
-        tolerance: 1e-14,
-      }
-    );
+    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(laplacian, {
+      isPSD: true,
+      maxIterations: 3000,
+      tolerance: 1e-14,
+    });
 
     // For Laplacians, we know smallest eigenvalues should be very close to 0
     // Count how many are numerically zero
@@ -222,9 +223,10 @@ export function laplacian_eigen_decomposition(
     // Return k + numZeros columns
     const n = eigenvectors.length;
     const numCols = Math.min(k + numZeros, n);
-    
-    const selected: number[][] = Array.from({ length: n }, () =>
-      new Array(numCols),
+
+    const selected: number[][] = Array.from(
+      { length: n },
+      () => new Array(numCols),
     );
 
     for (let col = 0; col < numCols; col++) {
@@ -233,6 +235,6 @@ export function laplacian_eigen_decomposition(
       }
     }
 
-    return tf.tensor2d(selected, [n, numCols], "float32");
+    return tf.tensor2d(selected, [n, numCols], 'float32');
   });
 }

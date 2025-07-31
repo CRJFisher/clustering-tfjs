@@ -1,5 +1,5 @@
-import * as tf from "@tensorflow/tfjs-node";
-import { deterministic_eigenpair_processing } from "./eigen_post";
+import * as tf from '@tensorflow/tfjs-node';
+import { deterministic_eigenpair_processing } from './eigen_post';
 
 /**
  * Returns the `k` smallest eigenvectors AND eigenvalues of the provided symmetric matrix.
@@ -10,14 +10,14 @@ export function smallest_eigenvectors_with_values(
   k: number,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   if (!Number.isInteger(k) || k < 1) {
-    throw new Error("k must be a positive integer.");
+    throw new Error('k must be a positive integer.');
   }
 
   return tf.tidy(() => {
     // Import improved solver for better accuracy
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { improved_jacobi_eigen } = require("./eigen_improved");
-    
+    const { improved_jacobi_eigen } = require('./eigen_improved');
+
     // 1) Full eigendecomposition with improved solver
     // For normalized Laplacians, we know it's PSD
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {
@@ -42,10 +42,11 @@ export function smallest_eigenvectors_with_values(
 
     const n = processed.eigenvectors.length;
     const sliceCols = Math.min(k + c, n);
-    
+
     // Extract selected eigenvectors
-    const selectedVecs: number[][] = Array.from({ length: n }, () =>
-      new Array(sliceCols),
+    const selectedVecs: number[][] = Array.from(
+      { length: n },
+      () => new Array(sliceCols),
     );
     const selectedVals: number[] = new Array(sliceCols);
 
@@ -57,8 +58,8 @@ export function smallest_eigenvectors_with_values(
     }
 
     return {
-      eigenvectors: tf.tensor2d(selectedVecs, [n, sliceCols], "float32"),
-      eigenvalues: tf.tensor1d(selectedVals, "float32"),
+      eigenvectors: tf.tensor2d(selectedVecs, [n, sliceCols], 'float32'),
+      eigenvalues: tf.tensor1d(selectedVals, 'float32'),
     };
   });
 }

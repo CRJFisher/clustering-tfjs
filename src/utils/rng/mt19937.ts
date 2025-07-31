@@ -64,7 +64,7 @@ export class MT19937 {
    */
   public nextInt(max: number): number {
     if (!Number.isInteger(max) || max <= 0 || max > 0xffffffff) {
-      throw new Error("max must be a 32-bit positive integer");
+      throw new Error('max must be a 32-bit positive integer');
     }
 
     const bound = max >>> 0;
@@ -87,7 +87,8 @@ export class MT19937 {
     this.mt[0] = seed >>> 0;
     for (let i = 1; i < MT19937.N; i++) {
       const prev = this.mt[i - 1] >>> 0;
-      this.mt[i] = (((1812433253 * (prev ^ (prev >>> 30))) + i) & 0xffffffff) >>> 0;
+      this.mt[i] =
+        ((1812433253 * (prev ^ (prev >>> 30)) + i) & 0xffffffff) >>> 0;
     }
     this.index = MT19937.N;
   }
@@ -107,4 +108,3 @@ export class MT19937 {
     this.index = 0;
   }
 }
-

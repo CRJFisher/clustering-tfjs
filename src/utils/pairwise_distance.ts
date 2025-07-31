@@ -1,6 +1,6 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
-import { manhattanDistance, cosineDistance } from "./tensor";
+import { manhattanDistance, cosineDistance } from './tensor';
 
 /**
  * Optimised Euclidean pairwise distance using the identity
@@ -15,14 +15,14 @@ export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
       .add(squaredNorms.transpose())
       .sub(gram.mul(2));
 
-    const zero = tf.scalar(0, "float32");
+    const zero = tf.scalar(0, 'float32');
     const distancesSquaredClamped = tf.maximum(distancesSquared, zero);
 
     const dist = distancesSquaredClamped.sqrt();
 
     const distSym = dist.add(dist.transpose()).div(2);
     const n = distSym.shape[0];
-    const mask = tf.ones([n, n], "float32").sub(tf.eye(n));
+    const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
     return distSym.mul(mask) as tf.Tensor2D;
   });
 }
@@ -44,13 +44,13 @@ export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
  */
 export function pairwiseDistanceMatrix(
   points: tf.Tensor2D,
-  metric: "euclidean" | "manhattan" | "cosine" = "euclidean",
+  metric: 'euclidean' | 'manhattan' | 'cosine' = 'euclidean',
 ): tf.Tensor2D {
   switch (metric) {
-    case "euclidean":
+    case 'euclidean':
       return pairwiseEuclideanMatrix(points);
 
-    case "manhattan":
+    case 'manhattan':
       return tf.tidy(() => {
         const n = points.shape[0];
         const expandedA = points.expandDims(1); // (n,1,d)
@@ -59,11 +59,11 @@ export function pairwiseDistanceMatrix(
         const dist = manhattanDistance(expandedA, expandedB) as tf.Tensor2D;
 
         const distSym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
-        const mask = tf.ones([n, n], "float32").sub(tf.eye(n));
+        const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
         return distSym.mul(mask) as tf.Tensor2D;
       });
 
-    case "cosine":
+    case 'cosine':
       return tf.tidy(() => {
         const n = points.shape[0];
         const expandedA = points.expandDims(1); // (n,1,d)
@@ -72,7 +72,7 @@ export function pairwiseDistanceMatrix(
         const dist = cosineDistance(expandedA, expandedB) as tf.Tensor2D;
 
         const distSym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
-        const mask = tf.ones([n, n], "float32").sub(tf.eye(n));
+        const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
         return distSym.mul(mask) as tf.Tensor2D;
       });
 

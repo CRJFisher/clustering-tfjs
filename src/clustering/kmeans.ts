@@ -3,8 +3,8 @@ import type {
   DataMatrix,
   LabelVector,
   KMeansParams,
-} from "./types";
-import * as tf from "@tensorflow/tfjs-node";
+} from './types';
+import * as tf from '@tensorflow/tfjs-node';
 
 /**
  * Extremely lightweight – yet reasonably efficient – K-Means implementation
@@ -46,7 +46,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
   private static makeRandomStream(seed?: number) {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { make_random_stream } = require("../utils/rng");
+    const { make_random_stream } = require('../utils/rng');
     return make_random_stream(seed);
   }
 
@@ -54,18 +54,18 @@ export class KMeans implements BaseClustering<KMeansParams> {
     const { nClusters, maxIter, tol, nInit } = params;
 
     if (!Number.isInteger(nClusters) || nClusters < 1) {
-      throw new Error("nClusters must be a positive integer (>= 1).");
+      throw new Error('nClusters must be a positive integer (>= 1).');
     }
 
     if (maxIter !== undefined && (!Number.isInteger(maxIter) || maxIter < 1)) {
-      throw new Error("maxIter must be a positive integer (>= 1) when given.");
+      throw new Error('maxIter must be a positive integer (>= 1) when given.');
     }
 
-    if (tol !== undefined && (typeof tol !== "number" || tol < 0)) {
-      throw new Error("tol must be a non-negative number when given.");
+    if (tol !== undefined && (typeof tol !== 'number' || tol < 0)) {
+      throw new Error('tol must be a non-negative number when given.');
     }
     if (nInit !== undefined && (!Number.isInteger(nInit) || nInit < 1)) {
-      throw new Error("nInit must be a positive integer (>= 1) when given.");
+      throw new Error('nInit must be a positive integer (>= 1) when given.');
     }
   }
 
@@ -77,18 +77,20 @@ export class KMeans implements BaseClustering<KMeansParams> {
     // Convert to a Tensor2D of dtype float32 – keep original around for
     // potential multiple initialisations.
     const Xtensor: tf.Tensor2D = (
-      X instanceof tf.Tensor ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][], undefined, "float32")
+      X instanceof tf.Tensor
+        ? (X as tf.Tensor2D)
+        : tf.tensor2d(X as number[][], undefined, 'float32')
     ).clone();
 
     const [nSamples, nFeatures] = Xtensor.shape;
 
     if (nSamples === 0) {
-      throw new Error("Input data must contain at least one sample.");
+      throw new Error('Input data must contain at least one sample.');
     }
 
     const K = this.params.nClusters;
     if (K > nSamples) {
-      throw new Error("nClusters cannot exceed number of samples.");
+      throw new Error('nClusters cannot exceed number of samples.');
     }
 
     const nInit = this.params.nInit ?? KMeans.DEFAULT_N_INIT;
@@ -111,7 +113,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
     const baseSeed = this.params.randomState;
 
-    const runOnce = async (seedOffset: number): Promise<{
+    const runOnce = async (
+      seedOffset: number,
+    ): Promise<{
       inertia: number;
       labels: Int32Array;
       centroids: tf.Tensor2D;
@@ -207,7 +211,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
         centroidIdxs.push(bestCandidate);
       }
 
-      let centroids = tf.tensor2d(centroidIdxs.map((i) => pointsArr[i]), [K, nFeatures], "float32");
+      let centroids = tf.tensor2d(
+        centroidIdxs.map((i) => pointsArr[i]),
+        [K, nFeatures],
+        'float32',
+      );
 
       let prevInertia = Number.POSITIVE_INFINITY;
       let labels: Int32Array = new Int32Array(nSamples);
@@ -223,10 +231,15 @@ export class KMeans implements BaseClustering<KMeansParams> {
         labels = (await distances.argMin(1).data()) as Int32Array;
 
         const minDistSq = await distances.min(1).data();
-        const inertia = Array.from(minDistSq as Float32Array).reduce((a, b) => a + b, 0);
+        const inertia = Array.from(minDistSq as Float32Array).reduce(
+          (a, b) => a + b,
+          0,
+        );
         distances.dispose();
 
-        const newCentroidsArr: number[][] = Array.from({ length: K }, () => Array(nFeatures).fill(0));
+        const newCentroidsArr: number[][] = Array.from({ length: K }, () =>
+          Array(nFeatures).fill(0),
+        );
         const counts: number[] = Array(K).fill(0);
 
         for (let i = 0; i < nSamples; i++) {
@@ -245,7 +258,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
             emptyClusters.push(kIdx);
             // Keep old centroid temporarily
             newCentroidsArr[kIdx] = Array.from(
-              await centroids.slice([kIdx, 0], [1, nFeatures]).array()
+              await centroids.slice([kIdx, 0], [1, nFeatures]).array(),
             )[0] as number[];
           } else {
             for (let j = 0; j < nFeatures; j++) {
@@ -253,7 +266,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
             }
           }
         }
-        
+
         // If there are empty clusters, reassign them to points farthest from their nearest center
         if (emptyClusters.length > 0) {
           // Compute distances from all points to their nearest center
@@ -261,11 +274,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
           for (let i = 0; i < nSamples; i++) {
             distToNearest[i] = minDistSq[i];
           }
-          
+
           // Find indices of points with largest distances
-          const indices = Array.from({length: nSamples}, (_, i) => i);
+          const indices = Array.from({ length: nSamples }, (_, i) => i);
           indices.sort((a, b) => distToNearest[b] - distToNearest[a]);
-          
+
           // Assign farthest points as new centers for empty clusters
           for (let i = 0; i < emptyClusters.length && i < nSamples; i++) {
             const farthestIdx = indices[i];
@@ -274,14 +287,21 @@ export class KMeans implements BaseClustering<KMeansParams> {
           }
         }
 
-        const newCentroids = tf.tensor2d(newCentroidsArr, [K, nFeatures], "float32");
+        const newCentroids = tf.tensor2d(
+          newCentroidsArr,
+          [K, nFeatures],
+          'float32',
+        );
 
-        const centroidShift = (await centroids.sub(newCentroids).abs().max().data())[0];
+        const centroidShift = (
+          await centroids.sub(newCentroids).abs().max().data()
+        )[0];
 
         centroids.dispose();
         centroids = newCentroids;
 
-        const relativeDiff = Math.abs(prevInertia - inertia) / (prevInertia || 1);
+        const relativeDiff =
+          Math.abs(prevInertia - inertia) / (prevInertia || 1);
         if (relativeDiff <= tol || centroidShift <= tol) {
           prevInertia = inertia;
           break;
@@ -316,7 +336,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   async fitPredict(X: DataMatrix): Promise<LabelVector> {
     await this.fit(X);
     if (this.labels_ == null) {
-      throw new Error("KMeans.fit did not compute labels.");
+      throw new Error('KMeans.fit did not compute labels.');
     }
     return this.labels_;
   }

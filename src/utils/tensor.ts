@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
 /**
  * Converts a regular (nested) JavaScript array into a TensorFlow.js tensor
@@ -10,7 +10,7 @@ import * as tf from "@tensorflow/tfjs-node";
  */
 export function arrayToTensor(
   arr: tf.TensorLike,
-  dtype: tf.DataType = "float32",
+  dtype: tf.DataType = 'float32',
 ): tf.Tensor {
   return tf.tidy(() => tf.tensor(arr, undefined, dtype));
 }
@@ -21,7 +21,9 @@ export function arrayToTensor(
  * The returned value is a *copy* of the underlying data, so further
  * manipulations will not affect the original tensor.
  */
-export function tensorToArray(tensor: tf.Tensor): number[] | number[][] | number[][][] {
+export function tensorToArray(
+  tensor: tf.Tensor,
+): number[] | number[][] | number[][][] {
   // Using .arraySync() is safe here because callers explicitly request the
   // data as a JS structure. For large tensors prefer the async variant.
   return tensor.arraySync() as number[] | number[][] | number[][][];
@@ -87,4 +89,4 @@ export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  */
 // Re-export to maintain backward compatibility while delegating to the new
 // implementation in `pairwise_distance.ts`.
-export { pairwiseEuclideanMatrix } from "./pairwise_distance";
+export { pairwiseEuclideanMatrix } from './pairwise_distance';

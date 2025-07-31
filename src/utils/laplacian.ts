@@ -1,6 +1,6 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from '@tensorflow/tfjs-node';
 
-import { deterministic_eigenpair_processing } from "./eigen_post";
+import { deterministic_eigenpair_processing } from './eigen_post';
 
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
@@ -18,7 +18,7 @@ import { deterministic_eigenpair_processing } from "./eigen_post";
  */
 export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
   if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
-    throw new Error("Affinity matrix must be square (n × n).");
+    throw new Error('Affinity matrix must be square (n × n).');
   }
 
   // Sum along axis 1 (rows) – (n)
@@ -39,17 +39,23 @@ export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
  * row & column of `L` equal to the identity matrix (no connections).
  */
 export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D;
-export function normalised_laplacian(A: tf.Tensor2D, returnDiag: true): { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D };
-export function normalised_laplacian(A: tf.Tensor2D, returnDiag = false): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D } {
+export function normalised_laplacian(
+  A: tf.Tensor2D,
+  returnDiag: true,
+): { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D };
+export function normalised_laplacian(
+  A: tf.Tensor2D,
+  returnDiag = false,
+): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D } {
   return tf.tidy(() => {
     const n = A.shape[0];
-    
+
     // First, zero out the diagonal of A to match scipy behavior
     // "Diagonal entries of the input adjacency matrix are ignored and
     // replaced with zeros for the purpose of normalization"
     const diagMask = tf.sub(1, tf.eye(n));
     const A_no_diag = A.mul(diagMask) as tf.Tensor2D;
-    
+
     const deg = degree_vector(A_no_diag); // (n)
 
     // d^{-1/2} – set entries with deg == 0 to 1 (for isolated nodes)
@@ -71,16 +77,16 @@ export function normalised_laplacian(A: tf.Tensor2D, returnDiag = false): tf.Ten
     // This ensures diagonal entries are exactly 1 for non-isolated nodes
     const I = tf.eye(n);
     const laplacian = I.sub(scaledAffinity) as tf.Tensor2D;
-    
+
     if (returnDiag) {
       // Return both Laplacian and sqrt(degrees) for eigenvector recovery
       // Note: we return invSqrt which is D^(-1/2), so for recovery we need to divide by it
-      return { 
+      return {
         laplacian: laplacian,
-        sqrtDegrees: invSqrt
+        sqrtDegrees: invSqrt,
       };
     }
-    
+
     return laplacian;
   });
 }
@@ -110,7 +116,7 @@ export function jacobi_eigen_decomposition(
   }: { maxIterations?: number; tolerance?: number } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   if (matrix.shape.length !== 2 || matrix.shape[0] !== matrix.shape[1]) {
-    throw new Error("Input tensor must be square (n × n).");
+    throw new Error('Input tensor must be square (n × n).');
   }
 
   // Convert to regular JS arrays for numeric processing.
@@ -138,7 +144,7 @@ export function jacobi_eigen_decomposition(
 
   if (isApproximatelyDiagonal()) {
     warn(
-      "Input matrix is (almost) diagonal – skipped iterative Jacobi rotations for efficiency.",
+      'Input matrix is (almost) diagonal – skipped iterative Jacobi rotations for efficiency.',
     );
     const diag = A.map((row, i) => row[i]);
     const V = A.map((_, i) =>
@@ -247,7 +253,7 @@ export function jacobi_eigen_decomposition(
 
     iter += 1;
   }
-  
+
   if (iter === maxIterations) {
     warn(
       `Jacobi solver did not converge after ${maxIterations} iterations. Final off-diagonal norm: ${offDiag(D)}`,
@@ -259,9 +265,7 @@ export function jacobi_eigen_decomposition(
   // Clamp very small negative values arising from numerical noise to 0.
   eigenvalues = eigenvalues.map((v) => {
     if (v < 0 && v > -tolerance) {
-      warn(
-        `Negative eigenvalue ${v} clamped to 0 (within numeric tolerance).`,
-      );
+      warn(`Negative eigenvalue ${v} clamped to 0 (within numeric tolerance).`);
       return 0;
     }
     return v;
@@ -275,7 +279,10 @@ export function jacobi_eigen_decomposition(
   indexed.sort((a, b) => a.val - b.val);
 
   const sortedValues = indexed.map((p) => p.val);
-  const sortedVectors: number[][] = Array.from({ length: n }, () => new Array(n));
+  const sortedVectors: number[][] = Array.from(
+    { length: n },
+    () => new Array(n),
+  );
 
   for (let newIdx = 0; newIdx < n; newIdx++) {
     const oldIdx = indexed[newIdx].idx;
@@ -304,14 +311,14 @@ export function smallest_eigenvectors(
   k: number,
 ): tf.Tensor2D {
   if (!Number.isInteger(k) || k < 1) {
-    throw new Error("k must be a positive integer.");
+    throw new Error('k must be a positive integer.');
   }
 
   return tf.tidy(() => {
     // Import improved solver for better accuracy
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { improved_jacobi_eigen } = require("./eigen_improved");
-    
+    const { improved_jacobi_eigen } = require('./eigen_improved');
+
     // 1) Full eigendecomposition with improved solver
     // For normalized Laplacians, we know it's PSD
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {
@@ -337,8 +344,9 @@ export function smallest_eigenvectors(
     // For spectral clustering, we want exactly k eigenvectors
     // INCLUDING any with zero eigenvalues (they encode component structure)
     const sliceCols = Math.min(k, n);
-    const selected: number[][] = Array.from({ length: n }, () =>
-      new Array(sliceCols),
+    const selected: number[][] = Array.from(
+      { length: n },
+      () => new Array(sliceCols),
     );
 
     for (let col = 0; col < sliceCols; col++) {
@@ -347,6 +355,6 @@ export function smallest_eigenvectors(
       }
     }
 
-    return tf.tensor2d(selected, [n, sliceCols], "float32");
+    return tf.tensor2d(selected, [n, sliceCols], 'float32');
   });
 }

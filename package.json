@@ -1,6 +1,6 @@
 {
   "name": "clustering-js",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "High-performance TypeScript clustering algorithms (K-Means, Spectral, Agglomerative) with TensorFlow.js acceleration and scikit-learn compatibility",
   "keywords": [
     "clustering",
@@ -60,10 +60,7 @@
     "version": "npm run format && git add -A src",
     "postversion": "git push && git push --tags",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "release": "node scripts/release.js",
-    "release:patch": "npm version patch && node scripts/release.js",
-    "release:minor": "npm version minor && node scripts/release.js",
-    "release:major": "npm version major && node scripts/release.js"
+    "release": "node scripts/release.js"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",

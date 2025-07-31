@@ -42,7 +42,7 @@
  * requires them for numerical stability.
  */
 
-export type LinkageCriterion = "single" | "complete" | "average" | "ward";
+export type LinkageCriterion = 'single' | 'complete' | 'average' | 'ward';
 
 /** Distance matrix represented as a square 2-D number array. */
 export type DistanceMatrix = number[][];
@@ -74,7 +74,7 @@ export function update_distance_matrix(
   linkage: LinkageCriterion,
 ): DistanceMatrix {
   if (i === j) {
-    throw new Error("Cannot merge the same cluster (i === j).");
+    throw new Error('Cannot merge the same cluster (i === j).');
   }
   if (i > j) {
     // Ensure i < j to simplify row/col removal logic.
@@ -83,7 +83,7 @@ export function update_distance_matrix(
 
   const nClusters = D.length;
   if (clusterSizes.length !== nClusters) {
-    throw new Error("clusterSizes length must match D dimensions.");
+    throw new Error('clusterSizes length must match D dimensions.');
   }
 
   const sizeI = clusterSizes[i];
@@ -102,16 +102,16 @@ export function update_distance_matrix(
 
     let dtk: number;
     switch (linkage) {
-      case "single":
+      case 'single':
         dtk = Math.min(dik, djk);
         break;
-      case "complete":
+      case 'complete':
         dtk = Math.max(dik, djk);
         break;
-      case "average":
+      case 'average':
         dtk = (sizeI * dik + sizeJ * djk) / newSize;
         break;
-      case "ward": {
+      case 'ward': {
         const sizeK = clusterSizes[k];
         const dij = D[i][j];
         const numerator =
@@ -125,7 +125,7 @@ export function update_distance_matrix(
       default:
         // Exhaustiveness guard – should never happen.
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        throw new Error(`Unsupported linkage '${(linkage as string) ?? ""}'.`);
+        throw new Error(`Unsupported linkage '${(linkage as string) ?? ''}'.`);
     }
 
     newDistances[k] = dtk;

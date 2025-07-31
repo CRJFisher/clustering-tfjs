@@ -60,9 +60,12 @@ export function deterministic_eigenpair_processing(
   const n = eigenvectors.length;
 
   // Validate shape (n rows, n columns)
-  if (eigenvectors.some((row) => row.length !== n) || eigenvalues.length !== n) {
+  if (
+    eigenvectors.some((row) => row.length !== n) ||
+    eigenvalues.length !== n
+  ) {
     throw new Error(
-      "eigenvectors must be square (n×n) and eigenvalues length must equal n.",
+      'eigenvectors must be square (n×n) and eigenvalues length must equal n.',
     );
   }
 
@@ -71,8 +74,9 @@ export function deterministic_eigenpair_processing(
   indexed.sort((a, b) => a.val - b.val);
 
   const eigenvaluesSorted: number[] = indexed.map((p) => p.val);
-  const eigenvectorsSorted: number[][] = Array.from({ length: n }, () =>
-    new Array(n),
+  const eigenvectorsSorted: number[][] = Array.from(
+    { length: n },
+    () => new Array(n),
   );
 
   // Step 2: for each eigenvector apply sign fix while copying into new matrix

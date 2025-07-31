@@ -76,53 +76,56 @@ export async function benchmarkInBrowser(
     samples: number;
     features: number;
     centers: number;
-  }>
+  }>,
 ): Promise<BrowserBenchmarkResult[]> {
   // Create a simple HTTP server to serve the benchmark page
   const server = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(benchmarkHTML);
   });
-  
+
   await new Promise<void>((resolve) => {
     server.listen(0, () => resolve());
   });
-  
+
   const address = server.address();
   if (!address || typeof address !== 'object') {
     throw new Error('Failed to get server address');
   }
   const port = address.port;
-  
+
   // Launch headless browser
   const browser = await puppeteer.launch({
     headless: true,
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
   });
-  
+
   const page = await browser.newPage();
   await page.goto(`http://localhost:${port}`);
-  
+
   const results: BrowserBenchmarkResult[] = [];
-  
+
   for (const config of configs) {
-    console.log(`Running ${config.algorithm} on ${config.backend} in browser...`);
-    
+    console.log(
+      `Running ${config.algorithm} on ${config.backend} in browser...`,
+    );
+
     try {
       const result = await page.evaluate(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (cfg: any) => (window as any).runBenchmark(cfg),
-        config
+        config,
       );
       results.push(result);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       console.error(`Failed: ${errorMessage}`);
     }
   }
-  
+
   await browser.close();
   server.close();
-  
+
   return results;
 }

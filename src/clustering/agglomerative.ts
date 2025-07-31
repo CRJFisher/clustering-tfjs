@@ -3,10 +3,10 @@ import type {
   LabelVector,
   AgglomerativeClusteringParams,
   BaseClustering,
-} from "./types";
-import * as tf from "@tensorflow/tfjs-node";
-import { pairwiseDistanceMatrix } from "../utils/pairwise_distance";
-import { update_distance_matrix } from "./linkage";
+} from './types';
+import * as tf from '@tensorflow/tfjs-node';
+import { pairwiseDistanceMatrix } from '../utils/pairwise_distance';
+import { update_distance_matrix } from './linkage';
 
 /**
  * Agglomerative (hierarchical) clustering estimator skeleton.
@@ -46,19 +46,19 @@ export class AgglomerativeClustering
    * Allowed linkage strategies.
    */
   private static readonly VALID_LINKAGES = [
-    "ward",
-    "complete",
-    "average",
-    "single",
+    'ward',
+    'complete',
+    'average',
+    'single',
   ] as const;
 
   /**
    * Allowed distance metrics.
    */
   private static readonly VALID_METRICS = [
-    "euclidean",
-    "manhattan",
-    "cosine",
+    'euclidean',
+    'manhattan',
+    'cosine',
   ] as const;
 
   constructor(params: AgglomerativeClusteringParams) {
@@ -81,7 +81,7 @@ export class AgglomerativeClustering
 
     // Early exit for edge-cases ------------------------------------------------
     if (Array.isArray(_X) && _X.length === 0) {
-      throw new Error("Input X must contain at least one sample.");
+      throw new Error('Input X must contain at least one sample.');
     }
 
     const points: tf.Tensor2D = Array.isArray(_X)
@@ -99,7 +99,7 @@ export class AgglomerativeClustering
       return;
     }
 
-    const { metric = "euclidean", linkage = "ward", nClusters } = this.params;
+    const { metric = 'euclidean', linkage = 'ward', nClusters } = this.params;
 
     // -----------------------------------------------------------------------
     // Compute initial pairwise distance matrix (plain number[][] for fast JS
@@ -110,7 +110,7 @@ export class AgglomerativeClustering
     distanceTensor.dispose();
 
     /*  ------------------------------------------------------------------
-     *  Hierarchical agglomeration loop                                   
+     *  Hierarchical agglomeration loop
      *  ------------------------------------------------------------------ */
 
     // Cluster bookkeeping arrays. Index i corresponds to row/col i in D.
@@ -121,7 +121,10 @@ export class AgglomerativeClustering
     const children: number[][] = [];
 
     // Track current cluster label for each sample (global cluster ids)
-    const sampleLabels: number[] = Array.from({ length: nSamples }, (_, i) => i);
+    const sampleLabels: number[] = Array.from(
+      { length: nSamples },
+      (_, i) => i,
+    );
 
     // Merge until the desired number of clusters is reached.
     while (clusterIds.length > nClusters) {
@@ -193,7 +196,7 @@ export class AgglomerativeClustering
   async fitPredict(_X: DataMatrix): Promise<LabelVector> {
     await this.fit(_X);
     if (this.labels_ == null) {
-      throw new Error("AgglomerativeClustering failed to compute labels.");
+      throw new Error('AgglomerativeClustering failed to compute labels.');
     }
     return this.labels_;
   }
@@ -203,29 +206,29 @@ export class AgglomerativeClustering
   /* --------------------------------------------------------------------- */
 
   private static validateParams(params: AgglomerativeClusteringParams): void {
-    const { nClusters, linkage = "ward", metric = "euclidean" } = params;
+    const { nClusters, linkage = 'ward', metric = 'euclidean' } = params;
 
     // nClusters must be a positive integer
     if (!Number.isInteger(nClusters) || nClusters < 1) {
-      throw new Error("nClusters must be a positive integer (>= 1).");
+      throw new Error('nClusters must be a positive integer (>= 1).');
     }
 
     // linkage value
     if (!AgglomerativeClustering.VALID_LINKAGES.includes(linkage)) {
       throw new Error(
-        `Invalid linkage '${linkage}'. Must be one of ${AgglomerativeClustering.VALID_LINKAGES.join(", ")}.`,
+        `Invalid linkage '${linkage}'. Must be one of ${AgglomerativeClustering.VALID_LINKAGES.join(', ')}.`,
       );
     }
 
     // metric value
     if (!AgglomerativeClustering.VALID_METRICS.includes(metric)) {
       throw new Error(
-        `Invalid metric '${metric}'. Must be one of ${AgglomerativeClustering.VALID_METRICS.join(", ")}.`,
+        `Invalid metric '${metric}'. Must be one of ${AgglomerativeClustering.VALID_METRICS.join(', ')}.`,
       );
     }
 
     // Additional consistency check: Ward linkage requires Euclidean distance.
-    if (linkage === "ward" && metric !== "euclidean") {
+    if (linkage === 'ward' && metric !== 'euclidean') {
       throw new Error("Ward linkage requires metric to be 'euclidean'.");
     }
   }
