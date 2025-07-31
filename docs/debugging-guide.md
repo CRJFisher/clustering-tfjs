@@ -35,7 +35,7 @@ This guide provides procedures and best practices for debugging clustering imple
 
 1. Use debug mode to capture intermediate results:
    ```typescript
-   const spectral = new SpectralClusteringModular({
+   const spectral = new SpectralClustering({
      nClusters: 2,
      affinity: 'rbf',
      captureDebugInfo: true,
@@ -69,7 +69,7 @@ This guide provides procedures and best practices for debugging clustering imple
 
 ```typescript
 // JavaScript/TypeScript
-const spectral = new SpectralClusteringModular({
+const spectral = new SpectralClustering({
   nClusters: 2,
   affinity: 'rbf',
   captureDebugInfo: true,
