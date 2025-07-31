@@ -7,6 +7,47 @@ import type {
 import * as tf from '@tensorflow/tfjs-node';
 import { compute_rbf_affinity, compute_knn_affinity } from '../utils/affinity';
 
+// Types for intermediate step results
+export interface LaplacianResult {
+  laplacian: tf.Tensor2D;
+  degrees?: tf.Tensor1D;
+  sqrtDegrees?: tf.Tensor1D;
+}
+
+export interface EmbeddingResult {
+  embedding: tf.Tensor2D;
+  eigenvalues: tf.Tensor1D;
+  rawEigenvectors?: tf.Tensor2D;
+  scalingFactors?: tf.Tensor1D;
+}
+
+export interface IntermediateSteps {
+  affinity: tf.Tensor2D;
+  laplacian: LaplacianResult;
+  embedding: EmbeddingResult;
+  labels: number[];
+}
+
+export interface DebugInfo {
+  affinityStats?: {
+    shape: number[];
+    nnz: number;
+    min: number;
+    max: number;
+    mean: number;
+  };
+  laplacianSpectrum?: number[];
+  embeddingStats?: {
+    shape: number[];
+    uniqueValuesPerDim: number[];
+    scalingFactors?: number[];
+  };
+  clusteringMetrics?: {
+    inertia: number;
+    iterations: number;
+  };
+}
+
 /**
  * Spectral clustering estimator skeleton.
  *
@@ -37,6 +78,12 @@ export class SpectralClustering
 
   /** Cached affinity matrix (shape: nSamples × nSamples). */
   public affinityMatrix_: tf.Tensor2D | null = null;
+
+  /** Debug information (populated when using returnIntermediateSteps) */
+  private debugInfo_: DebugInfo | null = null;
+  
+  /** Whether to capture debug information (modular compatibility) */
+  private captureDebugInfo: boolean = false;
 
   /* ------------------------------------------------------------------- */
   /*                      Resource / memory management                    */
@@ -71,9 +118,13 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
-  constructor(params: SpectralClusteringParams) {
+  constructor(params: SpectralClusteringParams & { captureDebugInfo?: boolean }) {
+    // Extract captureDebugInfo if provided (for modular compatibility)
+    const { captureDebugInfo = false, ...clusteringParams } = params;
+    
     // Freeze user params to avoid accidental mutation downstream.
-    this.params = { ...params };
+    this.params = { ...clusteringParams };
+    this.captureDebugInfo = captureDebugInfo;
 
     SpectralClustering.validateParams(this.params);
   }
@@ -94,6 +145,11 @@ export class SpectralClustering
   async fit(_X: DataMatrix): Promise<void> {
     // Dispose previous state if the estimator is re-used.
     this.dispose();
+    
+    // Reset debug info if capturing
+    if (this.captureDebugInfo) {
+      this.debugInfo_ = {};
+    }
 
     /* ---------------------------- 0) Input -------------------------------- */
     const Xtensor: tf.Tensor2D =
@@ -112,6 +168,20 @@ export class SpectralClustering
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
+    }
+    
+    // Capture affinity statistics if requested
+    if (this.captureDebugInfo) {
+      const data = await this.affinityMatrix_.data();
+      const dataArray = Array.from(data);
+      const nnz = dataArray.filter((v: number) => v !== 0).length;
+      this.debugInfo_!.affinityStats = {
+        shape: this.affinityMatrix_.shape,
+        nnz,
+        min: Math.min(...dataArray),
+        max: Math.max(...dataArray),
+        mean: dataArray.reduce((a: number, b: number) => a + b, 0) / dataArray.length,
+      };
     }
 
     /* ---------------------------- 2) Component Detection ---------------------- */
@@ -147,6 +217,29 @@ export class SpectralClustering
       );
 
       // Component indicators are already normalized, no scaling needed
+      
+      // Capture debug info for component indicators
+      if (this.captureDebugInfo) {
+        // For disconnected components, we don't have a traditional Laplacian spectrum
+        // but we can still provide information about the components
+        this.debugInfo_!.laplacianSpectrum = Array(numComponents).fill(0); // Components have eigenvalue 0
+        
+        const embData = await U.data();
+        const [n, k] = U.shape;
+        const uniqueValuesPerDim: number[] = [];
+
+        for (let i = 0; i < k; i++) {
+          const col = embData.slice(i * n, (i + 1) * n);
+          const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
+          uniqueValuesPerDim.push(unique.size);
+        }
+
+        this.debugInfo_!.embeddingStats = {
+          shape: U.shape,
+          uniqueValuesPerDim,
+          scalingFactors: Array(numComponents).fill(1), // No scaling for component indicators
+        };
+      }
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
       // Compute Laplacian and eigenvectors as before
@@ -156,6 +249,15 @@ export class SpectralClustering
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
         normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D, true),
       );
+      
+      // Capture Laplacian spectrum if requested
+      if (this.captureDebugInfo) {
+        const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
+        const { eigenvalues } = await jacobi_eigen_decomposition(laplacian);
+        // Take first 10 eigenvalues for spectrum
+        const spectrum = eigenvalues.slice(0, Math.min(10, eigenvalues.length));
+        this.debugInfo_!.laplacianSpectrum = spectrum;
+      }
 
       // Get eigenvectors AND eigenvalues for diffusion map scaling
       const { smallest_eigenvectors_with_values } = await import(
@@ -201,6 +303,26 @@ export class SpectralClustering
 
       // Use the scaled eigenvectors
       U = U_scaled;
+      
+      // Capture embedding statistics if requested
+      if (this.captureDebugInfo) {
+        const embData = await U.data();
+        const [n, k] = U.shape;
+        const uniqueValuesPerDim: number[] = [];
+
+        for (let i = 0; i < k; i++) {
+          const col = embData.slice(i * n, (i + 1) * n);
+          const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
+          uniqueValuesPerDim.push(unique.size);
+        }
+
+        const eigenData = await eigenvalues.data();
+        this.debugInfo_!.embeddingStats = {
+          shape: U.shape,
+          uniqueValuesPerDim,
+          scalingFactors: Array.from(eigenData.slice(0, this.params.nClusters)),
+        };
+      }
 
       // Clean up intermediate tensors
       laplacian.dispose();
@@ -292,6 +414,14 @@ export class SpectralClustering
       await km.fit(U);
 
       this.labels_ = km.labels_ as number[];
+      
+      // Capture clustering metrics if requested
+      if (this.captureDebugInfo && km.inertia_ !== null) {
+        this.debugInfo_!.clusteringMetrics = {
+          inertia: km.inertia_,
+          iterations: 0, // KMeans doesn't expose iteration count currently
+        };
+      }
     }
 
     /* --------------------------- Clean-up --------------------------------- */
@@ -308,6 +438,158 @@ export class SpectralClustering
       throw new Error('SpectralClustering failed to compute labels.');
     }
     return this.labels_;
+  }
+
+  /**
+   * Get debug information if available.
+   */
+  public getDebugInfo(): DebugInfo | null {
+    return this.debugInfo_;
+  }
+
+  /**
+   * Fits the model and returns intermediate steps for debugging and analysis.
+   * This method is useful for comparing with reference implementations.
+   */
+  async fitWithIntermediateSteps(X: DataMatrix): Promise<IntermediateSteps> {
+    // Dispose previous state if the estimator is re-used.
+    this.dispose();
+    this.debugInfo_ = {};
+
+    /* ---------------------------- 0) Input -------------------------------- */
+    const Xtensor: tf.Tensor2D =
+      X instanceof tf.Tensor
+        ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
+        : tf.tensor2d(X as number[][], undefined, 'float32');
+
+    /* ---------------------------- 1) Affinity ----------------------------- */
+    const affinity = SpectralClustering.computeAffinityMatrix(
+      Xtensor,
+      this.params,
+    );
+
+    const affinitySum = (await affinity.sum().data())[0];
+    if (affinitySum === 0) {
+      throw new Error(
+        'Affinity matrix contains only zeros – cannot perform spectral clustering.',
+      );
+    }
+
+    // Capture affinity statistics
+    const affinityData = await affinity.data();
+    const affinityArray = Array.from(affinityData);
+    const nnz = affinityArray.filter((v: number) => v !== 0).length;
+    this.debugInfo_.affinityStats = {
+      shape: affinity.shape,
+      nnz,
+      min: Math.min(...affinityArray),
+      max: Math.max(...affinityArray),
+      mean: affinityArray.reduce((a: number, b: number) => a + b, 0) / affinityArray.length,
+    };
+
+    /* ---------------------------- 2) Laplacian ----------------------------- */
+    const { normalised_laplacian } = await import('../utils/laplacian');
+    const { laplacian, sqrtDegrees } = tf.tidy(() =>
+      normalised_laplacian(affinity, true),
+    );
+
+    // Capture Laplacian spectrum
+    const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
+    const { eigenvalues: laplacianEigenvalues } = await jacobi_eigen_decomposition(laplacian);
+    const spectrum = laplacianEigenvalues.slice(0, Math.min(10, laplacianEigenvalues.length));
+    this.debugInfo_.laplacianSpectrum = spectrum;
+
+    /* ---------------------------- 3) Embedding ----------------------------- */
+    const { smallest_eigenvectors_with_values } = await import(
+      '../utils/smallest_eigenvectors_with_values'
+    );
+
+    const { eigenvectors: U_full, eigenvalues } =
+      smallest_eigenvectors_with_values(laplacian, this.params.nClusters);
+
+    // Apply sklearn's normalization
+    const embedding = tf.tidy(() => {
+      const U_selected = tf.slice(
+        U_full,
+        [0, 0],
+        [-1, this.params.nClusters],
+      ) as tf.Tensor2D;
+      const degrees = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
+      const degreesCol = degrees.reshape([-1, 1]) as tf.Tensor2D;
+      return U_selected.div(degreesCol) as tf.Tensor2D;
+    });
+
+    // Capture embedding statistics
+    const embData = await embedding.data();
+    const [n, k] = embedding.shape;
+    const uniqueValuesPerDim: number[] = [];
+
+    for (let i = 0; i < k; i++) {
+      const col = embData.slice(i * n, (i + 1) * n);
+      const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
+      uniqueValuesPerDim.push(unique.size);
+    }
+
+    const eigenData = await eigenvalues.data();
+    this.debugInfo_.embeddingStats = {
+      shape: embedding.shape,
+      uniqueValuesPerDim,
+      scalingFactors: Array.from(eigenData.slice(0, this.params.nClusters)),
+    };
+
+    /* ---------------------------- 4) Clustering ----------------------------- */
+    const { KMeans } = await import('./kmeans');
+    const kmParams = {
+      nClusters: this.params.nClusters,
+      randomState: this.params.randomState,
+      nInit: this.params.nInit ?? 10,
+    } as const;
+
+    const km = new KMeans(kmParams);
+    await km.fit(embedding);
+    const labels = km.labels_ as number[];
+
+    // Capture clustering metrics
+    if (km.inertia_ !== null) {
+      this.debugInfo_.clusteringMetrics = {
+        inertia: km.inertia_,
+        iterations: 0, // KMeans doesn't expose iteration count currently
+      };
+    }
+
+    /* ---------------------------- Prepare Result ----------------------------- */
+    const result: IntermediateSteps = {
+      affinity: tf.clone(affinity),
+      laplacian: {
+        laplacian: tf.clone(laplacian),
+        degrees: tf.clone(tf.pow(sqrtDegrees, -2) as tf.Tensor1D),
+        sqrtDegrees: tf.clone(sqrtDegrees),
+      },
+      embedding: {
+        embedding: tf.clone(embedding),
+        eigenvalues: tf.clone(eigenvalues),
+        rawEigenvectors: tf.clone(U_full),
+      },
+      labels: [...labels],
+    };
+
+    // Store labels for consistency
+    this.labels_ = labels;
+    this.affinityMatrix_ = tf.clone(affinity);
+
+    /* --------------------------- Clean-up --------------------------------- */
+    affinity.dispose();
+    laplacian.dispose();
+    sqrtDegrees.dispose();
+    U_full.dispose();
+    eigenvalues.dispose();
+    embedding.dispose();
+
+    if (!(X instanceof tf.Tensor)) {
+      Xtensor.dispose();
+    }
+
+    return result;
   }
 
   /* ------------------------------------------------------------------- */

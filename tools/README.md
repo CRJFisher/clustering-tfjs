@@ -91,10 +91,10 @@ plot_embedding_2d(embedding, labels)
 
 ### Capturing Debug Information
 
-Use the new `captureDebugInfo` flag in SpectralClusteringModular:
+Use the new `captureDebugInfo` flag in SpectralClustering:
 
 ```typescript
-const spectral = new SpectralClusteringModular({
+const spectral = new SpectralClustering({
   nClusters: 2,
   affinity: 'rbf',
   captureDebugInfo: true
@@ -103,4 +103,16 @@ const spectral = new SpectralClusteringModular({
 await spectral.fit(X);
 const debugInfo = spectral.getDebugInfo();
 console.log(debugInfo);
+```
+
+Or use the `fitWithIntermediateSteps` method to get all intermediate results:
+
+```typescript
+const spectral = new SpectralClustering({
+  nClusters: 2,
+  affinity: 'rbf'
+});
+
+const intermediateSteps = await spectral.fitWithIntermediateSteps(X);
+// intermediateSteps contains: affinity, laplacian, embedding, labels
 ```
