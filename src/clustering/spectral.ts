@@ -81,7 +81,7 @@ export class SpectralClustering
 
   /** Debug information (populated when using returnIntermediateSteps) */
   private debugInfo_: DebugInfo | null = null;
-  
+
   /** Whether to capture debug information (modular compatibility) */
   private captureDebugInfo: boolean = false;
 
@@ -118,10 +118,12 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
-  constructor(params: SpectralClusteringParams & { captureDebugInfo?: boolean }) {
+  constructor(
+    params: SpectralClusteringParams & { captureDebugInfo?: boolean },
+  ) {
     // Extract captureDebugInfo if provided (for modular compatibility)
     const { captureDebugInfo = false, ...clusteringParams } = params;
-    
+
     // Freeze user params to avoid accidental mutation downstream.
     this.params = { ...clusteringParams };
     this.captureDebugInfo = captureDebugInfo;
@@ -145,7 +147,7 @@ export class SpectralClustering
   async fit(_X: DataMatrix): Promise<void> {
     // Dispose previous state if the estimator is re-used.
     this.dispose();
-    
+
     // Reset debug info if capturing
     if (this.captureDebugInfo) {
       this.debugInfo_ = {};
@@ -169,7 +171,7 @@ export class SpectralClustering
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
     }
-    
+
     // Capture affinity statistics if requested
     if (this.captureDebugInfo) {
       const data = await this.affinityMatrix_.data();
@@ -180,7 +182,9 @@ export class SpectralClustering
         nnz,
         min: Math.min(...dataArray),
         max: Math.max(...dataArray),
-        mean: dataArray.reduce((a: number, b: number) => a + b, 0) / dataArray.length,
+        mean:
+          dataArray.reduce((a: number, b: number) => a + b, 0) /
+          dataArray.length,
       };
     }
 
@@ -217,13 +221,13 @@ export class SpectralClustering
       );
 
       // Component indicators are already normalized, no scaling needed
-      
+
       // Capture debug info for component indicators
       if (this.captureDebugInfo) {
         // For disconnected components, we don't have a traditional Laplacian spectrum
         // but we can still provide information about the components
         this.debugInfo_!.laplacianSpectrum = Array(numComponents).fill(0); // Components have eigenvalue 0
-        
+
         const embData = await U.data();
         const [n, k] = U.shape;
         const uniqueValuesPerDim: number[] = [];
@@ -249,10 +253,12 @@ export class SpectralClustering
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
         normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D, true),
       );
-      
+
       // Capture Laplacian spectrum if requested
       if (this.captureDebugInfo) {
-        const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
+        const { jacobi_eigen_decomposition } = await import(
+          '../utils/laplacian'
+        );
         const { eigenvalues } = await jacobi_eigen_decomposition(laplacian);
         // Take first 10 eigenvalues for spectrum
         const spectrum = eigenvalues.slice(0, Math.min(10, eigenvalues.length));
@@ -303,7 +309,7 @@ export class SpectralClustering
 
       // Use the scaled eigenvectors
       U = U_scaled;
-      
+
       // Capture embedding statistics if requested
       if (this.captureDebugInfo) {
         const embData = await U.data();
@@ -414,7 +420,7 @@ export class SpectralClustering
       await km.fit(U);
 
       this.labels_ = km.labels_ as number[];
-      
+
       // Capture clustering metrics if requested
       if (this.captureDebugInfo && km.inertia_ !== null) {
         this.debugInfo_!.clusteringMetrics = {
@@ -484,7 +490,9 @@ export class SpectralClustering
       nnz,
       min: Math.min(...affinityArray),
       max: Math.max(...affinityArray),
-      mean: affinityArray.reduce((a: number, b: number) => a + b, 0) / affinityArray.length,
+      mean:
+        affinityArray.reduce((a: number, b: number) => a + b, 0) /
+        affinityArray.length,
     };
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
@@ -495,8 +503,12 @@ export class SpectralClustering
 
     // Capture Laplacian spectrum
     const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
-    const { eigenvalues: laplacianEigenvalues } = await jacobi_eigen_decomposition(laplacian);
-    const spectrum = laplacianEigenvalues.slice(0, Math.min(10, laplacianEigenvalues.length));
+    const { eigenvalues: laplacianEigenvalues } =
+      await jacobi_eigen_decomposition(laplacian);
+    const spectrum = laplacianEigenvalues.slice(
+      0,
+      Math.min(10, laplacianEigenvalues.length),
+    );
     this.debugInfo_.laplacianSpectrum = spectrum;
 
     /* ---------------------------- 3) Embedding ----------------------------- */

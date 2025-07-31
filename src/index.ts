@@ -6,12 +6,12 @@ export * from './clustering/types';
 
 // Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
-export { 
+export {
   SpectralClustering,
   type LaplacianResult,
   type EmbeddingResult,
   type IntermediateSteps,
-  type DebugInfo 
+  type DebugInfo,
 } from './clustering/spectral';
 export { KMeans } from './clustering/kmeans';
 
