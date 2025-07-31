@@ -36,11 +36,14 @@ Native TypeScript implementation of clustering algorithms powered by TensorFlow.
 ### Install
 
 ```bash
-# Standard installation
-npm install clustering-js
+# Standard installation (macOS/Linux)
+npm install clustering-js @tensorflow/tfjs-node
+
+# Windows installation (recommended)
+npm install clustering-js @tensorflow/tfjs
 ```
 
-> **Note**: The package includes `@tensorflow/tfjs-node` for optimal Node.js performance. GPU acceleration support is planned for a future release.
+> **Note**: For Windows users or if you encounter native binding issues, see our [Windows Compatibility Guide](./WINDOWS_COMPATIBILITY.md). The library works with either `@tensorflow/tfjs-node` (faster, requires native bindings) or `@tensorflow/tfjs` (pure JavaScript, universal compatibility).
 
 ### Basic Usage
 
