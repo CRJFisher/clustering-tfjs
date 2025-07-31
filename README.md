@@ -1,6 +1,6 @@
-# clustering-js
+# clustering-tfjs
 
-[![npm version](https://badge.fury.io/js/clustering-js.svg)](https://www.npmjs.com/package/clustering-js)
+[![npm version](https://badge.fury.io/js/clustering-tfjs.svg)](https://www.npmjs.com/package/clustering-tfjs)
 [![Build Status](https://github.com/CRJFisher/clustering-js/workflows/CI/badge.svg)](https://github.com/CRJFisher/clustering-js/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
@@ -37,10 +37,10 @@ Native TypeScript implementation of clustering algorithms powered by TensorFlow.
 
 ```bash
 # Standard installation (macOS/Linux)
-npm install clustering-js @tensorflow/tfjs-node
+npm install clustering-tfjs @tensorflow/tfjs-node
 
 # Windows installation (recommended)
-npm install clustering-js @tensorflow/tfjs
+npm install clustering-tfjs @tensorflow/tfjs
 ```
 
 > **Note**: For Windows users or if you encounter native binding issues, see our [Windows Compatibility Guide](./WINDOWS_COMPATIBILITY.md). The library works with either `@tensorflow/tfjs-node` (faster, requires native bindings) or `@tensorflow/tfjs` (pure JavaScript, universal compatibility).
@@ -48,7 +48,7 @@ npm install clustering-js @tensorflow/tfjs
 ### Basic Usage
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 
 // Simple example
 const kmeans = new KMeans({ nClusters: 3 });
@@ -112,7 +112,7 @@ Ratio of between-cluster to within-cluster dispersion. Range: [0, ∞), higher i
 The library includes a built-in `findOptimalClusters` function that automatically determines the optimal number of clusters:
 
 ```typescript
-import { findOptimalClusters } from 'clustering-js';
+import { findOptimalClusters } from 'clustering-tfjs';
 
 // Find optimal k between 2 and 10 clusters
 const result = await findOptimalClusters(data, {
@@ -231,7 +231,7 @@ labels = kmeans.fit_predict(X)
 
 ```typescript
 // clustering-js
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 const kmeans = new KMeans({ nClusters: 3 });
 const labels = await kmeans.fitPredict(X);
 ```
