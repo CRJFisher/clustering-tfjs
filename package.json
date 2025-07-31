@@ -1,31 +1,90 @@
 {
   "name": "clustering-js",
   "version": "0.1.0",
-  "description": "Native TypeScript implementation of clustering algorithms (Agglomerative & Spectral) powered by TensorFlow.js",
+  "description": "High-performance TypeScript clustering algorithms (K-Means, Spectral, Agglomerative) with TensorFlow.js acceleration and scikit-learn compatibility",
+  "keywords": [
+    "clustering",
+    "machine-learning",
+    "kmeans",
+    "spectral-clustering",
+    "agglomerative-clustering",
+    "tensorflow",
+    "tensorflowjs",
+    "data-science",
+    "unsupervised-learning",
+    "scikit-learn",
+    "typescript",
+    "browser",
+    "nodejs"
+  ],
+  "homepage": "https://github.com/yourusername/clustering-js#readme",
+  "bugs": {
+    "url": "https://github.com/yourusername/clustering-js/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yourusername/clustering-js.git"
+  },
   "license": "MIT",
+  "author": "Your Name <your.email@example.com>",
   "main": "dist/index.js",
+  "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "node scripts/build.js",
+    "build:clean": "rm -rf dist",
     "dev": "ts-node src/index.ts",
     "test": "jest",
-    "lint": "eslint 'src/**/*.{ts,tsx}'",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
     "benchmark": "ts-node scripts/benchmark.ts",
     "benchmark:node": "ts-node scripts/benchmark.ts",
     "benchmark:native": "npm install @tensorflow/tfjs-node && ts-node scripts/benchmark.ts",
-    "benchmark:compare": "ts-node scripts/compare-benchmarks.ts"
+    "benchmark:compare": "ts-node scripts/compare-benchmarks.ts",
+    "prepublishOnly": "npm run lint && npm run type-check && npm run build && npm test",
+    "prepare": "npm run build",
+    "version": "npm run format && git add -A src",
+    "postversion": "git push && git push --tags",
+    "format": "prettier --write 'src/**/*.{ts,tsx}'",
+    "release": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish"
   },
   "dependencies": {
     "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow/tfjs-node": "^4.20.0",
     "ml-matrix": "^6.12.1"
   },
+  "peerDependencies": {
+    "@tensorflow/tfjs-node": "^4.20.0",
+    "@tensorflow/tfjs-node-gpu": "^4.20.0"
+  },
+  "peerDependenciesMeta": {
+    "@tensorflow/tfjs-node": {
+      "optional": true
+    },
+    "@tensorflow/tfjs-node-gpu": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@tensorflow/tfjs-node": "^4.20.0",
     "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.9",
+    "@types/puppeteer": "^5.4.7",
     "@typescript-eslint/eslint-plugin": "^6.7.0",
     "@typescript-eslint/parser": "^6.7.0",
     "eslint": "^8.50.0",
@@ -34,8 +93,12 @@
     "jest": "^29.6.0",
     "js-yaml": "^4.1.0",
     "prettier": "^3.0.0",
+    "puppeteer": "^24.15.0",
     "ts-jest": "^29.1.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

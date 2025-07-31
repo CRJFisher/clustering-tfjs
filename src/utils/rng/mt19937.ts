@@ -70,6 +70,7 @@ export class MT19937 {
     const bound = max >>> 0;
     const threshold = (0x100000000 - bound) % bound; // 2**32 == 0x100000000
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       const r = this.nextUint32();
       if (r >= threshold) {

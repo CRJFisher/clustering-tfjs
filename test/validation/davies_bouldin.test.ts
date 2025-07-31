@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 import { daviesBouldin, daviesBouldinEfficient } from "../../src/validation/davies_bouldin";
 
 describe("Davies-Bouldin Score", () => {

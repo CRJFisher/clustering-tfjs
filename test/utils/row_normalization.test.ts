@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 
 describe("Row normalization methods", () => {
   const eps = 1e-10;

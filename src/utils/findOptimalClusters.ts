@@ -36,7 +36,7 @@ export interface FindOptimalClustersOptions {
   /** Algorithm to use (default: 'kmeans') */
   algorithm?: 'kmeans' | 'spectral' | 'agglomerative';
   /** Algorithm-specific parameters */
-  algorithmParams?: Record<string, any>;
+  algorithmParams?: Record<string, unknown>;
   /** Metrics to use for evaluation (default: all) */
   metrics?: Array<'silhouette' | 'daviesBouldin' | 'calinskiHarabasz'>;
   /** Custom scoring function (default: silhouette + calinski - davies) */

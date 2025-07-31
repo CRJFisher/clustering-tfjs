@@ -1,7 +1,5 @@
 import puppeteer from 'puppeteer';
 import { createServer } from 'http';
-import { readFileSync } from 'fs';
-import { join } from 'path';
 
 export interface BrowserBenchmarkResult {
   algorithm: string;
@@ -90,7 +88,11 @@ export async function benchmarkInBrowser(
     server.listen(0, () => resolve());
   });
   
-  const port = (server.address() as any).port;
+  const address = server.address();
+  if (!address || typeof address !== 'object') {
+    throw new Error('Failed to get server address');
+  }
+  const port = address.port;
   
   // Launch headless browser
   const browser = await puppeteer.launch({
@@ -108,12 +110,14 @@ export async function benchmarkInBrowser(
     
     try {
       const result = await page.evaluate(
-        (cfg) => (window as any).runBenchmark(cfg),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (cfg: any) => (window as any).runBenchmark(cfg),
         config
       );
       results.push(result);
-    } catch (error) {
-      console.error(`Failed: ${error.message}`);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`Failed: ${errorMessage}`);
     }
   }
   

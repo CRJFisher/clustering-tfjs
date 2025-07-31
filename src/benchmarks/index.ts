@@ -55,14 +55,14 @@ export async function benchmarkAlgorithm(
   
   // Run clustering
   const start = performance.now();
-  let labels: number[];
+  let _labels: number[];
   
   switch (algorithm) {
     case 'kmeans': {
       const kmeans = new KMeans({ nClusters: config.centers, randomState: 42 });
       await kmeans.fit(X);
-      labels = Array.isArray(kmeans.labels_) ? kmeans.labels_ : 
-               await kmeans.labels_!.array() as number[];
+      _labels = Array.isArray(kmeans.labels_) ? kmeans.labels_ : 
+                await kmeans.labels_!.array() as number[];
       break;
     }
     case 'spectral': {
@@ -72,7 +72,7 @@ export async function benchmarkAlgorithm(
         randomState: 42 
       });
       await spectral.fit(X);
-      labels = spectral.labels_!;
+      _labels = spectral.labels_!;
       break;
     }
     case 'agglomerative': {
@@ -81,7 +81,7 @@ export async function benchmarkAlgorithm(
         linkage: 'average' 
       });
       await agglo.fit(X);
-      labels = Array.isArray(agglo.labels_) ? agglo.labels_ : 
+      _labels = Array.isArray(agglo.labels_) ? agglo.labels_ : 
                await agglo.labels_!.array() as number[];
       break;
     }
@@ -117,13 +117,18 @@ export async function getAvailableBackends(): Promise<string[]> {
   try {
     await import('@tensorflow/tfjs-node');
     backends.push('tensorflow');
-  } catch {}
+  } catch {
+    // tfjs-node not available, skip
+  }
   
   // Check if tfjs-node-gpu is available
   try {
-    const module = await import('@tensorflow/tfjs-node-gpu' as any);
-    if (module) backends.push('tensorflow-gpu');
-  } catch {}
+    // @ts-expect-error - tfjs-node-gpu may not be installed, this is expected
+    await import('@tensorflow/tfjs-node-gpu');
+    backends.push('tensorflow-gpu');
+  } catch {
+    // tfjs-node-gpu not available, skip
+  }
   
   return backends;
 }

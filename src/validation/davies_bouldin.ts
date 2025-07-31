@@ -29,8 +29,6 @@ export function daviesBouldin(
       ? Array.from(labels.dataSync() as Float32Array).map(l => Math.round(l))
       : labels as number[];
     
-    const n = data.shape[0];
-    
     // Get unique labels
     const uniqueLabels = Array.from(new Set(labelArray));
     const k = uniqueLabels.length;
@@ -141,8 +139,6 @@ export function daviesBouldinEfficient(
   const labelArray = labels instanceof tf.Tensor 
     ? Array.from(labels.dataSync() as Float32Array).map(l => Math.round(l))
     : labels as number[];
-  
-  const n = data.shape[0];
   
   // Get unique labels
   const uniqueLabels = Array.from(new Set(labelArray));

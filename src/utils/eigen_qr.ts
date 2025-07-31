@@ -195,7 +195,6 @@ export function tridiagonal_qr_eigen(
           const r2 = (d[j] - g) * s + 2 * c * b;
           p = s * r2;
           d[j + 1] = g + p;
-          const g2 = c * r2 - b;
           
           // Update eigenvectors
           if (computeVectors && V) {

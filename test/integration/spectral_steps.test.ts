@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 import { SpectralClusteringModular } from "../../src/clustering/spectral_modular";
 import * as fs from "fs";
 import * as path from "path";

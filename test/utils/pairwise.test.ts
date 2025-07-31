@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 
 import { pairwiseDistanceMatrix } from "../../src/utils/pairwise_distance";
 

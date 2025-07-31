@@ -24,7 +24,7 @@ export function analyzeBackendPerformance(results: BenchmarkResult[]): BackendCo
   }
   
   // Compare each backend against CPU baseline
-  for (const [key, groupResults] of grouped) {
+  for (const [_key, groupResults] of grouped) {
     const cpuResult = groupResults.find(r => r.backend === 'cpu');
     if (!cpuResult) continue;
     

@@ -21,10 +21,10 @@ export function arrayToTensor(
  * The returned value is a *copy* of the underlying data, so further
  * manipulations will not affect the original tensor.
  */
-export function tensorToArray(tensor: tf.Tensor): any {
+export function tensorToArray(tensor: tf.Tensor): number[] | number[][] | number[][][] {
   // Using .arraySync() is safe here because callers explicitly request the
   // data as a JS structure. For large tensors prefer the async variant.
-  return tensor.arraySync();
+  return tensor.arraySync() as number[] | number[][] | number[][][];
 }
 
 /* ------------------------------------------------------------------------- */
