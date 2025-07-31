@@ -206,10 +206,11 @@ async function release() {
 ${releaseNotes}
 
 ---
-This PR was created automatically by the release script. Once merged, it will trigger the release workflow which will:
-1. Create git tag (v${version})
-2. Publish to npm
-3. Create GitHub release`;
+This PR was created automatically by the release script. The tag ${tagName} has already been created and pushed.
+
+Once merged, the release workflow will:
+1. Publish to npm
+2. Create GitHub release with tag ${tagName}`;
   
   fs.writeFileSync(tempFile, prBody);
   
