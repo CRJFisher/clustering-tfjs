@@ -1,5 +1,5 @@
 // Central re-export hub for utility helpers.  This allows external code to
-// import from "clustering-js/utils" instead of deep paths.
+// import from "clustering-tfjs/utils" instead of deep paths.
 
 export { pairwiseDistanceMatrix } from './pairwise_distance';
 export { degree_vector, normalised_laplacian } from './laplacian';

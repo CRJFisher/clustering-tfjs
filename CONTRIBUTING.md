@@ -1,6 +1,6 @@
-# Contributing to clustering-js
+# Contributing to clustering-tfjs
 
-Thank you for your interest in contributing to clustering-js! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to clustering-tfjs! This document provides guidelines and instructions for contributing to the project.
 
 ## Table of Contents
 
@@ -31,8 +31,8 @@ By participating in this project, you agree to maintain a respectful and inclusi
 2. Clone your fork locally:
 
    ```bash
-   git clone https://github.com/YOUR_USERNAME/clustering-js.git
-   cd clustering-js
+   git clone https://github.com/YOUR_USERNAME/clustering-tfjs.git
+   cd clustering-tfjs
    ```
 
 3. Install dependencies:
@@ -267,7 +267,7 @@ When completing a task, add an "Implementation Notes" section:
 ## Project Structure
 
 ```
-clustering-js/
+clustering-tfjs/
 ├── src/
 │   ├── clustering/      # Algorithm implementations
 │   ├── utils/           # Helper functions
@@ -291,4 +291,4 @@ If you have questions:
 2. Review the task documentation in `backlog/`
 3. Ask in the PR or create an issue
 
-Thank you for contributing to clustering-js!
+Thank you for contributing to clustering-tfjs!

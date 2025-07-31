@@ -1,17 +1,17 @@
 # Basic Usage Examples
 
-This guide provides practical examples for using clustering-js in common scenarios.
+This guide provides practical examples for using clustering-tfjs in common scenarios.
 
 ## Installation
 
 ```bash
-npm install clustering-js
+npm install clustering-tfjs
 ```
 
 ## Simple K-Means Example
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 
 // Sample 2D data points
 const data = [
@@ -40,7 +40,7 @@ basicKMeans();
 ## Finding Optimal Number of Clusters
 
 ```typescript
-import { findOptimalClusters } from 'clustering-js';
+import { findOptimalClusters } from 'clustering-tfjs';
 
 async function findBestK() {
   const data = [
@@ -68,7 +68,7 @@ async function findBestK() {
 ## Working with Different Data Formats
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 import * as tf from '@tensorflow/tfjs-node';
 
 async function differentDataFormats() {
@@ -92,7 +92,7 @@ async function differentDataFormats() {
 ## Spectral Clustering for Non-Convex Shapes
 
 ```typescript
-import { SpectralClustering } from 'clustering-js';
+import { SpectralClustering } from 'clustering-tfjs';
 
 async function spectralExample() {
   // Generate two half-moons (non-convex shapes)
@@ -126,7 +126,7 @@ async function spectralExample() {
 ## Hierarchical Clustering
 
 ```typescript
-import { AgglomerativeClustering } from 'clustering-js';
+import { AgglomerativeClustering } from 'clustering-tfjs';
 
 async function hierarchicalExample() {
   // Customer segmentation data
@@ -172,7 +172,7 @@ async function hierarchicalExample() {
 ## Evaluating Clustering Quality
 
 ```typescript
-import { KMeans, silhouetteScore, daviesBouldin, calinskiHarabasz } from 'clustering-js';
+import { KMeans, silhouetteScore, daviesBouldin, calinskiHarabasz } from 'clustering-tfjs';
 
 async function evaluateClustering() {
   const data = [
@@ -208,7 +208,7 @@ async function evaluateClustering() {
 ## Handling Large Datasets
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 import * as tf from '@tensorflow/tfjs-node';
 
 async function largeDatesetClustering() {
@@ -249,7 +249,7 @@ async function largeDatesetClustering() {
 ## Custom Distance Metrics (Using Spectral)
 
 ```typescript
-import { SpectralClustering } from 'clustering-js';
+import { SpectralClustering } from 'clustering-tfjs';
 
 async function customAffinityExample() {
   // Time series data
@@ -277,7 +277,7 @@ async function customAffinityExample() {
 ## Error Handling
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 
 async function robustClustering() {
   const data = [[1, 2], [3, 4]];  // Only 2 points
