@@ -25,42 +25,46 @@ const path = require('path');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
-if (args.length < 2) {
-  console.error('Usage: node scripts/release.js patch|minor|major <description>');
-  console.error('       node scripts/release.js patch|minor|major --file <path>');
-  console.error('       node scripts/release.js <version> <description>');
-  console.error('       node scripts/release.js <version> --file <path>');
+
+// Default to patch if only description is provided
+let versionArg = 'patch';
+let descriptionStart = 0;
+
+if (args.length === 0) {
+  console.error('Usage: npm run release [patch|minor|major] <description>');
+  console.error('       npm run release <description>  (defaults to patch)');
+  console.error('       npm run release [patch|minor|major] --file <path>');
+  console.error('       npm run release <version> <description>');
+  console.error('\nExamples:');
+  console.error('  npm run release "Fix bug in kmeans"  # patch release');
+  console.error('  npm run release minor "Add new feature"');
+  console.error('  npm run release v1.2.3 "Custom version"');
   process.exit(1);
 }
 
-const versionArg = args[0];
-const isFile = args[1] === '--file';
-const descriptionOrPath = isFile ? args[2] : args.slice(1).join(' ');
+// Check if first arg is version type or version number
+if (args[0] && (
+  ['patch', 'minor', 'major'].includes(args[0]) || 
+  args[0].match(/^v?\d+\.\d+\.\d+/)
+)) {
+  versionArg = args[0];
+  descriptionStart = 1;
+}
 
-// Determine if we need to increment version or use specific version
+const isFile = args[descriptionStart] === '--file';
+const descriptionOrPath = isFile 
+  ? args[descriptionStart + 1] 
+  : args.slice(descriptionStart).join(' ');
+
+if (!descriptionOrPath) {
+  console.error('Error: Release description is required');
+  process.exit(1);
+}
+
+// These will be set after creating the branch
 let version;
 let tagName;
-
-if (['patch', 'minor', 'major'].includes(versionArg)) {
-  // Increment version using npm
-  console.log(`📦 Incrementing ${versionArg} version...`);
-  const output = execSync(`npm version ${versionArg} --no-git-tag-version`, { encoding: 'utf8' });
-  version = output.trim().replace(/^v/, '');
-  tagName = `v${version}`;
-  console.log(`   New version: ${version}`);
-} else {
-  // Use specific version
-  if (!versionArg.match(/^v?\d+\.\d+\.\d+/)) {
-    console.error('Error: Invalid version format. Use v0.1.0 or 0.1.0');
-    process.exit(1);
-  }
-  version = versionArg.replace(/^v/, '');
-  tagName = `v${version}`;
-  
-  // Update package.json with the new version
-  console.log(`📦 Setting version to ${version}...`);
-  execSync(`npm version ${version} --no-git-tag-version`, { encoding: 'utf8' });
-}
+let versionType;
 
 // Get release description
 let releaseNotes = '';
@@ -105,7 +109,7 @@ function checkGitHubCLI() {
 
 // Main release process
 async function release() {
-  console.log(`🚀 Starting release process for ${tagName}...`);
+  console.log(`🚀 Starting release process...`);
 
   // Check prerequisites
   if (!checkGitHubCLI()) {
@@ -133,17 +137,48 @@ async function release() {
   console.log('📥 Pulling latest changes...');
   run('git pull origin main');
 
+  // Create release branch first
+  console.log('🌿 Creating release branch...');
+  const tempBranchName = `release/temp-${Date.now()}`;
+  run(`git checkout -b ${tempBranchName}`);
+
+  // Now update the version on the branch
+  if (['patch', 'minor', 'major'].includes(versionArg)) {
+    // Increment version using npm
+    console.log(`📦 Incrementing ${versionArg} version...`);
+    const output = run(`npm version ${versionArg} --no-git-tag-version`);
+    version = output.trim().replace(/^v/, '');
+    tagName = `v${version}`;
+    console.log(`   New version: ${version}`);
+  } else {
+    // Use specific version
+    if (!versionArg.match(/^v?\d+\.\d+\.\d+/)) {
+      console.error('Error: Invalid version format. Use v0.1.0 or 0.1.0');
+      run('git checkout main');
+      run(`git branch -D ${tempBranchName}`);
+      process.exit(1);
+    }
+    version = versionArg.replace(/^v/, '');
+    tagName = `v${version}`;
+    
+    // Update package.json with the new version
+    console.log(`📦 Setting version to ${version}...`);
+    run(`npm version ${version} --no-git-tag-version`);
+  }
+
   // Check if tag already exists
   const existingTag = run(`git tag -l ${tagName}`, { ignoreError: true });
   if (existingTag && existingTag.trim() === tagName) {
     console.error(`Error: Tag ${tagName} already exists`);
+    // Clean up and exit
+    run('git checkout main');
+    run(`git branch -D ${tempBranchName}`);
     process.exit(1);
   }
 
-  // Create release branch
+  // Rename branch to final name
   const branchName = `release/${tagName}`;
-  console.log(`🌿 Creating release branch ${branchName}...`);
-  run(`git checkout -b ${branchName}`);
+  run(`git branch -m ${tempBranchName} ${branchName}`);
 
   // Commit the version change
   console.log('💾 Committing version change...');
