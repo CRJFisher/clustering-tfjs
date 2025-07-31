@@ -4,9 +4,15 @@ import { makeBlobs } from "../../src/datasets/synthetic";
 import * as tf from "../tensorflow-helper";
 
 describe("findOptimalClusters", () => {
-  beforeAll(() => {
-    // Set backend
-    tf.setBackend("tensorflow");
+  beforeAll(async () => {
+    // Set backend based on which TensorFlow version is loaded
+    if (process.env.TF_FALLBACK_MODE === 'true') {
+      // Using @tensorflow/tfjs (CPU backend)
+      await tf.setBackend("cpu");
+    } else {
+      // Using @tensorflow/tfjs-node
+      await tf.setBackend("tensorflow");
+    }
   });
 
   afterEach(() => {
