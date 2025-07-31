@@ -4,7 +4,7 @@ import type {
   AgglomerativeClusteringParams,
   BaseClustering,
 } from "./types";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../utils/tensorflow";
 import { pairwiseDistanceMatrix } from "../utils/pairwise_distance";
 import { update_distance_matrix } from "./linkage";
 

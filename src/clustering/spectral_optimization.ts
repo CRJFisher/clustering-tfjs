@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../utils/tensorflow";
 import type { SpectralClusteringParams, DataMatrix as _DataMatrix } from "./types";
 import { KMeans } from "./kmeans";
 

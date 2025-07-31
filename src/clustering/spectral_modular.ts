@@ -4,7 +4,7 @@ import type {
   SpectralClusteringParams,
   BaseClustering,
 } from "./types";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../utils/tensorflow";
 
 export interface LaplacianResult {
   laplacian: tf.Tensor2D;

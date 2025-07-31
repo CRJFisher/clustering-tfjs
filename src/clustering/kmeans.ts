@@ -4,7 +4,7 @@ import type {
   LabelVector,
   KMeansParams,
 } from "./types";
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../utils/tensorflow";
 
 /**
  * Extremely lightweight – yet reasonably efficient – K-Means implementation
