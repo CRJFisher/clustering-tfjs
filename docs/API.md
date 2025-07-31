@@ -1,6 +1,6 @@
 # API Reference
 
-Complete API documentation for clustering-js.
+Complete API documentation for clustering-tfjs.
 
 ## Table of Contents
 
@@ -55,7 +55,7 @@ new KMeans(params: KMeansParams)
 #### Example
 
 ```typescript
-import { KMeans } from 'clustering-js';
+import { KMeans } from 'clustering-tfjs';
 
 const kmeans = new KMeans({
   nClusters: 3,
@@ -96,7 +96,7 @@ new SpectralClustering(params: SpectralClusteringParams)
 #### Example
 
 ```typescript
-import { SpectralClustering } from 'clustering-js';
+import { SpectralClustering } from 'clustering-tfjs';
 
 const spectral = new SpectralClustering({
   nClusters: 2,
@@ -127,7 +127,7 @@ new AgglomerativeClustering(params: AgglomerativeParams)
 #### Example
 
 ```typescript
-import { AgglomerativeClustering } from 'clustering-js';
+import { AgglomerativeClustering } from 'clustering-tfjs';
 
 const agglo = new AgglomerativeClustering({
   nClusters: 3,
@@ -162,7 +162,7 @@ Silhouette score (range: [-1, 1], higher is better)
 #### Example
 
 ```typescript
-import { KMeans, silhouetteScore } from 'clustering-js';
+import { KMeans, silhouetteScore } from 'clustering-tfjs';
 
 const kmeans = new KMeans({ nClusters: 3 });
 const labels = await kmeans.fitPredict(data);
@@ -245,7 +245,7 @@ function findOptimalClusters(
 #### Example
 
 ```typescript
-import { findOptimalClusters } from 'clustering-js';
+import { findOptimalClusters } from 'clustering-tfjs';
 
 const result = await findOptimalClusters(data, {
   minClusters: 2,

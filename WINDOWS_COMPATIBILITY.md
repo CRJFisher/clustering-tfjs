@@ -8,14 +8,14 @@ This library uses TensorFlow.js for high-performance numerical computations. On 
 
 #### Linux/macOS
 ```bash
-npm install clustering-js @tensorflow/tfjs-node
+npm install clustering-tfjs @tensorflow/tfjs-node
 ```
 
 #### Windows
 Due to native binding compilation issues on Windows, we recommend using the pure JavaScript backend:
 
 ```bash
-npm install clustering-js @tensorflow/tfjs
+npm install clustering-tfjs @tensorflow/tfjs
 ```
 
 If you encounter errors like "The specified module could not be found" or "tfjs_binding.node", this is because `@tensorflow/tfjs-node` requires native bindings that may fail to compile on Windows.
