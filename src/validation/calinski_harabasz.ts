@@ -31,7 +31,6 @@ export function calinskiHarabasz(
       : labels as number[];
     
     const n = data.shape[0];
-    const nFeatures = data.shape[1];
     
     // Get unique labels and count
     const uniqueLabels = Array.from(new Set(labelArray));

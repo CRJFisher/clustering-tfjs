@@ -5,6 +5,7 @@ import type {
   BaseClustering,
 } from "./types";
 import * as tf from "@tensorflow/tfjs-node";
+import { compute_rbf_affinity, compute_knn_affinity } from "../utils/affinity";
 
 /**
  * Spectral clustering estimator skeleton.
@@ -53,7 +54,7 @@ export class SpectralClustering
       this.affinityMatrix_ = null;
     }
 
-    if (this.labels_ != null && (this.labels_ as any).dispose instanceof Function) {
+    if (this.labels_ != null && (this.labels_ as unknown as tf.Tensor).dispose instanceof Function) {
       // Only dispose if the labels are a Tensor (not plain array)
       (this.labels_ as unknown as tf.Tensor).dispose();
     }
@@ -378,13 +379,6 @@ export class SpectralClustering
       return X;
     }
 
-    // Import on-demand to avoid circular deps when this file is imported by
-    // the utils module (which is unlikely but safe).
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const {
-      compute_rbf_affinity,
-      compute_knn_affinity,
-    } = require("../utils/affinity") as typeof import("../utils/affinity");
 
     if (affinity === "rbf") {
       return compute_rbf_affinity(X, params.gamma);

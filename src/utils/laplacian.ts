@@ -169,9 +169,7 @@ export function jacobi_eigen_decomposition(
   };
 
   let iter = 0;
-  let lastOffDiag = Infinity;
   while (iter < maxIterations && offDiag(D) > tolerance) {
-    const currentOffDiag = offDiag(D);
     // Find largest off-diagonal element (by absolute value)
     let p = 0;
     let q = 1;
@@ -248,7 +246,6 @@ export function jacobi_eigen_decomposition(
     }
 
     iter += 1;
-    lastOffDiag = currentOffDiag;
   }
   
   if (iter === maxIterations) {
@@ -335,18 +332,6 @@ export function smallest_eigenvectors(
     //    them initially and discards them later after constructing the full
     //    embedding.  We mimic this contract so callers can remove the block
     //    in one go.
-
-    // Numerical tolerance for considering an eigenvalue as zero. The Jacobi
-    // solver accumulates rounding error; empirical experiments on test
-    // fixtures show the theoretical zero–eigenvalue often lands around
-    // 1e-2.  Align with scikit-learn default (1e-5) but relax slightly for
-    // single-precision floats.
-    const TOL = 1e-2;
-    let c = 0;
-    for (const v of deterministic_eigenpair_processing({ eigenvalues, eigenvectors }).eigenvalues) {
-      if (v <= TOL) c += 1;
-      else break;
-    }
 
     const n = vecSorted.length;
     // For spectral clustering, we want exactly k eigenvectors

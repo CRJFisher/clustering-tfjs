@@ -23,7 +23,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       : tf.tensor2d(X as number[][], undefined, "float32");
 
     // Build affinity matrix (reuse parent logic)
-    const computeAffinityMatrix = (SpectralClustering as any).computeAffinityMatrix;
+    const computeAffinityMatrix = (SpectralClustering as unknown as { computeAffinityMatrix: (X: tf.Tensor2D, params: SpectralClusteringParams) => tf.Tensor2D }).computeAffinityMatrix;
     this.affinityMatrix_ = computeAffinityMatrix(Xtensor, this.params);
 
     const affinitySum = (await this.affinityMatrix_!.sum().data())[0];

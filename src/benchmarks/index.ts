@@ -61,8 +61,8 @@ export async function benchmarkAlgorithm(
     case 'kmeans': {
       const kmeans = new KMeans({ nClusters: config.centers, randomState: 42 });
       await kmeans.fit(X);
-      labels = Array.isArray(kmeans.labels_) ? kmeans.labels_ : 
-               await kmeans.labels_!.array() as number[];
+      _labels = Array.isArray(kmeans.labels_) ? kmeans.labels_ : 
+                await kmeans.labels_!.array() as number[];
       break;
     }
     case 'spectral': {
@@ -72,7 +72,7 @@ export async function benchmarkAlgorithm(
         randomState: 42 
       });
       await spectral.fit(X);
-      labels = spectral.labels_!;
+      _labels = spectral.labels_!;
       break;
     }
     case 'agglomerative': {
@@ -123,6 +123,7 @@ export async function getAvailableBackends(): Promise<string[]> {
   
   // Check if tfjs-node-gpu is available
   try {
+    // @ts-expect-error - tfjs-node-gpu may not be installed, this is expected
     await import('@tensorflow/tfjs-node-gpu');
     backends.push('tensorflow-gpu');
   } catch {

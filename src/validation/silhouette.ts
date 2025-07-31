@@ -88,7 +88,7 @@ export function silhouetteScore(
       
       // Compute b(i): mean distance to nearest cluster
       let b = Infinity;
-      for (const [label, indices] of otherClusterIndices) {
+      for (const [_label, indices] of otherClusterIndices) {
         let meanDist = 0;
         for (const j of indices) {
           meanDist += distancesArray[i][j];
@@ -205,7 +205,7 @@ export function silhouetteScoreSubset(
     
     // Find nearest cluster
     let b = Infinity;
-    for (const [label, { sum, count }] of clusterDistances) {
+    for (const [_label, { sum, count }] of clusterDistances) {
       const meanDist = sum / count;
       if (meanDist < b) {
         b = meanDist;
