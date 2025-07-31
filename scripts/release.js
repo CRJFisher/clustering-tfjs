@@ -140,114 +140,62 @@ async function release() {
     process.exit(1);
   }
 
+  // Create release branch
+  const branchName = `release/${tagName}`;
+  console.log(`🌿 Creating release branch ${branchName}...`);
+  run(`git checkout -b ${branchName}`);
+
   // Commit the version change
   console.log('💾 Committing version change...');
   run('git add package.json package-lock.json');
   run(`git commit -m "chore: release ${version}"`);
 
-  // Create and push tag
-  console.log(`🏷️  Creating tag ${tagName}...`);
-  run(`git tag ${tagName}`);
+  // Push the branch
+  console.log('📤 Pushing release branch...');
+  run(`git push -u origin ${branchName}`);
+
+  // Create PR with release label
+  console.log('🔀 Creating pull request...');
   
-  console.log('📤 Pushing changes and tag to GitHub...');
-  run('git push origin main');
-  run(`git push origin ${tagName}`);
-
-  // Get the workflow run ID
-  console.log('⏳ Waiting for GitHub Actions workflow to start...');
-  
-  // Wait a bit for the workflow to be triggered
-  await new Promise(resolve => setTimeout(resolve, 5000));
-
-  // Find the workflow run
-  let workflowRunId = null;
-  let attempts = 0;
-  const maxAttempts = 12; // 1 minute total
-
-  while (!workflowRunId && attempts < maxAttempts) {
-    try {
-      // Get all recent workflow runs
-      const runsJson = run(`gh api repos/{owner}/{repo}/actions/runs --jq '.'`, { ignoreError: true });
-      if (runsJson) {
-        const runsData = JSON.parse(runsJson);
-        
-        // Find runs triggered by our tag
-        const tagRuns = runsData.workflow_runs.filter(run => 
-          run.head_branch === tagName || 
-          run.head_sha === run(`git rev-list -n 1 ${tagName}`, { ignoreError: true })?.trim()
-        );
-        
-        if (tagRuns.length > 0) {
-          // Get the most recent run
-          workflowRunId = tagRuns[0].id;
-          console.log(`Found workflow run: ${workflowRunId}`);
-        }
-      }
-    } catch (err) {
-      // Ignore JSON parse errors
-    }
-
-    if (!workflowRunId) {
-      attempts++;
-      console.log(`   Waiting for workflow to start... (${attempts}/${maxAttempts})`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  if (!workflowRunId) {
-    console.warn('⚠️  Could not find workflow run. You may need to update the release manually.');
-    console.log('Creating release anyway...');
-  } else {
-    // Monitor workflow status
-    console.log('📊 Monitoring workflow progress...');
-    let status = 'queued';
-    let conclusion = null;
-
-    while (status === 'queued' || status === 'in_progress') {
-      await new Promise(resolve => setTimeout(resolve, 10000)); // Check every 10 seconds
-      
-      try {
-        const runInfo = JSON.parse(run(`gh api repos/{owner}/{repo}/actions/runs/${workflowRunId}`));
-        status = runInfo.status;
-        conclusion = runInfo.conclusion;
-        
-        console.log(`   Status: ${status}${conclusion ? ` (${conclusion})` : ''}`);
-      } catch (err) {
-        console.error('Error checking workflow status:', err.message);
-        break;
-      }
-    }
-
-    if (conclusion !== 'success') {
-      console.error(`❌ Workflow failed with status: ${conclusion}`);
-      console.error('The tag has been pushed, but the npm publish may have failed.');
-      console.error(`Check the workflow at: https://github.com/{owner}/{repo}/actions/runs/${workflowRunId}`);
-      process.exit(1);
-    }
-
-    console.log('✅ Workflow completed successfully!');
-  }
-
-  // Create or update GitHub release
-  console.log('📝 Creating GitHub release...');
-  
-  // Write release notes to a temporary file to avoid shell escaping issues
+  // Write release notes to a temporary file for PR body
   const tempFile = path.join(require('os').tmpdir(), `release-notes-${Date.now()}.md`);
-  fs.writeFileSync(tempFile, releaseNotes);
+  const prBody = `## Release ${tagName}
+
+${releaseNotes}
+
+---
+This PR was created automatically by the release script. Once merged, it will trigger:
+- NPM package publication
+- GitHub release creation
+- Git tag creation`;
+  
+  fs.writeFileSync(tempFile, prBody);
   
   try {
-    run(`gh release create ${tagName} --title "${tagName}" --notes-file "${tempFile}"`);
-    console.log(`✨ Release ${tagName} created successfully!`);
-    console.log(`View at: https://github.com/{owner}/{repo}/releases/tag/${tagName}`);
-  } catch (err) {
-    // Release might already exist if manually created
-    console.log('Release may already exist, attempting to edit...');
+    // Create PR with the release label
+    const prUrl = run(
+      `gh pr create --title "chore: release ${version}" --body-file "${tempFile}" --label "release" --base main`
+    ).trim();
+    
+    console.log(`✨ Pull request created: ${prUrl}`);
+    console.log('\n📋 Next steps:');
+    console.log('   1. Review the PR');
+    console.log('   2. Merge when ready');
+    console.log('   3. The release workflow will automatically:');
+    console.log('      - Create git tag');
+    console.log('      - Publish to npm');
+    console.log('      - Create GitHub release');
+    
+    // Open PR in browser
+    console.log('\n🌐 Opening PR in browser...');
     try {
-      run(`gh release edit ${tagName} --notes-file "${tempFile}"`);
-      console.log('✨ Release notes updated successfully!');
-    } catch (err2) {
-      console.error('Failed to create or update release:', err2.message);
+      run(`gh pr view --web`);
+    } catch (err) {
+      // Ignore if browser fails to open
     }
+  } catch (err) {
+    console.error('Failed to create PR:', err.message);
+    console.error('You may need to create the PR manually');
   } finally {
     // Clean up temp file
     try {
@@ -257,9 +205,9 @@ async function release() {
     }
   }
 
-  console.log('\n🎉 Release process complete!');
+  console.log('\n🎉 Release preparation complete!');
   console.log(`   Version: ${tagName}`);
-  console.log(`   Package: https://www.npmjs.com/package/clustering-js`);
+  console.log(`   Branch: ${branchName}`);
 }
 
 // Run the release

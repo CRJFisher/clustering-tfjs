@@ -1,24 +1,39 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  pull_request:
+    types: [closed]
+    branches: [main]
 
 jobs:
   release:
+    # Only run if PR was merged and has the 'release' label
+    if: github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'release')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history for tagging
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+      
+      - name: Get version from package.json
+        id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+      
+      - name: Create and push tag
+        run: |
+          git config user.name github-actions
+          git config user.email github-actions@github.com
+          git tag v${{ steps.version.outputs.version }}
+          git push origin v${{ steps.version.outputs.version }}
       
       - name: Install dependencies
         run: npm ci
@@ -34,11 +49,29 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       
+      - name: Extract release notes from PR
+        id: release_notes
+        run: |
+          # Save PR body to file
+          cat << 'EOF' > pr_body.txt
+          ${{ github.event.pull_request.body }}
+          EOF
+          
+          # Extract content between "## Release" and "---"
+          sed -n '/^## Release/,/^---/p' pr_body.txt | sed '1d;$d' > release_notes.md
+          
+          # If no release notes found, use default
+          if [ ! -s release_notes.md ]; then
+            echo "Release v${{ steps.version.outputs.version }}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details." >> release_notes.md
+          fi
+      
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ github.ref_name }}
-          body: |
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Release v${{ steps.version.outputs.version }}
+          body_path: release_notes.md
           draft: false
           prerelease: false
