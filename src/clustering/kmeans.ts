@@ -45,6 +45,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
   /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
   private static makeRandomStream(seed?: number) {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { make_random_stream } = require("../utils/rng");
     return make_random_stream(seed);
   }
@@ -158,7 +159,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
         const localTrials = 2 + Math.floor(Math.log(K));
         const cumulativeDistances: number[] = [];
         let cumSum = 0;
-        for (let d of distances) {
+        for (const d of distances) {
           cumSum += d;
           cumulativeDistances.push(cumSum);
         }

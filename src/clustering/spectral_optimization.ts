@@ -1,5 +1,5 @@
 import * as tf from "@tensorflow/tfjs-node";
-import type { SpectralClusteringParams, DataMatrix } from "./types";
+import type { SpectralClusteringParams, DataMatrix as _DataMatrix } from "./types";
 import { KMeans } from "./kmeans";
 
 /**

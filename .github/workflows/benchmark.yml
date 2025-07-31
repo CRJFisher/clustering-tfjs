@@ -7,6 +7,11 @@ on:
     types: [opened, synchronize]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
 jobs:
   benchmark:
     runs-on: ubuntu-latest
@@ -15,10 +20,10 @@ jobs:
         node-version: [18.x, 20.x]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Use Node.js ${{ matrix.node-version }}
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
     
@@ -32,30 +37,49 @@ jobs:
       run: npm run benchmark:node
     
     - name: Upload benchmark results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-results-${{ matrix.node-version }}
-        path: benchmark-results/
+        path: benchmarks/
     
     - name: Comment PR with results
       if: github.event_name == 'pull_request'
-      uses: actions/github-script@v6
+      uses: actions/github-script@v7
+      continue-on-error: true
       with:
         script: |
           const fs = require('fs');
-          const results = fs.readdirSync('benchmark-results')
+          const path = require('path');
+          
+          const benchmarksDir = 'benchmarks';
+          if (!fs.existsSync(benchmarksDir)) {
+            console.log('No benchmark results found');
+            return;
+          }
+          
+          const results = fs.readdirSync(benchmarksDir)
             .filter(f => f.endsWith('.md'))
             .sort()
             .pop();
           
           if (results) {
-            const content = fs.readFileSync(`benchmark-results/${results}`, 'utf8');
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## Benchmark Results\n\n${content}`
-            });
+            const content = fs.readFileSync(path.join(benchmarksDir, results), 'utf8');
+            
+            // Try to comment on PR
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## Benchmark Results\n\n${content}`
+              });
+              console.log('Successfully posted benchmark results to PR');
+            } catch (error) {
+              console.log('Could not post benchmark results to PR:', error.message);
+              console.log('This is usually due to permission restrictions on forks');
+              console.log('\n--- Benchmark Results ---\n');
+              console.log(content);
+            }
           }
 
   benchmark-native:
@@ -72,10 +96,10 @@ jobs:
             install-cmd: npm ci --build-from-source
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Use Node.js 20.x
-      uses: actions/setup-node@v3
+      uses: actions/setup-node@v4
       with:
         node-version: 20.x
     
@@ -94,7 +118,7 @@ jobs:
       continue-on-error: true
     
     - name: Upload results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: benchmark-native-${{ matrix.os }}
-        path: benchmark-results/
+        path: benchmarks/

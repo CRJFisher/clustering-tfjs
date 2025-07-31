@@ -1,4 +1,4 @@
-import * as tf from "@tensorflow/tfjs-node";
+import * as tf from "../tensorflow-helper";
 
 import {
   compute_rbf_affinity,

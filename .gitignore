@@ -32,3 +32,4 @@ trace_*.py
 
 # Benchmark results (kept locally)
 benchmark-results/
+CLAUDE.local.md
