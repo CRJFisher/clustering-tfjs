@@ -2,7 +2,9 @@
 
 /**
  * Release automation script
- * Handles version incrementing, tag creation, monitors GitHub Actions, and updates release notes
+ * Handles version incrementing, tag creation, and PR creation with release label
+ * 
+ * Can be run from any branch - no need to be on main
  * 
  * Usage:
  *   npm run release patch "Bug fixes and performance improvements"
@@ -61,10 +63,9 @@ if (!descriptionOrPath) {
   process.exit(1);
 }
 
-// These will be set after creating the branch
+// These will be set after version calculation
 let version;
 let tagName;
-let versionType;
 
 // Get release description
 let releaseNotes = '';
@@ -118,12 +119,9 @@ async function release() {
     process.exit(1);
   }
 
-  // Ensure we're on main branch
+  // Get current branch
   const currentBranch = run('git branch --show-current').trim();
-  if (currentBranch !== 'main') {
-    console.error(`Error: Must be on main branch. Currently on: ${currentBranch}`);
-    process.exit(1);
-  }
+  console.log(`📍 Creating release from branch: ${currentBranch}`);
 
   // Ensure working directory is clean
   const gitStatus = run('git status --porcelain').trim();
@@ -133,22 +131,12 @@ async function release() {
     process.exit(1);
   }
 
-  // Pull latest changes
-  console.log('📥 Pulling latest changes...');
-  run('git pull origin main');
-
-  // Create release branch first
-  console.log('🌿 Creating release branch...');
-  const tempBranchName = `release/temp-${Date.now()}`;
-  run(`git checkout -b ${tempBranchName}`);
-
   // Read current version from package.json
   const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const currentVersion = packageJson.version;
   
-  // Now update the version on the branch
+  // Calculate new version
   if (['patch', 'minor', 'major'].includes(versionArg)) {
-    // Calculate new version
     console.log(`📦 Incrementing ${versionArg} version from ${currentVersion}...`);
     const [major, minor, patch] = currentVersion.split('.').map(Number);
     
@@ -166,13 +154,18 @@ async function release() {
     // Use specific version
     if (!versionArg.match(/^v?\d+\.\d+\.\d+/)) {
       console.error('Error: Invalid version format. Use v0.1.0 or 0.1.0');
-      run('git checkout main');
-      run(`git branch -D ${tempBranchName}`);
       process.exit(1);
     }
     version = versionArg.replace(/^v/, '');
     tagName = `v${version}`;
     console.log(`📦 Setting version to ${version}...`);
+  }
+
+  // Check if tag already exists
+  const existingTag = run(`git tag -l ${tagName}`, { ignoreError: true });
+  if (existingTag && existingTag.trim() === tagName) {
+    console.error(`Error: Tag ${tagName} already exists`);
+    process.exit(1);
   }
   
   // Update package.json directly
@@ -189,28 +182,19 @@ async function release() {
     fs.writeFileSync('package-lock.json', JSON.stringify(packageLock, null, 2) + '\n');
   }
 
-  // Check if tag already exists
-  const existingTag = run(`git tag -l ${tagName}`, { ignoreError: true });
-  if (existingTag && existingTag.trim() === tagName) {
-    console.error(`Error: Tag ${tagName} already exists`);
-    // Clean up and exit
-    run('git checkout main');
-    run(`git branch -D ${tempBranchName}`);
-    process.exit(1);
-  }
-
-  // Rename branch to final name
-  const branchName = `release/${tagName}`;
-  run(`git branch -m ${tempBranchName} ${branchName}`);
-
   // Commit the version change
   console.log('💾 Committing version change...');
   run('git add package.json package-lock.json');
   run(`git commit -m "chore: release ${version}"`);
 
-  // Push the branch
-  console.log('📤 Pushing release branch...');
-  run(`git push -u origin ${branchName}`);
+  // Create and push tag
+  console.log('🏷️  Creating tag...');
+  run(`git tag ${tagName}`);
+
+  // Push the branch and tag
+  console.log('📤 Pushing branch and tag...');
+  run(`git push origin ${currentBranch}`);
+  run(`git push origin ${tagName}`);
 
   // Create PR with release label
   console.log('🔀 Creating pull request...');
@@ -222,10 +206,10 @@ async function release() {
 ${releaseNotes}
 
 ---
-This PR was created automatically by the release script. Once merged, it will trigger:
-- NPM package publication
-- GitHub release creation
-- Git tag creation`;
+This PR was created automatically by the release script. Once merged, it will trigger the release workflow which will:
+1. Create git tag (v${version})
+2. Publish to npm
+3. Create GitHub release`;
   
   fs.writeFileSync(tempFile, prBody);
   
@@ -240,7 +224,6 @@ This PR was created automatically by the release script. Once merged, it will tr
     console.log('   1. Review the PR');
     console.log('   2. Merge when ready');
     console.log('   3. The release workflow will automatically:');
-    console.log('      - Create git tag');
     console.log('      - Publish to npm');
     console.log('      - Create GitHub release');
     
@@ -265,7 +248,7 @@ This PR was created automatically by the release script. Once merged, it will tr
 
   console.log('\n🎉 Release preparation complete!');
   console.log(`   Version: ${tagName}`);
-  console.log(`   Branch: ${branchName}`);
+  console.log(`   Branch: ${currentBranch}`);
 }
 
 // Run the release
