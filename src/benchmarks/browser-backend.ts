@@ -89,7 +89,10 @@ export async function benchmarkInBrowser(
   });
   
   const address = server.address();
-  const port = address && typeof address === 'object' ? address.port : DEFAULT_PORT;
+  if (!address || typeof address !== 'object') {
+    throw new Error('Failed to get server address');
+  }
+  const port = address.port;
   
   // Launch headless browser
   const browser = await puppeteer.launch({
