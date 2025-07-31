@@ -17,13 +17,13 @@
     "browser",
     "nodejs"
   ],
-  "homepage": "https://github.com/yourusername/clustering-js#readme",
+  "homepage": "https://github.com/CRJFisher/clustering-tfjs#readme",
   "bugs": {
-    "url": "https://github.com/yourusername/clustering-js/issues"
+    "url": "https://github.com/CRJFisher/clustering-tfjs/issues"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/yourusername/clustering-js.git"
+    "url": "git+https://github.com/CRJFisher/clustering-tfjs.git"
   },
   "license": "MIT",
   "author": "Your Name <your.email@example.com>",
