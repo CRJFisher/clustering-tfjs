@@ -378,7 +378,7 @@ export class SpectralClustering
   /*                       Affinity matrix utilities                       */
   /* ------------------------------------------------------------------- */
 
-  private static computeAffinityMatrix(
+  static computeAffinityMatrix(
     X: tf.Tensor2D,
     params: SpectralClusteringParams,
   ): tf.Tensor2D {
@@ -408,7 +408,7 @@ export class SpectralClustering
   }
 
   /** Returns defaulted k when undefined */
-  private static defaultNeighbors(
+  static defaultNeighbors(
     params: SpectralClusteringParams,
     nSamples: number,
   ): number {
@@ -487,7 +487,7 @@ export class SpectralClustering
    *   • Must be **symmetric** (within tolerance)
    *   • Must be **non-negative** (entries ≥ 0)
    */
-  private static validateAffinityMatrix(A: tf.Tensor2D): void {
+  static validateAffinityMatrix(A: tf.Tensor2D): void {
     if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
       throw new Error('Affinity matrix must be square (n × n).');
     }
