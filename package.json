@@ -57,8 +57,6 @@
     "benchmark:compare": "ts-node scripts/compare-benchmarks.ts",
     "prepublishOnly": "npm run lint && npm run type-check && npm run build && npm test",
     "prepare": "npm run build",
-    "version": "npm run format && git add -A src",
-    "postversion": "git push && git push --tags",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
     "release": "node scripts/release.js"
   },

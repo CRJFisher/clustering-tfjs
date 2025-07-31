@@ -142,12 +142,24 @@ async function release() {
   const tempBranchName = `release/temp-${Date.now()}`;
   run(`git checkout -b ${tempBranchName}`);
 
+  // Read current version from package.json
+  const packageJson = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+  const currentVersion = packageJson.version;
+  
   // Now update the version on the branch
   if (['patch', 'minor', 'major'].includes(versionArg)) {
-    // Increment version using npm
-    console.log(`📦 Incrementing ${versionArg} version...`);
-    const output = run(`npm version ${versionArg} --no-git-tag-version`);
-    version = output.trim().replace(/^v/, '');
+    // Calculate new version
+    console.log(`📦 Incrementing ${versionArg} version from ${currentVersion}...`);
+    const [major, minor, patch] = currentVersion.split('.').map(Number);
+    
+    if (versionArg === 'patch') {
+      version = `${major}.${minor}.${patch + 1}`;
+    } else if (versionArg === 'minor') {
+      version = `${major}.${minor + 1}.0`;
+    } else if (versionArg === 'major') {
+      version = `${major + 1}.0.0`;
+    }
+    
     tagName = `v${version}`;
     console.log(`   New version: ${version}`);
   } else {
@@ -160,10 +172,21 @@ async function release() {
     }
     version = versionArg.replace(/^v/, '');
     tagName = `v${version}`;
-    
-    // Update package.json with the new version
     console.log(`📦 Setting version to ${version}...`);
-    run(`npm version ${version} --no-git-tag-version`);
+  }
+  
+  // Update package.json directly
+  packageJson.version = version;
+  fs.writeFileSync('package.json', JSON.stringify(packageJson, null, 2) + '\n');
+  
+  // Also update package-lock.json if it exists
+  if (fs.existsSync('package-lock.json')) {
+    const packageLock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+    packageLock.version = version;
+    if (packageLock.packages && packageLock.packages['']) {
+      packageLock.packages[''].version = version;
+    }
+    fs.writeFileSync('package-lock.json', JSON.stringify(packageLock, null, 2) + '\n');
   }
 
   // Check if tag already exists
