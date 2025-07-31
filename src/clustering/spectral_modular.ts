@@ -5,6 +5,7 @@ import type {
   BaseClustering,
 } from './types';
 import * as tf from '@tensorflow/tfjs-node';
+import { SpectralClustering } from './spectral';
 
 export interface LaplacianResult {
   laplacian: tf.Tensor2D;
@@ -314,18 +315,8 @@ export class SpectralClusteringModular
     X: tf.Tensor2D,
     params: SpectralClusteringParams,
   ): tf.Tensor2D {
-    // Import the original implementation to avoid code duplication
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { SpectralClustering } =
-      require('./spectral') as typeof import('./spectral');
-    return (
-      SpectralClustering as unknown as {
-        computeAffinityMatrix: (
-          X: tf.Tensor2D,
-          params: SpectralClusteringParams,
-        ) => tf.Tensor2D;
-      }
-    ).computeAffinityMatrix(X, params);
+    // Reuse the implementation from SpectralClustering
+    return SpectralClustering.computeAffinityMatrix(X, params);
   }
 }
 
