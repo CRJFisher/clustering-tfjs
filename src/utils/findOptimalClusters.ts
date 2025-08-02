@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { KMeans } from '../clustering/kmeans';
 import { SpectralClustering } from '../clustering/spectral';
 import { AgglomerativeClustering } from '../clustering/agglomerative';

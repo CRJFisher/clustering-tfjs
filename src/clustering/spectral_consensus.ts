@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { SpectralClustering } from './spectral';
 import {
   DataMatrix,

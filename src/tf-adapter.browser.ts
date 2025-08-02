@@ -5,16 +5,11 @@
  * It expects users to have loaded @tensorflow/tfjs separately.
  */
 
-import { getTensorFlow } from './tf-backend';
+// In the browser build, webpack is configured to treat @tensorflow/tfjs as external
+// and map it to the global 'tf' object (see webpack.config.browser.js externals)
+// So we can directly import and re-export it
 
-// Create a proxy that will get TensorFlow on demand
-const tf = new Proxy({} as unknown as typeof import('@tensorflow/tfjs'), {
-  get(target, prop) {
-    const tfInstance = getTensorFlow();
-    return tfInstance[prop as keyof typeof tfInstance];
-  }
-});
+import * as tf from '@tensorflow/tfjs';
 
 export default tf;
-// Re-export types from core
-export * from '@tensorflow/tfjs-core';
+export * from '@tensorflow/tfjs';

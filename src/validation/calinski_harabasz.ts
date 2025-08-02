@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
 import { isTensor } from '../utils/tensor-utils';
 

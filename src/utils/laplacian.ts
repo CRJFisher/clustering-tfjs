@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 
 import { deterministic_eigenpair_processing } from './eigen_post';
 

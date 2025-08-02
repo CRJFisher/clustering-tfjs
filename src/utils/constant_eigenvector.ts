@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 
 /**
  * Creates the constant eigenvector for connected graphs in spectral clustering.
