@@ -96,22 +96,29 @@ jobs:
                     }
                     
                     // Test KMeans
+                    console.log('Creating KMeans instance...');
                     const kmeans = new Clustering.KMeans({ nClusters: 2 });
                     const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
+                    console.log('Fitting KMeans with data:', data);
                     const result = await kmeans.fit(data);
                     
                     console.log('KMeans successful with', actualBackend);
                     console.log('Centroids:', result.centroids);
                     
                     // Test SpectralClustering
+                    console.log('Creating SpectralClustering instance...');
                     const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
+                    console.log('Fitting SpectralClustering...');
                     const spectralResult = await spectral.fit(data);
                     console.log('SpectralClustering successful with', actualBackend);
                     
                     window.testPassed = true;
                   } catch (error) {
                     console.error('Test failed:', error);
-                    window.testError = error.message;
+                    console.error('Error stack:', error.stack);
+                    console.error('TensorFlow available?', typeof tf !== 'undefined');
+                    console.error('tf.Tensor available?', typeof tf !== 'undefined' && tf.Tensor);
+                    window.testError = error.message + ' | Stack: ' + error.stack;
                   }
                 }
                 
