@@ -14,7 +14,7 @@ export function isTensor(value: unknown): value is tf.Tensor {
   }
   
   // Check for tensor-like properties
-  const obj = value as any;
+  const obj = value as Record<string, unknown>;
   return (
     typeof obj.dtype === 'string' &&
     typeof obj.shape === 'object' &&

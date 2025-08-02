@@ -107,7 +107,7 @@ async function loadBackend(config: BackendConfig): Promise<typeof tfType> {
   // Set custom flags if provided
   if (config.flags) {
     Object.entries(config.flags).forEach(([flag, value]) => {
-      tf.env().setFlags({ [flag]: value as any });
+      tf.env().setFlags({ [flag]: value as string | number | boolean });
     });
   }
   
