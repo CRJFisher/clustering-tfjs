@@ -1,0 +1,255 @@
+name: Backend Matrix Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  browser-backend-matrix:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        backend: [cpu, webgl, wasm]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build browser bundle
+        run: npm run build:browser
+      
+      - name: Install test dependencies
+        run: |
+          echo "Installing test dependencies for backend: ${{ matrix.backend }}"
+          npm install puppeteer express --save-dev
+          if [[ "${{ matrix.backend }}" == "wasm" ]]; then
+            echo "Installing WASM backend..."
+            npm install @tensorflow/tfjs-backend-wasm --save-dev
+          fi
+          echo "Dependencies installed:"
+          ls -la node_modules/ | grep -E "(puppeteer|express|tfjs)" || true
+          echo "Checking express specifically:"
+          ls -la node_modules/express/ || echo "Express not found in node_modules"
+        shell: bash
+      
+      - name: Test ${{ matrix.backend }} backend
+        run: |
+          cat > test-backend-${{ matrix.backend }}.js << 'EOF'
+          const puppeteer = require('puppeteer');
+          const express = require('express');
+          const path = require('path');
+          const fs = require('fs');
+          
+          // Create a simple HTTP server to serve files
+          const app = express();
+          app.use('/dist', express.static('dist'));
+          app.use('/node_modules', express.static('node_modules'));
+          
+          const server = app.listen(0, async () => {
+            const port = server.address().port;
+            console.log(`Test server running on port ${port}`);
+            
+            const browser = await puppeteer.launch({ 
+              headless: 'new',
+              args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+            });
+            
+            try {
+              const page = await browser.newPage();
+              
+              // Enable console logging
+              page.on('console', msg => console.log('Browser:', msg.text()));
+              page.on('pageerror', error => console.error('Browser Error:', error));
+              
+              // Create test HTML
+              const html = `<!DOCTYPE html>
+              <html>
+              <head>
+                <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+                ${process.env.TEST_BACKEND === 'wasm' ? '<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm/dist/tf-backend-wasm.js"></script>' : ''}
+                <script src="/dist/clustering.browser.js"></script>
+              </head>
+            <body>
+              <script>
+                async function test() {
+                  try {
+                    // For WASM backend, we need to set the WASM path
+                    if ('${process.env.TEST_BACKEND}' === 'wasm' && window.tf) {
+                      await tf.setBackend('wasm');
+                      await tf.ready();
+                    }
+                    
+                    // Wait for ClusteringTFJS to be available
+                    if (!window.ClusteringTFJS) {
+                      throw new Error('ClusteringTFJS library not loaded');
+                    }
+                    
+                    // Extract Clustering namespace
+                    const { Clustering } = window.ClusteringTFJS;
+                    
+                    // Initialize with specific backend
+                    await Clustering.init({ backend: '${process.env.TEST_BACKEND}' });
+                    
+                    // Verify backend
+                    const actualBackend = tf.getBackend();
+                    console.log('Initialized backend:', actualBackend);
+                    
+                    if (actualBackend !== '${process.env.TEST_BACKEND}') {
+                      throw new Error(\`Expected backend ${process.env.TEST_BACKEND}, got \${actualBackend}\`);
+                    }
+                    
+                    // Test KMeans
+                    console.log('Creating KMeans instance...');
+                    const kmeans = new Clustering.KMeans({ nClusters: 2 });
+                    const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
+                    console.log('Fitting KMeans with data:', data);
+                    const result = await kmeans.fit(data);
+                    
+                    console.log('KMeans successful with', actualBackend);
+                    console.log('Centroids:', result.centroids);
+                    
+                    // Test SpectralClustering
+                    console.log('Creating SpectralClustering instance...');
+                    const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
+                    console.log('Fitting SpectralClustering...');
+                    const spectralResult = await spectral.fit(data);
+                    console.log('SpectralClustering successful with', actualBackend);
+                    
+                    window.testPassed = true;
+                  } catch (error) {
+                    console.error('Test failed:', error);
+                    console.error('Error stack:', error.stack);
+                    console.error('TensorFlow available?', typeof tf !== 'undefined');
+                    console.error('tf.Tensor available?', typeof tf !== 'undefined' && tf.Tensor);
+                    window.testError = error.message + ' | Stack: ' + error.stack;
+                  }
+                }
+                
+                // Wait for all scripts to load
+                window.addEventListener('load', () => {
+                  setTimeout(test, 100);
+                });
+              </script>
+            </body>
+            </html>`;
+            
+              // Save the HTML to a file first
+              fs.writeFileSync('test.html', html);
+              app.get('/test.html', (req, res) => res.send(html));
+              
+              await page.goto(`http://localhost:${port}/test.html`);
+              
+              // Wait for test completion
+              await page.waitForFunction(
+                () => window.testPassed !== undefined || window.testError !== undefined,
+                { timeout: 30000 }
+              );
+              
+              // Check results
+              const result = await page.evaluate(() => ({
+                passed: window.testPassed,
+                error: window.testError,
+                backend: tf.getBackend()
+              }));
+              
+              if (result.error) {
+                console.error('Test failed:', result.error);
+                process.exit(1);
+              }
+              
+              console.log(`✅ ${process.env.TEST_BACKEND} backend test passed`);
+              console.log(`   Active backend: ${result.backend}`);
+              
+            } catch (error) {
+              console.error('Test error:', error);
+              process.exit(1);
+            } finally {
+              await browser.close();
+              server.close();
+            }
+          });
+          EOF
+          
+          TEST_BACKEND=${{ matrix.backend }} node test-backend-${{ matrix.backend }}.js
+
+  node-all-backends:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build
+        run: npm run build:multi
+      
+      - name: Verify Node.js bundle exists
+        run: |
+          if [ ! -f dist/clustering.node.js ]; then
+            echo "Error: dist/clustering.node.js not found!"
+            ls -la dist/
+            exit 1
+          fi
+      
+      - name: Test backend fallback chain
+        run: |
+          cat > test-fallback.js << 'EOF'
+          // Test that the fallback chain works correctly
+          const { Clustering } = require('./dist/clustering.node.js');
+          
+          async function testFallback() {
+            console.log('Testing backend fallback chain...');
+            
+            // Test 1: No backends installed - should use pure JS
+            try {
+              await Clustering.init();
+              console.log('✅ Fallback to pure JS successful');
+              console.log('   Platform:', Clustering.platform);
+              console.log('   Features:', Clustering.features);
+            } catch (error) {
+              console.error('❌ Pure JS fallback failed:', error);
+              process.exit(1);
+            }
+            
+            // Test 2: With tfjs-node installed
+            const { execSync } = require('child_process');
+            execSync('npm install @tensorflow/tfjs-node --no-save', { stdio: 'inherit' });
+            
+            // Re-import to get fresh module
+            delete require.cache[require.resolve('./dist/clustering.node.js')];
+            const { Clustering: ClusteringNode } = require('./dist/clustering.node.js');
+            
+            try {
+              await ClusteringNode.init();
+              console.log('✅ tfjs-node backend loaded successfully');
+              
+              // Run actual clustering
+              const kmeans = new ClusteringNode.KMeans({ nClusters: 2 });
+              const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
+              const result = await kmeans.fit(data);
+              console.log('✅ Clustering with tfjs-node successful');
+            } catch (error) {
+              console.error('❌ tfjs-node test failed:', error);
+              process.exit(1);
+            }
+          }
+          
+          testFallback();
+          EOF
+          
+          node test-fallback.js

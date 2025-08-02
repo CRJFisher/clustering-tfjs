@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs';
+import tf from '../tf-adapter';
 
 export interface MakeBlobsOptions {
   nSamples: number;

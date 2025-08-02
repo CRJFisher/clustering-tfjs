@@ -4,7 +4,8 @@ import type {
   LabelVector,
   KMeansParams,
 } from './types';
-import * as tf from '@tensorflow/tfjs-node';
+import tf from '../tf-adapter';
+import { isTensor } from '../utils/tensor-utils';
 
 /**
  * Extremely lightweight – yet reasonably efficient – K-Means implementation
@@ -77,7 +78,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
     // Convert to a Tensor2D of dtype float32 – keep original around for
     // potential multiple initialisations.
     const Xtensor: tf.Tensor2D = (
-      X instanceof tf.Tensor
+      isTensor(X)
         ? (X as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32')
     ).clone();

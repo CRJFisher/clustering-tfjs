@@ -1,7 +1,7 @@
 ---
 id: task-20
 title: Package and publish to npm
-status: To Do
+status: Done
 assignee: []
 created_date: '2025-07-15'
 updated_date: '2025-07-30'
