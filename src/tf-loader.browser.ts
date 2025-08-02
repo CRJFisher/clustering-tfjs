@@ -10,8 +10,8 @@ export async function loadTensorFlow() {
     // Dynamic import for browser environment
     const tf = await import('@tensorflow/tfjs');
     
-    // Return the default export or the entire module
-    return tf.default || tf;
+    // Return the module (tf is already the namespace we need)
+    return tf as any;
   } catch (error) {
     throw new Error(
       'Failed to load @tensorflow/tfjs. Please install it as a peer dependency:\n' +

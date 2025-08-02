@@ -12,21 +12,21 @@ export async function loadTensorFlow() {
     require.resolve('@tensorflow/tfjs-node-gpu');
     const tfGpu = await import('@tensorflow/tfjs-node-gpu' as any);
     console.log('Using TensorFlow.js GPU backend');
-    return tfGpu.default || tfGpu;
+    return tfGpu as any;
   } catch (gpuError) {
     // GPU backend not available, try CPU backend
     try {
       require.resolve('@tensorflow/tfjs-node');
       const tfNode = await import('@tensorflow/tfjs-node');
       console.log('Using TensorFlow.js Node.js CPU backend');
-      return tfNode.default || tfNode;
+      return tfNode as any;
     } catch (nodeError) {
       // Neither Node backend available, fall back to pure JS
       try {
         require.resolve('@tensorflow/tfjs');
         const tfJs = await import('@tensorflow/tfjs');
         console.log('Using TensorFlow.js pure JavaScript backend (slower performance)');
-        return tfJs.default || tfJs;
+        return tfJs as any;
       } catch (jsError) {
         throw new Error(
           'No TensorFlow.js backend available. Please install one of:\n' +
