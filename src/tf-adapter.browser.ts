@@ -5,11 +5,19 @@
  * It expects users to have loaded @tensorflow/tfjs separately.
  */
 
-// In the browser build, webpack is configured to treat @tensorflow/tfjs as external
-// and map it to the global 'tf' object (see webpack.config.browser.js externals)
-// So we can directly import and re-export it
+// Debug what we're getting from the import
+import * as tfImport from '@tensorflow/tfjs';
 
-import * as tf from '@tensorflow/tfjs';
+// Log what we got (will be visible in build output)
+if (typeof window !== 'undefined') {
+  console.log('[tf-adapter.browser] tfImport:', tfImport);
+  console.log('[tf-adapter.browser] tfImport.tensor2d:', tfImport.tensor2d);
+  console.log('[tf-adapter.browser] window.tf:', (window as any).tf);
+}
+
+// In webpack browser build, @tensorflow/tfjs is marked as external and maps to global 'tf'
+// However, there might be an issue with how it's being resolved
+const tf = tfImport;
 
 export default tf;
 export * from '@tensorflow/tfjs';
