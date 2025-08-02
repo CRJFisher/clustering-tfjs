@@ -1,6 +1,6 @@
 {
   "name": "clustering-tfjs",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "High-performance TypeScript clustering algorithms (K-Means, Spectral, Agglomerative) with TensorFlow.js acceleration and scikit-learn compatibility",
   "keywords": [
     "clustering",
