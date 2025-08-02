@@ -194,7 +194,15 @@ jobs:
         run: npm ci
       
       - name: Build
-        run: npm run build
+        run: npm run build:multi
+      
+      - name: Verify Node.js bundle exists
+        run: |
+          if [ ! -f dist/clustering.node.js ]; then
+            echo "Error: dist/clustering.node.js not found!"
+            ls -la dist/
+            exit 1
+          fi
       
       - name: Test backend fallback chain
         run: |
