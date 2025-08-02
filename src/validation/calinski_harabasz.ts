@@ -1,5 +1,6 @@
 import tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
+import { isTensor } from '../utils/tensor-utils';
 
 /**
  * Computes the Calinski-Harabasz score (also known as Variance Ratio Criterion).
@@ -23,11 +24,11 @@ export function calinskiHarabasz(X: DataMatrix, labels: LabelVector): number {
   return tf.tidy(() => {
     // Convert inputs to tensors
     const data =
-      X instanceof tf.Tensor
+      isTensor(X)
         ? (X as tf.Tensor2D)
         : tf.tensor2d(X as number[][]);
     const labelArray =
-      labels instanceof tf.Tensor
+      isTensor(labels)
         ? Array.from(labels.dataSync() as Float32Array).map((l) =>
             Math.round(l),
           )
@@ -115,9 +116,9 @@ export function calinskiHarabaszEfficient(
 ): number {
   // Convert inputs
   const data =
-    X instanceof tf.Tensor ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
+    isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
   const labelArray =
-    labels instanceof tf.Tensor
+    isTensor(labels)
       ? Array.from(labels.dataSync() as Float32Array).map((l) => Math.round(l))
       : (labels as number[]);
 
@@ -129,13 +130,13 @@ export function calinskiHarabaszEfficient(
 
   // Validate
   if (k <= 1) {
-    if (!(X instanceof tf.Tensor)) {
+    if (!isTensor(X)) {
       data.dispose();
     }
     throw new Error('Calinski-Harabasz score requires at least 2 clusters');
   }
   if (k >= n) {
-    if (!(X instanceof tf.Tensor)) {
+    if (!isTensor(X)) {
       data.dispose();
     }
     throw new Error('Number of clusters must be less than number of samples');
@@ -174,7 +175,7 @@ export function calinskiHarabaszEfficient(
 
   // Clean up
   globalCentroid.dispose();
-  if (!(X instanceof tf.Tensor)) {
+  if (!isTensor(X)) {
     data.dispose();
   }
 

@@ -5,6 +5,7 @@ import { AgglomerativeClustering } from '../clustering/agglomerative';
 import { silhouetteScore } from '../validation/silhouette';
 import { daviesBouldinEfficient } from '../validation/davies_bouldin';
 import { calinskiHarabaszEfficient } from '../validation/calinski_harabasz';
+import { isTensor } from './tensor-utils';
 import type { DataMatrix } from '../clustering/types';
 
 /**
@@ -89,7 +90,7 @@ export async function findOptimalClusters(
   }
 
   // Convert data to tensor if needed
-  const isInputTensor = X instanceof tf.Tensor;
+  const isInputTensor = isTensor(X);
   const dataTensor = isInputTensor ? X : tf.tensor2d(X as number[][]);
   const nSamples = dataTensor.shape[0];
 
@@ -137,7 +138,7 @@ export async function findOptimalClusters(
 
     // Convert labels to array if it's a tensor
     const labels =
-      labelsTensor instanceof tf.Tensor
+      isTensor(labelsTensor)
         ? ((await labelsTensor.data()) as unknown as number[])
         : labelsTensor;
 
@@ -167,7 +168,7 @@ export async function findOptimalClusters(
     };
 
     // Dispose labels tensor if needed
-    if (labelsTensor instanceof tf.Tensor) {
+    if (isTensor(labelsTensor)) {
       labelsTensor.dispose();
     }
 

@@ -5,6 +5,7 @@ import {
   LabelVector as _LabelVector,
   SpectralClusteringParams,
 } from './types';
+import { isTensor } from '../utils/tensor-utils';
 
 /**
  * SpectralClustering with consensus clustering to improve robustness.
@@ -23,7 +24,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     // because the parent class doesn't store it
 
     const Xtensor: tf.Tensor2D =
-      X instanceof tf.Tensor
+      isTensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32');
 
@@ -153,7 +154,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
 
     // Cleanup
     U.dispose();
-    if (!(X instanceof tf.Tensor)) {
+    if (!isTensor(X)) {
       Xtensor.dispose();
     }
   }
