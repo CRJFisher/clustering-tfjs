@@ -4,6 +4,10 @@
 
 export * from './clustering/types';
 
+// Export the main Clustering namespace for initialization
+export { Clustering } from './clustering';
+export type { BackendConfig } from './tf-backend';
+
 // Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
 export {
