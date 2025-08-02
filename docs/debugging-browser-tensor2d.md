@@ -62,6 +62,11 @@ Browser: Test failed: TypeError: o.tensor2d is not a function
 - Added console.log to see what tfImport contains
 - This will help us understand if webpack is properly resolving the external
 
+### Attempt 5: Direct Global Access with Delegation
+- Created a namespace object that uses getters to delegate to window.tf
+- This ensures we're always using the global tf, not a webpack module
+- Explicitly exports all needed functions
+
 ## Next Steps to Try
 
 1. **Examine the minified code** to see what `o` actually is
@@ -76,3 +81,24 @@ Browser: Test failed: TypeError: o.tensor2d is not a function
 2. **Different Webpack Config**: Change how externals are configured
 3. **Runtime Binding**: Bind tf functions at runtime instead of import time
 4. **Build Process Change**: Use different bundler or config for browser
+
+## WASM Backend Specific Issues
+
+### Additional WASM Observations
+- Backend successfully switches from webgl to wasm
+- Same `o.tensor2d is not a function` error
+- This confirms the issue is not backend-specific but related to module resolution
+
+### WASM Test Output
+```
+Browser: TensorFlow ready, current backend: webgl
+Browser: tf.tensor2d available? function
+Browser: window.tf.tensor2d available? function
+Browser: Initialized backend: wasm
+Browser: Creating KMeans instance...
+Browser: Fitting KMeans with data: JSHandle@array
+Browser: Test failed: TypeError: o.tensor2d is not a function
+```
+
+### Key Insight
+The fact that both WebGL and WASM backends fail with the exact same error at the same location (`http://localhost:40279/dist/clustering.browser.js:1:23108`) strongly suggests this is a **build/bundling issue**, not a runtime backend issue.
