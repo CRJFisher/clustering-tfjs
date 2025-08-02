@@ -1,4 +1,4 @@
-import * as tf from '@tensorflow/tfjs-node';
+import tf from '../tf-adapter';
 import { SpectralClustering } from './spectral';
 import {
   DataMatrix,

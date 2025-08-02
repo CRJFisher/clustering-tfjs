@@ -23,10 +23,10 @@ Refactor the library to support dynamic backend selection, enabling automatic de
 - [ ] Backend can be manually specified via configuration
 - [ ] All algorithms work seamlessly across all backends
 - [ ] Performance maintained or improved across backends
-- [x] Browser bundle created without Node.js dependencies (package.json configured)
+- [ ] Browser bundle created without Node.js dependencies (package.json configured)
 - [ ] Tests pass in both Node.js and browser environments
 - [ ] Documentation updated with backend configuration guide
-- [x] README updated to reflect new installation options (partial - needs backend docs)
+- [ ] README updated to reflect new installation options (partial - needs backend docs)
 - [ ] API docs updated with backend configuration examples
 - [ ] Browser usage examples added to documentation
 - [ ] Migration guide for existing users updated
