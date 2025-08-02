@@ -8,7 +8,7 @@ import { initializeBackend, BackendConfig } from './tf-backend';
 import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
-import type { Platform, DetectedPlatform, PlatformFeatures, ExtendedBackendConfig } from './clustering-types';
+import type { Platform, DetectedPlatform, PlatformFeatures } from './clustering-types';
 
 // Re-export all clustering algorithms and utilities
 export * from './clustering/types';

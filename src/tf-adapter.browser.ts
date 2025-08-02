@@ -8,7 +8,7 @@
 import { getTensorFlow } from './tf-backend';
 
 // Create a proxy that will get TensorFlow on demand
-const tf = new Proxy({} as any, {
+const tf = new Proxy({} as unknown as typeof import('@tensorflow/tfjs'), {
   get(target, prop) {
     const tfInstance = getTensorFlow();
     return tfInstance[prop as keyof typeof tfInstance];

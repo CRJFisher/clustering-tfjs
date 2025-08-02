@@ -1,0 +1,145 @@
+name: Multi-Platform Tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  browser-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build browser bundle
+        run: npm run build:browser
+      
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright @playwright/test
+          npx playwright install chromium
+      
+      - name: Test browser bundle with Playwright
+        run: |
+          cat > test-browser.spec.js << 'EOF'
+          const { test, expect } = require('@playwright/test');
+          const path = require('path');
+
+          test('browser bundle loads and initializes', async ({ page }) => {
+            // Serve the test file
+            await page.goto(`file://${path.join(__dirname, 'test/browser/index.html')}`);
+            
+            // Wait for initialization
+            await page.waitForFunction(() => window.testResults !== undefined, { timeout: 30000 });
+            
+            // Check results
+            const results = await page.evaluate(() => window.testResults);
+            expect(results.initialized).toBe(true);
+            expect(results.platform).toBe('browser');
+            expect(results.features.webgl).toBe(true);
+            expect(results.kmeansResult).toBeDefined();
+            expect(results.kmeansResult.centroids).toHaveLength(2);
+          });
+          EOF
+          npx playwright test test-browser.spec.js
+
+  node-backends-test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        backend: [tfjs-node, tfjs]
+        node-version: [18.x, 20.x]
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build Node.js bundle
+        run: npm run build:node
+      
+      - name: Install backend - ${{ matrix.backend }}
+        run: npm install @tensorflow/${{ matrix.backend }} --no-save
+      
+      - name: Test Node.js build with ${{ matrix.backend }}
+        run: |
+          cat > test-node-platform.js << 'EOF'
+          const { Clustering } = require('./dist/clustering.node.js');
+          
+          async function test() {
+            try {
+              // Initialize
+              await Clustering.init();
+              console.log('Platform:', Clustering.platform);
+              console.log('Features:', Clustering.features);
+              
+              // Test KMeans
+              const kmeans = new Clustering.KMeans({ nClusters: 2 });
+              const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
+              const result = await kmeans.fit(data);
+              
+              console.log('KMeans test passed');
+              console.log('Centroids:', result.centroids);
+              
+              // Test SpectralClustering
+              const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
+              const spectralResult = await spectral.fit(data);
+              console.log('SpectralClustering test passed');
+              
+              process.exit(0);
+            } catch (error) {
+              console.error('Test failed:', error);
+              process.exit(1);
+            }
+          }
+          
+          test();
+          EOF
+          node test-node-platform.js
+
+  size-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build all targets
+        run: npm run build
+      
+      - name: Check bundle sizes
+        run: |
+          echo "=== Bundle Sizes ==="
+          echo "Browser bundle: $(ls -lh dist/clustering.browser.js | awk '{print $5}')"
+          echo "Node.js bundle: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
+          echo "Standard build: $(ls -lh dist/index.js | awk '{print $5}')"
+          
+          # Fail if browser bundle is too large (>100KB)
+          BROWSER_SIZE=$(stat -c%s dist/clustering.browser.js)
+          if [ $BROWSER_SIZE -gt 102400 ]; then
+            echo "ERROR: Browser bundle is too large (>100KB)"
+            exit 1
+          fi

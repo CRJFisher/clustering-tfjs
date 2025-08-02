@@ -5,16 +5,18 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-Native TypeScript implementation of clustering algorithms powered by TensorFlow.js
+Native TypeScript implementation of clustering algorithms powered by TensorFlow.js with full browser and Node.js support.
 
 ## Features
 
 - ✅ Pure TypeScript/JavaScript (no Python required)
 - ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative)
 - ✅ Powered by TensorFlow.js for performance
-- ✅ Works in Node.js (browser support coming soon)
+- ✅ **Works in both Node.js and browsers**
+- ✅ Platform-optimized bundles (49KB for browser, 163KB for Node.js)
 - ✅ TypeScript support with full type definitions
-- ✅ GPU acceleration available with tfjs-node-gpu
+- ✅ GPU acceleration available (WebGL in browser, CUDA in Node.js)
+- ✅ Automatic backend selection
 - ✅ Extensively tested for parity with scikit-learn
 
 ## Table of Contents
@@ -36,22 +38,51 @@ Native TypeScript implementation of clustering algorithms powered by TensorFlow.
 ### Install
 
 ```bash
-# Standard installation (macOS/Linux)
+# For Node.js with acceleration
 npm install clustering-tfjs @tensorflow/tfjs-node
 
-# Windows installation (recommended)
-npm install clustering-tfjs @tensorflow/tfjs
+# For Node.js with GPU support
+npm install clustering-tfjs @tensorflow/tfjs-node-gpu
+
+# For browser usage (TensorFlow.js loaded separately)
+npm install clustering-tfjs
 ```
 
-> **Note**: For Windows users or if you encounter native binding issues, see our [Windows Compatibility Guide](./WINDOWS_COMPATIBILITY.md). The library works with either `@tensorflow/tfjs-node` (faster, requires native bindings) or `@tensorflow/tfjs` (pure JavaScript, universal compatibility).
+> **Note**: For Windows users or if you encounter native binding issues, see our [Windows Compatibility Guide](./WINDOWS_COMPATIBILITY.md).
 
 ### Basic Usage
 
-```typescript
-import { KMeans } from 'clustering-tfjs';
+#### Browser
 
-// Simple example
-const kmeans = new KMeans({ nClusters: 3 });
+```html
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+<script src="https://unpkg.com/clustering-tfjs/dist/clustering.browser.js"></script>
+
+<script>
+async function demo() {
+  // Initialize the library
+  await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
+  
+  // Use algorithms
+  const kmeans = new ClusteringTFJS.KMeans({ nClusters: 3 });
+  const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
+  const labels = await kmeans.fitPredict(data);
+  console.log(labels); // [0, 0, 1, 1, 0, 2]
+}
+demo();
+</script>
+```
+
+#### Node.js
+
+```typescript
+import { Clustering } from 'clustering-tfjs';
+
+// Initialize (optional - auto-detects best backend)
+await Clustering.init();
+
+// Use algorithms
+const kmeans = new Clustering.KMeans({ nClusters: 3 });
 const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
 const labels = await kmeans.fitPredict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
@@ -62,14 +93,33 @@ console.log(labels); // [0, 0, 1, 1, 0, 2]
 ### For Node.js
 
 ```bash
-npm install clustering-js
+# Basic installation (pure JavaScript backend)
+npm install clustering-tfjs
+
+# Recommended: With native acceleration
+npm install clustering-tfjs @tensorflow/tfjs-node
+
+# Optional: With GPU support
+npm install clustering-tfjs @tensorflow/tfjs-node-gpu
 ```
 
-The package includes `@tensorflow/tfjs-node` for CPU-optimized performance.
+### For Browser
 
-### For Browser (Coming Soon)
+The browser bundle is available via CDN:
 
-Browser support is planned for a future release. The library will automatically use WebGL or WASM backends when available.
+```html
+<!-- Load TensorFlow.js -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+
+<!-- Load clustering-tfjs -->
+<script src="https://unpkg.com/clustering-tfjs/dist/clustering.browser.js"></script>
+```
+
+Or install via npm and use with a bundler:
+
+```bash
+npm install clustering-tfjs @tensorflow/tfjs
+```
 
 ## Algorithms
 
@@ -135,14 +185,40 @@ const customResult = await findOptimalClusters(data, {
 });
 ```
 
-## Backend Selection
+## Platform Detection & Backend Selection
 
-| Backend | Use Case | Performance | Status |
-|---------|----------|-------------|---------|
-| tfjs-node (CPU) | Default Node.js backend | Baseline | ✅ Included |
-| tfjs-node-gpu | Large datasets, ML pipelines | 5-20x faster | 🚧 Planned |
-| WebGL | Browser GPU acceleration | TBD | 🚧 Planned |
-| WASM | Browser CPU optimization | TBD | 🚧 Planned |
+The library automatically detects your environment and selects the best backend:
+
+```typescript
+import { Clustering } from 'clustering-tfjs';
+
+// Check current platform
+console.log('Platform:', Clustering.platform); // 'browser' or 'node'
+
+// Check available features
+console.log('Features:', Clustering.features);
+// {
+//   gpuAcceleration: true,
+//   wasmSimd: false,
+//   nodeBindings: true,
+//   webgl: false
+// }
+
+// Manually select backend
+await Clustering.init({ backend: 'webgl' }); // Browser
+await Clustering.init({ backend: 'tensorflow' }); // Node.js
+```
+
+### Available Backends
+
+| Backend | Environment | Use Case | Performance |
+|---------|------------|----------|-------------|
+| `cpu` | Both | Pure JS fallback | Baseline |
+| `webgl` | Browser | GPU acceleration | 5-10x faster |
+| `wasm` | Browser | CPU optimization | 2-3x faster |
+| `tensorflow` | Node.js | Native bindings | 10-20x faster |
+
+The library automatically selects the best available backend if not specified.
 
 ## API Reference
 

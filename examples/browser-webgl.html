@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clustering.js - Browser WebGL Example</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 4px;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clustering.js - Browser WebGL Example</h1>
+    
+    <div id="status"></div>
+    
+    <h2>Results:</h2>
+    <div id="results"></div>
+    
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    
+    <!-- Load clustering-tfjs browser bundle -->
+    <script src="../dist/clustering.browser.js"></script>
+    
+    <script>
+        const statusEl = document.getElementById('status');
+        const resultsEl = document.getElementById('results');
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.textContent = message;
+            statusEl.appendChild(div);
+        }
+        
+        async function runClustering() {
+            try {
+                // Check if ClusteringTFJS is loaded
+                if (typeof ClusteringTFJS === 'undefined') {
+                    throw new Error('ClusteringTFJS not loaded. Make sure to build the browser bundle first.');
+                }
+                
+                log('Initializing clustering library with WebGL backend...');
+                
+                // Initialize with WebGL backend
+                await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
+                
+                log(`Platform: ${ClusteringTFJS.Clustering.platform}`, 'success');
+                log(`Features: ${JSON.stringify(ClusteringTFJS.Clustering.features, null, 2)}`, 'info');
+                
+                // Generate sample data
+                log('Generating sample data...');
+                const data = [
+                    // Cluster 1
+                    [1, 2], [1.5, 1.8], [1.1, 2.2], [0.9, 1.9], [1.3, 2.1],
+                    // Cluster 2
+                    [5, 8], [5.5, 7.8], [5.1, 8.2], [4.9, 7.9], [5.3, 8.1],
+                    // Cluster 3
+                    [9, 11], [9.5, 10.8], [9.1, 11.2], [8.9, 10.9], [9.3, 11.1]
+                ];
+                
+                // K-Means clustering
+                log('Running K-Means clustering...');
+                const kmeans = new ClusteringTFJS.KMeans({ nClusters: 3 });
+                const kmeansLabels = await kmeans.fitPredict(data);
+                
+                resultsEl.innerHTML += `
+                    <h3>K-Means Results:</h3>
+                    <pre>Labels: ${JSON.stringify(kmeansLabels)}</pre>
+                `;
+                
+                // Spectral clustering
+                log('Running Spectral clustering...');
+                const spectral = new ClusteringTFJS.SpectralClustering({ 
+                    nClusters: 3,
+                    affinity: 'rbf',
+                    gamma: 1.0
+                });
+                const spectralLabels = await spectral.fitPredict(data);
+                
+                resultsEl.innerHTML += `
+                    <h3>Spectral Clustering Results:</h3>
+                    <pre>Labels: ${JSON.stringify(spectralLabels)}</pre>
+                `;
+                
+                // Agglomerative clustering
+                log('Running Agglomerative clustering...');
+                const agglomerative = new ClusteringTFJS.AgglomerativeClustering({ 
+                    nClusters: 3,
+                    linkage: 'ward'
+                });
+                const aggLabels = await agglomerative.fitPredict(data);
+                
+                resultsEl.innerHTML += `
+                    <h3>Agglomerative Clustering Results:</h3>
+                    <pre>Labels: ${JSON.stringify(aggLabels)}</pre>
+                `;
+                
+                // Check backend info
+                const backend = await tf.getBackend();
+                log(`Current TensorFlow.js backend: ${backend}`, 'success');
+                
+                log('All clustering algorithms completed successfully!', 'success');
+                
+            } catch (error) {
+                log(`Error: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // Run when page loads
+        window.addEventListener('load', runClustering);
+    </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clustering.js Browser Tests</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .test {
+            margin: 10px 0;
+            padding: 5px;
+        }
+        .pass { color: #4ec9b0; }
+        .fail { color: #f44747; }
+        .info { color: #569cd6; }
+        pre {
+            background: #2d2d2d;
+            padding: 10px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clustering.js Browser Tests</h1>
+    <div id="results"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"></script>
+    <script src="../../dist/clustering.browser.js"></script>
+    
+    <script>
+        const results = document.getElementById('results');
+        let testCount = 0;
+        let passCount = 0;
+        
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test ${type}`;
+            div.innerHTML = message;
+            results.appendChild(div);
+        }
+        
+        async function test(name, fn) {
+            testCount++;
+            try {
+                await fn();
+                passCount++;
+                log(`✓ ${name}`, 'pass');
+            } catch (error) {
+                log(`✗ ${name}: ${error.message}`, 'fail');
+                console.error(error);
+            }
+        }
+        
+        async function runTests() {
+            log('Starting browser tests...', 'info');
+            
+            // Test 1: Library loads
+            await test('Library loads correctly', async () => {
+                if (typeof ClusteringTFJS === 'undefined') {
+                    throw new Error('ClusteringTFJS not defined');
+                }
+            });
+            
+            // Test 2: Platform detection
+            await test('Platform detection works', async () => {
+                const platform = ClusteringTFJS.Clustering.platform;
+                if (platform !== 'browser') {
+                    throw new Error(`Expected platform 'browser', got '${platform}'`);
+                }
+            });
+            
+            // Test 3: Initialization
+            await test('Can initialize with WebGL', async () => {
+                await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
+                const backend = await tf.getBackend();
+                if (backend !== 'webgl') {
+                    throw new Error(`Expected backend 'webgl', got '${backend}'`);
+                }
+            });
+            
+            // Test 4: K-Means works
+            await test('K-Means clustering works', async () => {
+                const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
+                const kmeans = new ClusteringTFJS.KMeans({ nClusters: 2 });
+                const labels = await kmeans.fitPredict(data);
+                
+                if (!Array.isArray(labels) || labels.length !== 4) {
+                    throw new Error('Invalid labels returned');
+                }
+                
+                // Check that we have 2 distinct clusters
+                const unique = [...new Set(labels)];
+                if (unique.length !== 2) {
+                    throw new Error(`Expected 2 clusters, got ${unique.length}`);
+                }
+            });
+            
+            // Test 5: Spectral clustering works
+            await test('Spectral clustering works', async () => {
+                const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
+                const spectral = new ClusteringTFJS.SpectralClustering({ 
+                    nClusters: 2,
+                    affinity: 'rbf'
+                });
+                const labels = await spectral.fitPredict(data);
+                
+                if (!Array.isArray(labels) || labels.length !== 4) {
+                    throw new Error('Invalid labels returned');
+                }
+            });
+            
+            // Test 6: Agglomerative clustering works
+            await test('Agglomerative clustering works', async () => {
+                const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
+                const agg = new ClusteringTFJS.AgglomerativeClustering({ 
+                    nClusters: 2,
+                    linkage: 'single'
+                });
+                const labels = await agg.fitPredict(data);
+                
+                if (!Array.isArray(labels) || labels.length !== 4) {
+                    throw new Error('Invalid labels returned');
+                }
+            });
+            
+            // Test 7: Features detection
+            await test('Feature detection works', async () => {
+                const features = ClusteringTFJS.Clustering.features;
+                if (typeof features.webgl !== 'boolean') {
+                    throw new Error('WebGL feature not detected');
+                }
+                if (features.nodeBindings !== false) {
+                    throw new Error('Should not have node bindings in browser');
+                }
+            });
+            
+            // Summary
+            log('<br>Test Summary:', 'info');
+            log(`Total tests: ${testCount}`, 'info');
+            log(`Passed: ${passCount}`, passCount === testCount ? 'pass' : 'fail');
+            log(`Failed: ${testCount - passCount}`, testCount - passCount > 0 ? 'fail' : 'pass');
+            
+            if (passCount === testCount) {
+                log('<br>✅ All tests passed!', 'pass');
+            } else {
+                log('<br>❌ Some tests failed', 'fail');
+            }
+        }
+        
+        // Run tests when page loads
+        window.addEventListener('load', runTests);
+    </script>
+</body>
+</html>
