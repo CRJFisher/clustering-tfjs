@@ -24,7 +24,7 @@ export interface BackendConfig {
   /**
    * Custom flags to pass to the backend
    */
-  flags?: Record<string, any>;
+  flags?: Record<string, unknown>;
 }
 
 /**

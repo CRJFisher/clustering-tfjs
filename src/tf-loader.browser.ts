@@ -11,7 +11,7 @@ export async function loadTensorFlow() {
     const tf = await import('@tensorflow/tfjs');
     
     // Return the module (tf is already the namespace we need)
-    return tf as any;
+    return tf as typeof import('@tensorflow/tfjs');
   } catch (error) {
     throw new Error(
       'Failed to load @tensorflow/tfjs. Please install it as a peer dependency:\n' +

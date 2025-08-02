@@ -37,6 +37,18 @@ jobs:
       - name: Build package
         run: npm run build
       
+      - name: Verify all platform builds
+        run: |
+          echo "=== Verifying platform builds ==="
+          for file in dist/clustering.browser.js dist/clustering.node.js dist/index.js dist/clustering.esm.js; do
+            if [ ! -f "$file" ]; then
+              echo "ERROR: Missing required build file: $file"
+              exit 1
+            fi
+            echo "✓ Found: $file ($(ls -lh $file | awk '{print $5}'))"
+          done
+          echo "All platform builds verified!"
+      
       - name: Publish to npm
         run: npm publish
         env:

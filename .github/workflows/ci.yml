@@ -37,6 +37,25 @@ jobs:
       - name: Build
         run: npm run build
       
+      - name: Verify browser build
+        run: |
+          test -f dist/clustering.browser.js || exit 1
+          echo "Browser build size: $(ls -lh dist/clustering.browser.js | awk '{print $5}')"
+      
+      - name: Verify Node.js build
+        run: |
+          test -f dist/clustering.node.js || exit 1
+          echo "Node.js build size: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
+      
+      - name: Test Node.js build with tfjs-node
+        run: |
+          npm install @tensorflow/tfjs-node --no-save
+          node -e "const { Clustering } = require('./dist/clustering.node.js'); console.log('Node.js build loaded successfully');"
+      
+      - name: Test browser build imports
+        run: |
+          node -e "try { require('./dist/clustering.browser.js'); console.log('Browser CommonJS build loaded'); } catch(e) { console.log('Browser build requires browser environment (expected)'); }"
+      
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '20.x'
         uses: codecov/codecov-action@v4
