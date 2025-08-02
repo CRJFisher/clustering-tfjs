@@ -8,7 +8,8 @@
 export async function loadTensorFlow() {
   // In browser environment, TensorFlow.js is expected to be loaded as a global
   if (typeof window !== 'undefined' && (window as Window & { tf?: unknown }).tf) {
-    return (window as Window & { tf: typeof import('@tensorflow/tfjs') }).tf;
+    const globalWindow = window as unknown as { tf: typeof import('@tensorflow/tfjs') };
+    return globalWindow.tf;
   }
   
   // If not available as global, try dynamic import
