@@ -55,6 +55,8 @@
   ],
   "scripts": {
     "build": "node scripts/build.js",
+    "build:browser": "node scripts/build-multi-platform.js browser",
+    "build:node": "node scripts/build-multi-platform.js node",
     "build:multi": "node scripts/build-multi-platform.js",
     "build:clean": "rm -rf dist",
     "dev": "ts-node src/index.ts",
