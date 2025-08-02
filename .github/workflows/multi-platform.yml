@@ -50,6 +50,34 @@ jobs:
             expect(results.kmeansResult).toBeDefined();
             expect(results.kmeansResult.centroids).toHaveLength(2);
           });
+
+          test('browser backends work correctly', async ({ page }) => {
+            await page.goto(`file://${path.join(__dirname, 'test/browser/index.html')}`);
+            
+            // Test WebGL backend
+            const webglResult = await page.evaluate(async () => {
+              const { Clustering } = window;
+              await Clustering.init({ backend: 'webgl' });
+              const tf = window.tf;
+              return {
+                backend: tf.getBackend(),
+                isWebGL: tf.getBackend() === 'webgl'
+              };
+            });
+            expect(webglResult.isWebGL).toBe(true);
+            
+            // Test CPU backend fallback
+            const cpuResult = await page.evaluate(async () => {
+              const { Clustering } = window;
+              await Clustering.init({ backend: 'cpu' });
+              const tf = window.tf;
+              return {
+                backend: tf.getBackend(),
+                isCPU: tf.getBackend() === 'cpu'
+              };
+            });
+            expect(cpuResult.isCPU).toBe(true);
+          });
           EOF
           npx playwright test test-browser.spec.js
 
@@ -60,6 +88,17 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         backend: [tfjs-node, tfjs]
         node-version: [18.x, 20.x]
+        exclude:
+          # tfjs-node-gpu only works on Linux
+          - os: windows-latest
+            backend: tfjs-node-gpu
+          - os: macos-latest
+            backend: tfjs-node-gpu
+        include:
+          # Add GPU testing on Linux
+          - os: ubuntu-latest
+            backend: tfjs-node-gpu
+            node-version: 20.x
     
     steps:
       - uses: actions/checkout@v4
@@ -76,9 +115,17 @@ jobs:
         run: npm run build:node
       
       - name: Install backend - ${{ matrix.backend }}
-        run: npm install @tensorflow/${{ matrix.backend }} --no-save
+        run: |
+          if [[ "${{ matrix.backend }}" == "tfjs-node-gpu" ]]; then
+            # Skip GPU backend on GitHub Actions as CUDA is not available
+            echo "Skipping GPU backend test on GitHub Actions (no CUDA)"
+            exit 0
+          fi
+          npm install @tensorflow/${{ matrix.backend }} --no-save
+        shell: bash
       
       - name: Test Node.js build with ${{ matrix.backend }}
+        if: matrix.backend != 'tfjs-node-gpu'
         run: |
           cat > test-node-platform.js << 'EOF'
           const { Clustering } = require('./dist/clustering.node.js');
@@ -138,7 +185,11 @@ jobs:
           echo "Standard build: $(ls -lh dist/index.js | awk '{print $5}')"
           
           # Fail if browser bundle is too large (>100KB)
-          BROWSER_SIZE=$(stat -c%s dist/clustering.browser.js)
+          if [[ "$RUNNER_OS" == "macOS" ]]; then
+            BROWSER_SIZE=$(stat -f%z dist/clustering.browser.js)
+          else
+            BROWSER_SIZE=$(stat -c%s dist/clustering.browser.js)
+          fi
           if [ $BROWSER_SIZE -gt 102400 ]; then
             echo "ERROR: Browser bundle is too large (>100KB)"
             exit 1
