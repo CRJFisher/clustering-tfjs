@@ -6,16 +6,19 @@
  */
 
 export async function loadTensorFlow() {
+  // In browser environment, TensorFlow.js is expected to be loaded as a global
+  if (typeof window !== 'undefined' && (window as any).tf) {
+    return (window as any).tf as typeof import('@tensorflow/tfjs');
+  }
+  
+  // If not available as global, try dynamic import
   try {
-    // Dynamic import for browser environment
     const tf = await import('@tensorflow/tfjs');
-    
-    // Return the module (tf is already the namespace we need)
     return tf as typeof import('@tensorflow/tfjs');
   } catch (error) {
     throw new Error(
-      'Failed to load @tensorflow/tfjs. Please install it as a peer dependency:\n' +
-      'npm install @tensorflow/tfjs'
+      'TensorFlow.js not found. Please load it before using this library:\n' +
+      '<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>'
     );
   }
 }
