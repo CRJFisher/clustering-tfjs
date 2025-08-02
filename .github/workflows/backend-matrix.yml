@@ -30,10 +30,15 @@ jobs:
       
       - name: Install test dependencies
         run: |
+          echo "Installing test dependencies for backend: ${{ matrix.backend }}"
           npm install --no-save puppeteer express
-          if [ "${{ matrix.backend }}" = "wasm" ]; then
+          if [[ "${{ matrix.backend }}" == "wasm" ]]; then
+            echo "Installing WASM backend..."
             npm install --no-save @tensorflow/tfjs-backend-wasm
           fi
+          echo "Dependencies installed:"
+          npm list --depth=0 | grep -E "(puppeteer|express|tfjs)" || true
+        shell: bash
       
       - name: Test ${{ matrix.backend }} backend
         run: |
@@ -76,6 +81,12 @@ jobs:
               <script>
                 async function test() {
                   try {
+                    // For WASM backend, we need to set the WASM path
+                    if ('${process.env.TEST_BACKEND}' === 'wasm' && window.tf) {
+                      await tf.setBackend('wasm');
+                      await tf.ready();
+                    }
+                    
                     // Wait for ClusteringTFJS to be available
                     if (!window.ClusteringTFJS) {
                       throw new Error('ClusteringTFJS library not loaded');
