@@ -26,8 +26,9 @@ jobs:
       
       - name: Install Playwright
         run: |
-          npm install --no-save playwright @playwright/test
+          npm install --no-save @playwright/test
           npx playwright install chromium
+          npx playwright install-deps chromium
       
       - name: Test browser bundle with Playwright
         run: |
