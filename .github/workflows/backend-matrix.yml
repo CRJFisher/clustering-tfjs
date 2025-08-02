@@ -31,13 +31,15 @@ jobs:
       - name: Install test dependencies
         run: |
           echo "Installing test dependencies for backend: ${{ matrix.backend }}"
-          npm install --no-save puppeteer express
+          npm install puppeteer express --save-dev
           if [[ "${{ matrix.backend }}" == "wasm" ]]; then
             echo "Installing WASM backend..."
-            npm install --no-save @tensorflow/tfjs-backend-wasm
+            npm install @tensorflow/tfjs-backend-wasm --save-dev
           fi
           echo "Dependencies installed:"
-          npm list --depth=0 | grep -E "(puppeteer|express|tfjs)" || true
+          ls -la node_modules/ | grep -E "(puppeteer|express|tfjs)" || true
+          echo "Checking express specifically:"
+          ls -la node_modules/express/ || echo "Express not found in node_modules"
         shell: bash
       
       - name: Test ${{ matrix.backend }} backend
