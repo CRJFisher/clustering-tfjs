@@ -71,14 +71,22 @@
     "release": "node scripts/release.js"
   },
   "dependencies": {
-    "@tensorflow/tfjs": "^4.20.0",
+    "@tensorflow/tfjs-core": "^4.20.0",
     "ml-matrix": "^6.12.1"
   },
   "peerDependencies": {
+    "@tensorflow/tfjs": "^4.20.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.20.0",
     "@tensorflow/tfjs-node": "^4.20.0",
     "@tensorflow/tfjs-node-gpu": "^4.20.0"
   },
   "peerDependenciesMeta": {
+    "@tensorflow/tfjs": {
+      "optional": true
+    },
+    "@tensorflow/tfjs-backend-wasm": {
+      "optional": true
+    },
     "@tensorflow/tfjs-node": {
       "optional": true
     },
