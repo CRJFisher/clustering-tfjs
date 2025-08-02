@@ -76,8 +76,16 @@ jobs:
               <script>
                 async function test() {
                   try {
+                    // Wait for ClusteringTFJS to be available
+                    if (!window.ClusteringTFJS) {
+                      throw new Error('ClusteringTFJS library not loaded');
+                    }
+                    
+                    // Extract Clustering namespace
+                    const { Clustering } = window.ClusteringTFJS;
+                    
                     // Initialize with specific backend
-                    await window.Clustering.init({ backend: '${process.env.TEST_BACKEND}' });
+                    await Clustering.init({ backend: '${process.env.TEST_BACKEND}' });
                     
                     // Verify backend
                     const actualBackend = tf.getBackend();
@@ -88,7 +96,7 @@ jobs:
                     }
                     
                     // Test KMeans
-                    const kmeans = new window.Clustering.KMeans({ nClusters: 2 });
+                    const kmeans = new Clustering.KMeans({ nClusters: 2 });
                     const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
                     const result = await kmeans.fit(data);
                     
@@ -96,7 +104,7 @@ jobs:
                     console.log('Centroids:', result.centroids);
                     
                     // Test SpectralClustering
-                    const spectral = new window.Clustering.SpectralClustering({ nClusters: 2 });
+                    const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
                     const spectralResult = await spectral.fit(data);
                     console.log('SpectralClustering successful with', actualBackend);
                     
@@ -107,7 +115,10 @@ jobs:
                   }
                 }
                 
-                test();
+                // Wait for all scripts to load
+                window.addEventListener('load', () => {
+                  setTimeout(test, 100);
+                });
               </script>
             </body>
             </html>`;

@@ -11,7 +11,6 @@ module.exports = {
     library: {
       name: 'ClusteringTFJS',
       type: 'umd',
-      export: 'default',
     },
     globalObject: 'this',
   },
