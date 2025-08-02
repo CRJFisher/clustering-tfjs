@@ -76,17 +76,23 @@ jobs:
               <html>
               <head>
                 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
-                ${process.env.TEST_BACKEND === 'wasm' ? '<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm/dist/tf-backend-wasm.js"></script>' : ''}
+                ${process.env.TEST_BACKEND === 'wasm' ? `
+                <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm/dist/tf-backend-wasm.js"></script>
+                <script>
+                  // Set WASM paths for the backend
+                  tf.wasm.setWasmPaths('https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-wasm/dist/');
+                </script>
+                ` : ''}
                 <script src="/dist/clustering.browser.js"></script>
               </head>
             <body>
               <script>
                 async function test() {
                   try {
-                    // For WASM backend, we need to set the WASM path
-                    if ('${process.env.TEST_BACKEND}' === 'wasm' && window.tf) {
-                      await tf.setBackend('wasm');
+                    // Ensure tf is ready first
+                    if (window.tf) {
                       await tf.ready();
+                      console.log('TensorFlow ready, current backend:', tf.getBackend());
                     }
                     
                     // Wait for ClusteringTFJS to be available
@@ -96,6 +102,10 @@ jobs:
                     
                     // Extract Clustering namespace
                     const { Clustering } = window.ClusteringTFJS;
+                    
+                    // Debug: Check what tf functions are available
+                    console.log('tf.tensor2d available?', typeof tf.tensor2d);
+                    console.log('window.tf.tensor2d available?', typeof window.tf.tensor2d);
                     
                     // Initialize with specific backend
                     await Clustering.init({ backend: '${process.env.TEST_BACKEND}' });
