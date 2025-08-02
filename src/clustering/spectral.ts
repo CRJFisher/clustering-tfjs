@@ -4,7 +4,7 @@ import type {
   SpectralClusteringParams,
   BaseClustering,
 } from './types';
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { compute_rbf_affinity, compute_knn_affinity } from '../utils/affinity';
 import { isTensor } from '../utils/tensor-utils';
 

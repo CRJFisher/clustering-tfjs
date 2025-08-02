@@ -1,4 +1,4 @@
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 
 /**
  * QR Algorithm-based eigendecomposition for symmetric matrices.

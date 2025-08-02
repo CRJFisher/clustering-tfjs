@@ -4,7 +4,7 @@ import type {
   LabelVector,
   KMeansParams,
 } from './types';
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { isTensor } from '../utils/tensor-utils';
 
 /**

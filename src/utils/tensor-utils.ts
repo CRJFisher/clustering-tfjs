@@ -2,7 +2,7 @@
  * Utility functions for working with tensors across different environments
  */
 
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 
 /**
  * Check if a value is a TensorFlow.js tensor

@@ -4,7 +4,7 @@ import type {
   AgglomerativeClusteringParams,
   BaseClustering,
 } from './types';
-import tf from '../tf-adapter';
+import * as tf from '../tf-adapter';
 import { pairwiseDistanceMatrix } from '../utils/pairwise_distance';
 import { update_distance_matrix } from './linkage';
 
