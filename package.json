@@ -34,8 +34,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "browser": {
-        "import": "./dist/index.browser.esm.js",
-        "require": "./dist/index.browser.js"
+        "import": "./dist/index.esm.js",
+        "require": "./dist/clustering.browser.js"
       },
       "node": {
         "import": "./dist/index.esm.js",
@@ -55,6 +55,7 @@
   ],
   "scripts": {
     "build": "node scripts/build.js",
+    "build:multi": "node scripts/build-multi-platform.js",
     "build:clean": "rm -rf dist",
     "dev": "ts-node src/index.ts",
     "test": "jest",
@@ -108,9 +109,14 @@
     "js-yaml": "^4.1.0",
     "prettier": "^3.0.0",
     "puppeteer": "^24.15.0",
+    "terser-webpack-plugin": "^5.3.14",
     "ts-jest": "^29.1.0",
+    "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "webpack": "^5.101.0",
+    "webpack-cli": "^6.0.1",
+    "webpack-node-externals": "^3.0.0"
   },
   "engines": {
     "node": ">=18.0.0"
