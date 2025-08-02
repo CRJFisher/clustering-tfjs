@@ -8,6 +8,7 @@ import { initializeBackend, BackendConfig } from './tf-backend';
 import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
+import type { Platform, DetectedPlatform, PlatformFeatures, ExtendedBackendConfig } from './clustering-types';
 
 // Re-export all clustering algorithms and utilities
 export * from './clustering/types';
@@ -17,10 +18,60 @@ export { AgglomerativeClustering } from './clustering/agglomerative';
 export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
 export { findOptimalClusters } from './utils/findOptimalClusters';
 
+// Re-export advanced types
+export type { Platform, DetectedPlatform, PlatformFeatures, ExtendedBackendConfig } from './clustering-types';
+
+// Detect platform at runtime
+const detectPlatform = (): Platform => {
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    return 'browser';
+  } else if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    return 'node';
+  }
+  return 'unknown';
+};
+
+// Get platform features based on detected platform
+const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
+  switch (platform) {
+    case 'browser':
+      return {
+        gpuAcceleration: typeof WebGLRenderingContext !== 'undefined',
+        wasmSimd: typeof WebAssembly !== 'undefined' && 'validate' in WebAssembly,
+        nodeBindings: false,
+        webgl: typeof WebGLRenderingContext !== 'undefined',
+      };
+    case 'node':
+      return {
+        gpuAcceleration: false, // Will be updated after backend init
+        wasmSimd: false,
+        nodeBindings: true,
+        webgl: false,
+      };
+    default:
+      return {
+        gpuAcceleration: false,
+        wasmSimd: false,
+        nodeBindings: false,
+        webgl: false,
+      };
+  }
+};
+
 /**
- * Main clustering namespace
+ * Main clustering namespace with platform awareness
  */
 export const Clustering = {
+  /**
+   * Current platform
+   */
+  platform: detectPlatform() as DetectedPlatform,
+  
+  /**
+   * Platform features
+   */
+  features: getPlatformFeatures(detectPlatform()),
+  
   /**
    * Initialize the clustering library with the specified backend
    * 
@@ -44,6 +95,9 @@ export const Clustering = {
    */
   async init(config: BackendConfig = {}): Promise<void> {
     await initializeBackend(config);
+    
+    // Features are set at detection time
+    // Could be enhanced later to detect actual backend capabilities
   },
   
   // Re-export algorithms as properties for convenient access
