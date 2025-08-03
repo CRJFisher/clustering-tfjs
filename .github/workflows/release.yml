@@ -35,7 +35,7 @@ jobs:
         run: npm test
       
       - name: Build package
-        run: npm run build
+        run: npm run build:multi
       
       - name: Verify all platform builds
         run: |
