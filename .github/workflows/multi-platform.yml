@@ -191,7 +191,7 @@ jobs:
         run: npm ci
       
       - name: Build all targets
-        run: npm run build
+        run: npm run build:multi
       
       - name: Check bundle sizes
         run: |
