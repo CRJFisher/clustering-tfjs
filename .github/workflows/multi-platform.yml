@@ -37,27 +37,42 @@ jobs:
           const path = require('path');
 
           test('browser bundle loads and initializes', async ({ page }) => {
+            // Enable console logging
+            page.on('console', msg => console.log('Browser:', msg.text()));
+            page.on('pageerror', error => console.error('Browser Error:', error));
+            
             // Serve the test file
             await page.goto(`file://${path.join(__dirname, 'test/browser/index.html')}`);
             
-            // Wait for initialization
-            await page.waitForFunction(() => window.testResults !== undefined, { timeout: 30000 });
+            // Wait for tests to complete
+            await page.waitForFunction(() => {
+              const summaryElements = document.querySelectorAll('.test');
+              return Array.from(summaryElements).some(el => 
+                el.textContent.includes('All tests passed') || 
+                el.textContent.includes('Some tests failed')
+              );
+            }, { timeout: 30000 });
             
-            // Check results
-            const results = await page.evaluate(() => window.testResults);
-            expect(results.initialized).toBe(true);
-            expect(results.platform).toBe('browser');
-            expect(results.features.webgl).toBe(true);
-            expect(results.kmeansResult).toBeDefined();
-            expect(results.kmeansResult.centroids).toHaveLength(2);
+            // Check that all tests passed
+            const testsPassed = await page.evaluate(() => {
+              const passedElement = Array.from(document.querySelectorAll('.test')).find(
+                el => el.textContent.includes('All tests passed')
+              );
+              return passedElement !== undefined;
+            });
+            
+            expect(testsPassed).toBe(true);
           });
 
           test('browser backends work correctly', async ({ page }) => {
             await page.goto(`file://${path.join(__dirname, 'test/browser/index.html')}`);
             
+            // Wait for page to load
+            await page.waitForLoadState('networkidle');
+            
             // Test WebGL backend
             const webglResult = await page.evaluate(async () => {
-              const { Clustering } = window;
+              const { Clustering } = window.ClusteringTFJS;
               await Clustering.init({ backend: 'webgl' });
               const tf = window.tf;
               return {
@@ -69,7 +84,7 @@ jobs:
             
             // Test CPU backend fallback
             const cpuResult = await page.evaluate(async () => {
-              const { Clustering } = window;
+              const { Clustering } = window.ClusteringTFJS;
               await Clustering.init({ backend: 'cpu' });
               const tf = window.tf;
               return {
