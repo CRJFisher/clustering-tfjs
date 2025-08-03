@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Browser Bundle</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js"></script>
+    <script src="dist/clustering.browser.js"></script>
+</head>
+<body>
+    <h1>Testing Browser Bundle</h1>
+    <pre id="output"></pre>
+    <script>
+        const output = document.getElementById('output');
+        
+        async function test() {
+            try {
+                output.textContent += 'window.tf available: ' + (typeof window.tf) + '\n';
+                output.textContent += 'window.tf.tensor2d available: ' + (typeof window.tf.tensor2d) + '\n';
+                output.textContent += 'ClusteringTFJS available: ' + (typeof ClusteringTFJS) + '\n';
+                
+                // Wait for TF to be ready
+                await tf.ready();
+                output.textContent += 'TensorFlow ready, backend: ' + tf.getBackend() + '\n';
+                
+                // Try to create a KMeans instance
+                output.textContent += 'Creating KMeans instance...\n';
+                const kmeans = new ClusteringTFJS.KMeans({ nClusters: 2 });
+                output.textContent += 'KMeans created successfully\n';
+                
+                // Try to fit with some data
+                const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8]];
+                output.textContent += 'Fitting with data...\n';
+                await kmeans.fit(data);
+                output.textContent += 'Fit completed successfully!\n';
+                output.textContent += 'Centroids: ' + JSON.stringify(kmeans.centroids) + '\n';
+                
+            } catch (error) {
+                output.textContent += 'ERROR: ' + error.message + '\n';
+                output.textContent += 'Stack: ' + error.stack + '\n';
+            }
+        }
+        
+        test();
+    </script>
+</body>
+</html>

@@ -82,6 +82,37 @@ Browser: Test failed: TypeError: o.tensor2d is not a function
 3. **Runtime Binding**: Bind tf functions at runtime instead of import time
 4. **Build Process Change**: Use different bundler or config for browser
 
+## Investigation Progress
+
+### Attempt 6: Webpack Alias Fix
+- Added `'../tf-adapter'` alias to webpack config since imports use `../tf-adapter` not `./tf-adapter`
+- Result: Still failing, getTf function not in bundle
+
+### Attempt 7: Non-minified Bundle Analysis
+- Disabled minification to examine the issue
+- Found that module 872 is our tf-adapter.browser.ts
+- When other modules import with `const tf = __importStar(__webpack_require__(872))`, they get exports
+- The issue: `exports.tensor2d = tfNamespace.tensor2d` assigns a getter property
+- Webpack's `__importStar` might not preserve getter behavior correctly
+
+### Root Cause Identified
+- The getter properties from `tfNamespace` aren't working properly when imported via webpack's module system
+- When `tf.tensor2d` is called, it's trying to call the getter descriptor object, not the actual function
+
+### Attempt 8: Export Real Functions Instead of Getters - SUCCESS!
+- Changed from getter properties to arrow functions that call getTf()
+- Example: `export const tensor2d = (...args) => getTf().tensor2d(...args)`
+- This ensures each export is an actual callable function, not a getter
+- Result: Build succeeds and functions are properly callable in the browser!
+
+## Final Solution
+The issue was that webpack's `__importStar` helper doesn't properly handle getter properties when creating the module namespace. By changing all exports to be actual arrow functions that call `getTf()` when invoked, we ensure that:
+1. Each export is a real function, not a getter descriptor
+2. The getTf() call happens at runtime when the function is invoked
+3. This allows proper access to the global `window.tf` object
+
+This solution maintains the same lazy-loading behavior (tf is accessed only when functions are called) while being compatible with webpack's module system.
+
 ## WASM Backend Specific Issues
 
 ### Additional WASM Observations
