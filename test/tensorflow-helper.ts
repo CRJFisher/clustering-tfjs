@@ -22,6 +22,6 @@ if (process.env.TF_FORCE_CPU_BACKEND === 'true') {
   }
 }
 
+// Re-export all TensorFlow.js functions
+export * from '@tensorflow/tfjs-core';
 export default tf;
-// Don't re-export from tfjs-node as it might not be available
-// Tests should use the default export which handles platform differences
