@@ -141,14 +141,14 @@ jobs:
               // Test KMeans
               const kmeans = new Clustering.KMeans({ nClusters: 2 });
               const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
-              const result = await kmeans.fit(data);
+              await kmeans.fit(data);
               
               console.log('KMeans test passed');
-              console.log('Centroids:', result.centroids);
+              console.log('Centroids:', kmeans.centroids_);
               
               // Test SpectralClustering
               const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
-              const spectralResult = await spectral.fit(data);
+              await spectral.fit(data);
               console.log('SpectralClustering test passed');
               
               process.exit(0);
