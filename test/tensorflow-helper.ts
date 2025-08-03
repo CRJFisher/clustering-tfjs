@@ -23,4 +23,5 @@ if (process.env.TF_FORCE_CPU_BACKEND === 'true') {
 }
 
 export default tf;
-export * from '@tensorflow/tfjs-node';
+// Don't re-export from tfjs-node as it might not be available
+// Tests should use the default export which handles platform differences

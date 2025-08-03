@@ -27,4 +27,5 @@ if (process.platform === 'win32' && process.env.CI) {
 }
 
 export default tf;
-export * from '@tensorflow/tfjs-node';
+// Re-export everything from the loaded module
+export * from '@tensorflow/tfjs-core';
