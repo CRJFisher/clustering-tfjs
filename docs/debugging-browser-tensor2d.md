@@ -154,3 +154,75 @@ First attempted to add `/* eslint-disable @typescript-eslint/no-explicit-any */`
 
 ### Key Learning
 Always fix TypeScript type errors properly rather than suppressing them. The type system helps catch potential runtime errors and improves code maintainability.
+
+## CPU Backend Specific Issues
+
+### Error Description
+The CPU backend test is failing with a different error than the tensor2d issue:
+```
+Browser: Initialized backend: cpu
+Browser: Creating KMeans instance...
+Browser: Fitting KMeans with data: JSHandle@array
+Browser: KMeans successful with cpu
+Browser: Test failed: JSHandle@error
+Browser: Error stack: TypeError: Cannot read properties of undefined (reading 'centroids')
+    at test (http://localhost:44933/test.html:49:44)
+```
+
+### Analysis
+1. **Different from tensor2d error**: The CPU backend successfully:
+   - Switches to CPU backend
+   - Creates KMeans instance
+   - Calls fit() method without tensor2d errors
+   - Reports "KMeans successful with cpu"
+   
+2. **The actual error**: `Cannot read properties of undefined (reading 'centroids')`
+   - This happens at line 49 of test.html when trying to access `kmeans.centroids`
+   - The fit() method appears to complete but doesn't set the centroids property
+   - This suggests the KMeans instance state is not properly maintained after fit()
+
+3. **CPU Backend Differences**:
+   - CPU backend might handle tensor operations differently
+   - Memory management or tensor disposal might behave differently
+   - The centroids might be getting disposed or lost during the fit process
+
+### Debugging Steps Needed
+1. Check if centroids are being properly assigned in the fit() method
+2. Verify tensor disposal isn't happening prematurely with CPU backend
+3. Check if there are any CPU-specific tensor handling issues
+4. Add logging to track when centroids are set and if they're being cleared
+
+### Key Insight
+Unlike the WebGL/WASM backends that failed immediately on tensor2d, the CPU backend progresses further but fails when accessing the result. This suggests the CPU backend has different behavior for tensor operations or memory management.
+
+### Root Cause Analysis
+Looking at the test code (backend-matrix.yml, line 126-129):
+```javascript
+const result = await kmeans.fit(data);
+console.log('KMeans successful with', actualBackend);
+console.log('Centroids:', result.centroids);
+```
+
+The error "Cannot read properties of undefined (reading 'centroids')" on line 49 (which corresponds to line 129 in the workflow) indicates that `result` is `undefined`. This means:
+1. The `kmeans.fit()` method is returning `undefined` instead of an object with centroids
+2. The CPU backend might have different async behavior that's not being handled properly
+3. The fit() method might be completing without actually setting or returning the result
+
+### Next Investigation Steps
+1. Check what `kmeans.fit()` actually returns when using CPU backend
+2. Verify if the fit() method has different behavior with CPU vs WebGL/WASM backends
+3. Check if there's a timing issue or if the result needs to be accessed differently with CPU backend
+
+### Solution Found
+The issue is in the test code itself, not the CPU backend! Looking at the KMeans implementation:
+- `fit()` method returns `Promise<void>` (no return value)
+- Centroids are stored as a property `centroids_` on the KMeans instance
+- The test incorrectly expects `fit()` to return an object with centroids
+
+The test should be:
+```javascript
+await kmeans.fit(data);  // No return value
+console.log('Centroids:', kmeans.centroids_);  // Access property on instance
+```
+
+This explains why the error only appears with CPU backend - it's likely that with WebGL/WASM backends, the test was failing earlier due to the tensor2d error, so it never reached this incorrect code.
