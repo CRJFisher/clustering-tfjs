@@ -1,7 +1,7 @@
 ---
 id: task-28
 title: Investigate and fix Ubuntu CI test failure (Node 20.x)
-status: To Do
+status: In Progress
 assignee:
   - '@assistant'
 created_date: '2025-08-03'
