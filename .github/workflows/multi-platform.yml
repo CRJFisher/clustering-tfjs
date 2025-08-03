@@ -160,16 +160,24 @@ jobs:
       - name: Test Node.js build with ${{ matrix.backend }}
         if: matrix.backend != 'tfjs-node-gpu'
         run: |
-          cat > test-node-platform.js << 'EOF'
+          # Determine actual backend to use (tfjs on Windows instead of tfjs-node)
+          if [[ "${{ runner.os }}" == "Windows" && "${{ matrix.backend }}" == "tfjs-node" ]]; then
+            ACTUAL_BACKEND="tfjs"
+          else
+            ACTUAL_BACKEND="${{ matrix.backend }}"
+          fi
+          
+          cat > test-node-platform.js << EOF
           console.log('=== Test Environment ===');
           console.log('Platform:', process.platform);
           console.log('Node version:', process.version);
-          console.log('Backend:', '${{ matrix.backend }}');
+          console.log('Requested backend:', '${{ matrix.backend }}');
+          console.log('Actual backend:', '${ACTUAL_BACKEND}');
           console.log('Working directory:', process.cwd());
           
           // Check if tensorflow backend is installed
           try {
-            const backendPath = require.resolve('@tensorflow/${{ matrix.backend }}');
+            const backendPath = require.resolve('@tensorflow/${ACTUAL_BACKEND}');
             console.log('Backend found at:', backendPath);
           } catch (e) {
             console.error('Backend not found:', e.message);
@@ -217,6 +225,7 @@ jobs:
           test();
           EOF
           node test-node-platform.js
+        shell: bash
 
   size-check:
     runs-on: ubuntu-latest
