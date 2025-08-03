@@ -6,12 +6,14 @@ import * as tf from "../tensorflow-helper";
 describe("findOptimalClusters", () => {
   beforeAll(async () => {
     // Set backend based on which TensorFlow version is loaded
-    if (process.env.TF_FALLBACK_MODE === 'true') {
-      // Using @tensorflow/tfjs (CPU backend)
-      await tf.setBackend("cpu");
-    } else {
+    const backends = tf.engine().registryFactory;
+    
+    if ('tensorflow' in backends) {
       // Using @tensorflow/tfjs-node
       await tf.setBackend("tensorflow");
+    } else {
+      // Using @tensorflow/tfjs (CPU backend) - fallback for Windows CI or browser
+      await tf.setBackend("cpu");
     }
   });
 

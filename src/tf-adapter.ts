@@ -9,9 +9,22 @@
  * dynamic loading is ready in tf-backend.ts and loaders.
  */
 
-// For backward compatibility, continue using tfjs-node directly
-// This will be replaced in Phase 3 with proper build configuration
-import * as tf from '@tensorflow/tfjs-node';
+// Handle Windows CI environment where native modules fail
+let tf: typeof import('@tensorflow/tfjs-node');
+
+if (process.platform === 'win32' && process.env.CI) {
+  // Use pure JS implementation on Windows CI
+  tf = require('@tensorflow/tfjs');
+} else {
+  try {
+    // Use Node.js backend for better performance
+    tf = require('@tensorflow/tfjs-node');
+  } catch (error) {
+    // Fallback to pure JS if tfjs-node fails to load
+    console.warn('tf-adapter: Failed to load @tensorflow/tfjs-node, using pure JS fallback');
+    tf = require('@tensorflow/tfjs');
+  }
+}
 
 export default tf;
 export * from '@tensorflow/tfjs-node';
