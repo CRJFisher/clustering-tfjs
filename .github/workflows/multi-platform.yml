@@ -142,8 +142,16 @@ jobs:
         run: npm run build:node
       
       - name: Install backend - ${{ matrix.backend }}
-        run: npm install @tensorflow/${{ matrix.backend }} --no-save
+        run: |
+          # Skip tfjs-node on Windows CI due to native module issues
+          if [[ "${{ runner.os }}" == "Windows" && "${{ matrix.backend }}" == "tfjs-node" ]]; then
+            echo "Skipping tfjs-node on Windows CI - using tfjs instead"
+            npm install @tensorflow/tfjs --no-save
+          else
+            npm install @tensorflow/${{ matrix.backend }} --no-save
+          fi
         if: matrix.backend != 'tfjs-node-gpu'
+        shell: bash
       
       - name: Skip GPU backend test
         run: echo "Skipping GPU backend test on GitHub Actions (no CUDA)"
@@ -153,7 +161,30 @@ jobs:
         if: matrix.backend != 'tfjs-node-gpu'
         run: |
           cat > test-node-platform.js << 'EOF'
-          const { Clustering } = require('./dist/clustering.node.js');
+          console.log('=== Test Environment ===');
+          console.log('Platform:', process.platform);
+          console.log('Node version:', process.version);
+          console.log('Backend:', '${{ matrix.backend }}');
+          console.log('Working directory:', process.cwd());
+          
+          // Check if tensorflow backend is installed
+          try {
+            const backendPath = require.resolve('@tensorflow/${{ matrix.backend }}');
+            console.log('Backend found at:', backendPath);
+          } catch (e) {
+            console.error('Backend not found:', e.message);
+          }
+          
+          let Clustering;
+          try {
+            const bundle = require('./dist/clustering.node.js');
+            Clustering = bundle.Clustering;
+            console.log('Bundle loaded successfully');
+          } catch (error) {
+            console.error('Failed to load bundle:', error.message);
+            console.error('Stack:', error.stack);
+            process.exit(1);
+          }
           
           async function test() {
             try {
@@ -177,7 +208,8 @@ jobs:
               
               process.exit(0);
             } catch (error) {
-              console.error('Test failed:', error);
+              console.error('Test failed:', error.message);
+              console.error('Stack:', error.stack);
               process.exit(1);
             }
           }

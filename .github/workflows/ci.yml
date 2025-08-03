@@ -40,12 +40,14 @@ jobs:
       - name: Verify browser build
         run: |
           test -f dist/clustering.browser.js || exit 1
-          echo "Browser build size: $(ls -lh dist/clustering.browser.js | awk '{print $5}')"
+          # Use Node.js for cross-platform file size display
+          node -e "const fs=require('fs'); const stats=fs.statSync('dist/clustering.browser.js'); console.log('Browser build size:', (stats.size/1024).toFixed(2) + 'KB');"
       
       - name: Verify Node.js build
         run: |
           test -f dist/clustering.node.js || exit 1
-          echo "Node.js build size: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
+          # Use Node.js for cross-platform file size display
+          node -e "const fs=require('fs'); const stats=fs.statSync('dist/clustering.node.js'); console.log('Node.js build size:', (stats.size/1024).toFixed(2) + 'KB');"
       
       - name: Test Node.js build with tfjs-node
         run: |
