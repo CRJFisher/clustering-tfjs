@@ -150,18 +150,26 @@ export const variableGrads: typeof tfTypes.variableGrads = (...args) => tf.varia
 export const topk: typeof tfTypes.topk = (...args) => tf.topk(...args);
 export const scatterND: typeof tfTypes.scatterND = (...args) => tf.scatterND(...args);
 
-// Globals/Types
-export const Tensor = tfTypes.Tensor;
+// Globals/Types - Access from runtime tf object
+export const Tensor = () => getTf().Tensor;
 
 // Namespaces - return functions to avoid immediate evaluation
-export const image = () => tf.image;
-export const linalg = () => tf.linalg;
-export const losses = () => tf.losses;
-export const train = () => tf.train;
-export const data = () => tf.data;
-export const browser = () => tf.browser;
-export const util = () => tf.util;
-export const io = () => tf.io;
+export const image = () => getTf().image;
+export const linalg = () => getTf().linalg;
+export const losses = () => getTf().losses;
+export const train = () => getTf().train;
+// data namespace is not in @tensorflow/tfjs-core, only in full tfjs
+// Return type is unknown since data namespace types aren't in core
+export const data = (): unknown => {
+  const tfInstance = getTf();
+  if ('data' in tfInstance) {
+    return (tfInstance as { data: unknown }).data;
+  }
+  throw new Error('TensorFlow.js data API not available. Please load @tensorflow/tfjs instead of @tensorflow/tfjs-core');
+};
+export const browser = () => getTf().browser;
+export const util = () => getTf().util;
+export const io = () => getTf().io;
 
 // Additional functions that might be needed - use the proxy
 const sigmoid: typeof tfTypes.sigmoid = (...args) => tf.sigmoid(...args);
@@ -203,9 +211,7 @@ const randomGamma: typeof tfTypes.randomGamma = (...args) => tf.randomGamma(...a
 
 // Default export as namespace
 export default {
-  // Re-export everything from the proxy
-  ...tf,
-  // Override with our properly typed exports
+  // Export all our typed functions
   tensor,
   tensor1d,
   tensor2d,
@@ -351,4 +357,4 @@ export default {
   randomUniform,
   multinomial,
   randomGamma,
-} as typeof tfTypes;
+};
