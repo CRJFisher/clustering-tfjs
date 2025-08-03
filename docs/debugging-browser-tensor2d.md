@@ -272,3 +272,33 @@ Added `export` keyword to all the additional TensorFlow.js functions that were m
 - booleanMaskAsync, randomNormal, randomUniform, multinomial, randomGamma
 
 This ensures that when other modules import these functions directly, they're available as proper exports rather than only through the default export object.
+
+## Windows Platform - Native Module Loading Error
+
+### Error Description
+Windows tests are failing with:
+```
+The specified module could not be found.
+\\?\D:\a\clustering-tfjs\clustering-tfjs\node_modules\@tensorflow\tfjs-node\lib\napi-v8\tfjs_binding.node
+```
+
+### Analysis
+1. **Native bindings issue**: `@tensorflow/tfjs-node` includes native C++ bindings compiled for specific platforms
+2. **Windows-specific path**: The error shows a Windows path with backslashes
+3. **Module not found**: The native binding file `tfjs_binding.node` is missing or incompatible
+
+### Root Cause
+When running `npm ci` on Windows in CI, the native modules need to be rebuilt for the Windows platform. The pre-built binaries from npm might not match the exact Windows environment in GitHub Actions.
+
+### Solution
+Need to rebuild native modules after installation on Windows. Add a post-install step or use `npm rebuild` to compile native bindings for the current platform.
+
+### Implementation
+Added a conditional step in CI workflow that rebuilds `@tensorflow/tfjs-node` from source on Windows:
+```yaml
+- name: Rebuild native modules on Windows
+  if: runner.os == 'Windows'
+  run: npm rebuild @tensorflow/tfjs-node --build-from-source
+```
+
+This ensures the native bindings are compiled for the specific Windows environment in GitHub Actions.
