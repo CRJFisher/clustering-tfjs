@@ -309,3 +309,71 @@ This approach:
 2. Uses the pure JavaScript implementation of TensorFlow.js for tests
 3. Allows tests to run successfully without requiring Windows-specific native binaries
 4. Only affects the test environment, not the actual library functionality
+## CI Platform-Specific Issues
+
+### Ubuntu CI Test Failures (Task 28)
+
+**Problem**: Tests passed locally but failed in CI with TypeScript errors in tensorflow-helper.ts
+
+**Root Cause**: The tensorflow-helper.ts module dynamically loads different TensorFlow.js implementations but wasn't properly exporting all required properties for TypeScript.
+
+**Solution**: 
+- Re-export all types from @tensorflow/tfjs-core for TypeScript compatibility
+- Export specific runtime properties (io, version, data) from the loaded module
+- Provide a default export for backward compatibility
+
+**Key Learning**: When dynamically loading modules with different export structures, TypeScript needs static type information at compile time. The solution is to combine static exports with dynamic property access.
+
+### Windows Multi-Platform Test Failures (Task 29)
+
+**Problem**: Multi-platform CI workflow failed on Windows when testing with @tensorflow/tfjs backend
+
+**Root Cause**: The Install backend step used bash-specific syntax `[[ ]]` which is not compatible with Windows default shell
+
+**Solution**:
+- Removed bash-specific syntax from GitHub Actions workflow
+- Used GitHub Actions native `if:` conditional syntax
+- Split GPU backend skip logic into separate step
+
+**Example Fix**:
+```yaml
+# Before (fails on Windows)
+- name: Install backend
+  run: |
+    if [[ "${{ matrix.backend }}" == "tfjs-node-gpu" ]]; then
+      echo "Skipping"
+      exit 0
+    fi
+    npm install @tensorflow/${{ matrix.backend }}
+  shell: bash
+
+# After (cross-platform)
+- name: Install backend
+  run: npm install @tensorflow/${{ matrix.backend }}
+  if: matrix.backend \!= 'tfjs-node-gpu'
+```
+
+**Key Learning**: Always use GitHub Actions native syntax for conditionals instead of shell-specific syntax to ensure cross-platform compatibility.
+
+### General CI Debugging Tips
+
+1. **Module Loading Issues**: 
+   - Add comprehensive error handling with clear messages
+   - Log which module is being loaded and why
+   - Provide fallback options with explanatory messages
+
+2. **Cross-Platform Testing**:
+   - Test shell scripts on all target platforms
+   - Use GitHub Actions conditionals instead of shell conditionals
+   - Be mindful of path separators and environment variables
+
+3. **TypeScript Dynamic Imports**:
+   - Provide static type exports even when loading modules dynamically
+   - Use type assertions carefully to maintain type safety
+   - Consider using declaration merging for complex scenarios
+
+4. **Webpack and External Modules**:
+   - Understand how webpack handles external dependencies
+   - Test that dynamically required modules are available at runtime
+   - Consider the implications of nodeExternals in different environments
+EOF < /dev/null
