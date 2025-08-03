@@ -5,7 +5,11 @@
  * based on platform compatibility detected during Jest setup.
  */
 
-let tf: typeof import('@tensorflow/tfjs-node');
+// Re-export from @tensorflow/tfjs-core for type compatibility
+export * from '@tensorflow/tfjs-core';
+
+// Dynamically load the appropriate TensorFlow.js module
+let tf: any;
 
 // Check if we should force CPU backend (Windows CI or tfjs-node load failure)
 if (process.env.TF_FORCE_CPU_BACKEND === 'true') {
@@ -22,6 +26,10 @@ if (process.env.TF_FORCE_CPU_BACKEND === 'true') {
   }
 }
 
-// Re-export all TensorFlow.js functions
-export * from '@tensorflow/tfjs-core';
+// Also export specific properties that might be on the loaded module
+export const io = tf.io;
+export const version = tf.version;
+export const data = tf.data;
+
+// Default export for backward compatibility
 export default tf;
