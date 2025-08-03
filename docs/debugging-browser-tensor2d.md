@@ -294,11 +294,14 @@ When running `npm ci` on Windows in CI, the native modules need to be rebuilt fo
 Need to rebuild native modules after installation on Windows. Add a post-install step or use `npm rebuild` to compile native bindings for the current platform.
 
 ### Implementation
-Added a conditional step in CI workflow that rebuilds `@tensorflow/tfjs-node` from source on Windows:
+Added a conditional step in CI workflow that removes and reinstalls `@tensorflow/tfjs-node` on Windows:
 ```yaml
-- name: Rebuild native modules on Windows
+- name: Fix Windows native modules
   if: runner.os == 'Windows'
-  run: npm rebuild @tensorflow/tfjs-node --build-from-source
+  run: |
+    # Remove and reinstall tfjs-node to get correct binaries
+    Remove-Item -Path "node_modules/@tensorflow/tfjs-node" -Recurse -Force -ErrorAction SilentlyContinue
+    npm install @tensorflow/tfjs-node --force
 ```
 
-This ensures the native bindings are compiled for the specific Windows environment in GitHub Actions.
+This ensures the correct pre-built binaries are downloaded for the Windows environment. The issue occurs because `npm ci` might restore binaries from a different platform or architecture.
