@@ -142,14 +142,12 @@ jobs:
         run: npm run build:node
       
       - name: Install backend - ${{ matrix.backend }}
-        run: |
-          if [[ "${{ matrix.backend }}" == "tfjs-node-gpu" ]]; then
-            # Skip GPU backend on GitHub Actions as CUDA is not available
-            echo "Skipping GPU backend test on GitHub Actions (no CUDA)"
-            exit 0
-          fi
-          npm install @tensorflow/${{ matrix.backend }} --no-save
-        shell: bash
+        run: npm install @tensorflow/${{ matrix.backend }} --no-save
+        if: matrix.backend != 'tfjs-node-gpu'
+      
+      - name: Skip GPU backend test
+        run: echo "Skipping GPU backend test on GitHub Actions (no CUDA)"
+        if: matrix.backend == 'tfjs-node-gpu'
       
       - name: Test Node.js build with ${{ matrix.backend }}
         if: matrix.backend != 'tfjs-node-gpu'

@@ -14,7 +14,12 @@ let tf: typeof import('@tensorflow/tfjs-node');
 
 if (process.platform === 'win32' && process.env.CI) {
   // Use pure JS implementation on Windows CI
-  tf = require('@tensorflow/tfjs');
+  try {
+    tf = require('@tensorflow/tfjs');
+  } catch (error) {
+    console.error('tf-adapter: Failed to load @tensorflow/tfjs on Windows CI');
+    throw new Error(`Failed to load TensorFlow.js: ${error instanceof Error ? error.message : String(error)}`);
+  }
 } else {
   try {
     // Use Node.js backend for better performance
@@ -22,7 +27,12 @@ if (process.platform === 'win32' && process.env.CI) {
   } catch (error) {
     // Fallback to pure JS if tfjs-node fails to load
     console.warn('tf-adapter: Failed to load @tensorflow/tfjs-node, using pure JS fallback');
-    tf = require('@tensorflow/tfjs');
+    try {
+      tf = require('@tensorflow/tfjs');
+    } catch (fallbackError) {
+      console.error('tf-adapter: Failed to load @tensorflow/tfjs fallback');
+      throw new Error(`Failed to load TensorFlow.js: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+    }
   }
 }
 
