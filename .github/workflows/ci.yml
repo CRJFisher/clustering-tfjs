@@ -25,13 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
       
-      - name: Fix Windows native modules
-        if: runner.os == 'Windows'
-        run: |
-          # Remove and reinstall tfjs-node to get correct binaries
-          Remove-Item -Path "node_modules/@tensorflow/tfjs-node" -Recurse -Force -ErrorAction SilentlyContinue
-          npm install @tensorflow/tfjs-node --force
-      
       - name: Run linter
         run: npm run lint
       
