@@ -226,3 +226,49 @@ console.log('Centroids:', kmeans.centroids_);  // Access property on instance
 ```
 
 This explains why the error only appears with CPU backend - it's likely that with WebGL/WASM backends, the test was failing earlier due to the tensor2d error, so it never reached this incorrect code.
+
+## CPU Backend - Maximum Function Error
+
+### New Error After Fixing Centroids Issue
+After fixing the centroids access issue, a new error appears with CPU backend:
+```
+Browser: KMeans successful with cpu
+Browser: Centroids: JSHandle@object
+Browser: Creating SpectralClustering instance...
+Browser: Fitting SpectralClustering...
+Browser: Test failed: JSHandle@error
+Browser: Error stack: TypeError: o.maximum is not a function
+    at http://localhost:34901/dist/clustering.browser.js:1:27436
+```
+
+### Analysis
+1. **KMeans now works**: The centroids fix resolved the KMeans issue - it completes successfully with CPU backend
+2. **SpectralClustering fails**: The error occurs when running SpectralClustering with `o.maximum is not a function`
+3. **Same pattern as tensor2d**: The minified variable `o` is again not having the expected function
+4. **Function missing**: `maximum` is a TensorFlow.js function that should be available
+
+### Root Cause
+Looking at the error location and pattern:
+- This is the same issue as the `tensor2d` error - webpack module resolution
+- The `maximum` function is not being properly exported/imported
+- This only shows up with CPU backend because it was previously masked by earlier errors
+
+### Investigation
+Need to check if `maximum` is being exported in `tf-adapter.browser.ts`. Looking at lines 170-171:
+```typescript
+const maximum: typeof tfTypes.maximum = (...args) => tf.maximum(...args);
+const minimum: typeof tfTypes.minimum = (...args) => tf.minimum(...args);
+```
+
+The function is defined but not exported! It's only included in the default export object at the bottom of the file.
+
+### Solution
+Added `export` keyword to all the additional TensorFlow.js functions that were missing exports:
+- sigmoid, log, exp, maximum, minimum, clone, print, pad, notEqual, logicalXor
+- batchNorm, localResponseNormalization, separableConv2d, depthwiseConv2d
+- conv1d, conv2d, conv2dTranspose, conv3d, conv3dTranspose
+- maxPool, avgPool, pool, maxPool3d, avgPool3d
+- complex, real, imag, fft, ifft, rfft, irfft
+- booleanMaskAsync, randomNormal, randomUniform, multinomial, randomGamma
+
+This ensures that when other modules import these functions directly, they're available as proper exports rather than only through the default export object.
