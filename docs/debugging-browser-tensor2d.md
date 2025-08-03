@@ -133,3 +133,24 @@ Browser: Test failed: TypeError: o.tensor2d is not a function
 
 ### Key Insight
 The fact that both WebGL and WASM backends fail with the exact same error at the same location (`http://localhost:40279/dist/clustering.browser.js:1:23108`) strongly suggests this is a **build/bundling issue**, not a runtime backend issue.
+
+## TypeScript Typing Resolution
+
+### ESLint no-explicit-any Errors
+After fixing the module resolution issue, ESLint reported 139 errors about `@typescript-eslint/no-explicit-any` usage in the browser adapter files.
+
+### Initial Approach (Wrong)
+First attempted to add `/* eslint-disable @typescript-eslint/no-explicit-any */` comments to suppress the errors. This was rejected as it doesn't fix the underlying type safety issues.
+
+### Proper Solution
+1. Import the type definitions: `import type * as tfTypes from '@tensorflow/tfjs-core'`
+2. Use proper TypeScript types for all exported functions:
+   - For regular functions: `export const tensor2d: typeof tfTypes.tensor2d = (...args) => tf.tensor2d(...args)`
+   - For the tf proxy: `const tf = new Proxy({} as typeof tfTypes, { ... })`
+3. Fixed all 139 type errors by:
+   - Using `typeof tfTypes.functionName` for proper function typing
+   - Removing all `as any` casts
+   - Ensuring the proxy is typed as `typeof tfTypes`
+
+### Key Learning
+Always fix TypeScript type errors properly rather than suppressing them. The type system helps catch potential runtime errors and improves code maintainability.

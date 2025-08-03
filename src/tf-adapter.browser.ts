@@ -5,124 +5,207 @@
  * It expects users to have loaded @tensorflow/tfjs separately.
  */
 
+// Type imports for proper typing
+import type * as tfTypes from '@tensorflow/tfjs-core';
+
+// Declare global window.tf
+declare global {
+  interface Window {
+    tf: typeof tfTypes;
+  }
+}
+
 // Function to get tf from global
-function getTf(): any {
-  if (typeof window !== 'undefined' && (window as any).tf) {
-    return (window as any).tf;
+function getTf(): typeof tfTypes {
+  if (typeof window !== 'undefined' && window.tf) {
+    return window.tf;
   }
   throw new Error('TensorFlow.js not found. Please load it before using this library.');
 }
 
-// Export functions that delegate to global tf
-export const tensor = (...args: any[]) => getTf().tensor(...args);
-export const tensor1d = (...args: any[]) => getTf().tensor1d(...args);
-export const tensor2d = (...args: any[]) => getTf().tensor2d(...args);
-export const tensor3d = (...args: any[]) => getTf().tensor3d(...args);
-export const tensor4d = (...args: any[]) => getTf().tensor4d(...args);
-export const add = (...args: any[]) => getTf().add(...args);
-export const sub = (...args: any[]) => getTf().sub(...args);
-export const mul = (...args: any[]) => getTf().mul(...args);
-export const div = (...args: any[]) => getTf().div(...args);
-export const matMul = (...args: any[]) => getTf().matMul(...args);
-export const transpose = (...args: any[]) => getTf().transpose(...args);
-export const mean = (...args: any[]) => getTf().mean(...args);
-export const sum = (...args: any[]) => getTf().sum(...args);
-export const sqrt = (...args: any[]) => getTf().sqrt(...args);
-export const square = (...args: any[]) => getTf().square(...args);
-export const norm = (...args: any[]) => getTf().norm(...args);
-export const slice = (...args: any[]) => getTf().slice(...args);
-export const concat = (...args: any[]) => getTf().concat(...args);
-export const gather = (...args: any[]) => getTf().gather(...args);
-export const unique = (...args: any[]) => getTf().unique(...args);
-export const tidy = (...args: any[]) => getTf().tidy(...args);
-export const dispose = (...args: any[]) => getTf().dispose(...args);
-export const eye = (...args: any[]) => getTf().eye(...args);
-export const diag = (...args: any[]) => getTf().diag(...args);
-export const fill = (...args: any[]) => getTf().fill(...args);
-export const stack = (...args: any[]) => getTf().stack(...args);
-export const unstack = (...args: any[]) => getTf().unstack(...args);
-export const split = (...args: any[]) => getTf().split(...args);
-export const scalar = (...args: any[]) => getTf().scalar(...args);
-export const keep = (...args: any[]) => getTf().keep(...args);
-export const topk = (...args: any[]) => getTf().topk(...args);
-export const scatterND = (...args: any[]) => getTf().scatterND(...args);
-export const zeros = (...args: any[]) => getTf().zeros(...args);
-export const ones = (...args: any[]) => getTf().ones(...args);
-export const zerosLike = (...args: any[]) => getTf().zerosLike(...args);
-export const onesLike = (...args: any[]) => getTf().onesLike(...args);
-export const expandDims = (...args: any[]) => getTf().expandDims(...args);
-export const maximum = (...args: any[]) => getTf().maximum(...args);
-export const minimum = (...args: any[]) => getTf().minimum(...args);
-export const pow = (...args: any[]) => getTf().pow(...args);
-export const equal = (...args: any[]) => getTf().equal(...args);
-export const greater = (...args: any[]) => getTf().greater(...args);
-export const greaterEqual = (...args: any[]) => getTf().greaterEqual(...args);
-export const less = (...args: any[]) => getTf().less(...args);
-export const lessEqual = (...args: any[]) => getTf().lessEqual(...args);
-export const logicalAnd = (...args: any[]) => getTf().logicalAnd(...args);
-export const logicalOr = (...args: any[]) => getTf().logicalOr(...args);
-export const logicalNot = (...args: any[]) => getTf().logicalNot(...args);
-export const abs = (...args: any[]) => getTf().abs(...args);
-export const neg = (...args: any[]) => getTf().neg(...args);
-export const round = (...args: any[]) => getTf().round(...args);
-export const ceil = (...args: any[]) => getTf().ceil(...args);
-export const floor = (...args: any[]) => getTf().floor(...args);
-export const sign = (...args: any[]) => getTf().sign(...args);
-export const sin = (...args: any[]) => getTf().sin(...args);
-export const cos = (...args: any[]) => getTf().cos(...args);
-export const tan = (...args: any[]) => getTf().tan(...args);
-export const asin = (...args: any[]) => getTf().asin(...args);
-export const acos = (...args: any[]) => getTf().acos(...args);
-export const atan = (...args: any[]) => getTf().atan(...args);
-export const sinh = (...args: any[]) => getTf().sinh(...args);
-export const cosh = (...args: any[]) => getTf().cosh(...args);
-export const tanh = (...args: any[]) => getTf().tanh(...args);
-export const elu = (...args: any[]) => getTf().elu(...args);
-export const relu = (...args: any[]) => getTf().relu(...args);
-export const selu = (...args: any[]) => getTf().selu(...args);
-export const leakyRelu = (...args: any[]) => getTf().leakyRelu(...args);
-export const prelu = (...args: any[]) => getTf().prelu(...args);
-export const softmax = (...args: any[]) => getTf().softmax(...args);
-export const image = () => getTf().image;
-export const min = (...args: any[]) => getTf().min(...args);
-export const max = (...args: any[]) => getTf().max(...args);
-export const prod = (...args: any[]) => getTf().prod(...args);
-export const cumsum = (...args: any[]) => getTf().cumsum(...args);
-export const all = (...args: any[]) => getTf().all(...args);
-export const any = (...args: any[]) => getTf().any(...args);
-export const where = (...args: any[]) => getTf().where(...args);
-export const argMax = (...args: any[]) => getTf().argMax(...args);
-export const argMin = (...args: any[]) => getTf().argMin(...args);
-export const memory = () => getTf().memory();
-export const backend = () => getTf().backend();
-export const env = () => getTf().env();
-export const ready = () => getTf().ready();
-export const setBackend = (...args: any[]) => getTf().setBackend(...args);
-export const getBackend = () => getTf().getBackend();
-export const Tensor = () => getTf().Tensor;
+// Re-export all tf functions, properly typed
+const tf = new Proxy({} as typeof tfTypes, {
+  get(_target, prop: string) {
+    const tfInstance = getTf();
+    return tfInstance[prop as keyof typeof tfTypes];
+  }
+});
 
-// Additional functions that might be needed
-export const range = (...args: any[]) => getTf().range(...args);
-export const linspace = (...args: any[]) => getTf().linspace(...args);
-export const cast = (...args: any[]) => getTf().cast(...args);
-export const squeeze = (...args: any[]) => getTf().squeeze(...args);
-export const reshape = (...args: any[]) => getTf().reshape(...args);
-export const reverse = (...args: any[]) => getTf().reverse(...args);
-export const dot = (...args: any[]) => getTf().dot(...args);
-export const outerProduct = (...args: any[]) => getTf().outerProduct(...args);
-export const tensor5d = (...args: any[]) => getTf().tensor5d(...args);
-export const tensor6d = (...args: any[]) => getTf().tensor6d(...args);
-export const variable = (...args: any[]) => getTf().variable(...args);
-export const grad = (...args: any[]) => getTf().grad(...args);
-export const grads = (...args: any[]) => getTf().grads(...args);
-export const customGrad = (...args: any[]) => getTf().customGrad(...args);
-export const valueAndGrad = (...args: any[]) => getTf().valueAndGrad(...args);
-export const valueAndGrads = (...args: any[]) => getTf().valueAndGrads(...args);
-export const variableGrads = (...args: any[]) => getTf().variableGrads(...args);
+// Export commonly used functions for better tree-shaking
+export const tensor: typeof tfTypes.tensor = (...args) => tf.tensor(...args);
+export const tensor1d: typeof tfTypes.tensor1d = (...args) => tf.tensor1d(...args);
+export const tensor2d: typeof tfTypes.tensor2d = (...args) => tf.tensor2d(...args);
+export const tensor3d: typeof tfTypes.tensor3d = (...args) => tf.tensor3d(...args);
+export const tensor4d: typeof tfTypes.tensor4d = (...args) => tf.tensor4d(...args);
+export const tensor5d: typeof tfTypes.tensor5d = (...args) => tf.tensor5d(...args);
+export const tensor6d: typeof tfTypes.tensor6d = (...args) => tf.tensor6d(...args);
+export const variable: typeof tfTypes.variable = (...args) => tf.variable(...args);
+export const scalar: typeof tfTypes.scalar = (...args) => tf.scalar(...args);
+export const zeros: typeof tfTypes.zeros = (...args) => tf.zeros(...args);
+export const ones: typeof tfTypes.ones = (...args) => tf.ones(...args);
+export const zerosLike: typeof tfTypes.zerosLike = (...args) => tf.zerosLike(...args);
+export const onesLike: typeof tfTypes.onesLike = (...args) => tf.onesLike(...args);
+export const fill: typeof tfTypes.fill = (...args) => tf.fill(...args);
+export const range: typeof tfTypes.range = (...args) => tf.range(...args);
+export const linspace: typeof tfTypes.linspace = (...args) => tf.linspace(...args);
 
-// Default export
+// Math operations
+export const add: typeof tfTypes.add = (...args) => tf.add(...args);
+export const sub: typeof tfTypes.sub = (...args) => tf.sub(...args);
+export const mul: typeof tfTypes.mul = (...args) => tf.mul(...args);
+export const div: typeof tfTypes.div = (...args) => tf.div(...args);
+export const pow: typeof tfTypes.pow = (...args) => tf.pow(...args);
+export const sqrt: typeof tfTypes.sqrt = (...args) => tf.sqrt(...args);
+export const square: typeof tfTypes.square = (...args) => tf.square(...args);
+export const abs: typeof tfTypes.abs = (...args) => tf.abs(...args);
+export const neg: typeof tfTypes.neg = (...args) => tf.neg(...args);
+export const sign: typeof tfTypes.sign = (...args) => tf.sign(...args);
+export const round: typeof tfTypes.round = (...args) => tf.round(...args);
+export const floor: typeof tfTypes.floor = (...args) => tf.floor(...args);
+export const ceil: typeof tfTypes.ceil = (...args) => tf.ceil(...args);
+export const sin: typeof tfTypes.sin = (...args) => tf.sin(...args);
+export const cos: typeof tfTypes.cos = (...args) => tf.cos(...args);
+export const tan: typeof tfTypes.tan = (...args) => tf.tan(...args);
+export const asin: typeof tfTypes.asin = (...args) => tf.asin(...args);
+export const acos: typeof tfTypes.acos = (...args) => tf.acos(...args);
+export const atan: typeof tfTypes.atan = (...args) => tf.atan(...args);
+export const sinh: typeof tfTypes.sinh = (...args) => tf.sinh(...args);
+export const cosh: typeof tfTypes.cosh = (...args) => tf.cosh(...args);
+export const tanh: typeof tfTypes.tanh = (...args) => tf.tanh(...args);
+export const elu: typeof tfTypes.elu = (...args) => tf.elu(...args);
+export const relu: typeof tfTypes.relu = (...args) => tf.relu(...args);
+export const selu: typeof tfTypes.selu = (...args) => tf.selu(...args);
+export const leakyRelu: typeof tfTypes.leakyRelu = (...args) => tf.leakyRelu(...args);
+export const prelu: typeof tfTypes.prelu = (...args) => tf.prelu(...args);
+export const softmax: typeof tfTypes.softmax = (...args) => tf.softmax(...args);
+
+// Linear algebra
+export const matMul: typeof tfTypes.matMul = (...args) => tf.matMul(...args);
+export const dot: typeof tfTypes.dot = (...args) => tf.dot(...args);
+export const outerProduct: typeof tfTypes.outerProduct = (...args) => tf.outerProduct(...args);
+export const transpose: typeof tfTypes.transpose = (...args) => tf.transpose(...args);
+export const norm: typeof tfTypes.norm = (...args) => tf.norm(...args);
+
+// Reduction
+export const mean: typeof tfTypes.mean = (...args) => tf.mean(...args);
+export const sum: typeof tfTypes.sum = (...args) => tf.sum(...args);
+export const min: typeof tfTypes.min = (...args) => tf.min(...args);
+export const max: typeof tfTypes.max = (...args) => tf.max(...args);
+export const prod: typeof tfTypes.prod = (...args) => tf.prod(...args);
+export const cumsum: typeof tfTypes.cumsum = (...args) => tf.cumsum(...args);
+export const all: typeof tfTypes.all = (...args) => tf.all(...args);
+export const any: typeof tfTypes.any = (...args) => tf.any(...args);
+export const argMax: typeof tfTypes.argMax = (...args) => tf.argMax(...args);
+export const argMin: typeof tfTypes.argMin = (...args) => tf.argMin(...args);
+
+// Manipulation
+export const slice: typeof tfTypes.slice = (...args) => tf.slice(...args);
+export const concat: typeof tfTypes.concat = (...args) => tf.concat(...args);
+export const stack: typeof tfTypes.stack = (...args) => tf.stack(...args);
+export const unstack: typeof tfTypes.unstack = (...args) => tf.unstack(...args);
+export const split: typeof tfTypes.split = (...args) => tf.split(...args);
+export const gather: typeof tfTypes.gather = (...args) => tf.gather(...args);
+export const reverse: typeof tfTypes.reverse = (...args) => tf.reverse(...args);
+export const cast: typeof tfTypes.cast = (...args) => tf.cast(...args);
+export const reshape: typeof tfTypes.reshape = (...args) => tf.reshape(...args);
+export const squeeze: typeof tfTypes.squeeze = (...args) => tf.squeeze(...args);
+export const expandDims: typeof tfTypes.expandDims = (...args) => tf.expandDims(...args);
+
+// Logical
+export const equal: typeof tfTypes.equal = (...args) => tf.equal(...args);
+export const greater: typeof tfTypes.greater = (...args) => tf.greater(...args);
+export const greaterEqual: typeof tfTypes.greaterEqual = (...args) => tf.greaterEqual(...args);
+export const less: typeof tfTypes.less = (...args) => tf.less(...args);
+export const lessEqual: typeof tfTypes.lessEqual = (...args) => tf.lessEqual(...args);
+export const logicalAnd: typeof tfTypes.logicalAnd = (...args) => tf.logicalAnd(...args);
+export const logicalOr: typeof tfTypes.logicalOr = (...args) => tf.logicalOr(...args);
+export const logicalNot: typeof tfTypes.logicalNot = (...args) => tf.logicalNot(...args);
+export const where: typeof tfTypes.where = (...args) => tf.where(...args);
+
+// Special tensors
+export const eye: typeof tfTypes.eye = (...args) => tf.eye(...args);
+export const diag: typeof tfTypes.diag = (...args) => tf.diag(...args);
+export const unique: typeof tfTypes.unique = (...args) => tf.unique(...args);
+
+// Utility
+export const tidy: typeof tfTypes.tidy = (...args) => tf.tidy(...args);
+export const dispose: typeof tfTypes.dispose = (...args) => tf.dispose(...args);
+export const keep: typeof tfTypes.keep = (...args) => tf.keep(...args);
+export const memory: typeof tfTypes.memory = () => tf.memory();
+export const backend: typeof tfTypes.backend = () => tf.backend();
+export const env: typeof tfTypes.env = () => tf.env();
+export const ready: typeof tfTypes.ready = () => tf.ready();
+export const setBackend: typeof tfTypes.setBackend = (...args) => tf.setBackend(...args);
+export const getBackend: typeof tfTypes.getBackend = () => tf.getBackend();
+
+// Advanced
+export const grad: typeof tfTypes.grad = (...args) => tf.grad(...args);
+export const grads: typeof tfTypes.grads = (...args) => tf.grads(...args);
+export const customGrad: typeof tfTypes.customGrad = (...args) => tf.customGrad(...args);
+export const valueAndGrad: typeof tfTypes.valueAndGrad = (...args) => tf.valueAndGrad(...args);
+export const valueAndGrads: typeof tfTypes.valueAndGrads = (...args) => tf.valueAndGrads(...args);
+export const variableGrads: typeof tfTypes.variableGrads = (...args) => tf.variableGrads(...args);
+
+// Scatter
+export const topk: typeof tfTypes.topk = (...args) => tf.topk(...args);
+export const scatterND: typeof tfTypes.scatterND = (...args) => tf.scatterND(...args);
+
+// Globals/Types
+export const Tensor = tfTypes.Tensor;
+
+// Namespaces - return functions to avoid immediate evaluation
+export const image = () => tf.image;
+export const linalg = () => tf.linalg;
+export const losses = () => tf.losses;
+export const train = () => tf.train;
+export const data = () => tf.data;
+export const browser = () => tf.browser;
+export const util = () => tf.util;
+export const io = () => tf.io;
+
+// Additional functions that might be needed - use the proxy
+const sigmoid: typeof tfTypes.sigmoid = (...args) => tf.sigmoid(...args);
+const log: typeof tfTypes.log = (...args) => tf.log(...args);
+const exp: typeof tfTypes.exp = (...args) => tf.exp(...args);
+const maximum: typeof tfTypes.maximum = (...args) => tf.maximum(...args);
+const minimum: typeof tfTypes.minimum = (...args) => tf.minimum(...args);
+const clone: typeof tfTypes.clone = (...args) => tf.clone(...args);
+const print: typeof tfTypes.print = (...args) => tf.print(...args);
+const pad: typeof tfTypes.pad = (...args) => tf.pad(...args);
+const notEqual: typeof tfTypes.notEqual = (...args) => tf.notEqual(...args);
+const logicalXor: typeof tfTypes.logicalXor = (...args) => tf.logicalXor(...args);
+const batchNorm: typeof tfTypes.batchNorm = (...args) => tf.batchNorm(...args);
+const localResponseNormalization: typeof tfTypes.localResponseNormalization = (...args) => tf.localResponseNormalization(...args);
+const separableConv2d: typeof tfTypes.separableConv2d = (...args) => tf.separableConv2d(...args);
+const depthwiseConv2d: typeof tfTypes.depthwiseConv2d = (...args) => tf.depthwiseConv2d(...args);
+const conv1d: typeof tfTypes.conv1d = (...args) => tf.conv1d(...args);
+const conv2d: typeof tfTypes.conv2d = (...args) => tf.conv2d(...args);
+const conv2dTranspose: typeof tfTypes.conv2dTranspose = (...args) => tf.conv2dTranspose(...args);
+const conv3d: typeof tfTypes.conv3d = (...args) => tf.conv3d(...args);
+const conv3dTranspose: typeof tfTypes.conv3dTranspose = (...args) => tf.conv3dTranspose(...args);
+const maxPool: typeof tfTypes.maxPool = (...args) => tf.maxPool(...args);
+const avgPool: typeof tfTypes.avgPool = (...args) => tf.avgPool(...args);
+const pool: typeof tfTypes.pool = (...args) => tf.pool(...args);
+const maxPool3d: typeof tfTypes.maxPool3d = (...args) => tf.maxPool3d(...args);
+const avgPool3d: typeof tfTypes.avgPool3d = (...args) => tf.avgPool3d(...args);
+const complex: typeof tfTypes.complex = (...args) => tf.complex(...args);
+const real: typeof tfTypes.real = (...args) => tf.real(...args);
+const imag: typeof tfTypes.imag = (...args) => tf.imag(...args);
+const fft: typeof tfTypes.fft = (...args) => tf.fft(...args);
+const ifft: typeof tfTypes.ifft = (...args) => tf.ifft(...args);
+const rfft: typeof tfTypes.rfft = (...args) => tf.rfft(...args);
+const irfft: typeof tfTypes.irfft = (...args) => tf.irfft(...args);
+const booleanMaskAsync: typeof tfTypes.booleanMaskAsync = (...args) => tf.booleanMaskAsync(...args);
+const randomNormal: typeof tfTypes.randomNormal = (...args) => tf.randomNormal(...args);
+const randomUniform: typeof tfTypes.randomUniform = (...args) => tf.randomUniform(...args);
+const multinomial: typeof tfTypes.multinomial = (...args) => tf.multinomial(...args);
+const randomGamma: typeof tfTypes.randomGamma = (...args) => tf.randomGamma(...args);
+
+// Default export as namespace
 export default {
-  // Creation
+  // Re-export everything from the proxy
+  ...tf,
+  // Override with our properly typed exports
   tensor,
   tensor1d,
   tensor2d,
@@ -131,29 +214,14 @@ export default {
   tensor5d,
   tensor6d,
   variable,
+  scalar,
   zeros,
   ones,
   zerosLike,
   onesLike,
   fill,
-  scalar,
   range,
   linspace,
-  
-  // Manipulation
-  concat,
-  split,
-  slice,
-  stack,
-  unstack,
-  reverse,
-  pad: (...args: any[]) => getTf().pad(...args),
-  reshape,
-  squeeze,
-  expandDims,
-  gather,
-  
-  // Math
   add,
   sub,
   mul,
@@ -167,30 +235,6 @@ export default {
   round,
   floor,
   ceil,
-  min,
-  max,
-  mean,
-  sum,
-  prod,
-  norm,
-  cumsum,
-  argMax,
-  argMin,
-  
-  // Logical
-  equal,
-  notEqual: (...args: any[]) => getTf().notEqual(...args),
-  less,
-  lessEqual,
-  greater,
-  greaterEqual,
-  where,
-  logicalAnd,
-  logicalOr,
-  logicalNot,
-  logicalXor: (...args: any[]) => getTf().logicalXor(...args),
-  
-  // Trig
   sin,
   cos,
   tan,
@@ -200,14 +244,50 @@ export default {
   sinh,
   cosh,
   tanh,
-  
-  // Linear algebra
+  elu,
+  relu,
+  selu,
+  leakyRelu,
+  prelu,
+  softmax,
   matMul,
   dot,
   outerProduct,
   transpose,
-  
-  // Utility
+  norm,
+  mean,
+  sum,
+  min,
+  max,
+  prod,
+  cumsum,
+  all,
+  any,
+  argMax,
+  argMin,
+  slice,
+  concat,
+  stack,
+  unstack,
+  split,
+  gather,
+  reverse,
+  cast,
+  reshape,
+  squeeze,
+  expandDims,
+  equal,
+  greater,
+  greaterEqual,
+  less,
+  lessEqual,
+  logicalAnd,
+  logicalOr,
+  logicalNot,
+  where,
+  eye,
+  diag,
+  unique,
   tidy,
   dispose,
   keep,
@@ -217,86 +297,58 @@ export default {
   ready,
   setBackend,
   getBackend,
-  
-  // Special
-  eye,
-  diag,
-  unique,
-  maximum,
-  minimum,
-  softmax,
-  elu,
-  relu,
-  selu,
-  leakyRelu,
-  prelu,
-  sigmoid: (...args: any[]) => getTf().sigmoid(...args),
-  log: (...args: any[]) => getTf().log(...args),
-  exp: (...args: any[]) => getTf().exp(...args),
-  
-  // Tensors
-  Tensor,
-  
-  // Other  
-  cast,
-  clone: (...args: any[]) => getTf().clone(...args),
-  print: (...args: any[]) => getTf().print(...args),
-  
-  // Gradients
   grad,
   grads,
   customGrad,
   valueAndGrad,
   valueAndGrads,
   variableGrads,
-  
-  // Additional ops
   topk,
   scatterND,
-  
-  // Sub-namespaces (for compatibility)
+  Tensor,
   image,
-  linalg: () => getTf().linalg,
-  losses: () => getTf().losses,
-  train: () => getTf().train,
-  data: () => getTf().data,
-  browser: () => getTf().browser,
-  util: () => getTf().util,
-  io: () => getTf().io,
-  
-  // Aliases
-  batchNorm: (...args: any[]) => getTf().batchNorm(...args),
-  localResponseNormalization: (...args: any[]) => getTf().localResponseNormalization(...args),
-  separableConv2d: (...args: any[]) => getTf().separableConv2d(...args),
-  depthwiseConv2d: (...args: any[]) => getTf().depthwiseConv2d(...args),
-  conv1d: (...args: any[]) => getTf().conv1d(...args),
-  conv2d: (...args: any[]) => getTf().conv2d(...args),
-  conv2dTranspose: (...args: any[]) => getTf().conv2dTranspose(...args),
-  conv3d: (...args: any[]) => getTf().conv3d(...args),
-  conv3dTranspose: (...args: any[]) => getTf().conv3dTranspose(...args),
-  maxPool: (...args: any[]) => getTf().maxPool(...args),
-  avgPool: (...args: any[]) => getTf().avgPool(...args),
-  pool: (...args: any[]) => getTf().pool(...args),
-  maxPool3d: (...args: any[]) => getTf().maxPool3d(...args),
-  avgPool3d: (...args: any[]) => getTf().avgPool3d(...args),
-  
-  // Complex
-  complex: (...args: any[]) => getTf().complex(...args),
-  real: (...args: any[]) => getTf().real(...args),
-  imag: (...args: any[]) => getTf().imag(...args),
-  
-  // FFT
-  fft: (...args: any[]) => getTf().fft(...args),
-  ifft: (...args: any[]) => getTf().ifft(...args),
-  rfft: (...args: any[]) => getTf().rfft(...args),
-  irfft: (...args: any[]) => getTf().irfft(...args),
-  
-  // Boolean masks
-  booleanMaskAsync: (...args: any[]) => getTf().booleanMaskAsync(...args),
-  
-  // RNG
-  randomNormal: (...args: any[]) => getTf().randomNormal(...args),
-  randomUniform: (...args: any[]) => getTf().randomUniform(...args),
-  multinomial: (...args: any[]) => getTf().multinomial(...args),
-  randomGamma: (...args: any[]) => getTf().randomGamma(...args),
-};
+  linalg,
+  losses,
+  train,
+  data,
+  browser,
+  util,
+  io,
+  // Additional
+  sigmoid,
+  log,
+  exp,
+  maximum,
+  minimum,
+  clone,
+  print,
+  pad,
+  notEqual,
+  logicalXor,
+  batchNorm,
+  localResponseNormalization,
+  separableConv2d,
+  depthwiseConv2d,
+  conv1d,
+  conv2d,
+  conv2dTranspose,
+  conv3d,
+  conv3dTranspose,
+  maxPool,
+  avgPool,
+  pool,
+  maxPool3d,
+  avgPool3d,
+  complex,
+  real,
+  imag,
+  fft,
+  ifft,
+  rfft,
+  irfft,
+  booleanMaskAsync,
+  randomNormal,
+  randomUniform,
+  multinomial,
+  randomGamma,
+} as typeof tfTypes;
