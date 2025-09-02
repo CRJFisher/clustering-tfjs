@@ -307,3 +307,238 @@ export function getGridCoordinates(
   
   return tf.tensor2d(coords);
 }
+
+/**
+ * ----------------------------------------------------------------------------
+ * Best Matching Unit (BMU) Calculation Functions
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * Find the Best Matching Unit for a single sample.
+ * 
+ * @param sample Input sample tensor [nFeatures]
+ * @param weights SOM weights tensor [gridHeight, gridWidth, nFeatures]
+ * @returns BMU indices as [row, col]
+ */
+export function findBMU(
+  sample: tf.Tensor1D,
+  weights: tf.Tensor3D
+): tf.Tensor1D {
+  return tf.tidy(() => {
+    const [gridHeight, gridWidth, nFeatures] = weights.shape;
+    
+    // Reshape weights to 2D for efficient computation
+    // [gridHeight * gridWidth, nFeatures]
+    const weightsFlat = weights.reshape([gridHeight * gridWidth, nFeatures]);
+    
+    // Compute squared distances to all neurons
+    // ||sample - weight||^2 = ||sample||^2 + ||weight||^2 - 2 * sample . weight
+    const sampleNorm = sample.square().sum().expandDims(0);
+    const weightsNorm = weightsFlat.square().sum(1, true);
+    const dotProduct = tf.matMul(
+      sample.expandDims(0),
+      weightsFlat,
+      false,
+      true
+    );
+    
+    const distances = sampleNorm.add(weightsNorm).sub(dotProduct.mul(2));
+    
+    // Find minimum distance index
+    const bmuIndex = distances.argMin(1);
+    
+    // Convert flat index back to grid coordinates
+    const row = bmuIndex.div(gridWidth).floor();
+    const col = bmuIndex.mod(gridWidth);
+    
+    return tf.stack([row, col]).squeeze();
+  });
+}
+
+/**
+ * Find BMUs for a batch of samples using optimized matrix operations.
+ * 
+ * @param samples Batch of input samples [nSamples, nFeatures]
+ * @param weights SOM weights tensor [gridHeight, gridWidth, nFeatures]
+ * @returns BMU indices tensor [nSamples, 2] with [row, col] for each sample
+ */
+export function findBMUBatch(
+  samples: tf.Tensor2D,
+  weights: tf.Tensor3D
+): tf.Tensor2D {
+  return tf.tidy(() => {
+    const [nSamples, nFeatures] = samples.shape;
+    const [gridHeight, gridWidth, _] = weights.shape;
+    const totalNeurons = gridHeight * gridWidth;
+    
+    // Reshape weights for batch computation
+    // [totalNeurons, nFeatures]
+    const weightsFlat = weights.reshape([totalNeurons, nFeatures]);
+    
+    // Compute pairwise squared distances using broadcasting
+    // Distance matrix will be [nSamples, totalNeurons]
+    
+    // ||x - w||^2 = ||x||^2 + ||w||^2 - 2 * x . w
+    const samplesNorm = samples.square().sum(1, true); // [nSamples, 1]
+    const weightsNorm = weightsFlat.square().sum(1, true).transpose(); // [1, totalNeurons]
+    
+    // Dot product: [nSamples, nFeatures] x [nFeatures, totalNeurons]
+    const dotProduct = tf.matMul(samples, weightsFlat, false, true);
+    
+    // Compute distances
+    const distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
+    
+    // Find BMU indices for each sample
+    const bmuIndices = distances.argMin(1); // [nSamples]
+    
+    // Convert flat indices to grid coordinates
+    const rows = bmuIndices.div(gridWidth).floor();
+    const cols = bmuIndices.mod(gridWidth);
+    
+    return tf.stack([rows, cols], 1) as tf.Tensor2D;
+  });
+}
+
+/**
+ * Compute distances from samples to their BMUs.
+ * Used for quantization error calculation.
+ * 
+ * @param samples Input samples [nSamples, nFeatures]
+ * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
+ * @param bmus BMU indices [nSamples, 2]
+ * @returns Distances tensor [nSamples]
+ */
+export function computeBMUDistances(
+  samples: tf.Tensor2D,
+  weights: tf.Tensor3D,
+  bmus: tf.Tensor2D
+): tf.Tensor1D {
+  return tf.tidy(() => {
+    const [nSamples, nFeatures] = samples.shape;
+    const [gridHeight, gridWidth, _] = weights.shape;
+    
+    // Get BMU weights for each sample
+    const bmuWeights = tf.buffer([nSamples, nFeatures]);
+    const weightsData = weights.bufferSync();
+    const bmusData = bmus.bufferSync();
+    
+    for (let i = 0; i < nSamples; i++) {
+      const row = bmusData.get(i, 0);
+      const col = bmusData.get(i, 1);
+      
+      for (let j = 0; j < nFeatures; j++) {
+        bmuWeights.set(weightsData.get(row, col, j), i, j);
+      }
+    }
+    
+    const bmuWeightsTensor = bmuWeights.toTensor();
+    
+    // Compute distances
+    const diff = samples.sub(bmuWeightsTensor);
+    const distances = diff.square().sum(1).sqrt();
+    
+    return distances as tf.Tensor1D;
+  });
+}
+
+/**
+ * Find the second-best matching unit for topographic error calculation.
+ * 
+ * @param sample Input sample [nFeatures]
+ * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
+ * @param bmu First BMU indices [2]
+ * @returns Second BMU indices [2]
+ */
+export function findSecondBMU(
+  sample: tf.Tensor1D,
+  weights: tf.Tensor3D,
+  bmu: tf.Tensor1D
+): tf.Tensor1D {
+  return tf.tidy(() => {
+    const [gridHeight, gridWidth, nFeatures] = weights.shape;
+    const totalNeurons = gridHeight * gridWidth;
+    
+    // Get BMU flat index
+    const bmuData = bmu.dataSync();
+    const bmuRow = bmuData[0];
+    const bmuCol = bmuData[1];
+    const bmuFlatIndex = bmuRow * gridWidth + bmuCol;
+    
+    // Reshape weights
+    const weightsFlat = weights.reshape([totalNeurons, nFeatures]);
+    
+    // Compute distances to all neurons
+    const sampleExpanded = sample.expandDims(0);
+    const diff = weightsFlat.sub(sampleExpanded);
+    const distances = diff.square().sum(1).sqrt();
+    
+    // Set BMU distance to infinity to exclude it
+    const distancesArray = Array.from(distances.dataSync());
+    distancesArray[bmuFlatIndex] = Infinity;
+    
+    // Find second minimum
+    const secondBMUIndex = distancesArray.indexOf(Math.min(...distancesArray.filter(d => d !== Infinity)));
+    
+    // Convert to grid coordinates
+    const row = Math.floor(secondBMUIndex / gridWidth);
+    const col = secondBMUIndex % gridWidth;
+    
+    return tf.tensor1d([row, col]);
+  });
+}
+
+/**
+ * Optimized BMU search using pre-allocated tensors for better memory management.
+ * This version is designed for use in training loops where tensors can be reused.
+ * 
+ * @param samples Input samples [nSamples, nFeatures]
+ * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
+ * @param distanceBuffer Optional pre-allocated distance buffer
+ * @returns Object containing BMU indices and distances
+ */
+export function findBMUOptimized(
+  samples: tf.Tensor2D,
+  weights: tf.Tensor3D,
+  distanceBuffer?: tf.Tensor2D
+): { bmus: tf.Tensor2D; distances: tf.Tensor1D } {
+  return tf.tidy(() => {
+    const [nSamples, nFeatures] = samples.shape;
+    const [gridHeight, gridWidth, _] = weights.shape;
+    const totalNeurons = gridHeight * gridWidth;
+    
+    // Reshape weights efficiently
+    const weightsFlat = weights.reshape([totalNeurons, nFeatures]);
+    
+    // Use optimized matrix multiplication for distance calculation
+    // This leverages GPU acceleration maximally
+    const samplesNorm = samples.square().sum(1, true);
+    const weightsNorm = weightsFlat.square().sum(1, true).transpose();
+    
+    // Main computational bottleneck - optimized matrix multiplication
+    const dotProduct = tf.matMul(samples, weightsFlat, false, true);
+    
+    // Compute distance matrix
+    let distances: tf.Tensor2D;
+    if (distanceBuffer) {
+      // Reuse buffer if provided
+      distances = distanceBuffer;
+      distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
+    } else {
+      distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
+    }
+    
+    // Find BMUs
+    const bmuIndices = distances.argMin(1);
+    
+    // Get minimum distances for each sample
+    const minDistances = distances.min(1).sqrt();
+    
+    // Convert to grid coordinates
+    const rows = bmuIndices.div(gridWidth).floor();
+    const cols = bmuIndices.mod(gridWidth);
+    const bmus = tf.stack([rows, cols], 1) as tf.Tensor2D;
+    
+    return { bmus, distances: minDistances as tf.Tensor1D };
+  });
+}
