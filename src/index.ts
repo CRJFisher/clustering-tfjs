@@ -18,6 +18,7 @@ export {
   type DebugInfo,
 } from './clustering/spectral';
 export { KMeans } from './clustering/kmeans';
+export { SOM } from './clustering/som';
 
 // Utilities
 export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
@@ -51,3 +52,25 @@ export {
 
 // Deterministic eigenpair post-processing
 export { deterministic_eigenpair_processing } from './utils/eigen_post';
+
+// SOM-specific utilities
+export {
+  initializeWeights,
+  findBMU,
+  findBMUBatch,
+  gaussianNeighborhood,
+  bubbleNeighborhood,
+  mexicanHatNeighborhood,
+  linearDecay,
+  exponentialDecay,
+  DecayTracker,
+} from './clustering/som_utils';
+
+export {
+  getComponentPlanes,
+  getHitMap,
+  getActivationMap,
+  trackBMUTrajectory,
+  getQuantizationQualityMap,
+  exportForVisualization,
+} from './utils/som_visualization';
