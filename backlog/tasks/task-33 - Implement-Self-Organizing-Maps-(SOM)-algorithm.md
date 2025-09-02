@@ -10,7 +10,7 @@ dependencies: []
 
 ## Description
 
-Add Self-Organizing Maps (Kohonen maps) implementation for unsupervised learning and data visualization. SOMs create a low-dimensional (typically 2D) discrete representation of high-dimensional input space while preserving topological properties, making them valuable for exploratory data analysis, dimensionality reduction, and clustering visualization.
+Add Self-Organizing Maps (Kohonen maps) implementation for unsupervised learning and data visualization using TensorFlow.js. SOMs create a low-dimensional (typically 2D) discrete representation of high-dimensional input space while preserving topological properties, making them valuable for exploratory data analysis, dimensionality reduction, and clustering visualization. The implementation will leverage TensorFlow.js for GPU acceleration and efficient tensor operations.
 
 ## Acceptance Criteria
 
@@ -28,9 +28,31 @@ Add Self-Organizing Maps (Kohonen maps) implementation for unsupervised learning
 
 ## Implementation Plan
 
-### 1. Research Phase
+This task has been broken down into 18 detailed sub-tasks (33.1 through 33.18) covering all aspects of the implementation. The sub-tasks are designed to be completed sequentially, with each building upon the previous ones.
+
+### Sub-tasks Overview:
+- **33.1**: Design SOM architecture and integration strategy
+- **33.2**: Set up MiniSom reference implementation
+- **33.3**: Implement type definitions and interfaces
+- **33.4**: Implement grid initialization and topology
+- **33.5**: Implement BMU calculation with TensorFlow.js
+- **33.6**: Implement neighborhood functions
+- **33.7**: Implement learning rate and radius decay
+- **33.8**: Implement core training loop
+- **33.9**: Implement online/incremental learning
+- **33.10**: Implement visualization utilities
+- **33.11**: Generate test fixtures from MiniSom
+- **33.12**: Implement unit tests
+- **33.13**: Implement reference comparison tests
+- **33.14**: Implement performance benchmarks
+- **33.15**: Optimize for GPU acceleration
+- **33.16**: Create API documentation
+- **33.17**: Integrate with library exports
+- **33.18**: Final review and validation
+
+### 1. Research Phase (Completed in sub-task planning)
 - Study SOM algorithm theory and mathematical foundations
-- Identify reference implementation (MiniSom or sklearn-som Python library)
+- Identify reference implementation (MiniSom Python library)
 - Document key parameters and their effects on training
 - Research TensorFlow.js optimization strategies for SOM operations
 
