@@ -1,5 +1,5 @@
 import * as tf from '../tf-adapter';
-import type { SOMTopology, SOMInitialization } from './types';
+import type { SOMTopology, SOMInitialization, SOMNeighborhood } from './types';
 
 /**
  * Grid coordinate utilities for SOM topology management.
@@ -541,4 +541,233 @@ export function findBMUOptimized(
     
     return { bmus, distances: minDistances as tf.Tensor1D };
   });
+}
+
+/**
+ * ----------------------------------------------------------------------------
+ * Neighborhood Functions for Weight Updates
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * Gaussian neighborhood function.
+ * Smooth exponential decay from BMU.
+ * 
+ * @param distance Distance from BMU in grid space
+ * @param radius Current neighborhood radius
+ * @returns Influence value [0, 1]
+ */
+export function gaussianNeighborhood(
+  distance: tf.Tensor,
+  radius: number
+): tf.Tensor {
+  return tf.tidy(() => {
+    // h(d, σ) = exp(-d² / (2σ²))
+    const sigma2 = 2 * radius * radius;
+    return distance.square().div(sigma2).neg().exp();
+  });
+}
+
+/**
+ * Bubble neighborhood function.
+ * Hard cutoff at radius boundary.
+ * 
+ * @param distance Distance from BMU in grid space
+ * @param radius Current neighborhood radius
+ * @returns Influence value (0 or 1)
+ */
+export function bubbleNeighborhood(
+  distance: tf.Tensor,
+  radius: number
+): tf.Tensor {
+  return tf.tidy(() => {
+    // h(d, σ) = 1 if d <= σ, else 0
+    return distance.lessEqual(radius).cast('float32');
+  });
+}
+
+/**
+ * Mexican hat (Ricker wavelet) neighborhood function.
+ * Provides lateral inhibition with negative values at medium distances.
+ * 
+ * @param distance Distance from BMU in grid space
+ * @param radius Current neighborhood radius
+ * @returns Influence value [-0.5, 1]
+ */
+export function mexicanHatNeighborhood(
+  distance: tf.Tensor,
+  radius: number
+): tf.Tensor {
+  return tf.tidy(() => {
+    // h(d, σ) = (1 - d²/σ²) * exp(-d²/(2σ²))
+    const sigma2 = radius * radius;
+    const distSquared = distance.square();
+    const term1 = tf.scalar(1).sub(distSquared.div(sigma2));
+    const term2 = distSquared.div(2 * sigma2).neg().exp();
+    return term1.mul(term2);
+  });
+}
+
+/**
+ * Compute neighborhood influence for all neurons given BMU positions.
+ * 
+ * @param bmus BMU positions [nSamples, 2]
+ * @param gridHeight Grid height
+ * @param gridWidth Grid width
+ * @param radius Current neighborhood radius
+ * @param neighborhood Neighborhood function type
+ * @param topology Grid topology
+ * @returns Influence matrix [nSamples, gridHeight * gridWidth]
+ */
+export function computeNeighborhoodInfluence(
+  bmus: tf.Tensor2D,
+  gridHeight: number,
+  gridWidth: number,
+  radius: number,
+  neighborhood: SOMNeighborhood,
+  topology: SOMTopology
+): tf.Tensor2D {
+  return tf.tidy(() => {
+    const [nSamples] = bmus.shape;
+    const totalNeurons = gridHeight * gridWidth;
+    
+    // Pre-compute grid distance matrix if not cached
+    const gridDistances = createGridDistanceMatrix(gridHeight, gridWidth, topology);
+    
+    // Get BMU flat indices
+    const bmusData = bmus.bufferSync();
+    const bmuIndices: number[] = [];
+    for (let i = 0; i < nSamples; i++) {
+      const row = bmusData.get(i, 0);
+      const col = bmusData.get(i, 1);
+      bmuIndices.push(row * gridWidth + col);
+    }
+    
+    // Compute influence for each sample's BMU
+    const influences: tf.Tensor[] = [];
+    
+    for (const bmuIdx of bmuIndices) {
+      // Get distances from this BMU to all neurons
+      const distances = gridDistances.slice([bmuIdx, 0], [1, totalNeurons]).squeeze();
+      
+      // Apply neighborhood function
+      let influence: tf.Tensor;
+      switch (neighborhood) {
+        case 'gaussian':
+          influence = gaussianNeighborhood(distances, radius);
+          break;
+        case 'bubble':
+          influence = bubbleNeighborhood(distances, radius);
+          break;
+        case 'mexican_hat':
+          influence = mexicanHatNeighborhood(distances, radius);
+          break;
+        default:
+          throw new Error(`Unknown neighborhood function: ${neighborhood}`);
+      }
+      
+      influences.push(influence.expandDims(0));
+    }
+    
+    // Stack influences for all samples
+    return tf.concat(influences, 0) as tf.Tensor2D;
+  });
+}
+
+/**
+ * Compute neighborhood influence matrix for batch update.
+ * Optimized version that computes influence for all BMUs at once.
+ * 
+ * @param bmuIndices Flat BMU indices [nSamples]
+ * @param gridDistanceMatrix Pre-computed grid distances [totalNeurons, totalNeurons]
+ * @param radius Current neighborhood radius
+ * @param neighborhood Neighborhood function type
+ * @returns Influence matrix [nSamples, totalNeurons]
+ */
+export function computeNeighborhoodInfluenceBatch(
+  bmuIndices: tf.Tensor1D,
+  gridDistanceMatrix: tf.Tensor2D,
+  radius: number,
+  neighborhood: SOMNeighborhood
+): tf.Tensor2D {
+  return tf.tidy(() => {
+    const nSamples = bmuIndices.shape[0];
+    const totalNeurons = gridDistanceMatrix.shape[0];
+    
+    // Gather distances for all BMUs at once
+    const bmuDistances = tf.gather(gridDistanceMatrix, bmuIndices);
+    
+    // Apply neighborhood function to all distances
+    switch (neighborhood) {
+      case 'gaussian':
+        return gaussianNeighborhood(bmuDistances, radius) as tf.Tensor2D;
+      case 'bubble':
+        return bubbleNeighborhood(bmuDistances, radius) as tf.Tensor2D;
+      case 'mexican_hat':
+        return mexicanHatNeighborhood(bmuDistances, radius) as tf.Tensor2D;
+      default:
+        throw new Error(`Unknown neighborhood function: ${neighborhood}`);
+    }
+  });
+}
+
+/**
+ * Create a cached neighborhood influence lookup table.
+ * Pre-computes influence values for all possible neuron pairs.
+ * 
+ * @param gridHeight Grid height
+ * @param gridWidth Grid width
+ * @param radius Neighborhood radius
+ * @param neighborhood Neighborhood function type
+ * @param topology Grid topology
+ * @returns Influence lookup table [totalNeurons, totalNeurons]
+ */
+export function createNeighborhoodLookupTable(
+  gridHeight: number,
+  gridWidth: number,
+  radius: number,
+  neighborhood: SOMNeighborhood,
+  topology: SOMTopology
+): tf.Tensor2D {
+  return tf.tidy(() => {
+    const gridDistances = createGridDistanceMatrix(gridHeight, gridWidth, topology);
+    
+    // Apply neighborhood function to entire distance matrix
+    switch (neighborhood) {
+      case 'gaussian':
+        return gaussianNeighborhood(gridDistances, radius) as tf.Tensor2D;
+      case 'bubble':
+        return bubbleNeighborhood(gridDistances, radius) as tf.Tensor2D;
+      case 'mexican_hat':
+        return mexicanHatNeighborhood(gridDistances, radius) as tf.Tensor2D;
+      default:
+        throw new Error(`Unknown neighborhood function: ${neighborhood}`);
+    }
+  });
+}
+
+/**
+ * Validate neighborhood function parameters.
+ * 
+ * @param radius Neighborhood radius
+ * @param gridHeight Grid height
+ * @param gridWidth Grid width
+ * @throws Error if parameters are invalid
+ */
+export function validateNeighborhoodParams(
+  radius: number,
+  gridHeight: number,
+  gridWidth: number
+): void {
+  if (radius <= 0) {
+    throw new Error('Neighborhood radius must be positive');
+  }
+  
+  const maxDimension = Math.max(gridHeight, gridWidth);
+  if (radius > maxDimension) {
+    console.warn(
+      `Neighborhood radius (${radius}) is larger than grid dimensions. ` +
+      `This may lead to uniform influence across the entire grid.`
+    );
+  }
 }
