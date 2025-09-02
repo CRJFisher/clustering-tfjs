@@ -71,7 +71,8 @@
     "prepublishOnly": "npm run lint && npm run type-check && npm run build && npm test",
     "prepare": "npm run build",
     "format": "prettier --write 'src/**/*.{ts,tsx}'",
-    "release": "node scripts/release.js"
+    "release": "node scripts/release.js",
+    "serve:examples": "npx http-server examples/observable -p 8080 -o"
   },
   "dependencies": {
     "@tensorflow/tfjs-core": "^4.20.0",

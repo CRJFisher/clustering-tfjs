@@ -284,6 +284,20 @@ calinskiHarabasz(X: Tensor2D | number[][], labels: number[]): Promise<number>
 
 ## Examples
 
+### Live Demos
+
+Try these interactive examples directly in your browser:
+
+- [**Interactive Clustering Visualization**](https://observablehq.com/@observablehq/clustering-tfjs-demo) - Explore all algorithms with different datasets
+- [**Local Examples**](examples/observable/) - Run examples locally with HTML files
+
+Observable notebooks coming soon! In the meantime, check out the [local examples](examples/observable/) which can be:
+- Opened directly in your browser
+- Served locally with `npm run serve:examples`
+- Used as templates for your own visualizations
+
+### Code Examples
+
 Coming soon: Example notebooks and CodePen demos
 
 ## Performance

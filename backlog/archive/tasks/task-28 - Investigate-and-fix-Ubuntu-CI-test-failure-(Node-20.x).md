@@ -20,6 +20,7 @@ The main CI test job is failing on Ubuntu with Node 20.x during the 'Run tests' 
 - [x] Tests pass successfully on Ubuntu with Node 20.x  
 - [x] Fix is implemented without breaking other CI jobs
 - [ ] CI workflow completes successfully
+
 ## Implementation Plan
 
 1. Check GitHub Actions logs for the specific test failure message
@@ -47,6 +48,7 @@ The Ubuntu CI test failure was caused by TypeScript errors in the tensorflow-hel
 ### Implementation
 
 Updated tensorflow-helper.ts to:
+
 - Re-export all types from @tensorflow/tfjs-core for TypeScript compatibility
 - Dynamically load the appropriate TensorFlow.js module based on environment
 - Export specific runtime properties (io, version, data) from the loaded module
@@ -55,6 +57,7 @@ Updated tensorflow-helper.ts to:
 ### Technical Details
 
 The challenge was that TypeScript needs to know the export structure at compile time, but we're loading different modules at runtime. The solution uses a hybrid approach:
+
 - Static exports from tfjs-core satisfy TypeScript's type checking
 - Dynamic properties are explicitly exported from the loaded module
 - This ensures compatibility across all environments (Node with tfjs-node, Windows CI with tfjs, browser tests)
