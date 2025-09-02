@@ -1,5 +1,5 @@
 import * as tf from '../tf-adapter';
-import type { SOMTopology, SOMInitialization, SOMNeighborhood } from './types';
+import type { SOMTopology, SOMInitialization, SOMNeighborhood, DecayFunction } from './types';
 
 /**
  * Grid coordinate utilities for SOM topology management.
@@ -770,4 +770,264 @@ export function validateNeighborhoodParams(
       `This may lead to uniform influence across the entire grid.`
     );
   }
+}
+
+/**
+ * ----------------------------------------------------------------------------
+ * Decay Strategies for Learning Rate and Radius
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * Linear decay function.
+ * Decreases linearly from initial to final value.
+ * 
+ * @param initial Initial value
+ * @param final Final value (minimum)
+ * @param epoch Current epoch
+ * @param totalEpochs Total number of epochs
+ * @returns Decayed value
+ */
+export function linearDecay(
+  initial: number,
+  final: number,
+  epoch: number,
+  totalEpochs: number
+): number {
+  if (totalEpochs <= 1) return initial;
+  const progress = epoch / (totalEpochs - 1);
+  return initial * (1 - progress) + final * progress;
+}
+
+/**
+ * Exponential decay function.
+ * Decreases exponentially with configurable decay rate.
+ * 
+ * @param initial Initial value
+ * @param final Final value (minimum)
+ * @param epoch Current epoch
+ * @param totalEpochs Total number of epochs
+ * @param decayRate Decay rate (default: 5)
+ * @returns Decayed value
+ */
+export function exponentialDecay(
+  initial: number,
+  final: number,
+  epoch: number,
+  totalEpochs: number,
+  decayRate: number = 5
+): number {
+  if (totalEpochs <= 1) return initial;
+  const timeConstant = totalEpochs / decayRate;
+  const decayFactor = Math.exp(-epoch / timeConstant);
+  return final + (initial - final) * decayFactor;
+}
+
+/**
+ * Inverse time decay function.
+ * Decreases using inverse time formula.
+ * 
+ * @param initial Initial value
+ * @param final Final value (minimum)
+ * @param epoch Current epoch
+ * @param totalEpochs Total number of epochs
+ * @param decayRate Decay rate (default: 1)
+ * @returns Decayed value
+ */
+export function inverseTimeDecay(
+  initial: number,
+  final: number,
+  epoch: number,
+  totalEpochs: number,
+  decayRate: number = 1
+): number {
+  if (totalEpochs <= 1) return initial;
+  const decayFactor = 1 / (1 + decayRate * epoch / totalEpochs);
+  return final + (initial - final) * decayFactor;
+}
+
+/**
+ * Create a decay scheduler for learning rate or radius.
+ * 
+ * @param initial Initial value or custom decay function
+ * @param strategy Decay strategy name
+ * @param totalEpochs Total number of epochs
+ * @param final Final value (minimum)
+ * @returns Decay function
+ */
+export function createDecayScheduler(
+  initial: number | DecayFunction,
+  strategy: 'linear' | 'exponential' | 'inverse' = 'exponential',
+  totalEpochs: number,
+  final?: number
+): DecayFunction {
+  // If already a function, return it
+  if (typeof initial === 'function') {
+    return initial;
+  }
+  
+  // Set default final value
+  const finalValue = final ?? initial * 0.01;
+  
+  // Return appropriate decay function
+  switch (strategy) {
+    case 'linear':
+      return (epoch: number) => linearDecay(initial, finalValue, epoch, totalEpochs);
+    case 'exponential':
+      return (epoch: number) => exponentialDecay(initial, finalValue, epoch, totalEpochs);
+    case 'inverse':
+      return (epoch: number) => inverseTimeDecay(initial, finalValue, epoch, totalEpochs);
+    default:
+      throw new Error(`Unknown decay strategy: ${strategy}`);
+  }
+}
+
+/**
+ * Decay scheduler with TensorFlow.js tensors for GPU computation.
+ * Used when decay needs to be computed on GPU for performance.
+ * 
+ * @param initial Initial value tensor
+ * @param final Final value tensor
+ * @param epoch Current epoch tensor
+ * @param totalEpochs Total epochs tensor
+ * @param strategy Decay strategy
+ * @returns Decayed value tensor
+ */
+export function decayTensor(
+  initial: tf.Tensor | number,
+  final: tf.Tensor | number,
+  epoch: tf.Tensor | number,
+  totalEpochs: tf.Tensor | number,
+  strategy: 'linear' | 'exponential' | 'inverse' = 'exponential'
+): tf.Tensor {
+  return tf.tidy(() => {
+    // Convert to tensors if needed
+    const initialT = typeof initial === 'number' ? tf.scalar(initial) : initial;
+    const finalT = typeof final === 'number' ? tf.scalar(final) : final;
+    const epochT = typeof epoch === 'number' ? tf.scalar(epoch) : epoch;
+    const totalEpochsT = typeof totalEpochs === 'number' ? tf.scalar(totalEpochs) : totalEpochs;
+    
+    switch (strategy) {
+      case 'linear': {
+        // linear: initial * (1 - t) + final * t
+        const progress = epochT.div(totalEpochsT.sub(1));
+        const term1 = initialT.mul(tf.scalar(1).sub(progress));
+        const term2 = finalT.mul(progress);
+        return term1.add(term2);
+      }
+      
+      case 'exponential': {
+        // exponential: final + (initial - final) * exp(-epoch / timeConstant)
+        const timeConstant = totalEpochsT.div(5); // decay rate = 5
+        const decayFactor = epochT.div(timeConstant).neg().exp();
+        return finalT.add(initialT.sub(finalT).mul(decayFactor));
+      }
+      
+      case 'inverse': {
+        // inverse: final + (initial - final) / (1 + epoch / totalEpochs)
+        const decayFactor = tf.scalar(1).div(
+          tf.scalar(1).add(epochT.div(totalEpochsT))
+        );
+        return finalT.add(initialT.sub(finalT).mul(decayFactor));
+      }
+      
+      default:
+        throw new Error(`Unknown decay strategy: ${strategy}`);
+    }
+  });
+}
+
+/**
+ * Track decay schedule across epochs.
+ * Maintains history of decayed values for visualization.
+ */
+export class DecayTracker {
+  private history: number[] = [];
+  private decayFn: DecayFunction;
+  private currentEpoch: number = 0;
+  
+  constructor(
+    initial: number | DecayFunction,
+    strategy: 'linear' | 'exponential' | 'inverse' = 'exponential',
+    totalEpochs: number,
+    final?: number
+  ) {
+    this.decayFn = createDecayScheduler(initial, strategy, totalEpochs, final);
+  }
+  
+  /**
+   * Get current value and advance epoch.
+   */
+  next(totalEpochs: number): number {
+    const value = this.decayFn(this.currentEpoch, totalEpochs);
+    this.history.push(value);
+    this.currentEpoch++;
+    return value;
+  }
+  
+  /**
+   * Get current value without advancing.
+   */
+  current(totalEpochs: number): number {
+    return this.decayFn(this.currentEpoch, totalEpochs);
+  }
+  
+  /**
+   * Reset tracker to initial state.
+   */
+  reset(): void {
+    this.currentEpoch = 0;
+    this.history = [];
+  }
+  
+  /**
+   * Get decay history.
+   */
+  getHistory(): number[] {
+    return [...this.history];
+  }
+  
+  /**
+   * Get current epoch.
+   */
+  getEpoch(): number {
+    return this.currentEpoch;
+  }
+}
+
+/**
+ * Calculate adaptive radius based on grid size.
+ * 
+ * @param gridHeight Grid height
+ * @param gridWidth Grid width
+ * @param epoch Current epoch
+ * @param totalEpochs Total epochs
+ * @returns Adaptive radius value
+ */
+export function adaptiveRadius(
+  gridHeight: number,
+  gridWidth: number,
+  epoch: number,
+  totalEpochs: number
+): number {
+  const initialRadius = Math.max(gridHeight, gridWidth) / 2;
+  const finalRadius = 1;
+  return exponentialDecay(initialRadius, finalRadius, epoch, totalEpochs);
+}
+
+/**
+ * Calculate adaptive learning rate.
+ * 
+ * @param initial Initial learning rate
+ * @param epoch Current epoch
+ * @param totalEpochs Total epochs
+ * @returns Adaptive learning rate
+ */
+export function adaptiveLearningRate(
+  initial: number,
+  epoch: number,
+  totalEpochs: number
+): number {
+  const final = initial * 0.01;
+  return exponentialDecay(initial, final, epoch, totalEpochs);
 }
