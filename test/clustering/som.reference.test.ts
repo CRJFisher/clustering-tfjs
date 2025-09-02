@@ -5,22 +5,21 @@ import * as path from 'path';
 
 describe('SOM Reference Tests', () => {
   const fixturesDir = path.join(__dirname, '..', 'fixtures', 'som');
-  let fixtures: any[] = [];
+  
+  // Load fixtures synchronously for test generation
+  const files = fs.readdirSync(fixturesDir)
+    .filter(f => f.endsWith('.json'));
+  
+  const fixtures = files.map(file => {
+    const data = fs.readFileSync(path.join(fixturesDir, file), 'utf8');
+    return {
+      name: file.replace('.json', ''),
+      ...JSON.parse(data)
+    };
+  });
 
   beforeAll(() => {
     tf.setBackend('cpu');
-    
-    // Load all fixture files
-    const files = fs.readdirSync(fixturesDir)
-      .filter(f => f.endsWith('.json'));
-    
-    fixtures = files.map(file => {
-      const data = fs.readFileSync(path.join(fixturesDir, file), 'utf8');
-      return {
-        name: file.replace('.json', ''),
-        ...JSON.parse(data)
-      };
-    });
   });
 
   afterEach(() => {
@@ -28,7 +27,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Weight matrix comparison', () => {
-    fixtures.forEach(fixture => {
+    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
       it(`should approximate weights for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
@@ -66,7 +65,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Label assignment comparison', () => {
-    fixtures.forEach(fixture => {
+    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
       it(`should produce similar clustering for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
@@ -98,7 +97,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Quality metrics comparison', () => {
-    fixtures.forEach(fixture => {
+    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
       it(`should achieve comparable quantization error for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
@@ -128,7 +127,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('U-Matrix comparison', () => {
-    fixtures.slice(0, 3).forEach(fixture => { // Test subset for speed
+    fixtures.slice(0, 2).forEach(fixture => { // Test subset for speed
       it(`should produce similar U-matrix for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,

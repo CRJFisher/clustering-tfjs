@@ -162,7 +162,7 @@ export class SOM implements BaseClustering<SOMParams> {
       onlineMode 
     } = this.params;
     
-    const [nSamples, nFeatures] = X.shape;
+    const [nSamples, _nFeatures] = X.shape;
     
     // Initialize weights if not already done
     if (!this.weights_) {
@@ -215,8 +215,10 @@ export class SOM implements BaseClustering<SOMParams> {
       
       prevQuantizationError = quantizationError;
       
-      // Update total samples learned
-      this.totalSamplesLearned_ += nSamples;
+      // Update total samples learned (only for online mode)
+      if (this.params.onlineMode) {
+        this.totalSamplesLearned_ += nSamples;
+      }
     }
     
     // Compute final BMUs and labels
@@ -231,59 +233,58 @@ export class SOM implements BaseClustering<SOMParams> {
     learningRate: number,
     radius: number
   ): Promise<{ quantizationError: number }> {
-    return tf.tidy(() => {
-      const { neighborhood, miniBatchSize } = this.params;
-      const [nSamples] = X.shape;
+    const { neighborhood, miniBatchSize } = this.params;
+    const [nSamples] = X.shape;
+    
+    // Process in mini-batches for memory efficiency
+    const batchSize = Math.min(miniBatchSize!, nSamples);
+    let totalQuantizationError = 0;
+    let samplesProcessed = 0;
+    
+    for (let i = 0; i < nSamples; i += batchSize) {
+      const endIdx = Math.min(i + batchSize, nSamples);
+      const batchX = X.slice([i, 0], [endIdx - i, -1]);
       
-      // Process in mini-batches for memory efficiency
-      const batchSize = Math.min(miniBatchSize!, nSamples);
-      let totalQuantizationError = 0;
-      let samplesProcessed = 0;
+      // Find BMUs for batch
+      const bmus = findBMUBatch(batchX, this.weights_!);
       
-      for (let i = 0; i < nSamples; i += batchSize) {
-        const endIdx = Math.min(i + batchSize, nSamples);
-        const batchX = X.slice([i, 0], [endIdx - i, -1]);
-        
-        // Find BMUs for batch
-        const bmus = findBMUBatch(batchX, this.weights_!);
-        
-        // Get BMU flat indices
-        const bmuIndices = tf.tidy(() => {
-          const bmusData = bmus.arraySync();
-          const indices = bmusData.map(([row, col]) => 
-            row * this.params.gridWidth + col
-          );
-          return tf.tensor1d(indices, 'int32');
-        });
-        
-        // Compute neighborhood influence
-        const influence = computeNeighborhoodInfluenceBatch(
-          bmuIndices,
-          this.gridDistanceMatrix_!,
-          radius,
-          neighborhood!
+      // Get BMU flat indices
+      const bmuIndices = tf.tidy(() => {
+        const bmusData = bmus.arraySync();
+        const indices = bmusData.map(([row, col]) => 
+          row * this.params.gridWidth + col
         );
-        
-        // Update weights
-        this.updateWeights(batchX, influence, learningRate);
-        
-        // Compute quantization error for this batch
-        const distances = computeBMUDistances(batchX, this.weights_!, bmus);
-        const batchError = distances.mean().arraySync() as number;
-        totalQuantizationError += batchError * (endIdx - i);
-        samplesProcessed += (endIdx - i);
-        
-        // Clean up
-        bmus.dispose();
-        bmuIndices.dispose();
-        influence.dispose();
-        distances.dispose();
-      }
+        return tf.tensor1d(indices, 'int32');
+      });
       
-      return {
-        quantizationError: totalQuantizationError / samplesProcessed
-      };
-    });
+      // Compute neighborhood influence
+      const influence = computeNeighborhoodInfluenceBatch(
+        bmuIndices,
+        this.gridDistanceMatrix_!,
+        radius,
+        neighborhood!
+      );
+      
+      // Update weights
+      this.updateWeights(batchX, influence, learningRate);
+      
+      // Compute quantization error for this batch
+      const distances = computeBMUDistances(batchX, this.weights_!, bmus);
+      const batchError = distances.mean().arraySync() as number;
+      totalQuantizationError += batchError * (endIdx - i);
+      samplesProcessed += (endIdx - i);
+      
+      // Clean up
+      batchX.dispose();
+      bmus.dispose();
+      bmuIndices.dispose();
+      influence.dispose();
+      distances.dispose();
+    }
+    
+    return {
+      quantizationError: totalQuantizationError / samplesProcessed
+    };
   }
   
   /**
@@ -326,9 +327,9 @@ export class SOM implements BaseClustering<SOMParams> {
       // Reshape back to grid
       const newWeights = newWeightsFlat.reshape([gridHeight, gridWidth, nFeatures]) as tf.Tensor3D;
       
-      // Update weights in place
+      // Update weights in place (keep newWeights from being disposed by tidy)
       this.weights_!.dispose();
-      this.weights_ = newWeights;
+      this.weights_ = tf.keep(newWeights);
     });
   }
   
@@ -396,8 +397,23 @@ export class SOM implements BaseClustering<SOMParams> {
       
       // Initialize if first call
       if (!this.weights_) {
-        await this.fitTensor(xTensor);
-        return;
+        // Initialize weights and grid
+        this.weights_ = initializeWeights(
+          xTensor,
+          this.params.gridHeight,
+          this.params.gridWidth,
+          this.params.initialization!,
+          this.params.randomState
+        );
+        
+        this.gridDistanceMatrix_ = createGridDistanceMatrix(
+          this.params.gridHeight,
+          this.params.gridWidth,
+          this.params.topology!
+        );
+        
+        // Initialize schedulers
+        this.initializeSchedulers();
       }
       
       // Get current learning rate and radius based on total samples learned
@@ -638,7 +654,8 @@ export class SOM implements BaseClustering<SOMParams> {
       // Create new params object instead of modifying readonly
       const loadedParams = modelData.metadata.params;
       if (loadedParams) {
-        (this as any).params = loadedParams;
+        // Type assertion needed for readonly property assignment during deserialization
+      (this as SOM).params = loadedParams as SOMParams;
       }
       this.totalSamplesLearned_ = modelData.metadata.totalSamplesLearned || 0;
       this.currentEpoch_ = modelData.metadata.currentEpoch || 0;
@@ -669,14 +686,14 @@ export class SOM implements BaseClustering<SOMParams> {
       ? this.params.learningRate 
       : SOM.DEFAULT_LEARNING_RATE;
     
-    this.learningRateScheduler_ = (epoch: number, totalEpochs: number) => {
+    this.learningRateScheduler_ = (_epoch: number, _totalEpochs: number) => {
       // Slower decay for streaming
       const virtualEpoch = this.totalSamplesLearned_ / 1000; // Adjust scale
       return initialLearningRate * Math.exp(-virtualEpoch / 100);
     };
     
     const initialRadius = Math.max(gridWidth, gridHeight) / 2;
-    this.radiusScheduler_ = (epoch: number, totalEpochs: number) => {
+    this.radiusScheduler_ = (_epoch: number, _totalEpochs: number) => {
       const virtualEpoch = this.totalSamplesLearned_ / 1000;
       return Math.max(1, initialRadius * Math.exp(-virtualEpoch / 50));
     };

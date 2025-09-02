@@ -310,7 +310,7 @@ export async function getDensityMap(
   
   // Apply Gaussian smoothing for better visualization
   return tf.tidy(() => {
-    const [gridHeight, gridWidth] = hitMap.shape;
+    // const [gridHeight, gridWidth] = hitMap.shape;  // Reserved for future Gaussian smoothing
     
     // Create Gaussian kernel
     const kernelSize = Math.ceil(sigma * 3) * 2 + 1;

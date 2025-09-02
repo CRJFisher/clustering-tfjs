@@ -168,7 +168,8 @@ export function initializeWeights(
         const centered = X.sub(mean);
         
         // Compute covariance matrix (simplified PCA)
-        const cov = tf.matMul(centered, centered, true, false).div(nSamples);
+        // Note: Full PCA implementation would use covariance matrix
+        // const cov = tf.matMul(centered, centered, true, false).div(nSamples);
         
         // Get eigenvectors (using SVD as approximation)
         // Note: TensorFlow.js doesn't have full eigen decomposition,
@@ -347,12 +348,16 @@ export function findBMU(
     
     // Find minimum distance index
     const bmuIndex = distances.argMin(1);
+    const bmuIndexArray = bmuIndex.arraySync();
+    const bmuIndexValue: number = Array.isArray(bmuIndexArray) 
+      ? bmuIndexArray[0] as number
+      : bmuIndexArray as number;
     
-    // Convert flat index back to grid coordinates
-    const row = bmuIndex.div(gridWidth).floor();
-    const col = bmuIndex.mod(gridWidth);
+    // Convert flat index back to grid coordinates  
+    const rowValue = Math.floor(bmuIndexValue / gridWidth);
+    const colValue = bmuIndexValue % gridWidth;
     
-    return tf.stack([row, col]).squeeze();
+    return tf.tensor1d([rowValue, colValue]);
   });
 }
 
@@ -414,28 +419,30 @@ export function computeBMUDistances(
   weights: tf.Tensor3D,
   bmus: tf.Tensor2D
 ): tf.Tensor1D {
+  // Get data outside tf.tidy to avoid disposal issues
+  const [nSamples, nFeatures] = samples.shape;
+  const [gridHeight, gridWidth, _] = weights.shape;
+  const bmusArray = bmus.arraySync();
+  
   return tf.tidy(() => {
-    const [nSamples, nFeatures] = samples.shape;
-    const [gridHeight, gridWidth, _] = weights.shape;
+    // Reshape weights for easier indexing
+    const weightsFlat = weights.reshape([gridHeight * gridWidth, nFeatures]);
     
-    // Get BMU weights for each sample
-    const bmuWeights = tf.buffer([nSamples, nFeatures]);
-    const weightsData = weights.bufferSync();
-    const bmusData = bmus.bufferSync();
+    // Convert BMU coordinates to flat indices
+    const bmuIndices: number[] = [];
     
     for (let i = 0; i < nSamples; i++) {
-      const row = bmusData.get(i, 0);
-      const col = bmusData.get(i, 1);
-      
-      for (let j = 0; j < nFeatures; j++) {
-        bmuWeights.set(weightsData.get(row, col, j), i, j);
-      }
+      const row = bmusArray[i][0];
+      const col = bmusArray[i][1];
+      bmuIndices.push(row * gridWidth + col);
     }
     
-    const bmuWeightsTensor = bmuWeights.toTensor();
+    // Gather BMU weights using indices
+    const bmuIndicesTensor = tf.tensor1d(bmuIndices, 'int32');
+    const bmuWeights = tf.gather(weightsFlat, bmuIndicesTensor);
     
     // Compute distances
-    const diff = samples.sub(bmuWeightsTensor);
+    const diff = samples.sub(bmuWeights);
     const distances = diff.square().sum(1).sqrt();
     
     return distances as tf.Tensor1D;
@@ -691,9 +698,6 @@ export function computeNeighborhoodInfluenceBatch(
   neighborhood: SOMNeighborhood
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const nSamples = bmuIndices.shape[0];
-    const totalNeurons = gridDistanceMatrix.shape[0];
-    
     // Gather distances for all BMUs at once
     const bmuDistances = tf.gather(gridDistanceMatrix, bmuIndices);
     
