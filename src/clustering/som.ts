@@ -598,6 +598,152 @@ export class SOM implements BaseClustering<SOMParams> {
   }
   
   /**
+   * Save model state to JSON string.
+   * Can be saved to file or transmitted over network.
+   */
+  async saveToJSON(): Promise<string> {
+    if (!this.weights_) {
+      throw new Error('SOM must be fitted before saving');
+    }
+    
+    const modelData = {
+      weights: await this.weights_.array(),
+      metadata: {
+        params: this.params,
+        totalSamplesLearned: this.totalSamplesLearned_,
+        currentEpoch: this.currentEpoch_,
+        quantizationErrors: this.quantizationErrors_,
+      }
+    };
+    
+    return JSON.stringify(modelData, null, 2);
+  }
+  
+  /**
+   * Load model from JSON string.
+   * 
+   * @param json JSON string containing model data
+   */
+  async loadFromJSON(json: string): Promise<void> {
+    const modelData = JSON.parse(json);
+    
+    // Dispose existing weights
+    this.weights_?.dispose();
+    
+    // Load weights
+    this.weights_ = tf.tensor3d(modelData.weights);
+    
+    // Load metadata
+    if (modelData.metadata) {
+      // Create new params object instead of modifying readonly
+      const loadedParams = modelData.metadata.params;
+      if (loadedParams) {
+        (this as any).params = loadedParams;
+      }
+      this.totalSamplesLearned_ = modelData.metadata.totalSamplesLearned || 0;
+      this.currentEpoch_ = modelData.metadata.currentEpoch || 0;
+      this.quantizationErrors_ = modelData.metadata.quantizationErrors || [];
+    }
+    
+    // Reinitialize schedulers and distance matrix
+    this.initializeSchedulers();
+    this.gridDistanceMatrix_ = createGridDistanceMatrix(
+      this.params.gridHeight,
+      this.params.gridWidth,
+      this.params.topology!
+    );
+  }
+  
+  /**
+   * Enable streaming mode for continuous learning.
+   * Configures the SOM for online learning with optimal settings.
+   */
+  enableStreamingMode(batchSize?: number): void {
+    this.params.onlineMode = true;
+    this.params.miniBatchSize = batchSize || SOM.DEFAULT_MINI_BATCH_SIZE;
+    
+    // Adjust schedulers for continuous learning
+    // Use slower decay for streaming scenarios
+    const { gridWidth, gridHeight } = this.params;
+    const initialLearningRate = typeof this.params.learningRate === 'number' 
+      ? this.params.learningRate 
+      : SOM.DEFAULT_LEARNING_RATE;
+    
+    this.learningRateScheduler_ = (epoch: number, totalEpochs: number) => {
+      // Slower decay for streaming
+      const virtualEpoch = this.totalSamplesLearned_ / 1000; // Adjust scale
+      return initialLearningRate * Math.exp(-virtualEpoch / 100);
+    };
+    
+    const initialRadius = Math.max(gridWidth, gridHeight) / 2;
+    this.radiusScheduler_ = (epoch: number, totalEpochs: number) => {
+      const virtualEpoch = this.totalSamplesLearned_ / 1000;
+      return Math.max(1, initialRadius * Math.exp(-virtualEpoch / 50));
+    };
+  }
+  
+  /**
+   * Process a stream of data samples.
+   * Automatically manages batch accumulation and training.
+   * 
+   * @param sample Single sample or small batch
+   * @param autoTrain Whether to train immediately or accumulate
+   */
+  async processStream(
+    sample: DataMatrix,
+    autoTrain: boolean = true
+  ): Promise<void> {
+    if (!this.params.onlineMode) {
+      this.enableStreamingMode();
+    }
+    
+    const xTensor = isTensor(sample) ? sample as tf.Tensor2D : tf.tensor2d(sample);
+    
+    try {
+      if (autoTrain) {
+        await this.partialFit(xTensor);
+      } else {
+        // Accumulate samples for batch training
+        // This would need a buffer implementation
+        console.log('Batch accumulation not yet implemented');
+      }
+    } finally {
+      if (!isTensor(sample)) {
+        xTensor.dispose();
+      }
+    }
+  }
+  
+  /**
+   * Get streaming statistics.
+   */
+  getStreamingStats(): {
+    totalSamples: number;
+    virtualEpoch: number;
+    currentLearningRate: number;
+    currentRadius: number;
+    latestQuantizationError: number;
+  } {
+    const virtualEpoch = Math.floor(this.totalSamplesLearned_ / 100);
+    
+    return {
+      totalSamples: this.totalSamplesLearned_,
+      virtualEpoch,
+      currentLearningRate: this.learningRateScheduler_?.(
+        virtualEpoch,
+        this.params.numEpochs || 100
+      ) || 0,
+      currentRadius: this.radiusScheduler_?.(
+        virtualEpoch,
+        this.params.numEpochs || 100
+      ) || 0,
+      latestQuantizationError: this.quantizationErrors_.length > 0
+        ? this.quantizationErrors_[this.quantizationErrors_.length - 1]
+        : 0,
+    };
+  }
+  
+  /**
    * Clean up tensors.
    */
   dispose(): void {
