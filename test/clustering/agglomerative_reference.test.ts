@@ -3,7 +3,8 @@ import path from "path";
 
 import { AgglomerativeClustering, DataMatrix } from "../../src";
 
-const FIXTURE_DIR = path.join(__dirname, "../fixtures/agglomerative");
+// Use path relative to project root for fixtures
+const FIXTURE_DIR = path.join(process.cwd(), "test", "fixtures", "agglomerative");
 
 function areLabelingsEquivalent(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;

@@ -64,8 +64,36 @@ async function main() {
         console.log('Labels:', aggLabels);
         console.log();
         
-        // 4. Find Optimal Clusters
-        console.log('4. Finding Optimal Number of Clusters');
+        // 4. Self-Organizing Maps (SOM)
+        console.log('4. Self-Organizing Maps (SOM)');
+        console.log('-----------------------------');
+        const som = new Clustering.SOM({
+            gridWidth: 3,
+            gridHeight: 3,
+            nClusters: 9,
+            topology: 'hexagonal',
+            neighborhood: 'gaussian',
+            initialization: 'pca',
+            numEpochs: 50,
+            randomState: 42
+        });
+        
+        const somLabels = await som.fitPredict(data);
+        console.log('Labels:', somLabels);
+        
+        // Get additional SOM information
+        const weights = som.getWeights();
+        console.log('SOM grid shape:', weights.shape); // [3, 3, 2]
+        
+        const quantError = som.quantizationError();
+        console.log(`Quantization error: ${quantError.toFixed(4)}`);
+        
+        // Clean up tensors
+        weights.dispose();
+        console.log();
+        
+        // 5. Find Optimal Clusters
+        console.log('5. Finding Optimal Number of Clusters');
         console.log('------------------------------------');
         const { findOptimalClusters } = require('../dist/index.js');
         

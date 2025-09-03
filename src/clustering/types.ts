@@ -188,3 +188,164 @@ export interface BaseClustering<
    */
   fitPredict(X: DataMatrix): Promise<LabelVector>;
 }
+
+/**
+ * ----------------------------------------------------------------------------
+ * Self-Organizing Maps (SOM) specific types and interfaces
+ * ----------------------------------------------------------------------------
+ */
+
+/**
+ * Grid topology for the SOM neurons arrangement.
+ */
+export type SOMTopology = 'rectangular' | 'hexagonal';
+
+/**
+ * Neighborhood function for determining influence of BMU on surrounding neurons.
+ */
+export type SOMNeighborhood = 'gaussian' | 'bubble' | 'mexican_hat';
+
+/**
+ * Weight initialization strategy for the SOM grid.
+ */
+export type SOMInitialization = 'random' | 'linear' | 'pca';
+
+/**
+ * Decay function type for learning rate and radius scheduling.
+ */
+export type DecayFunction = (epoch: number, totalEpochs: number) => number;
+
+/**
+ * Parameters for Self-Organizing Maps algorithm.
+ * 
+ * Note: SOM doesn't use `nClusters` from BaseClusteringParams.
+ * Instead, it uses gridWidth * gridHeight to define the map size.
+ */
+export interface SOMParams extends BaseClusteringParams {
+  /**
+   * Width of the SOM grid (number of neurons in x-axis).
+   * Must be ≥ 1.
+   */
+  gridWidth: number;
+
+  /**
+   * Height of the SOM grid (number of neurons in y-axis).
+   * Must be ≥ 1.
+   */
+  gridHeight: number;
+
+  /**
+   * Grid topology determining neuron connectivity.
+   * - 'rectangular': 4 or 8 neighbors per neuron
+   * - 'hexagonal': 6 neighbors per neuron
+   * Default: 'rectangular'
+   */
+  topology?: SOMTopology;
+
+  /**
+   * Neighborhood function for weight updates.
+   * - 'gaussian': Smooth exponential decay
+   * - 'bubble': Hard cutoff at radius
+   * - 'mexican_hat': Lateral inhibition pattern
+   * Default: 'gaussian'
+   */
+  neighborhood?: SOMNeighborhood;
+
+  /**
+   * Number of training epochs.
+   * Default: 100
+   */
+  numEpochs?: number;
+
+  /**
+   * Initial learning rate or custom decay function.
+   * If number: uses exponential decay from this initial value.
+   * If function: custom decay schedule (epoch, totalEpochs) => rate.
+   * Default: 0.5
+   */
+  learningRate?: number | DecayFunction;
+
+  /**
+   * Initial neighborhood radius or custom decay function.
+   * If number: uses exponential decay from this initial value.
+   * If function: custom decay schedule (epoch, totalEpochs) => radius.
+   * Default: max(gridWidth, gridHeight) / 2
+   */
+  radius?: number | DecayFunction;
+
+  /**
+   * Weight initialization strategy.
+   * - 'random': Random values from input data range
+   * - 'linear': Along first two principal components
+   * - 'pca': Using PCA of input data
+   * Default: 'random'
+   */
+  initialization?: SOMInitialization;
+
+  /**
+   * Enable online/incremental learning mode.
+   * When true, allows using partialFit() for streaming data.
+   * Default: false
+   */
+  onlineMode?: boolean;
+
+  /**
+   * Mini-batch size for online learning.
+   * Only used when onlineMode is true.
+   * Default: 32
+   */
+  miniBatchSize?: number;
+
+  /**
+   * Convergence tolerance for early stopping.
+   * Training stops when quantization error change < tol.
+   * Default: 1e-4
+   */
+  tol?: number;
+}
+
+/**
+ * State object for SOM persistence and online learning.
+ */
+export interface SOMState {
+  /**
+   * Current weight matrix [height, width, features].
+   */
+  weights: number[][][];
+
+  /**
+   * Total number of samples learned.
+   */
+  totalSamples: number;
+
+  /**
+   * Current epoch number (for online learning).
+   */
+  currentEpoch: number;
+
+  /**
+   * Grid dimensions.
+   */
+  gridWidth: number;
+  gridHeight: number;
+
+  /**
+   * Configuration parameters.
+   */
+  params: SOMParams;
+}
+
+/**
+ * Metrics for evaluating SOM quality.
+ */
+export interface SOMMetrics {
+  /**
+   * Average distance between samples and their BMUs.
+   */
+  quantizationError: number;
+
+  /**
+   * Proportion of samples whose BMU and second BMU are not neighbors.
+   */
+  topographicError: number;
+}

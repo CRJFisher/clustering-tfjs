@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Clustering Example - clustering-tfjs</title>
+  
+  <!-- Load TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  
+  <!-- Load clustering-tfjs -->
+  <script src="https://unpkg.com/clustering-tfjs@latest/dist/clustering.browser.js"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+    }
+    
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    
+    button:hover {
+      background-color: #45a049;
+    }
+    
+    #output {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #f0f0f0;
+      border-radius: 4px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    
+    canvas {
+      border: 1px solid #ddd;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Simple Clustering Example</h1>
+  <p>This is a minimal template for using clustering-tfjs in the browser.</p>
+  
+  <button onclick="runClustering()">Run K-Means Clustering</button>
+  
+  <div id="output">Click the button to run clustering...</div>
+  
+  <canvas id="canvas" width="400" height="400"></canvas>
+
+  <script>
+    // Initialize the library
+    let initialized = false;
+    
+    async function init() {
+      if (initialized) return;
+      
+      const { Clustering } = window.ClusteringTFJS;
+      await Clustering.init();
+      window.Clustering = Clustering;
+      initialized = true;
+      console.log('Clustering library initialized!');
+    }
+    
+    // Generate sample data
+    function generateData() {
+      const data = [];
+      
+      // Generate 3 clusters
+      for (let cluster = 0; cluster < 3; cluster++) {
+        const centerX = 100 + cluster * 100;
+        const centerY = 100 + (cluster % 2) * 200;
+        
+        // Add 20 points per cluster
+        for (let i = 0; i < 20; i++) {
+          data.push([
+            centerX + (Math.random() - 0.5) * 60,
+            centerY + (Math.random() - 0.5) * 60
+          ]);
+        }
+      }
+      
+      return data;
+    }
+    
+    // Visualize results
+    function visualize(data, labels) {
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+      const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw points
+      data.forEach((point, i) => {
+        ctx.fillStyle = colors[labels[i]] || 'gray';
+        ctx.beginPath();
+        ctx.arc(point[0], point[1], 5, 0, 2 * Math.PI);
+        ctx.fill();
+      });
+    }
+    
+    // Main clustering function
+    async function runClustering() {
+      // Initialize if needed
+      await init();
+      
+      // Generate data
+      const data = generateData();
+      
+      // Create and run K-Means
+      const kmeans = new window.Clustering.KMeans({
+        nClusters: 3
+      });
+      
+      // Fit the model
+      await kmeans.fit(data);
+      
+      // Get predictions
+      const labels = await kmeans.predict(data);
+      
+      // Get centroids
+      const centroids = kmeans.centroids_.arraySync();
+      
+      // Display results
+      document.getElementById('output').textContent = 
+        `Clustering complete!\n\n` +
+        `Data points: ${data.length}\n` +
+        `Clusters found: 3\n\n` +
+        `Centroids:\n${centroids.map((c, i) => 
+          `  Cluster ${i}: [${c[0].toFixed(2)}, ${c[1].toFixed(2)}]`
+        ).join('\n')}`;
+      
+      // Visualize
+      visualize(data, labels);
+    }
+    
+    // Initialize on load
+    window.addEventListener('load', init);
+  </script>
+</body>
+</html>

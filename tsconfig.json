@@ -9,10 +9,18 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
-    "rootDir": "src",
-    "types": ["node", "jest"]
+    "types": [
+      "node",
+      "jest"
+    ]
   },
-  "include": ["src", "types"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": [
+    "src",
+    "types",
+    "test"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
-

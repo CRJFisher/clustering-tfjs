@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>K-Means Animation - clustering-tfjs</title>
+  
+  <!-- Load TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
+  
+  <!-- Load clustering-tfjs from unpkg CDN -->
+  <script src="https://unpkg.com/clustering-tfjs@latest/dist/clustering.browser.js"></script>
+  
+  <!-- Load Chart.js for simple visualization -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+  
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    h1 {
+      color: #333;
+      text-align: center;
+    }
+    
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    
+    #startBtn {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    #startBtn:hover {
+      background-color: #45a049;
+    }
+    
+    #resetBtn {
+      background-color: #2196F3;
+      color: white;
+    }
+    
+    #resetBtn:hover {
+      background-color: #0b7dda;
+    }
+    
+    #stepBtn {
+      background-color: #ff9800;
+      color: white;
+    }
+    
+    #stepBtn:hover {
+      background-color: #e68900;
+    }
+    
+    button:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    
+    .info {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 18px;
+      color: #666;
+    }
+    
+    #chartContainer {
+      position: relative;
+      height: 400px;
+      margin-top: 20px;
+    }
+    
+    .description {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #e8f4f8;
+      border-radius: 5px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>K-Means Clustering Animation</h1>
+    
+    <div class="controls">
+      <button id="startBtn" onclick="startAnimation()">Start Animation</button>
+      <button id="stepBtn" onclick="stepAnimation()">Step Forward</button>
+      <button id="resetBtn" onclick="resetData()">Reset Data</button>
+    </div>
+    
+    <div class="info" id="info">
+      Click "Start Animation" to see K-Means in action!
+    </div>
+    
+    <div id="chartContainer">
+      <canvas id="chart"></canvas>
+    </div>
+    
+    <div class="description">
+      <h3>How K-Means Works:</h3>
+      <ol>
+        <li><strong>Initialization:</strong> Random points are selected as initial cluster centers (centroids)</li>
+        <li><strong>Assignment:</strong> Each data point is assigned to the nearest centroid</li>
+        <li><strong>Update:</strong> Centroids are moved to the mean position of their assigned points</li>
+        <li><strong>Repeat:</strong> Steps 2-3 repeat until convergence</li>
+      </ol>
+      <p>Watch how the centroids (marked with ×) move and the cluster assignments change with each iteration!</p>
+    </div>
+  </div>
+
+  <script>
+    let chart = null;
+    let data = [];
+    let centroids = [];
+    let labels = [];
+    let iteration = 0;
+    let isAnimating = false;
+    let kmeans = null;
+    let initialized = false;
+    
+    // Color palette
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FED766', '#5D3FD3'];
+    const colorsBg = ['rgba(255,107,107,0.3)', 'rgba(78,205,196,0.3)', 'rgba(69,183,209,0.3)', 'rgba(254,215,102,0.3)', 'rgba(93,63,211,0.3)'];
+    
+    // Initialize clustering library
+    async function initializeClustering() {
+      if (initialized) return;
+      
+      try {
+        const { Clustering } = window.ClusteringTFJS;
+        await Clustering.init({ backend: 'cpu' });
+        window.ClusteringLib = Clustering;
+        initialized = true;
+        console.log('Clustering library initialized');
+      } catch (error) {
+        console.error('Failed to initialize:', error);
+        document.getElementById('info').textContent = 'Error: Failed to initialize clustering library';
+      }
+    }
+    
+    // Generate sample data
+    function generateData() {
+      data = [];
+      
+      // Generate 3 clusters
+      const clusters = [
+        { x: 2, y: 2, spread: 1.5 },
+        { x: 8, y: 2, spread: 1.5 },
+        { x: 5, y: 7, spread: 1.5 }
+      ];
+      
+      clusters.forEach(cluster => {
+        for (let i = 0; i < 50; i++) {
+          data.push({
+            x: cluster.x + (Math.random() - 0.5) * cluster.spread * 2,
+            y: cluster.y + (Math.random() - 0.5) * cluster.spread * 2
+          });
+        }
+      });
+      
+      return data;
+    }
+    
+    // Initialize chart
+    function initChart() {
+      const ctx = document.getElementById('chart').getContext('2d');
+      
+      if (chart) {
+        chart.destroy();
+      }
+      
+      chart = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: []
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: false
+            },
+            tooltip: {
+              callbacks: {
+                label: function(context) {
+                  return `(${context.parsed.x.toFixed(2)}, ${context.parsed.y.toFixed(2)})`;
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom',
+              min: -1,
+              max: 11
+            },
+            y: {
+              type: 'linear',
+              min: -1,
+              max: 10
+            }
+          }
+        }
+      });
+    }
+    
+    // Update chart with current state
+    function updateChart() {
+      const datasets = [];
+      
+      if (labels.length > 0) {
+        // Group data by cluster
+        const clusters = {};
+        data.forEach((point, i) => {
+          const label = labels[i];
+          if (!clusters[label]) {
+            clusters[label] = [];
+          }
+          clusters[label].push(point);
+        });
+        
+        // Create dataset for each cluster
+        Object.keys(clusters).forEach((label, i) => {
+          datasets.push({
+            label: `Cluster ${parseInt(label) + 1}`,
+            data: clusters[label],
+            backgroundColor: colorsBg[i],
+            borderColor: colors[i],
+            borderWidth: 1,
+            pointRadius: 5
+          });
+        });
+      } else {
+        // No clustering yet - show all points in gray
+        datasets.push({
+          label: 'Data points',
+          data: data,
+          backgroundColor: 'rgba(128,128,128,0.3)',
+          borderColor: 'rgba(128,128,128,1)',
+          borderWidth: 1,
+          pointRadius: 5
+        });
+      }
+      
+      // Add centroids
+      if (centroids.length > 0) {
+        const centroidData = centroids.map((c, i) => ({
+          x: c[0],
+          y: c[1],
+          label: `Centroid ${i + 1}`
+        }));
+        
+        datasets.push({
+          label: 'Centroids',
+          data: centroidData,
+          backgroundColor: colors,
+          borderColor: '#000',
+          borderWidth: 2,
+          pointRadius: 10,
+          pointStyle: 'crossRot'
+        });
+      }
+      
+      chart.data.datasets = datasets;
+      chart.update();
+    }
+    
+    // Perform one step of K-means
+    async function performKMeansStep() {
+      if (!kmeans) {
+        // Initialize K-means
+        kmeans = new window.ClusteringLib.KMeans({
+          nClusters: 3,
+          maxIter: 1,  // Run one iteration at a time
+          nInit: 1
+        });
+        
+        // Convert data to array format
+        const dataArray = data.map(p => [p.x, p.y]);
+        
+        // Initialize centroids
+        await kmeans.fit(dataArray);
+        centroids = kmeans.centroids_.arraySync();
+        labels = await kmeans.predict(dataArray);
+        iteration = 1;
+      } else {
+        // Run another iteration
+        const dataArray = data.map(p => [p.x, p.y]);
+        
+        // Create new K-means instance with previous centroids
+        const prevCentroids = centroids.slice();
+        kmeans = new window.ClusteringLib.KMeans({
+          nClusters: 3,
+          maxIter: 1,
+          nInit: 1,
+          init: prevCentroids
+        });
+        
+        await kmeans.fit(dataArray);
+        const newCentroids = kmeans.centroids_.arraySync();
+        
+        // Check for convergence
+        let converged = true;
+        for (let i = 0; i < centroids.length; i++) {
+          const dist = Math.sqrt(
+            Math.pow(newCentroids[i][0] - centroids[i][0], 2) +
+            Math.pow(newCentroids[i][1] - centroids[i][1], 2)
+          );
+          if (dist > 0.01) {
+            converged = false;
+            break;
+          }
+        }
+        
+        centroids = newCentroids;
+        labels = await kmeans.predict(dataArray);
+        iteration++;
+        
+        if (converged) {
+          isAnimating = false;
+          document.getElementById('info').textContent = `Converged after ${iteration} iterations!`;
+          document.getElementById('startBtn').textContent = 'Start Animation';
+          document.getElementById('startBtn').disabled = false;
+          document.getElementById('stepBtn').disabled = true;
+        }
+      }
+      
+      updateChart();
+      
+      if (!isAnimating) {
+        document.getElementById('info').textContent = `Iteration ${iteration}`;
+      }
+    }
+    
+    // Animation loop
+    async function animate() {
+      if (!isAnimating) return;
+      
+      await performKMeansStep();
+      document.getElementById('info').textContent = `Iteration ${iteration} - Running...`;
+      
+      // Continue animation after delay
+      if (isAnimating && iteration < 20) {
+        setTimeout(animate, 1000);
+      } else {
+        isAnimating = false;
+        document.getElementById('startBtn').textContent = 'Start Animation';
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('info').textContent = 
+          iteration >= 20 ? 'Maximum iterations reached' : `Converged after ${iteration} iterations!`;
+      }
+    }
+    
+    // Start animation
+    async function startAnimation() {
+      if (!initialized) {
+        await initializeClustering();
+      }
+      
+      isAnimating = true;
+      document.getElementById('startBtn').textContent = 'Stop';
+      document.getElementById('startBtn').disabled = true;
+      document.getElementById('stepBtn').disabled = true;
+      
+      animate();
+    }
+    
+    // Step animation
+    async function stepAnimation() {
+      if (!initialized) {
+        await initializeClustering();
+      }
+      
+      await performKMeansStep();
+    }
+    
+    // Reset data
+    function resetData() {
+      isAnimating = false;
+      iteration = 0;
+      kmeans = null;
+      centroids = [];
+      labels = [];
+      
+      generateData();
+      updateChart();
+      
+      document.getElementById('startBtn').textContent = 'Start Animation';
+      document.getElementById('startBtn').disabled = false;
+      document.getElementById('stepBtn').disabled = false;
+      document.getElementById('info').textContent = 'Click "Start Animation" to see K-Means in action!';
+    }
+    
+    // Initialize on load
+    window.addEventListener('load', async function() {
+      await initializeClustering();
+      generateData();
+      initChart();
+      updateChart();
+    });
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ Complete API documentation for clustering-tfjs.
   - [KMeans](#kmeans)
   - [SpectralClustering](#spectralclustering)
   - [AgglomerativeClustering](#agglomerativeclustering)
+  - [SOM](#som-self-organizing-maps)
 - [Validation Metrics](#validation-metrics)
   - [silhouetteScore](#silhouettescore)
   - [daviesBouldin](#daviesbouldin)
@@ -135,6 +136,95 @@ const agglo = new AgglomerativeClustering({
 });
 
 const labels = await agglo.fitPredict(data);
+```
+
+### SOM (Self-Organizing Maps)
+
+Kohonen Self-Organizing Maps for unsupervised learning and visualization.
+
+#### Constructor
+
+```typescript
+new SOM(params: SOMParams)
+```
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `nClusters` | `number` | required | Total number of neurons (gridWidth × gridHeight) |
+| `gridWidth` | `number` | required | Width of the SOM grid |
+| `gridHeight` | `number` | required | Height of the SOM grid |
+| `topology` | `'rectangular' \| 'hexagonal'` | `'rectangular'` | Grid topology (4/8 or 6 neighbors) |
+| `neighborhood` | `'gaussian' \| 'bubble' \| 'mexican_hat'` | `'gaussian'` | Neighborhood function for weight updates |
+| `initialization` | `'random' \| 'linear' \| 'pca'` | `'linear'` | Weight initialization method |
+| `learningRate` | `number \| DecayFunction` | `0.5` | Initial learning rate or custom decay function |
+| `radius` | `number \| DecayFunction` | `max(gridWidth, gridHeight) / 2` | Initial neighborhood radius or custom decay |
+| `numEpochs` | `number` | `100` | Number of training epochs |
+| `tol` | `number` | `1e-4` | Convergence tolerance |
+| `randomState` | `number` | `undefined` | Random seed for reproducibility |
+
+#### Methods
+
+##### fitPredict(X: DataMatrix): Promise<LabelVector>
+Train the SOM and return cluster assignments.
+
+##### fit(X: DataMatrix): Promise<void>
+Train the SOM on the provided data. Supports incremental/online learning - can be called multiple times with new data batches to continue training.
+
+##### getWeights(): tf.Tensor3D
+Get the trained weight vectors of all neurons. Shape: [gridHeight, gridWidth, nFeatures]
+
+##### getUMatrix(): tf.Tensor2D
+Calculate the U-matrix (unified distance matrix) showing average distances between neurons and their neighbors. Useful for visualization.
+
+##### quantizationError(): number
+Calculate the average distance between samples and their Best Matching Units (BMUs).
+
+##### topographicError(X?: DataMatrix): Promise<number>
+Calculate the proportion of samples for which the first and second BMUs are not adjacent. Lower values indicate better topology preservation.
+
+#### Example
+
+```typescript
+import { SOM } from 'clustering-tfjs';
+
+// Create a 5x5 SOM with hexagonal topology
+const som = new SOM({
+  gridWidth: 5,
+  gridHeight: 5,
+  nClusters: 25,
+  topology: 'hexagonal',
+  neighborhood: 'gaussian',
+  initialization: 'pca',
+  learningRate: 0.5,
+  radius: 2.5,
+  numEpochs: 100,
+  randomState: 42
+});
+
+// Train on data
+const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
+const labels = await som.fitPredict(data);
+
+// Get the trained weights
+const weights = som.getWeights();
+console.log('Weight shape:', weights.shape); // [5, 5, 2]
+
+// Calculate U-matrix for visualization
+const uMatrix = som.getUMatrix();
+console.log('U-matrix shape:', uMatrix.shape); // [5, 5]
+
+// Evaluate map quality
+const quantError = som.quantizationError();
+console.log('Quantization error:', quantError);
+
+const topoError = await som.topographicError(data);
+console.log('Topographic error:', topoError);
+
+// Clean up tensors
+weights.dispose();
+uMatrix.dispose();
 ```
 
 ## Validation Metrics

@@ -23,8 +23,8 @@ describe('Benchmarking System', () => {
 
   it('should benchmark all algorithms', async () => {
     const config = BENCHMARK_CONFIGS[0]; // small dataset
-    const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative'> = 
-      ['kmeans', 'spectral', 'agglomerative'];
+    const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative' | 'som'> = 
+      ['kmeans', 'spectral', 'agglomerative', 'som'];
     
     for (const algo of algorithms) {
       const result = await benchmarkAlgorithm(algo, config, 'cpu');

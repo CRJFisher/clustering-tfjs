@@ -2,6 +2,7 @@ import * as tf from '../tf-adapter';
 import { KMeans } from '../clustering/kmeans';
 import { SpectralClustering } from '../clustering/spectral';
 import { AgglomerativeClustering } from '../clustering/agglomerative';
+import { SOM } from '../clustering/som';
 import { silhouetteScore } from '../validation/silhouette';
 import { daviesBouldinEfficient } from '../validation/davies_bouldin';
 import { calinskiHarabaszEfficient } from '../validation/calinski_harabasz';
@@ -35,7 +36,7 @@ export interface FindOptimalClustersOptions {
   /** Maximum number of clusters to test (default: 10) */
   maxClusters?: number;
   /** Algorithm to use (default: 'kmeans') */
-  algorithm?: 'kmeans' | 'spectral' | 'agglomerative';
+  algorithm?: 'kmeans' | 'spectral' | 'agglomerative' | 'som';
   /** Algorithm-specific parameters */
   algorithmParams?: Record<string, unknown>;
   /** Metrics to use for evaluation (default: all) */
@@ -129,6 +130,19 @@ export async function findOptimalClusters(
           ...algorithmParams,
         });
         break;
+      case 'som': {
+        // For SOM, we need to determine grid dimensions
+        // Use square grid as default, can be overridden via algorithmParams
+        const gridSize = Math.ceil(Math.sqrt(k));
+        const params = algorithmParams as Record<string, unknown>;
+        clusterer = new SOM({
+          nClusters: k,
+          gridWidth: (params.gridWidth as number) || gridSize,
+          gridHeight: (params.gridHeight as number) || Math.ceil(k / gridSize),
+          ...algorithmParams,
+        });
+        break;
+      }
       default:
         throw new Error(`Unknown algorithm: ${algorithm}`);
     }
