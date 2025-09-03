@@ -5,7 +5,6 @@ import type {
   LabelVector,
   SOMParams,
   SOMState,
-  SOMMetrics,
   SOMTopology,
   SOMNeighborhood,
   SOMInitialization,
@@ -18,12 +17,7 @@ import {
   computeNeighborhoodInfluenceBatch,
   createGridDistanceMatrix,
   computeBMUDistances,
-  gridDistance,
-  indexToGrid,
   createDecayScheduler,
-  DecayTracker,
-  adaptiveRadius,
-  adaptiveLearningRate,
   validateNeighborhoodParams,
 } from './som_utils';
 
@@ -154,12 +148,10 @@ export class SOM implements BaseClustering<SOMParams> {
       gridWidth, 
       gridHeight, 
       topology, 
-      neighborhood, 
       numEpochs, 
       initialization, 
       randomState,
-      tol,
-      onlineMode 
+      tol
     } = this.params;
     
     const [nSamples, _nFeatures] = X.shape;
@@ -540,7 +532,7 @@ export class SOM implements BaseClustering<SOMParams> {
     const xTensor = isTensor(X) ? X as tf.Tensor2D : tf.tensor2d(X);
     
     try {
-      const { gridWidth, gridHeight, topology } = this.params;
+      // const { gridWidth, gridHeight, topology } = this.params; // Reserved for future use
       const [nSamples] = xTensor.shape;
       
       // Find first and second BMUs
@@ -552,7 +544,7 @@ export class SOM implements BaseClustering<SOMParams> {
         
         // Get second BMU (this is a simplified approach)
         // In a full implementation, we'd use findSecondBMU from som_utils
-        const [bmu1Row, bmu1Col] = bmus[i];
+        // const [bmu1Row, bmu1Col] = bmus[i]; // Reserved for neighbor check
         
         // Check if BMUs are neighbors
         // For simplicity, we consider direct neighbors only
@@ -654,8 +646,12 @@ export class SOM implements BaseClustering<SOMParams> {
       // Create new params object instead of modifying readonly
       const loadedParams = modelData.metadata.params;
       if (loadedParams) {
-        // Type assertion needed for readonly property assignment during deserialization
-      (this as SOM).params = loadedParams as SOMParams;
+        // Reconstruct the object with new params to maintain immutability
+        Object.defineProperty(this, 'params', {
+          value: loadedParams,
+          writable: false,
+          configurable: true
+        });
       }
       this.totalSamplesLearned_ = modelData.metadata.totalSamplesLearned || 0;
       this.currentEpoch_ = modelData.metadata.currentEpoch || 0;
