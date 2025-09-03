@@ -10,6 +10,7 @@ import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
 import { SOM } from './clustering/som';
 import type { Platform, DetectedPlatform, PlatformFeatures } from './clustering-types';
+import { getPlatform } from './utils/platform';
 
 // Re-export all clustering algorithms and utilities
 export * from './clustering/types';
@@ -23,14 +24,9 @@ export { findOptimalClusters } from './utils/findOptimalClusters';
 // Re-export advanced types
 export type { Platform, DetectedPlatform, PlatformFeatures, ExtendedBackendConfig } from './clustering-types';
 
-// Detect platform at runtime
+// Detect platform at runtime using utility function
 const detectPlatform = (): Platform => {
-  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
-    return 'browser';
-  } else if (typeof process !== 'undefined' && process.versions && process.versions.node) {
-    return 'node';
-  }
-  return 'unknown';
+  return getPlatform();
 };
 
 // Get platform features based on detected platform
@@ -49,6 +45,13 @@ const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
         wasmSimd: false,
         nodeBindings: true,
         webgl: false,
+      };
+    case 'react-native':
+      return {
+        gpuAcceleration: true, // rn-webgl provides GPU acceleration
+        wasmSimd: false,
+        nodeBindings: false,
+        webgl: false, // Uses rn-webgl instead
       };
     default:
       return {

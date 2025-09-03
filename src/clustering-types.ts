@@ -10,12 +10,13 @@ import type * as tf from '@tensorflow/tfjs-core';
 /**
  * Platform detection type
  */
-export type Platform = 'browser' | 'node' | 'unknown';
+export type Platform = 'browser' | 'node' | 'react-native' | 'unknown';
 
 /**
  * Detect platform at compile time based on global objects
  */
 export type DetectedPlatform = 
+  typeof globalThis extends { navigator: { product: 'ReactNative' } } ? 'react-native' :
   typeof globalThis extends { window: unknown } ? 'browser' :
   typeof globalThis extends { process: unknown } ? 'node' :
   'unknown';
@@ -41,6 +42,7 @@ export type PlatformFeatures<_P extends Platform = DetectedPlatform> = BackendFe
 export interface ExtendedBackendConfig<P extends Platform = DetectedPlatform> {
   backend?: P extends 'browser' ? 'cpu' | 'webgl' | 'wasm' :
             P extends 'node' ? 'cpu' | 'tensorflow' :
+            P extends 'react-native' ? 'cpu' | 'rn-webgl' :
             string;
   flags?: Record<string, unknown>;
   platform?: P;

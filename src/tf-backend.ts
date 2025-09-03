@@ -7,6 +7,7 @@
 
 import type * as tfType from '@tensorflow/tfjs-core';
 import type { TensorFlowBackend, Platform, ReactNativeConfig } from './types/platform';
+import { isReactNative, isNode } from './utils/platform';
 
 // Singleton storage
 let tfInstance: typeof tfType | null = null;
@@ -97,22 +98,17 @@ export function resetBackend(): void {
  * Load the appropriate backend based on environment and config
  */
 async function loadBackend(config: BackendConfig): Promise<typeof tfType> {
-  // Detect environment
-  const isReactNative = typeof navigator !== 'undefined' && 
-                        navigator.product === 'ReactNative';
-  const isNode = !isReactNative &&
-                 typeof window === 'undefined' && 
-                 typeof process !== 'undefined' && 
-                 process.versions && 
-                 process.versions.node;
+  // Use platform utilities for consistent detection
+  const platformIsReactNative = config.forcePlatform === 'react-native' || isReactNative();
+  const platformIsNode = config.forcePlatform === 'node' || (!platformIsReactNative && isNode());
   
   let tf: typeof tfType;
   
-  if (isReactNative) {
+  if (platformIsReactNative) {
     // React Native environment
     const loader = await import('./tf-loader.rn');
     tf = await loader.loadTensorFlow();
-  } else if (isNode) {
+  } else if (platformIsNode) {
     // Node.js environment
     const loader = await import('./tf-loader.node');
     tf = await loader.loadTensorFlow();
