@@ -14,8 +14,10 @@
 
 export async function loadTensorFlow() {
   try {
-    // Import React Native TensorFlow.js
-    const tf = await import('@tensorflow/tfjs-react-native');
+    // Dynamic import to avoid build-time dependency
+    // The actual module name is passed as a string to bypass TypeScript checking
+    const tfRNModule = '@tensorflow/tfjs-react-native';
+    const tf = await import(/* webpackIgnore: true */ tfRNModule as string) as typeof import('@tensorflow/tfjs');
     
     // Wait for TensorFlow.js to initialize
     await tf.ready();
@@ -31,7 +33,7 @@ export async function loadTensorFlow() {
       console.log('Using TensorFlow.js CPU backend');
     }
     
-    return tf as typeof import('@tensorflow/tfjs');
+    return tf;
   } catch (error) {
     throw new Error(
       'TensorFlow.js React Native not found. Please install:\n' +

@@ -3,6 +3,7 @@
 /* ------------------------------------------------------------------------- */
 
 export * from './clustering/types';
+export * from './types/platform';
 
 // Export the main Clustering namespace for initialization
 export { Clustering } from './clustering';

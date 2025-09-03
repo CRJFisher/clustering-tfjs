@@ -6,6 +6,7 @@
  */
 
 import type * as tfType from '@tensorflow/tfjs-core';
+import type { TensorFlowBackend, Platform, ReactNativeConfig } from './types/platform';
 
 // Singleton storage
 let tfInstance: typeof tfType | null = null;
@@ -19,12 +20,22 @@ export interface BackendConfig {
    * Preferred backend to use. If not specified, will auto-detect.
    * Options: 'cpu', 'webgl', 'wasm', 'node', 'node-gpu', 'rn-webgl'
    */
-  backend?: string;
+  backend?: TensorFlowBackend;
   
   /**
    * Custom flags to pass to the backend
    */
   flags?: Record<string, unknown>;
+  
+  /**
+   * React Native specific configuration
+   */
+  reactNative?: ReactNativeConfig;
+  
+  /**
+   * Force a specific platform detection (for testing)
+   */
+  forcePlatform?: Platform;
 }
 
 /**
