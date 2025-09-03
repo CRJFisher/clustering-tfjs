@@ -291,7 +291,7 @@ export class SOM implements BaseClustering<SOMParams> {
   ): void {
     tf.tidy(() => {
       const [_nSamples, nFeatures] = samples.shape;
-      const [gridHeight, gridWidth, _] = this.weights_!.shape;
+      const [gridHeight, gridWidth, _nFeaturesWeight] = this.weights_!.shape;
       const totalNeurons = gridHeight * gridWidth;
       
       // Reshape weights for update

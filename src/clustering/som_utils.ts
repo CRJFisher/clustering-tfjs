@@ -301,7 +301,7 @@ function computePrincipalComponents(
   nComponents: number
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const [n, _] = covMatrix.shape;
+    const [n, _m] = covMatrix.shape;
     const components: tf.Tensor1D[] = [];
     let deflatedMatrix = covMatrix.clone();
     
@@ -478,7 +478,7 @@ export function findBMUBatch(
 ): tf.Tensor2D {
   return tf.tidy(() => {
     const [_nSamples, nFeatures] = samples.shape;
-    const [gridHeight, gridWidth, _] = weights.shape;
+    const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
     const totalNeurons = gridHeight * gridWidth;
     
     // Reshape weights for batch computation
@@ -525,7 +525,7 @@ export function computeBMUDistances(
 ): tf.Tensor1D {
   // Get data outside tf.tidy to avoid disposal issues
   const [_nSamples, _nFeatures] = samples.shape;
-  const [gridHeight, gridWidth, _] = weights.shape;
+  const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
   const bmusArray = bmus.arraySync();
   
   return tf.tidy(() => {
@@ -615,7 +615,7 @@ export function findBMUOptimized(
 ): { bmus: tf.Tensor2D; distances: tf.Tensor1D } {
   return tf.tidy(() => {
     const [_nSamples, nFeatures] = samples.shape;
-    const [gridHeight, gridWidth, _] = weights.shape;
+    const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
     const totalNeurons = gridHeight * gridWidth;
     
     // Reshape weights efficiently
