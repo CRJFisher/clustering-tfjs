@@ -4,7 +4,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 describe("SpectralClustering step-by-step verification", () => {
-  const FIXTURE_DIR = path.join(__dirname, "../fixtures/spectral");
+  // Use path relative to project root for fixtures
+  const FIXTURE_DIR = path.join(process.cwd(), "test", "fixtures", "spectral");
   
   // Helper to load fixture data
   function loadFixture(filename: string) {

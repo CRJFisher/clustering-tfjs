@@ -4,7 +4,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('SOM Reference Tests', () => {
-  const fixturesDir = path.join(__dirname, '..', 'fixtures', 'som');
+  // Use path relative to project root for fixtures
+  const fixturesDir = path.join(process.cwd(), 'test', 'fixtures', 'som');
   
   // Load fixtures synchronously for test generation
   const files = fs.readdirSync(fixturesDir)
