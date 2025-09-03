@@ -17,7 +17,7 @@ let initializationPromise: Promise<typeof tfType> | null = null;
 export interface BackendConfig {
   /**
    * Preferred backend to use. If not specified, will auto-detect.
-   * Options: 'cpu', 'webgl', 'wasm', 'node', 'node-gpu'
+   * Options: 'cpu', 'webgl', 'wasm', 'node', 'node-gpu', 'rn-webgl'
    */
   backend?: string;
   
@@ -87,14 +87,21 @@ export function resetBackend(): void {
  */
 async function loadBackend(config: BackendConfig): Promise<typeof tfType> {
   // Detect environment
-  const isNode = typeof window === 'undefined' && 
+  const isReactNative = typeof navigator !== 'undefined' && 
+                        navigator.product === 'ReactNative';
+  const isNode = !isReactNative &&
+                 typeof window === 'undefined' && 
                  typeof process !== 'undefined' && 
                  process.versions && 
                  process.versions.node;
   
   let tf: typeof tfType;
   
-  if (isNode) {
+  if (isReactNative) {
+    // React Native environment
+    const loader = await import('./tf-loader.rn');
+    tf = await loader.loadTensorFlow();
+  } else if (isNode) {
     // Node.js environment
     const loader = await import('./tf-loader.node');
     tf = await loader.loadTensorFlow();
