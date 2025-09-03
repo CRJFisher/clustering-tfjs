@@ -8,6 +8,7 @@ import { initializeBackend, BackendConfig } from './tf-backend';
 import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
+import { SOM } from './clustering/som';
 import type { Platform, DetectedPlatform, PlatformFeatures } from './clustering-types';
 
 // Re-export all clustering algorithms and utilities
@@ -15,6 +16,7 @@ export * from './clustering/types';
 export { KMeans } from './clustering/kmeans';
 export { SpectralClustering } from './clustering/spectral';
 export { AgglomerativeClustering } from './clustering/agglomerative';
+export { SOM } from './clustering/som';
 export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
 export { findOptimalClusters } from './utils/findOptimalClusters';
 
@@ -104,4 +106,5 @@ export const Clustering = {
   KMeans: KMeans,
   SpectralClustering: SpectralClustering,
   AgglomerativeClustering: AgglomerativeClustering,
+  SOM: SOM,
 };

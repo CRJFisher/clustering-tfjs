@@ -47,11 +47,22 @@ async function findBestK() {
     // ... your data points
   ];
   
-  // Test k from 2 to 8
+  // Test k from 2 to 8 with K-means
   const result = await findOptimalClusters(data, {
     minClusters: 2,
     maxClusters: 8,
     algorithm: 'kmeans'
+  });
+  
+  // Also works with SOM
+  const somResult = await findOptimalClusters(data, {
+    minClusters: 4,
+    maxClusters: 16,
+    algorithm: 'som',
+    algorithmParams: {
+      topology: 'hexagonal',
+      initialization: 'pca'
+    }
   });
   
   console.log(`Optimal number of clusters: ${result.optimal.k}`);
@@ -293,6 +304,201 @@ async function robustClustering() {
     const kmeans = new KMeans({ nClusters: 2 });
     const labels = await kmeans.fitPredict(data);
     console.log('Fallback clustering:', labels);
+  }
+}
+```
+
+## Self-Organizing Maps (SOM) Example
+
+```typescript
+import { SOM } from 'clustering-tfjs';
+
+async function somExample() {
+  // Generate sample 2D data with 3 distinct groups
+  const data = [
+    // Group 1 - bottom left
+    [1, 2], [1.5, 1.8], [1.2, 2.3], [0.8, 1.7], [1.3, 2.1],
+    // Group 2 - top right
+    [8, 9], [8.5, 8.8], [8.2, 9.3], [7.8, 8.7], [8.3, 9.1],
+    // Group 3 - top left
+    [2, 8], [2.5, 7.8], [2.2, 8.3], [1.8, 7.7], [2.3, 8.1]
+  ];
+  
+  // Create a 4x4 SOM grid
+  const som = new SOM({
+    gridWidth: 4,
+    gridHeight: 4,
+    nClusters: 16,
+    topology: 'rectangular',  // or 'hexagonal'
+    neighborhood: 'gaussian',
+    initialization: 'pca',    // Use PCA for initialization
+    learningRate: 0.5,
+    radius: 2,
+    numEpochs: 100,
+    randomState: 42
+  });
+  
+  // Train the SOM
+  console.log('Training SOM...');
+  const labels = await som.fitPredict(data);
+  console.log('Cluster assignments:', labels);
+  
+  // Get the weight vectors (codebook)
+  const weights = som.getWeights();
+  console.log('SOM weights shape:', weights.shape); // [4, 4, 2]
+  
+  // Calculate U-matrix for visualization
+  const uMatrix = som.getUMatrix();
+  const uMatrixArray = await uMatrix.array();
+  console.log('U-matrix (distances between neurons):');
+  console.table(uMatrixArray);
+  
+  // Evaluate map quality
+  const quantError = som.quantizationError();
+  const topoError = await som.topographicError(data);
+  console.log(`Quantization error: ${quantError.toFixed(4)}`);
+  console.log(`Topographic error: ${topoError.toFixed(4)}`);
+  
+  // Clean up tensors
+  weights.dispose();
+  uMatrix.dispose();
+}
+
+somExample();
+```
+
+### SOM for Data Visualization
+
+```typescript
+import { SOM } from 'clustering-tfjs';
+
+async function somVisualization() {
+  // High-dimensional data example (e.g., features extracted from images)
+  const highDimData = generateHighDimensionalData(); // Your data here
+  
+  // Create a larger SOM for better visualization
+  const som = new SOM({
+    gridWidth: 10,
+    gridHeight: 10,
+    nClusters: 100,
+    topology: 'hexagonal',    // Hexagonal grid for smoother transitions
+    neighborhood: 'gaussian',
+    initialization: 'pca',
+    numEpochs: 200,           // More epochs for complex data
+    learningRate: 0.7,        // Higher initial learning rate
+    radius: 5                 // Larger initial radius
+  });
+  
+  // Train the SOM
+  await som.fit(highDimData);
+  
+  // Get BMU (Best Matching Unit) positions for each data point
+  const labels = await som.predict(highDimData);
+  
+  // Convert flat labels to 2D grid positions
+  const gridPositions = labels.map(label => {
+    const row = Math.floor(label / som.params.gridWidth);
+    const col = label % som.params.gridWidth;
+    return [row, col];
+  });
+  
+  // Use grid positions for 2D visualization
+  console.log('2D positions for visualization:', gridPositions);
+  
+  // Create U-matrix for understanding cluster boundaries
+  const uMatrix = som.getUMatrix();
+  
+  // U-matrix shows distances between adjacent neurons
+  // High values indicate cluster boundaries
+  // Low values indicate similar regions
+  
+  return { gridPositions, uMatrix };
+}
+```
+
+### Incremental/Online Learning with SOM
+
+```typescript
+import { SOM } from 'clustering-tfjs';
+
+async function onlineLearning() {
+  // Create SOM for streaming data
+  const som = new SOM({
+    gridWidth: 10,
+    gridHeight: 10,
+    nClusters: 100,
+    initialization: 'random',
+    learningRate: 0.5,
+    numEpochs: 10  // Few epochs per batch
+  });
+  
+  // Process data in batches (simulating streaming)
+  const batches = [
+    generateBatch1(), // First batch of data
+    generateBatch2(), // Second batch
+    generateBatch3()  // Third batch
+  ];
+  
+  for (let i = 0; i < batches.length; i++) {
+    console.log(`Processing batch ${i + 1}...`);
+    
+    // Continue training with new data
+    await som.fit(batches[i]);
+    
+    // Monitor convergence
+    const quantError = som.quantizationError();
+    console.log(`Quantization error after batch ${i + 1}: ${quantError.toFixed(4)}`);
+  }
+  
+  // Final evaluation
+  const allData = batches.flat();
+  const finalError = await som.topographicError(allData);
+  console.log(`Final topographic error: ${finalError.toFixed(4)}`);
+}
+```
+
+### Using SOM with Different Topologies
+
+```typescript
+import { SOM } from 'clustering-tfjs';
+
+async function compareTopologies() {
+  const data = generateYourData(); // Your data
+  
+  // Rectangular topology (4 or 8 neighbors)
+  const rectSom = new SOM({
+    gridWidth: 5,
+    gridHeight: 5,
+    nClusters: 25,
+    topology: 'rectangular',
+    initialization: 'pca'
+  });
+  
+  // Hexagonal topology (6 neighbors) - better for visualization
+  const hexSom = new SOM({
+    gridWidth: 5,
+    gridHeight: 5,
+    nClusters: 25,
+    topology: 'hexagonal',
+    initialization: 'pca'
+  });
+  
+  // Train both
+  await rectSom.fit(data);
+  await hexSom.fit(data);
+  
+  // Compare topographic errors
+  const rectError = await rectSom.topographicError(data);
+  const hexError = await hexSom.topographicError(data);
+  
+  console.log(`Rectangular topology error: ${rectError.toFixed(4)}`);
+  console.log(`Hexagonal topology error: ${hexError.toFixed(4)}`);
+  
+  // Lower topographic error indicates better topology preservation
+  if (hexError < rectError) {
+    console.log('Hexagonal topology preserves data topology better');
+  } else {
+    console.log('Rectangular topology preserves data topology better');
   }
 }
 ```

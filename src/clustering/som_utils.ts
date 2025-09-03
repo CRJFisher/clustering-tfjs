@@ -134,8 +134,8 @@ export function initializeWeights(
   randomSeed?: number
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    const [nSamples, nFeatures] = X.shape;
-    const totalNeurons = gridHeight * gridWidth;
+    const [_nSamples, nFeatures] = X.shape;
+    const _totalNeurons = gridHeight * gridWidth;
     
     switch (initialization) {
       case 'random': {
@@ -165,7 +165,7 @@ export function initializeWeights(
         
         // Center the data
         const mean = X.mean(0);
-        const centered = X.sub(mean);
+        const _centered = X.sub(mean);
         
         // Compute covariance matrix (simplified PCA)
         // Note: Full PCA implementation would use covariance matrix
@@ -211,9 +211,9 @@ export function initializeWeights(
       
       case 'pca': {
         // PCA-based initialization - place weights along principal components
-        const [nSamples, nFeatures] = X.shape;
+        const [_nSamples, nFeatures] = X.shape;
         
-        if (nSamples < 2) {
+        if (_nSamples < 2) {
           // Fall back to random initialization if not enough samples
           return initializeWeights(X, gridHeight, gridWidth, 'random', randomSeed);
         }
@@ -223,7 +223,7 @@ export function initializeWeights(
         const centered = X.sub(mean);
         
         // Compute covariance matrix
-        const cov = tf.matMul(centered, centered, true, false).div(nSamples - 1);
+        const cov = tf.matMul(centered, centered, true, false).div(_nSamples - 1);
         
         // Get principal components
         const nComps = Math.min(2, nFeatures);
@@ -477,7 +477,7 @@ export function findBMUBatch(
   weights: tf.Tensor3D
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const [nSamples, nFeatures] = samples.shape;
+    const [_nSamples, nFeatures] = samples.shape;
     const [gridHeight, gridWidth, _] = weights.shape;
     const totalNeurons = gridHeight * gridWidth;
     
@@ -524,18 +524,18 @@ export function computeBMUDistances(
   bmus: tf.Tensor2D
 ): tf.Tensor1D {
   // Get data outside tf.tidy to avoid disposal issues
-  const [nSamples, nFeatures] = samples.shape;
+  const [_nSamples, _nFeatures] = samples.shape;
   const [gridHeight, gridWidth, _] = weights.shape;
   const bmusArray = bmus.arraySync();
   
   return tf.tidy(() => {
     // Reshape weights for easier indexing
-    const weightsFlat = weights.reshape([gridHeight * gridWidth, nFeatures]);
+    const weightsFlat = weights.reshape([gridHeight * gridWidth, _nFeatures]);
     
     // Convert BMU coordinates to flat indices
     const bmuIndices: number[] = [];
     
-    for (let i = 0; i < nSamples; i++) {
+    for (let i = 0; i < _nSamples; i++) {
       const row = bmusArray[i][0];
       const col = bmusArray[i][1];
       bmuIndices.push(row * gridWidth + col);
@@ -614,7 +614,7 @@ export function findBMUOptimized(
   distanceBuffer?: tf.Tensor2D
 ): { bmus: tf.Tensor2D; distances: tf.Tensor1D } {
   return tf.tidy(() => {
-    const [nSamples, nFeatures] = samples.shape;
+    const [_nSamples, nFeatures] = samples.shape;
     const [gridHeight, gridWidth, _] = weights.shape;
     const totalNeurons = gridHeight * gridWidth;
     
@@ -749,7 +749,7 @@ export function computeNeighborhoodInfluence(
   topology: SOMTopology
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const [nSamples] = bmus.shape;
+    const [_nSamples] = bmus.shape;
     const totalNeurons = gridHeight * gridWidth;
     
     // Pre-compute grid distance matrix if not cached
@@ -758,7 +758,7 @@ export function computeNeighborhoodInfluence(
     // Get BMU flat indices
     const bmusData = bmus.bufferSync();
     const bmuIndices: number[] = [];
-    for (let i = 0; i < nSamples; i++) {
+    for (let i = 0; i < _nSamples; i++) {
       const row = bmusData.get(i, 0);
       const col = bmusData.get(i, 1);
       bmuIndices.push(row * gridWidth + col);

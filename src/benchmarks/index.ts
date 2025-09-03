@@ -3,6 +3,7 @@ import { performance } from 'perf_hooks';
 import { AgglomerativeClustering } from '../clustering/agglomerative';
 import { SpectralClustering } from '../clustering/spectral';
 import { KMeans } from '../clustering/kmeans';
+import { SOM } from '../clustering/som';
 import { makeBlobs } from '../datasets/synthetic';
 
 export interface BenchmarkResult {
@@ -32,7 +33,7 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
 ];
 
 export async function benchmarkAlgorithm(
-  algorithm: 'kmeans' | 'spectral' | 'agglomerative',
+  algorithm: 'kmeans' | 'spectral' | 'agglomerative' | 'som',
   config: BenchmarkConfig,
   backend: string,
 ): Promise<BenchmarkResult> {
@@ -87,6 +88,24 @@ export async function benchmarkAlgorithm(
         : ((await agglo.labels_!.array()) as number[]);
       break;
     }
+    case 'som': {
+      // For SOM, use a square grid approximately matching the number of clusters
+      const gridSize = Math.ceil(Math.sqrt(config.centers));
+      const som = new SOM({
+        nClusters: gridSize * gridSize,
+        gridWidth: gridSize,
+        gridHeight: gridSize,
+        topology: 'rectangular',
+        initialization: 'pca',
+        numEpochs: 50,  // Reduced for benchmarking
+        randomState: 42,
+      });
+      await som.fit(X);
+      _labels = Array.isArray(som.labels_)
+        ? som.labels_
+        : ((await som.labels_!.array()) as number[]);
+      break;
+    }
   }
 
   const executionTime = performance.now() - start;
@@ -138,10 +157,11 @@ export async function getAvailableBackends(): Promise<string[]> {
 export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
   const backends = await getAvailableBackends();
-  const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative'> = [
+  const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative' | 'som'> = [
     'kmeans',
     'spectral',
     'agglomerative',
+    'som',
   ];
 
   console.log(`Available backends: ${backends.join(', ')}`);

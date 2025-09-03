@@ -10,7 +10,7 @@ Native TypeScript implementation of clustering algorithms powered by TensorFlow.
 ## Features
 
 - ✅ Pure TypeScript/JavaScript (no Python required)
-- ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative)
+- ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative, SOM)
 - ✅ Powered by TensorFlow.js for performance
 - ✅ **Works in both Node.js and browsers**
 - ✅ Platform-optimized bundles (49KB for browser, 163KB for Node.js)
@@ -140,6 +140,16 @@ npm install clustering-tfjs @tensorflow/tfjs
 - Hierarchical bottom-up clustering
 - Multiple linkage criteria (ward, complete, average, single)
 - Memory efficient implementation
+
+### Self-Organizing Maps (SOM)
+
+- Neural network-based unsupervised learning
+- Topology-preserving dimensionality reduction
+- Supports rectangular and hexagonal grid topologies
+- Multiple initialization methods (random, linear, PCA)
+- Flexible neighborhood functions (gaussian, bubble, mexican_hat)
+- Incremental/online learning support for streaming data
+- Ideal for visualization and exploratory data analysis
 
 ## Validation Metrics
 

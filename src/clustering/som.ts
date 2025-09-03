@@ -290,7 +290,7 @@ export class SOM implements BaseClustering<SOMParams> {
     learningRate: number
   ): void {
     tf.tidy(() => {
-      const [nSamples, nFeatures] = samples.shape;
+      const [_nSamples, nFeatures] = samples.shape;
       const [gridHeight, gridWidth, _] = this.weights_!.shape;
       const totalNeurons = gridHeight * gridWidth;
       
@@ -468,18 +468,29 @@ export class SOM implements BaseClustering<SOMParams> {
           let totalDistance = 0;
           let neighborCount = 0;
           
-          // Check all adjacent positions
-          const neighbors = [
-            [i - 1, j], [i + 1, j],
-            [i, j - 1], [i, j + 1],
-          ];
+          // Get neighbors based on topology
+          let neighbors: number[][];
           
           if (topology === 'rectangular') {
-            // Add diagonal neighbors for rectangular
-            neighbors.push(
+            // 8-connected rectangular grid
+            neighbors = [
+              [i - 1, j], [i + 1, j],
+              [i, j - 1], [i, j + 1],
               [i - 1, j - 1], [i - 1, j + 1],
               [i + 1, j - 1], [i + 1, j + 1]
-            );
+            ];
+          } else {
+            // Hexagonal grid (6-connected)
+            const evenRow = i % 2 === 0;
+            neighbors = evenRow ? [
+              [i - 1, j - 1], [i - 1, j],  // Top-left, top-right
+              [i, j - 1], [i, j + 1],      // Left, right
+              [i + 1, j - 1], [i + 1, j]   // Bottom-left, bottom-right
+            ] : [
+              [i - 1, j], [i - 1, j + 1],  // Top-left, top-right
+              [i, j - 1], [i, j + 1],      // Left, right
+              [i + 1, j], [i + 1, j + 1]   // Bottom-left, bottom-right
+            ];
           }
           
           for (const [ni, nj] of neighbors) {
