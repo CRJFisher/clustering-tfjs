@@ -210,33 +210,74 @@ export function initializeWeights(
       }
       
       case 'pca': {
-        // PCA-based initialization
-        // Use simplified PCA approach due to TensorFlow.js limitations
+        // PCA-based initialization - place weights along principal components
+        const [nSamples, nFeatures] = X.shape;
+        
+        if (nSamples < 2) {
+          // Fall back to random initialization if not enough samples
+          return initializeWeights(X, gridHeight, gridWidth, 'random', randomSeed);
+        }
         
         // Center the data
-        const mean = X.mean(0);
+        const mean = X.mean(0, true);
         const centered = X.sub(mean);
         
-        // Get data standard deviation for each feature
-        const std = centered.square().mean(0).sqrt();
+        // Compute covariance matrix
+        const cov = tf.matMul(centered, centered, true, false).div(nSamples - 1);
         
-        // Create a grid that spans the principal components
+        // Get principal components
+        const nComps = Math.min(2, nFeatures);
+        const components = computePrincipalComponents(cov as tf.Tensor2D, nComps);
+        
+        // Project data onto principal components
+        const projections = tf.matMul(centered, components, false, true);
+        const pcMin = projections.min(0);
+        const pcMax = projections.max(0);
+        const pcRange = pcMax.sub(pcMin);
+        
+        // Create grid in PC space and transform back
         const weights: number[][][] = [];
         
         for (let i = 0; i < gridHeight; i++) {
           const rowWeights: number[][] = [];
           for (let j = 0; j < gridWidth; j++) {
-            // Map grid position to data space
-            const alpha = (i - gridHeight / 2) / (gridHeight / 2);
-            const beta = (j - gridWidth / 2) / (gridWidth / 2);
+            // Map grid position to PC space
+            const alpha = gridHeight > 1 ? i / (gridHeight - 1) : 0.5;
+            const beta = gridWidth > 1 ? j / (gridWidth - 1) : 0.5;
             
-            // Create weight as combination of mean and spread
-            const weight = mean.add(std.mul(tf.tensor1d([alpha, beta, 0, 0].slice(0, nFeatures))));
+            // Create PC coordinates
+            const pcCoords = tf.zeros([nComps]);
+            const pcBuffer = pcCoords.bufferSync();
+            pcBuffer.set(pcMin.dataSync()[0] + pcRange.dataSync()[0] * alpha, 0);
+            if (nComps > 1) {
+              pcBuffer.set(pcMin.dataSync()[1] + pcRange.dataSync()[1] * beta, 1);
+            }
+            
+            // Transform back to original space
+            const weight = tf.tidy(() => {
+              const reconstructed = tf.matMul(
+                pcBuffer.toTensor().expandDims(0),
+                components
+              );
+              return reconstructed.squeeze().add(mean);
+            });
+            
             rowWeights.push(Array.from(weight.dataSync()));
             weight.dispose();
+            pcCoords.dispose();
           }
           weights.push(rowWeights);
         }
+        
+        // Cleanup
+        cov.dispose();
+        components.dispose();
+        projections.dispose();
+        pcMin.dispose();
+        pcMax.dispose();
+        pcRange.dispose();
+        centered.dispose();
+        mean.dispose();
         
         return tf.tensor3d(weights);
       }
@@ -244,6 +285,69 @@ export function initializeWeights(
       default:
         throw new Error(`Unknown initialization strategy: ${initialization}`);
     }
+  });
+}
+
+/**
+ * Compute principal components using power iteration.
+ * TensorFlow.js doesn't have eigendecomposition, so we use power iteration.
+ * 
+ * @param covMatrix Covariance matrix [nFeatures, nFeatures]
+ * @param nComponents Number of components to extract
+ * @returns Principal components [nComponents, nFeatures]
+ */
+function computePrincipalComponents(
+  covMatrix: tf.Tensor2D,
+  nComponents: number
+): tf.Tensor2D {
+  return tf.tidy(() => {
+    const [n, _] = covMatrix.shape;
+    const components: tf.Tensor1D[] = [];
+    let deflatedMatrix = covMatrix.clone();
+    
+    for (let comp = 0; comp < Math.min(nComponents, n); comp++) {
+      // Initialize random vector
+      let v = tf.randomNormal([n, 1]);
+      v = v.div(v.norm());
+      
+      // Power iteration
+      for (let iter = 0; iter < 100; iter++) {
+        const vNew = tf.matMul(deflatedMatrix, v);
+        const norm = vNew.norm();
+        
+        if (norm.dataSync()[0] < 1e-10) break;
+        
+        v.dispose();
+        v = vNew.div(norm);
+      }
+      
+      // Store component
+      components.push(v.squeeze());
+      
+      // Deflate matrix (remove component)
+      const eigenvalue = tf.matMul(
+        tf.matMul(v, deflatedMatrix, true, false),
+        v
+      ).squeeze();
+      
+      const outerProduct = tf.matMul(v, v, false, true);
+      const deflation = outerProduct.mul(eigenvalue);
+      
+      const newDeflated = deflatedMatrix.sub(deflation) as tf.Tensor2D;
+      deflatedMatrix.dispose();
+      deflatedMatrix = newDeflated;
+      
+      // Cleanup
+      eigenvalue.dispose();
+      outerProduct.dispose();
+      deflation.dispose();
+      v.dispose();
+    }
+    
+    deflatedMatrix.dispose();
+    
+    // Stack components into matrix
+    return tf.stack(components) as tf.Tensor2D;
   });
 }
 
@@ -599,19 +703,29 @@ export function bubbleNeighborhood(
  * 
  * @param distance Distance from BMU in grid space
  * @param radius Current neighborhood radius
- * @returns Influence value [-0.5, 1]
+ * @returns Influence value with positive center and negative surround
  */
 export function mexicanHatNeighborhood(
   distance: tf.Tensor,
   radius: number
 ): tf.Tensor {
   return tf.tidy(() => {
-    // h(d, σ) = (1 - d²/σ²) * exp(-d²/(2σ²))
-    const sigma2 = radius * radius;
-    const distSquared = distance.square();
-    const term1 = tf.scalar(1).sub(distSquared.div(sigma2));
-    const term2 = distSquared.div(2 * sigma2).neg().exp();
-    return term1.mul(term2);
+    // Ricker wavelet formula:
+    // h(d, σ) = A * (1 - (d/σ)²) * exp(-(d/σ)²/2)
+    // where A is normalization constant (we use 2 for stronger effect)
+    
+    const sigma = radius;
+    const distNorm = distance.div(sigma);
+    const distNormSquared = distNorm.square();
+    
+    // Core Ricker wavelet
+    const term1 = tf.scalar(1).sub(distNormSquared);
+    const term2 = distNormSquared.div(2).neg().exp();
+    const wavelet = term1.mul(term2);
+    
+    // Apply amplitude scaling for stronger lateral inhibition
+    const amplitude = 2.0;
+    return wavelet.mul(amplitude);
   });
 }
 

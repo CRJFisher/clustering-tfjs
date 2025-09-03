@@ -13,7 +13,9 @@ import type {
 import { isTensor } from '../utils/tensor-utils';
 import {
   initializeWeights,
+  findBMU,
   findBMUBatch,
+  findSecondBMU,
   computeNeighborhoodInfluenceBatch,
   createGridDistanceMatrix,
   computeBMUDistances,
@@ -532,29 +534,40 @@ export class SOM implements BaseClustering<SOMParams> {
     const xTensor = isTensor(X) ? X as tf.Tensor2D : tf.tensor2d(X);
     
     try {
-      // const { gridWidth, gridHeight, topology } = this.params; // Reserved for future use
+      const { gridWidth, gridHeight, topology } = this.params;
       const [nSamples] = xTensor.shape;
       
-      // Find first and second BMUs
-      const bmus = await findBMUBatch(xTensor, this.weights_).array();
-      
       let errors = 0;
+      
+      // Process each sample
       for (let i = 0; i < nSamples; i++) {
-        const sample = xTensor.slice([i, 0], [1, -1]).squeeze();
+        const sample = xTensor.slice([i, 0], [1, -1]).squeeze() as tf.Tensor1D;
         
-        // Get second BMU (this is a simplified approach)
-        // In a full implementation, we'd use findSecondBMU from som_utils
-        // const [bmu1Row, bmu1Col] = bmus[i]; // Reserved for neighbor check
+        // Find first BMU
+        const bmu1 = findBMU(sample, this.weights_);
         
-        // Check if BMUs are neighbors
-        // For simplicity, we consider direct neighbors only
-        const isNeighbor = false; // Simplified - would need full implementation
+        // Find second BMU
+        const bmu2 = findSecondBMU(sample, this.weights_, bmu1);
+        
+        // Get BMU coordinates
+        const bmu1Array = await bmu1.array() as number[];
+        const bmu2Array = await bmu2.array() as number[];
+        
+        // Check if BMUs are neighbors based on topology
+        const isNeighbor = this.areNeighbors(
+          bmu1Array[0], bmu1Array[1],
+          bmu2Array[0], bmu2Array[1],
+          gridHeight, gridWidth, topology!
+        );
         
         if (!isNeighbor) {
           errors++;
         }
         
+        // Clean up
         sample.dispose();
+        bmu1.dispose();
+        bmu2.dispose();
       }
       
       return errors / nSamples;
@@ -562,6 +575,45 @@ export class SOM implements BaseClustering<SOMParams> {
       if (!isTensor(X)) {
         xTensor.dispose();
       }
+    }
+  }
+  
+  /**
+   * Check if two neurons are neighbors in the grid.
+   */
+  private areNeighbors(
+    row1: number, col1: number,
+    row2: number, col2: number,
+    gridHeight: number, gridWidth: number,
+    topology: SOMTopology
+  ): boolean {
+    if (topology === 'rectangular') {
+      // Direct neighbors in rectangular grid (4-connected)
+      const rowDiff = Math.abs(row1 - row2);
+      const colDiff = Math.abs(col1 - col2);
+      
+      // Adjacent horizontally or vertically
+      return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+    } else {
+      // Hexagonal topology (6-connected)
+      const rowDiff = row2 - row1;
+      const colDiff = col2 - col1;
+      
+      // Even rows have different neighbor offsets than odd rows
+      const evenRow = row1 % 2 === 0;
+      
+      // Check all 6 possible hexagonal neighbors
+      const hexNeighbors = evenRow ? [
+        [-1, -1], [-1, 0],  // Top-left, top-right
+        [0, -1], [0, 1],    // Left, right
+        [1, -1], [1, 0]     // Bottom-left, bottom-right
+      ] : [
+        [-1, 0], [-1, 1],   // Top-left, top-right
+        [0, -1], [0, 1],    // Left, right
+        [1, 0], [1, 1]      // Bottom-left, bottom-right
+      ];
+      
+      return hexNeighbors.some(([dr, dc]) => dr === rowDiff && dc === colDiff);
     }
   }
   
