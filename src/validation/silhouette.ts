@@ -1,25 +1,27 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
 import { isTensor } from '../utils/tensor-utils';
+import { validateLabelsLength } from './validate';
 
 /**
- * Computes the Silhouette score.
+ * Computes per-sample silhouette coefficients.
  *
  * The silhouette coefficient for a sample is (b - a) / max(a, b) where:
  * - a is the mean distance between a sample and all other points in the same cluster
  * - b is the mean distance between a sample and all points in the nearest cluster
  *
- * The score ranges from -1 to +1:
+ * Each score ranges from -1 to +1:
  * - +1: Sample is far from neighboring clusters (well clustered)
  * - 0: Sample is on or very close to the decision boundary
  * - -1: Sample might have been assigned to the wrong cluster
  *
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
- * @returns The mean silhouette score across all samples
- * @throws Error if k <= 1
+ * @returns Array of per-sample silhouette scores
+ * @throws Error if k <= 1 or labels length doesn't match data rows
  */
-export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
+export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] {
+  validateLabelsLength(X, labels);
   return tf.tidy(() => {
     // Convert inputs to tensors
     const data =
@@ -105,6 +107,10 @@ export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
       if (sameClusterIndices.length === 0) {
         // Single point in cluster
         silhouetteValues.push(0);
+      } else if (a === 0 && b === 0) {
+        // All intra- and inter-cluster distances are zero (identical points);
+        // sklearn convention: silhouette = 0
+        silhouetteValues.push(0);
       } else {
         const s = (b - a) / Math.max(a, b);
         silhouetteValues.push(s);
@@ -117,9 +123,21 @@ export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
     cross.dispose();
     distances.dispose();
 
-    // Return mean silhouette score
-    return silhouetteValues.reduce((sum, val) => sum + val, 0) / n;
+    return silhouetteValues;
   });
+}
+
+/**
+ * Computes the Silhouette score (mean of per-sample silhouette coefficients).
+ *
+ * @param X - Data matrix of shape [n_samples, n_features]
+ * @param labels - Cluster labels for each sample
+ * @returns The mean silhouette score across all samples
+ * @throws Error if k <= 1 or labels length doesn't match data rows
+ */
+export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
+  const samples = silhouetteSamples(X, labels);
+  return samples.reduce((sum, val) => sum + val, 0) / samples.length;
 }
 
 /**
@@ -136,6 +154,7 @@ export function silhouetteScoreSubset(
   labels: LabelVector,
   sampleIndices: number[],
 ): number {
+  validateLabelsLength(X, labels);
   // Convert inputs
   const data =
     isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
@@ -219,6 +238,10 @@ export function silhouetteScoreSubset(
     // Compute silhouette coefficient
     if (aCount === 0) {
       // Single point in cluster
+      silhouetteValues.push(0);
+    } else if (a === 0 && b === 0) {
+      // All intra- and inter-cluster distances are zero (identical points);
+      // sklearn convention: silhouette = 0
       silhouetteValues.push(0);
     } else {
       const s = (b - a) / Math.max(a, b);

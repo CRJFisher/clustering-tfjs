@@ -1,6 +1,6 @@
 import { describe, it, expect } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
-import { silhouetteScore, silhouetteScoreSubset } from "../../src/validation/silhouette";
+import { silhouetteScore, silhouetteScoreSubset, silhouetteSamples } from "../../src/validation/silhouette";
 
 describe("Silhouette Score", () => {
   afterEach(() => {
@@ -254,6 +254,145 @@ describe("Silhouette Score", () => {
       
       // Scores should be similar
       expect(Math.abs(fullScore - subsetScore)).toBeLessThan(0.1);
+    });
+  });
+
+  describe("NaN fix (AC#4)", () => {
+    it("should return 0 when a==0 and b==0 (all identical points)", () => {
+      const X = [
+        [1, 1], [1, 1], [1, 1],
+        [1, 1], [1, 1], [1, 1],
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+
+      const score = silhouetteScore(X, labels);
+      expect(score).toBe(0);
+      expect(isNaN(score)).toBe(false);
+    });
+
+    it("should return 0 for identical points using silhouetteScoreSubset", () => {
+      const X = [
+        [1, 1], [1, 1], [1, 1],
+        [1, 1], [1, 1], [1, 1],
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+      const allIndices = [0, 1, 2, 3, 4, 5];
+
+      const score = silhouetteScoreSubset(X, labels, allIndices);
+      expect(score).toBe(0);
+      expect(isNaN(score)).toBe(false);
+    });
+
+    it("should handle mixed: some identical, some not", () => {
+      const X = [
+        [0, 0], [0, 0], [0, 0],
+        [5, 5], [5.1, 5.1], [4.9, 4.9],
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+
+      const score = silhouetteScore(X, labels);
+      expect(isFinite(score)).toBe(true);
+      expect(isNaN(score)).toBe(false);
+      expect(score).toBeGreaterThan(0);
+    });
+  });
+
+  describe("Labels length validation (AC#6)", () => {
+    it("should throw when labels length mismatches data rows (array)", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => silhouetteScore(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
+
+    it("should throw when labels length mismatches data rows (tensor)", () => {
+      const X = tf.tensor2d([[1, 2], [3, 4], [5, 6]]);
+      const labels = tf.tensor1d([0, 1]);
+
+      expect(() => silhouetteScore(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+
+      X.dispose();
+      labels.dispose();
+    });
+
+    it("should throw for silhouetteScoreSubset with mismatched labels", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => silhouetteScoreSubset(X, labels, [0])).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
+  });
+
+  describe("silhouetteSamples (AC#7)", () => {
+    it("should return correct number of per-sample scores", () => {
+      const X = [
+        [0, 0], [0.1, 0.1], [0.2, 0],
+        [5, 5], [5.1, 5.1], [4.9, 4.9]
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+
+      const samples = silhouetteSamples(X, labels);
+      expect(samples).toHaveLength(6);
+    });
+
+    it("should have mean equal to silhouetteScore", () => {
+      const X = [
+        [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
+        [5, 5], [5.1, 5.1], [4.9, 4.9], [5.1, 4.9]
+      ];
+      const labels = [0, 0, 0, 0, 1, 1, 1, 1];
+
+      const samples = silhouetteSamples(X, labels);
+      const mean = samples.reduce((s, v) => s + v, 0) / samples.length;
+      const score = silhouetteScore(X, labels);
+
+      expect(mean).toBeCloseTo(score, 10);
+    });
+
+    it("should have all values in [-1, 1]", () => {
+      const X = [
+        [0, 0], [0.1, 0.1], [5, 5], [5.1, 5.1]
+      ];
+      const labels = [0, 0, 1, 1];
+
+      const samples = silhouetteSamples(X, labels);
+      for (const s of samples) {
+        expect(s).toBeGreaterThanOrEqual(-1);
+        expect(s).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("should work with tensor inputs", () => {
+      const X = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
+      const labels = [0, 0, 1, 1, 0, 1];
+
+      const samplesArray = silhouetteSamples(X, labels);
+
+      const XTensor = tf.tensor2d(X);
+      const labelsTensor = tf.tensor1d(labels);
+      const samplesTensor = silhouetteSamples(XTensor, labelsTensor);
+
+      for (let i = 0; i < samplesArray.length; i++) {
+        expect(samplesTensor[i]).toBeCloseTo(samplesArray[i], 5);
+      }
+
+      XTensor.dispose();
+      labelsTensor.dispose();
+    });
+
+    it("should throw on single cluster", () => {
+      const X = [[1, 2], [3, 4]];
+      const labels = [0, 0];
+
+      expect(() => silhouetteSamples(X, labels)).toThrow(
+        "Silhouette score requires at least 2 clusters"
+      );
     });
   });
 });

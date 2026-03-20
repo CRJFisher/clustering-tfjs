@@ -1,6 +1,7 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
 import { isTensor } from '../utils/tensor-utils';
+import { validateLabelsLength } from './validate';
 
 /**
  * Computes the Calinski-Harabasz score (also known as Variance Ratio Criterion).
@@ -21,6 +22,7 @@ import { isTensor } from '../utils/tensor-utils';
  * @throws Error if k <= 1 or k >= n_samples
  */
 export function calinskiHarabasz(X: DataMatrix, labels: LabelVector): number {
+  validateLabelsLength(X, labels);
   return tf.tidy(() => {
     // Convert inputs to tensors
     const data =
@@ -114,6 +116,7 @@ export function calinskiHarabaszEfficient(
   X: DataMatrix,
   labels: LabelVector,
 ): number {
+  validateLabelsLength(X, labels);
   // Convert inputs
   const data =
     isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);

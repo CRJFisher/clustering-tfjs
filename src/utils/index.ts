@@ -8,4 +8,8 @@ export { findOptimalClusters } from './findOptimalClusters';
 export type {
   ClusterEvaluation,
   FindOptimalClustersOptions,
+  OptimalClustersMethod,
 } from './findOptimalClusters';
+export { computeWss } from './computeWss';
+export { findKnee } from './kneedle';
+export type { KneedleOptions, KneedleResult } from './kneedle';

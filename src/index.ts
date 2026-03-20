@@ -27,10 +27,15 @@ export { findOptimalClusters } from './utils/findOptimalClusters';
 export type {
   ClusterEvaluation,
   FindOptimalClustersOptions,
+  OptimalClustersMethod,
 } from './utils/findOptimalClusters';
+export { computeWss } from './utils/computeWss';
+export { findKnee } from './utils/kneedle';
+export type { KneedleOptions, KneedleResult } from './utils/kneedle';
 
 // Validation metrics
 export {
+  silhouetteSamples,
   silhouetteScore,
   silhouetteScoreSubset,
 } from './validation/silhouette';
@@ -42,6 +47,11 @@ export {
   calinskiHarabasz,
   calinskiHarabaszEfficient,
 } from './validation/calinski_harabasz';
+export { adjustedRandIndex } from './validation/adjusted_rand_index';
+export {
+  normalizedMutualInfo,
+  type NMIAverage,
+} from './validation/normalized_mutual_info';
 
 // Graph Laplacian helpers (task-10)
 export {
