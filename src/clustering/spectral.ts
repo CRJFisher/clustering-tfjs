@@ -261,10 +261,11 @@ export class SpectralClustering
           '../utils/smallest_eigenvectors_with_values'
         );
         const spectrumK = Math.min(10, laplacian.shape[0]);
-        const { eigenvalues: specEvals } = spectrumHelper(laplacian, spectrumK);
+        const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
         const specData = await specEvals.data();
         this.debugInfo_!.laplacianSpectrum = Array.from(specData);
         specEvals.dispose();
+        specVecs.dispose();
       }
 
       // Get eigenvectors AND eigenvalues for D^{1/2} normalization
@@ -508,10 +509,11 @@ export class SpectralClustering
       '../utils/smallest_eigenvectors_with_values'
     );
     const spectrumK = Math.min(10, laplacian.shape[0]);
-    const { eigenvalues: specEvals } = spectrumHelper(laplacian, spectrumK);
+    const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
     const specData = await specEvals.data();
     this.debugInfo_.laplacianSpectrum = Array.from(specData);
     specEvals.dispose();
+    specVecs.dispose();
 
     /* ---------------------------- 3) Embedding ----------------------------- */
     const { smallest_eigenvectors_with_values } = await import(

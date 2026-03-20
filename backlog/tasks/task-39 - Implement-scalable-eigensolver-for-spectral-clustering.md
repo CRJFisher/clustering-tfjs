@@ -1,11 +1,11 @@
 ---
 id: TASK-39
 title: Implement scalable eigensolver for spectral clustering
-status: In Progress
+status: Done
 assignee:
   - '@claude'
 created_date: '2026-03-20'
-updated_date: '2026-03-20 16:19'
+updated_date: '2026-03-20 16:20'
 labels: []
 dependencies: []
 ---
@@ -39,33 +39,5 @@ The current Jacobi eigendecomposition computes ALL n eigenvalues of an n×n matr
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
-Implemented a Lanczos iterative eigensolver that reduces spectral clustering eigendecomposition from O(n³) to O(n²·m) where m is the Lanczos subspace size (typically 30-50 for k=3-10 clusters).
-
-**Core algorithm** (`src/utils/lanczos.ts`):
-- Standard Lanczos tridiagonalization with full reorthogonalization (double Gram-Schmidt when norm drops below 1/√2)
-- Corrected tridiagonal QL solver (fixes variable-shadowing bug in eigen_qr.ts where `g = c*r - b` line was missing)
-- Simple restart strategy using best Ritz vector as new starting point
-- Convergence detection via residual bounds |β_m · s_i_last| < tol · max(1, |θ_i|)
-- Float32-tuned tolerances (convergence 1e-6, breakdown 1e-10, PSD clamp 1e-5)
-- Deterministic random starting vector via `make_random_stream`
-
-**Integration** (`src/utils/smallest_eigenvectors_with_values.ts`):
-- Auto-selects solver: Lanczos for n > 100 (and k < n/3), Jacobi fallback for small matrices
-- Graceful fallback: if Lanczos fails (NaN, non-convergence), falls back to Jacobi with a warning
-- Relaxed `deterministic_eigenpair_processing` in eigen_post.ts to accept rectangular (n×k) eigenvector matrices
-
-**Parameter sweep caching** (`src/clustering/spectral_optimization.ts`):
-- Restructured `intensiveParameterSweep()` to compute affinity+embedding once per gamma value
-- Previously computed 90 eigendecompositions (9 gammas × 10 calls each), now only 9
-- Uses try/finally for guaranteed tensor cleanup
-
-**Performance results**:
-- n=500: 49.8x speedup (Jacobi 5991ms → Lanczos 120ms)
-- n=1000: Lanczos 117ms (Jacobi would take ~30-60s)
-- n=5000: Spectral clustering completes in ~10s (previously infeasible)
-
-**Test results**: 51 tests pass across 10 test suites, including all 12 spectral reference tests (ARI ≥ 0.95), 11 Lanczos unit tests, 2 scale tests (n=1000, n=5000), and 3 benchmark tests.
-
-Modified files: src/utils/lanczos.ts (new), src/utils/smallest_eigenvectors_with_values.ts, src/utils/eigen_post.ts, src/utils/laplacian.ts, src/clustering/spectral.ts, src/clustering/spectral_optimization.ts, src/utils/platform.ts (pre-existing type fix)
-Added files: test/utils/lanczos.test.ts, test/clustering/spectral_scale.test.ts, test/benchmarks/eigensolver_benchmark.test.ts
+Implemented Lanczos iterative eigensolver achieving 49.8x speedup at n=500 and enabling n=5000+ spectral clustering. Restructured parameter sweep to cache eigendecomposition per gamma. All 51 tests pass.
 <!-- SECTION:NOTES:END -->

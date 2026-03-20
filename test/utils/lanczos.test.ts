@@ -3,11 +3,6 @@ import { lanczos_smallest_eigenpairs } from '../../src/utils/lanczos';
 import { improved_jacobi_eigen } from '../../src/utils/eigen_improved';
 
 describe('Lanczos eigensolver', () => {
-  afterEach(() => {
-    // Verify no tensor leaks within tests
-    tf.engine().startScope();
-    tf.engine().endScope();
-  });
 
   describe('basic correctness', () => {
     it('finds eigenvalues of a diagonal matrix', () => {

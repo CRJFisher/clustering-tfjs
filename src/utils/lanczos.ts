@@ -39,11 +39,12 @@ const NORM_REDUCTION_TRIGGER = 0.7071; // 1/sqrt(2) — triggers second reorth p
 
 /**
  * Computes the k smallest eigenpairs of a symmetric matrix using the
- * Lanczos algorithm with full reorthogonalization and thick restart.
+ * Lanczos algorithm with full reorthogonalization.
  *
- * For normalized Laplacian matrices (eigenvalues in [0,2]), applies
- * spectral transformation M = 2I − L so that the k smallest eigenvalues
- * of L become the k largest of M, where Lanczos converges fastest.
+ * Standard Lanczos: applies A*v directly and extracts the k smallest
+ * Ritz values from the tridiagonal eigenproblem. Uses simple restart
+ * (best Ritz vector as new starting point) when the subspace reaches
+ * its maximum size without convergence.
  *
  * Complexity: O(n² · m) where m is the Lanczos subspace size (typically 30–100),
  * versus O(n³) for Jacobi. For n=5000, k=5, this is ~1000x faster.
@@ -203,11 +204,11 @@ export function lanczos_smallest_eigenpairs(
       }
     }
 
-    // Reached max subspace size — perform thick restart
+    // Reached max subspace size — perform simple restart
     // Solve tridiagonal eigenproblem
     const { values, vectors } = tridiagonal_ql(
       alpha.slice(),
-      beta.slice(),
+      beta.slice(0, alpha.length - 1),
     );
 
     // Check if converged at the boundary
@@ -579,8 +580,3 @@ function tridiagonal_ql(
   return { values, vectors: V };
 }
 
-/* -------------------------------------------------------------------------- */
-/*                              Module Exports                                */
-/* -------------------------------------------------------------------------- */
-
-export { tridiagonal_ql as tridiagonal_ql_corrected };
