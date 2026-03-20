@@ -88,42 +88,35 @@ export async function initializeBackend(config: BackendConfig = {}): Promise<typ
 export function ensureBackend(): typeof tfType {
   if (tfInstance) return tfInstance;
 
+  // If async init is in progress, don't race it with a sync load
+  if (initializationPromise) {
+    throw new Error(
+      'TensorFlow.js is being initialized asynchronously via Clustering.init(). ' +
+      'Await the init() call before using clustering algorithms.'
+    );
+  }
+
   // Auto-load synchronously in Node.js
   if (isNode()) {
     tfInstance = loadBackendSync();
     return tfInstance;
   }
 
-  // In browser/RN, check if @tensorflow/tfjs-core has a backend registered
-  // (e.g. user loaded TF.js via script tag)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const core = require('@tensorflow/tfjs-core') as typeof tfType;
-    if (core.getBackend()) {
-      tfInstance = core;
+  // In browser/RN, check if a TF.js backend was loaded via <script> tag
+  // by probing for a globally available tf object with a registered backend.
+  const g = globalThis as Record<string, unknown>;
+  if (g['tf'] && typeof (g['tf'] as Record<string, unknown>)['getBackend'] === 'function') {
+    const globalTf = g['tf'] as typeof tfType;
+    if (globalTf.getBackend()) {
+      tfInstance = globalTf;
       return tfInstance;
     }
-  } catch {
-    // tfjs-core not available
   }
 
   throw new Error(
     'TensorFlow.js backend not initialized. Call await Clustering.init() first, ' +
     'or load TensorFlow.js via a <script> tag before using clustering algorithms.'
   );
-}
-
-/**
- * Get the current TensorFlow instance
- * @throws Error if not initialized
- */
-export function getTensorFlow(): typeof tfType {
-  if (!tfInstance) {
-    throw new Error(
-      'TensorFlow.js not initialized. Please call Clustering.init() first.'
-    );
-  }
-  return tfInstance;
 }
 
 /**

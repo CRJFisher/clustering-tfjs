@@ -54,8 +54,6 @@ export const buffer: typeof tfTypes.buffer = (...args) => ensureBackend().buffer
 // Math operations
 export const add: typeof tfTypes.add = (...args) => ensureBackend().add(...args);
 export const sub: typeof tfTypes.sub = (...args) => ensureBackend().sub(...args);
-export const mul: typeof tfTypes.mul = (...args) => ensureBackend().mul(...args);
-export const div: typeof tfTypes.div = (...args) => ensureBackend().div(...args);
 export const pow: typeof tfTypes.pow = (...args) => ensureBackend().pow(...args);
 export const sqrt: typeof tfTypes.sqrt = (...args) => ensureBackend().sqrt(...args);
 export const square: typeof tfTypes.square = (...args) => ensureBackend().square(...args);
@@ -114,10 +112,11 @@ const tf: typeof tfTypes = new Proxy({} as typeof tfTypes, {
   get(_target, prop: string | symbol) {
     if (prop === '__esModule') return true;
 
-    // For known named exports, return them directly to maintain identity
+    // For known named exports, return them directly to maintain identity.
+    // Keep in sync with the named exports above.
     const namedExports: Record<string, unknown> = {
       tensor, tensor1d, tensor2d, tensor3d, scalar, zeros, ones, onesLike,
-      fill, eye, linspace, buffer, add, sub, mul, div, pow, sqrt, square,
+      fill, eye, linspace, buffer, add, sub, pow, sqrt, square,
       maximum, matMul, sum, argMin, gather, topk, scatterND, slice, concat,
       stack, cast, expandDims, where, tidy, keep, clone, dispose,
       randomUniform, randomNormal, setBackend, ready, memory, getBackend,

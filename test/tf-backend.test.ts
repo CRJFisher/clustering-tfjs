@@ -24,6 +24,23 @@ describe('tf-backend', () => {
       ensureBackend();
       expect(isInitialized()).toBe(true);
     });
+
+    it('throws if async init is in progress (race condition prevention)', async () => {
+      // Start async init but don't await it yet.
+      // initializeBackend sets initializationPromise synchronously before awaiting.
+      const initPromise = initializeBackend({ backend: 'cpu' });
+
+      // At this point initializationPromise is set but tfInstance is still null
+      // (the promise hasn't resolved yet). A synchronous ensureBackend() call
+      // should detect the in-flight promise and throw rather than silently
+      // loading a different backend via loadBackendSync().
+      expect(() => ensureBackend()).toThrow(
+        'TensorFlow.js is being initialized asynchronously'
+      );
+
+      // Clean up: let the init complete
+      await initPromise;
+    });
   });
 
   describe('initializeBackend', () => {
@@ -49,6 +66,13 @@ describe('tf-backend', () => {
       expect(tf2).toBe(tf);
       expect(tf2.getBackend()).toBe('cpu');
     });
+
+    it('returns the in-flight promise on concurrent calls', async () => {
+      const promise1 = initializeBackend();
+      const promise2 = initializeBackend();
+      const [tf1, tf2] = await Promise.all([promise1, promise2]);
+      expect(tf1).toBe(tf2);
+    });
   });
 
   describe('resetBackend', () => {
@@ -57,6 +81,14 @@ describe('tf-backend', () => {
       expect(isInitialized()).toBe(true);
       resetBackend();
       expect(isInitialized()).toBe(false);
+    });
+
+    it('allows re-initialization after reset', async () => {
+      const tf1 = await initializeBackend();
+      resetBackend();
+      const tf2 = await initializeBackend();
+      expect(tf2).toBeDefined();
+      expect(typeof tf2.tensor2d).toBe('function');
     });
   });
 });
