@@ -405,8 +405,8 @@ export class SOM implements BaseClustering<SOMParams> {
    * Phase 2: AgglomerativeClustering on the [gridHeight * gridWidth, nFeatures]
    * weight matrix, producing nClusters neuron groups.
    *
-   * @param nClusters - Desired number of output clusters. Must be >= 1 and
-   *   <= gridWidth * gridHeight.
+   * @param nClusters - Desired number of output clusters. Must be a positive
+   *   integer >= 1 and <= gridWidth * gridHeight.
    * @param options - Optional agglomerative clustering parameters.
    * @param options.linkage - Linkage criterion for merging neuron clusters.
    *   One of 'ward', 'complete', 'average', or 'single'. Default: 'ward'.
@@ -415,7 +415,7 @@ export class SOM implements BaseClustering<SOMParams> {
    * @returns Array of cluster labels (0 to nClusters-1), one per sample from
    *   the most recent fit/fitPredict call.
    * @throws Error if the SOM has not been fitted yet.
-   * @throws Error if nClusters < 1 or nClusters > gridWidth * gridHeight.
+   * @throws Error if nClusters is not a positive integer or exceeds gridWidth * gridHeight.
    *
    * @example
    * ```typescript
@@ -426,6 +426,7 @@ export class SOM implements BaseClustering<SOMParams> {
    *   randomState: 42,
    * });
    *
+   * const data = [[0, 0], [1, 1], [5, 5], [6, 6], [10, 10], [11, 11]];
    * await som.fit(data);
    *
    * // Get 3 meaningful clusters from the 25-neuron grid

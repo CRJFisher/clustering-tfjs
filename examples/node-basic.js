@@ -83,13 +83,10 @@ async function main() {
         
         // Get additional SOM information
         const weights = som.getWeights();
-        console.log('SOM grid shape:', weights.shape); // [3, 3, 2]
-        
+        console.log('SOM grid shape:', [weights.length, weights[0].length, weights[0][0].length]); // [3, 3, 2]
+
         const quantError = som.quantizationError();
         console.log(`Quantization error: ${quantError.toFixed(4)}`);
-        
-        // Clean up tensors
-        weights.dispose();
         console.log();
         
         // 5. Find Optimal Clusters

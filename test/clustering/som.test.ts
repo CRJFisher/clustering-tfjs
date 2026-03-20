@@ -751,6 +751,19 @@ describe('SOM', () => {
         som.dispose();
       });
 
+      it('should throw if nClusters is not an integer', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
+        await som.fit(X);
+
+        await expect(som.cluster(2.5)).rejects.toThrow('nClusters must be a positive integer');
+
+        X.dispose();
+        som.dispose();
+      });
+
       it('should throw if nClusters < 1', async () => {
         const som = new SOM({
           gridWidth: 3, gridHeight: 3, numEpochs: 5, randomState: 42,
@@ -886,6 +899,41 @@ describe('SOM', () => {
         const labels = await som.cluster(2);
         expect(labels.length).toBe(4);
         expect(new Set(labels).size).toBe(2);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should work with nClusters === 1 (all points in one cluster)', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(1);
+        expect(labels.length).toBe(4);
+        expect(new Set(labels).size).toBe(1);
+        expect(labels[0]).toBe(0);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should work with nClusters === totalNeurons', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(4); // 2x2 = 4 neurons
+        expect(labels.length).toBe(4);
+        // Each label should be in range [0, 3]
+        for (const label of labels) {
+          expect(label).toBeGreaterThanOrEqual(0);
+          expect(label).toBeLessThan(4);
+        }
 
         X.dispose();
         som.dispose();
