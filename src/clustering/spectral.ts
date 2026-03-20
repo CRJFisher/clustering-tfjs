@@ -101,13 +101,6 @@ export class SpectralClustering
       this.affinityMatrix_ = null;
     }
 
-    if (
-      this.labels_ != null &&
-      (this.labels_ as unknown as tf.Tensor).dispose instanceof Function
-    ) {
-      // Only dispose if the labels are a Tensor (not plain array)
-      (this.labels_ as unknown as tf.Tensor).dispose();
-    }
     this.labels_ = null;
   }
 
@@ -416,7 +409,7 @@ export class SpectralClustering
       // Pass the embedding directly to k-means without row normalization
       await km.fit(U);
 
-      this.labels_ = km.labels_ as number[];
+      this.labels_ = km.labels_!;
 
       // Capture clustering metrics if requested
       if (this.captureDebugInfo && km.inertia_ !== null) {
@@ -556,7 +549,7 @@ export class SpectralClustering
 
     const km = new KMeans(kmParams);
     await km.fit(embedding);
-    const labels = km.labels_ as number[];
+    const labels = km.labels_!;
 
     // Capture clustering metrics
     if (km.inertia_ !== null) {

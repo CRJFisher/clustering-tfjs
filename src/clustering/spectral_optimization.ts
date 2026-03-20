@@ -51,7 +51,7 @@ export async function validationBasedOptimization(
 
     const km = new KMeans(kmParams);
     await km.fit(embedding);
-    const labels = km.labels_ as number[];
+    const labels = km.labels_!;
 
     // Compute validation score based on selected metric
     let score: number;
@@ -141,7 +141,7 @@ export async function intensiveParameterSweep(
     });
 
     await km.fit(embedding);
-    const labels = km.labels_ as number[];
+    const labels = km.labels_!;
 
     // Evaluate with all metrics and pick best
     let avgScore = 0;

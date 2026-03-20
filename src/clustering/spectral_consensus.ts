@@ -118,7 +118,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       });
 
       await km.fit(U);
-      allLabels.push(km.labels_ as number[]);
+      allLabels.push(km.labels_!);
     }
 
     // Consensus: for each point, take the most common label

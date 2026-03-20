@@ -9,8 +9,7 @@ import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
 import { SOM } from './clustering/som';
-import type { Platform, PlatformFeatures } from './clustering-types';
-import type { ClusteringNamespace } from './clustering-types';
+import type { Platform, PlatformFeatures, ClusteringNamespace } from './clustering-types';
 import { getPlatform } from './utils/platform';
 
 // Detect platform at runtime using utility function
