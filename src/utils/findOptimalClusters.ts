@@ -195,6 +195,11 @@ export async function findOptimalClusters(
     }
 
     evaluations.push(evaluation);
+
+    // Dispose clustering instance to free held tensors
+    if ('dispose' in clusterer && typeof (clusterer as unknown as { dispose?: unknown }).dispose === 'function') {
+      (clusterer as unknown as { dispose(): void }).dispose();
+    }
   }
 
   // Sort by combined score (descending)

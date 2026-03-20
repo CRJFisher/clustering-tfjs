@@ -74,25 +74,41 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /*                                   API                                  */
   /* --------------------------------------------------------------------- */
 
+  /**
+   * Disposes any tensors kept as instance state and resets internal caches.
+   */
+  public dispose(): void {
+    if (this.centroids_ != null) {
+      this.centroids_.dispose();
+      this.centroids_ = null;
+    }
+    this.labels_ = null;
+    this.inertia_ = null;
+  }
+
   async fit(X: DataMatrix): Promise<void> {
-    // Convert to a Tensor2D of dtype float32 – keep original around for
-    // potential multiple initialisations.
-    const Xtensor: tf.Tensor2D = (
-      isTensor(X)
-        ? (X as tf.Tensor2D)
-        : tf.tensor2d(X as number[][], undefined, 'float32')
-    ).clone();
-
-    const [nSamples, nFeatures] = Xtensor.shape;
-
+    // Validate input dimensions before creating tensors to avoid leaks on throw.
+    const nSamples = isTensor(X) ? (X as tf.Tensor2D).shape[0] : (X as number[][]).length;
     if (nSamples === 0) {
       throw new Error('Input data must contain at least one sample.');
     }
-
     const K = this.params.nClusters;
     if (K > nSamples) {
       throw new Error('nClusters cannot exceed number of samples.');
     }
+
+    // Dispose previous state if the estimator is re-used.
+    this.dispose();
+
+    // Convert to a Tensor2D of dtype float32 – keep original around for
+    // potential multiple initialisations.
+    // When X is already a tensor we clone to avoid mutating the caller's data.
+    // When X is a plain array, tf.tensor2d already creates a new tensor.
+    const Xtensor: tf.Tensor2D = isTensor(X)
+      ? (X as tf.Tensor2D).clone()
+      : tf.tensor2d(X as number[][], undefined, 'float32');
+
+    const [, nFeatures] = Xtensor.shape;
 
     const nInit = this.params.nInit ?? KMeans.DEFAULT_N_INIT;
 
@@ -229,9 +245,13 @@ export class KMeans implements BaseClustering<KMeansParams> {
           return xNorm.add(cNorm).sub(cross.mul(2));
         });
 
-        labels = (await distances.argMin(1).data()) as Int32Array;
+        const argMinTensor = distances.argMin(1);
+        labels = (await argMinTensor.data()) as Int32Array;
+        argMinTensor.dispose();
 
-        const minDistSq = await distances.min(1).data();
+        const minTensor = distances.min(1);
+        const minDistSq = await minTensor.data();
+        minTensor.dispose();
         const inertia = Array.from(minDistSq as Float32Array).reduce(
           (a, b) => a + b,
           0,
@@ -258,9 +278,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
           if (counts[kIdx] === 0) {
             emptyClusters.push(kIdx);
             // Keep old centroid temporarily
+            const sliceTensor = centroids.slice([kIdx, 0], [1, nFeatures]);
             newCentroidsArr[kIdx] = Array.from(
-              await centroids.slice([kIdx, 0], [1, nFeatures]).array(),
+              await sliceTensor.array(),
             )[0] as number[];
+            sliceTensor.dispose();
           } else {
             for (let j = 0; j < nFeatures; j++) {
               newCentroidsArr[kIdx][j] /= counts[kIdx];
@@ -294,9 +316,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
           'float32',
         );
 
-        const centroidShift = (
-          await centroids.sub(newCentroids).abs().max().data()
-        )[0];
+        const shiftTensor = tf.tidy(() => centroids.sub(newCentroids).abs().max());
+        const centroidShift = (await shiftTensor.data())[0];
+        shiftTensor.dispose();
 
         centroids.dispose();
         centroids = newCentroids;

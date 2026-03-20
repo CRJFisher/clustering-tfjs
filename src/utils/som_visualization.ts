@@ -267,37 +267,41 @@ export async function exportForVisualization(
   const weights = som.getWeights();
   const uMatrix = som.getUMatrix();
   const { gridHeight, gridWidth } = som.params;
-  
-  const weightsArray = await weights.array();
-  const uMatrixArray = await uMatrix.array();
-  
-  if (format === 'json') {
-    return JSON.stringify({
-      gridHeight,
-      gridWidth,
-      weights: weightsArray,
-      uMatrix: uMatrixArray,
-      params: som.params,
-    }, null, 2);
-  } else {
-    // CSV format
-    let csv = 'row,col,u_value';
-    for (let i = 0; i < weightsArray[0][0].length; i++) {
-      csv += `,feature_${i}`;
-    }
-    csv += '\n';
-    
-    for (let i = 0; i < gridHeight; i++) {
-      for (let j = 0; j < gridWidth; j++) {
-        csv += `${i},${j},${uMatrixArray[i][j]}`;
-        for (const feature of weightsArray[i][j]) {
-          csv += `,${feature}`;
-        }
-        csv += '\n';
+
+  try {
+    const weightsArray = await weights.array();
+    const uMatrixArray = await uMatrix.array();
+
+    if (format === 'json') {
+      return JSON.stringify({
+        gridHeight,
+        gridWidth,
+        weights: weightsArray,
+        uMatrix: uMatrixArray,
+        params: som.params,
+      }, null, 2);
+    } else {
+      // CSV format
+      let csv = 'row,col,u_value';
+      for (let i = 0; i < weightsArray[0][0].length; i++) {
+        csv += `,feature_${i}`;
       }
+      csv += '\n';
+
+      for (let i = 0; i < gridHeight; i++) {
+        for (let j = 0; j < gridWidth; j++) {
+          csv += `${i},${j},${uMatrixArray[i][j]}`;
+          for (const feature of weightsArray[i][j]) {
+            csv += `,${feature}`;
+          }
+          csv += '\n';
+        }
+      }
+
+      return csv;
     }
-    
-    return csv;
+  } finally {
+    uMatrix.dispose();
   }
 }
 

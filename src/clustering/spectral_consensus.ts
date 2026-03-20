@@ -39,7 +39,9 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     ).computeAffinityMatrix;
     this.affinityMatrix_ = computeAffinityMatrix(Xtensor, this.params);
 
-    const affinitySum = (await this.affinityMatrix_!.sum().data())[0];
+    const sumTensor = this.affinityMatrix_!.sum();
+    const affinitySum = (await sumTensor.data())[0];
+    sumTensor.dispose();
     if (affinitySum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
@@ -120,6 +122,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
 
       await km.fit(U);
       allLabels.push(km.labels_ as number[]);
+      km.dispose();
     }
 
     // Consensus: for each point, take the most common label
@@ -154,8 +157,6 @@ export class SpectralClusteringConsensus extends SpectralClustering {
 
     // Cleanup
     U.dispose();
-    if (!isTensor(X)) {
-      Xtensor.dispose();
-    }
+    Xtensor.dispose();
   }
 }
