@@ -11,6 +11,7 @@ import type {
   DecayFunction,
 } from './types';
 import { isTensor } from '../utils/tensor-utils';
+import { make_random_stream, type RandomStream } from '../utils/rng';
 import {
   initializeWeights,
   findBMU,
@@ -181,34 +182,42 @@ export class SOM implements BaseClustering<SOMParams> {
     // Training loop
     let prevQuantizationError = Infinity;
     this.quantizationErrors_ = [];
-    
+    const rng = make_random_stream(randomState);
+
     for (let epoch = 0; epoch < numEpochs!; epoch++) {
       this.currentEpoch_ = epoch;
-      
+
       // Get current learning rate and radius
       const currentLearningRate = this.learningRateScheduler_!(epoch, numEpochs!);
       const currentRadius = this.radiusScheduler_!(epoch, numEpochs!);
-      
+
       // Validate neighborhood parameters
       validateNeighborhoodParams(currentRadius, gridHeight, gridWidth);
-      
+
+      // Shuffle data each epoch to avoid order-dependent bias
+      const shuffledIndices = this.shuffleIndices(nSamples, rng);
+      const indicesTensor = tf.tensor1d(shuffledIndices, 'int32');
+      const shuffledX = tf.gather(X, indicesTensor) as tf.Tensor2D;
+      indicesTensor.dispose();
+
       // Process batch
       const { quantizationError } = await this.trainEpoch(
-        X,
+        shuffledX,
         currentLearningRate,
         currentRadius
       );
-      
+
+      shuffledX.dispose();
+
       this.quantizationErrors_.push(quantizationError);
-      
+
       // Check convergence
       if (Math.abs(prevQuantizationError - quantizationError) < tol!) {
-        console.log(`SOM converged at epoch ${epoch + 1}`);
         break;
       }
-      
+
       prevQuantizationError = quantizationError;
-      
+
       // Update total samples learned (only for online mode)
       if (this.params.onlineMode) {
         this.totalSamplesLearned_ += nSamples;
@@ -297,26 +306,32 @@ export class SOM implements BaseClustering<SOMParams> {
       // Reshape weights for update
       const weightsFlat = this.weights_!.reshape([totalNeurons, nFeatures]);
       
-      // Compute weight updates
-      // For each neuron: Δw = Σ(lr * h * (x - w)) / Σh
-      // Where h is the influence for each sample
-      
+      // Batch SOM update for each neuron j:
+      // Δw_j = lr * Σ_i(h_ij * (x_i - w_j)) / Σ_i(h_ij)
+      // Normalizes by sum of influences to make updates independent of batch size
+
       // Expand samples for broadcasting
       const samplesExpanded = samples.expandDims(1); // [nSamples, 1, nFeatures]
       const weightsExpanded = weightsFlat.expandDims(0); // [1, totalNeurons, nFeatures]
-      
+
       // Compute differences
       const diff = samplesExpanded.sub(weightsExpanded); // [nSamples, totalNeurons, nFeatures]
-      
-      // Apply influence and learning rate
+
+      // Apply influence
       const influenceExpanded = influence.expandDims(2); // [nSamples, totalNeurons, 1]
-      const updates = diff.mul(influenceExpanded).mul(learningRate);
-      
+      const weightedDiff = diff.mul(influenceExpanded);
+
       // Sum over samples
-      const totalUpdate = updates.sum(0); // [totalNeurons, nFeatures]
-      
-      // Apply updates
-      const newWeightsFlat = weightsFlat.add(totalUpdate);
+      const totalUpdate = weightedDiff.sum(0); // [totalNeurons, nFeatures]
+
+      // Normalize by sum of influences per neuron
+      const influenceSum = influence.sum(0); // [totalNeurons]
+      const epsilon = 1e-8;
+      const influenceSumSafe = influenceSum.maximum(epsilon);
+      const normalizedUpdate = totalUpdate.div(influenceSumSafe.expandDims(1));
+
+      // Apply updates with learning rate
+      const newWeightsFlat = weightsFlat.add(normalizedUpdate.mul(learningRate));
       
       // Reshape back to grid
       const newWeights = newWeightsFlat.reshape([gridHeight, gridWidth, nFeatures]) as tf.Tensor3D;
@@ -599,12 +614,11 @@ export class SOM implements BaseClustering<SOMParams> {
     topology: SOMTopology
   ): boolean {
     if (topology === 'rectangular') {
-      // Direct neighbors in rectangular grid (4-connected)
+      // 8-connected rectangular grid (consistent with getUMatrix and getNeighbors)
       const rowDiff = Math.abs(row1 - row2);
       const colDiff = Math.abs(col1 - col2);
-      
-      // Adjacent horizontally or vertically
-      return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+
+      return rowDiff <= 1 && colDiff <= 1 && (rowDiff + colDiff > 0);
     } else {
       // Hexagonal topology (6-connected)
       const rowDiff = row2 - row1;
@@ -819,6 +833,21 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
+  /**
+   * Create a shuffled array of indices [0..n-1] using Fisher-Yates.
+   */
+  private shuffleIndices(n: number, rng: RandomStream): Int32Array {
+    const indices = new Int32Array(n);
+    for (let i = 0; i < n; i++) indices[i] = i;
+    for (let i = n - 1; i > 0; i--) {
+      const j = rng.randInt(i + 1);
+      const tmp = indices[i];
+      indices[i] = indices[j];
+      indices[j] = tmp;
+    }
+    return indices;
+  }
+
   /**
    * Clean up tensors.
    */
