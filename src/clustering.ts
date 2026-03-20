@@ -18,6 +18,10 @@ import { getPlatform } from './utils/platform';
 let initPromise: Promise<void> | null = null;
 let initConfigKey: string | null = null;
 
+function isPlainObject(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null && !Array.isArray(v);
+}
+
 /**
  * Deterministic JSON serialization with sorted keys at every nesting level.
  * Used to produce a stable string for config comparison.
@@ -26,26 +30,32 @@ function sortedStringify(value: unknown): string {
   if (value === null || value === undefined) return String(value);
   if (typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return '[' + value.map(sortedStringify).join(',') + ']';
-  const obj = value as Record<string, unknown>;
-  const keys = Object.keys(obj).sort();
+  if (!isPlainObject(value)) return JSON.stringify(value);
+  const keys = Object.keys(value).sort();
   const pairs = keys
-    .filter(k => obj[k] !== undefined)
-    .map(k => `${JSON.stringify(k)}:${sortedStringify(obj[k])}`);
+    .filter(k => value[k] !== undefined)
+    .map(k => `${JSON.stringify(k)}:${sortedStringify(value[k])}`);
   return `{${pairs.join(',')}}`;
 }
 
+/** Return the number of defined (non-undefined) values in an object. */
+function definedKeyCount(obj: object): number {
+  return Object.entries(obj).filter(([, v]) => v !== undefined).length;
+}
+
 /**
- * Strip empty sub-objects so that `{}`, `{ flags: undefined }`, and
- * `{ flags: {} }` all normalize identically.
+ * Strip empty sub-objects so that `{}`, `{ flags: undefined }`,
+ * `{ flags: {} }`, and `{ flags: { X: undefined } }` all normalize
+ * identically.
  */
 function stripEmpty(config: BackendConfig): BackendConfig {
   const result: BackendConfig = {};
   if (config.backend !== undefined) result.backend = config.backend;
   if (config.forcePlatform !== undefined) result.forcePlatform = config.forcePlatform;
-  if (config.flags !== undefined && Object.keys(config.flags).length > 0) {
+  if (config.flags !== undefined && definedKeyCount(config.flags) > 0) {
     result.flags = config.flags;
   }
-  if (config.reactNative !== undefined && Object.keys(config.reactNative).length > 0) {
+  if (config.reactNative !== undefined && definedKeyCount(config.reactNative) > 0) {
     result.reactNative = config.reactNative;
   }
   return result;

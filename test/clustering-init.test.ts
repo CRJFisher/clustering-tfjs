@@ -72,6 +72,13 @@ describe('Clustering.init() idempotency and concurrency', () => {
         /already been called with a different configuration/,
       );
     });
+
+    it('throws when going from specific config to no-config', async () => {
+      await Clustering.init({ backend: 'cpu' });
+      expect(() => Clustering.init()).toThrow(
+        /already been called with a different configuration/,
+      );
+    });
   });
 
   describe('config normalization', () => {
@@ -92,6 +99,20 @@ describe('Clustering.init() idempotency and concurrency', () => {
     it('treats configs with different key order as equivalent', async () => {
       const p1 = Clustering.init({ backend: 'cpu', flags: { A: 1 } });
       const p2 = Clustering.init({ flags: { A: 1 }, backend: 'cpu' });
+      expect(p1).toBe(p2);
+      await p1;
+    });
+
+    it('treats { flags: { X: undefined } } and {} as equivalent', async () => {
+      const p1 = Clustering.init({ flags: { WEBGL_PACK: undefined } });
+      const p2 = Clustering.init({});
+      expect(p1).toBe(p2);
+      await p1;
+    });
+
+    it('treats { reactNative: { glImplementation: undefined } } and {} as equivalent', async () => {
+      const p1 = Clustering.init({ reactNative: { glImplementation: undefined } });
+      const p2 = Clustering.init({});
       expect(p1).toBe(p2);
       await p1;
     });
@@ -124,6 +145,37 @@ describe('Clustering.init() idempotency and concurrency', () => {
       // Should be able to retry with valid config
       await Clustering.init();
       expect(isInitialized()).toBe(true);
+    });
+
+    it('all concurrent callers see rejection when init fails', async () => {
+      const promises = Array.from({ length: 5 }, () =>
+        Clustering.init({ forcePlatform: 'react-native' }),
+      );
+
+      // All 5 should reject
+      for (const p of promises) {
+        await expect(p).rejects.toThrow();
+      }
+      expect(isInitialized()).toBe(false);
+
+      // State is reset — retry with valid config succeeds
+      await Clustering.init();
+      expect(isInitialized()).toBe(true);
+    });
+  });
+
+  describe('reset edge cases', () => {
+    it('calling reset multiple times is harmless', () => {
+      Clustering.reset();
+      Clustering.reset();
+      expect(isInitialized()).toBe(false);
+    });
+
+    it('reset after init, then reset again is harmless', async () => {
+      await Clustering.init();
+      Clustering.reset();
+      Clustering.reset();
+      expect(isInitialized()).toBe(false);
     });
   });
 });
