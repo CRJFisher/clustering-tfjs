@@ -14,23 +14,15 @@ if (fs.existsSync('dist')) {
 console.log('Building CommonJS...');
 execSync('npx tsc -p tsconfig.cjs.json', { stdio: 'inherit' });
 
-// Build ES Modules - in a temporary directory
+// Build ES Modules into dist/esm/
 console.log('Building ES Modules...');
-fs.mkdirSync('dist-esm', { recursive: true });
-execSync('npx tsc -p tsconfig.esm.json --outDir dist-esm', { stdio: 'inherit' });
+execSync('npx tsc -p tsconfig.esm.json --outDir dist/esm', { stdio: 'inherit' });
 
-// Copy ESM files with .esm.js extension
-const esmFiles = fs.readdirSync('dist-esm');
-esmFiles.forEach(file => {
-  if (file.endsWith('.js')) {
-    const content = fs.readFileSync(path.join('dist-esm', file), 'utf8');
-    const newFileName = file.replace('.js', '.esm.js');
-    fs.writeFileSync(path.join('dist', newFileName), content);
-  }
-});
-
-// Clean temporary ESM directory
-fs.rmSync('dist-esm', { recursive: true });
+// Create ESM entry point that re-exports from the esm/ subdirectory
+fs.writeFileSync(
+  path.join('dist', 'index.esm.js'),
+  "export * from './esm/index.js';\n"
+);
 
 // Build TypeScript declarations
 console.log('Building TypeScript declarations...');
