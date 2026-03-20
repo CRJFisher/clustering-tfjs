@@ -525,7 +525,7 @@ describe('SOM', () => {
         const X = tf.randomUniform([100, 3], -5, 5, 'float32', 42) as tf.Tensor2D;
         await som.fit(X);
 
-        const weights = som.getWeights().arraySync();
+        const weights = som.getWeights();
         for (const row of weights) {
           for (const neuron of row) {
             for (const val of neuron) {
@@ -634,8 +634,8 @@ describe('SOM', () => {
         await som1.fit(X);
         await som2.fit(X);
 
-        const w1 = som1.getWeights().arraySync();
-        const w2 = som2.getWeights().arraySync();
+        const w1 = som1.getWeights();
+        const w2 = som2.getWeights();
 
         // Same seed should produce identical weights
         for (let i = 0; i < 3; i++) {
@@ -737,6 +737,461 @@ describe('SOM', () => {
         densityMap.dispose();
         X.dispose();
         som.dispose();
+      });
+    });
+  });
+
+  describe('Task-46: cluster(), validation, and API contracts', () => {
+
+    describe('AC#1: SOM.cluster() method', () => {
+
+      it('should throw if called before fit', async () => {
+        const som = new SOM({ gridWidth: 3, gridHeight: 3 });
+        await expect(som.cluster(2)).rejects.toThrow('SOM must be fitted before clustering');
+        som.dispose();
+      });
+
+      it('should throw if nClusters is not an integer', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
+        await som.fit(X);
+
+        await expect(som.cluster(2.5)).rejects.toThrow('nClusters must be a positive integer');
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should throw if nClusters < 1', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
+        await som.fit(X);
+
+        await expect(som.cluster(0)).rejects.toThrow('nClusters must be a positive integer');
+        await expect(som.cluster(-1)).rejects.toThrow('nClusters must be a positive integer');
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should throw if nClusters > total neurons', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
+        await som.fit(X);
+
+        await expect(som.cluster(5)).rejects.toThrow('exceeds total number of neurons (4)');
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return labels with correct length matching training data', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([
+          [0, 0], [0.1, 0.1], [1, 0], [1, 1],
+          [0.5, 0.5], [0.2, 0.8], [0.8, 0.2], [0.3, 0.3],
+        ]);
+        await som.fit(X);
+
+        const labels = await som.cluster(3);
+        expect(Array.isArray(labels)).toBe(true);
+        expect(labels.length).toBe(8);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return labels with values in range [0, nClusters-1]', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([
+          [0, 0], [0.1, 0.1], [5, 5], [5.1, 5.1],
+          [0, 5], [0.1, 5.1],
+        ]);
+        await som.fit(X);
+
+        const labels = await som.cluster(3);
+        for (const label of labels) {
+          expect(label).toBeGreaterThanOrEqual(0);
+          expect(label).toBeLessThan(3);
+        }
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return exactly nClusters distinct label values for well-separated data', async () => {
+        const som = new SOM({
+          gridWidth: 5, gridHeight: 5, numEpochs: 50, randomState: 42,
+        });
+        const X = tf.tensor2d([
+          // Blob A near origin
+          [0, 0], [0.1, 0.1], [0.2, 0], [0, 0.2],
+          // Blob B far away
+          [10, 10], [10.1, 10.1], [10.2, 10], [10, 10.2],
+          // Blob C third corner
+          [0, 10], [0.1, 10.1], [0.2, 10], [0, 10.2],
+        ]);
+        await som.fit(X);
+
+        const labels = await som.cluster(3);
+        expect(new Set(labels).size).toBe(3);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should produce meaningful groupings for well-separated clusters', async () => {
+        const som = new SOM({
+          gridWidth: 5, gridHeight: 5, numEpochs: 50, randomState: 42,
+        });
+        const X = tf.tensor2d([
+          // Blob A (indices 0-3)
+          [0, 0], [0.1, 0.1], [0.2, 0], [0, 0.2],
+          // Blob B (indices 4-7)
+          [10, 10], [10.1, 10.1], [10.2, 10], [10, 10.2],
+          // Blob C (indices 8-11)
+          [0, 10], [0.1, 10.1], [0.2, 10], [0, 10.2],
+        ]);
+        await som.fit(X);
+
+        const labels = await som.cluster(3);
+
+        // Points within same blob should get same label
+        expect(labels[0]).toBe(labels[1]);
+        expect(labels[0]).toBe(labels[2]);
+        expect(labels[0]).toBe(labels[3]);
+
+        expect(labels[4]).toBe(labels[5]);
+        expect(labels[4]).toBe(labels[6]);
+        expect(labels[4]).toBe(labels[7]);
+
+        expect(labels[8]).toBe(labels[9]);
+        expect(labels[8]).toBe(labels[10]);
+        expect(labels[8]).toBe(labels[11]);
+
+        // Different blobs should get different labels
+        expect(labels[0]).not.toBe(labels[4]);
+        expect(labels[0]).not.toBe(labels[8]);
+        expect(labels[4]).not.toBe(labels[8]);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should work with hexagonal topology', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, topology: 'hexagonal',
+          numEpochs: 20, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(2);
+        expect(labels.length).toBe(4);
+        expect(new Set(labels).size).toBe(2);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should work with nClusters === 1 (all points in one cluster)', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(1);
+        expect(labels.length).toBe(4);
+        expect(new Set(labels).size).toBe(1);
+        expect(labels[0]).toBe(0);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should work with nClusters === totalNeurons', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(4); // 2x2 = 4 neurons
+        expect(labels.length).toBe(4);
+        // Each label should be in range [0, 3]
+        for (const label of labels) {
+          expect(label).toBeGreaterThanOrEqual(0);
+          expect(label).toBeLessThan(4);
+        }
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should accept custom linkage and metric options', async () => {
+        const som = new SOM({
+          gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [0, 1], [1, 0], [1, 1]]);
+        await som.fit(X);
+
+        const labels = await som.cluster(2, { linkage: 'average', metric: 'euclidean' });
+        expect(labels.length).toBe(4);
+        expect(new Set(labels).size).toBe(2);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return consistent results with same randomState', async () => {
+        const X = tf.tensor2d([
+          [0, 0], [0, 1], [1, 0], [1, 1], [0.5, 0.5],
+        ]);
+
+        const som1 = new SOM({ gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42 });
+        const som2 = new SOM({ gridWidth: 3, gridHeight: 3, numEpochs: 10, randomState: 42 });
+
+        await som1.fit(X);
+        await som2.fit(X);
+
+        const labels1 = await som1.cluster(2);
+        const labels2 = await som2.cluster(2);
+        expect(labels1).toEqual(labels2);
+
+        X.dispose();
+        som1.dispose();
+        som2.dispose();
+      });
+    });
+
+    describe('AC#3: partialFit() dimension validation', () => {
+
+      it('should accept first partialFit call with any feature dimension', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true, randomState: 42,
+        });
+        const batch = tf.tensor2d([[1, 2, 3], [4, 5, 6]]);
+        await som.partialFit(batch);
+        expect(som.getTotalSamplesLearned()).toBe(2);
+
+        batch.dispose();
+        som.dispose();
+      });
+
+      it('should accept second partialFit call with same feature dimension', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true, randomState: 42,
+        });
+        const batch1 = tf.tensor2d([[0, 0], [1, 1]]);
+        const batch2 = tf.tensor2d([[2, 2], [3, 3]]);
+
+        await som.partialFit(batch1);
+        await som.partialFit(batch2);
+        expect(som.getTotalSamplesLearned()).toBe(4);
+
+        batch1.dispose();
+        batch2.dispose();
+        som.dispose();
+      });
+
+      it('should throw on second partialFit call with different feature dimension', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true, randomState: 42,
+        });
+        const batch1 = tf.tensor2d([[0, 0], [1, 1]]);
+        const batch2 = tf.tensor2d([[0, 0, 0], [1, 1, 1]]);
+
+        await som.partialFit(batch1);
+        await expect(som.partialFit(batch2)).rejects.toThrow('Feature dimension mismatch');
+
+        batch1.dispose();
+        batch2.dispose();
+        som.dispose();
+      });
+
+      it('should include expected and actual dimensions in error message', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true, randomState: 42,
+        });
+        const batch1 = tf.tensor2d([[0, 0], [1, 1]]);
+        const batch2 = tf.tensor2d([[0, 0, 0, 0, 0], [1, 1, 1, 1, 1]]);
+
+        await som.partialFit(batch1);
+        await expect(som.partialFit(batch2)).rejects.toThrow(
+          /expected 2.*got 5/
+        );
+
+        batch1.dispose();
+        batch2.dispose();
+        som.dispose();
+      });
+
+      it('should validate dimension when fit() was called first', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true,
+          numEpochs: 5, randomState: 42,
+        });
+        const fitData = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(fitData);
+
+        const badBatch = tf.tensor2d([[0, 0, 0], [1, 1, 1]]);
+        await expect(som.partialFit(badBatch)).rejects.toThrow('Feature dimension mismatch');
+
+        fitData.dispose();
+        badBatch.dispose();
+        som.dispose();
+      });
+    });
+
+    describe('AC#5: getWeights() contract', () => {
+
+      it('should throw if called before fit', () => {
+        const som = new SOM({ gridWidth: 2, gridHeight: 2 });
+        expect(() => som.getWeights()).toThrow('SOM must be fitted first');
+        som.dispose();
+      });
+
+      it('should return correct shape [gridHeight][gridWidth][nFeatures]', async () => {
+        const som = new SOM({
+          gridWidth: 4, gridHeight: 3, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        const weights = som.getWeights();
+        expect(weights.length).toBe(3);         // gridHeight
+        expect(weights[0].length).toBe(4);       // gridWidth
+        expect(weights[0][0].length).toBe(2);    // nFeatures
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return a plain number[][][] array, not a tensor', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        const weights = som.getWeights();
+        expect(Array.isArray(weights)).toBe(true);
+        expect(Array.isArray(weights[0])).toBe(true);
+        expect(Array.isArray(weights[0][0])).toBe(true);
+        expect(typeof weights[0][0][0]).toBe('number');
+        // Should NOT have tensor methods
+        expect('dispose' in weights).toBe(false);
+        expect('shape' in weights).toBe(false);
+
+        X.dispose();
+        som.dispose();
+      });
+
+      it('should return a snapshot not affected by further training', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, onlineMode: true,
+          numEpochs: 5, randomState: 42,
+        });
+        const batch1 = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.partialFit(batch1);
+
+        const weights1 = som.getWeights();
+
+        const batch2 = tf.tensor2d([[10, 10], [20, 20]]);
+        await som.partialFit(batch2);
+
+        const weights2 = som.getWeights();
+
+        // weights1 should be unchanged (snapshot)
+        // weights2 should differ due to additional training
+        let hasDifference = false;
+        for (let i = 0; i < 2; i++) {
+          for (let j = 0; j < 2; j++) {
+            for (let k = 0; k < 2; k++) {
+              if (Math.abs(weights1[i][j][k] - weights2[i][j][k]) > 1e-6) {
+                hasDifference = true;
+              }
+            }
+          }
+        }
+        expect(hasDifference).toBe(true);
+
+        batch1.dispose();
+        batch2.dispose();
+        som.dispose();
+      });
+
+      it('should be safe to use after dispose()', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        const weights = som.getWeights();
+        som.dispose();
+
+        // Plain array should still be valid after dispose
+        expect(weights.length).toBe(2);
+        expect(typeof weights[0][0][0]).toBe('number');
+
+        X.dispose();
+      });
+    });
+
+    describe('AC#6: dispose() behavior', () => {
+
+      it('should release internal tensors on dispose', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        const beforeDispose = tf.memory().numTensors;
+        som.dispose();
+        const afterDispose = tf.memory().numTensors;
+
+        expect(afterDispose).toBeLessThan(beforeDispose);
+
+        X.dispose();
+      });
+
+      it('should be safe to call dispose multiple times', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        som.dispose();
+        expect(() => som.dispose()).not.toThrow();
+
+        X.dispose();
+      });
+
+      it('should cause getWeights to throw after dispose', async () => {
+        const som = new SOM({
+          gridWidth: 2, gridHeight: 2, numEpochs: 5, randomState: 42,
+        });
+        const X = tf.tensor2d([[0, 0], [1, 1]]);
+        await som.fit(X);
+
+        som.dispose();
+        expect(() => som.getWeights()).toThrow('SOM must be fitted first');
+
+        X.dispose();
       });
     });
   });

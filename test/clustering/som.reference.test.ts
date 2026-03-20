@@ -48,21 +48,19 @@ describe('SOM Reference Tests', () => {
         const X = tf.tensor2d(fixture.X);
         await som.fit(X);
 
-        const weights = som.getWeights();
-        const weightsArray = await weights.array();
+        const weightsArray = som.getWeights();
         const referenceWeights = fixture.weights;
 
         // Check shape matches
         expect(weightsArray.length).toBe(referenceWeights.length);
         expect(weightsArray[0].length).toBe(referenceWeights[0].length);
-        
+
         // Due to implementation differences, we check for reasonable similarity
         // rather than exact match
         const avgDiff = calculateAverageWeightDifference(weightsArray, referenceWeights);
         expect(avgDiff).toBeLessThan(2.0); // Tolerance for weight differences
 
         X.dispose();
-        weights.dispose();
       });
     });
   });
