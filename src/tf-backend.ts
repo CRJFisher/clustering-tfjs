@@ -45,16 +45,13 @@ export interface BackendConfig {
 
 /**
  * Initialize the TensorFlow.js backend (async, explicit path).
- * Call via Clustering.init() before using algorithms to control which backend is used.
+ * Typically called indirectly via {@link Clustering.init}.
+ *
+ * Idempotent: returns the cached instance if already initialized, or the
+ * in-flight promise if initialization is in progress. Config comparison and
+ * conflict detection are handled by `Clustering.init()`.
  */
 export async function initializeBackend(config: BackendConfig = {}): Promise<typeof tfType> {
-  // If already initialized and user wants a specific backend, switch to it
-  if (tfInstance && config.backend) {
-    await tfInstance.setBackend(config.backend);
-    await tfInstance.ready();
-    return tfInstance;
-  }
-
   // Return existing instance if already initialized
   if (tfInstance) {
     return tfInstance;
