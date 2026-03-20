@@ -342,9 +342,9 @@ async function somExample() {
   const labels = await som.fitPredict(data);
   console.log('Cluster assignments:', labels);
   
-  // Get the weight vectors (codebook)
+  // Get the weight vectors (codebook) — plain array, no dispose needed
   const weights = som.getWeights();
-  console.log('SOM weights shape:', weights.shape); // [4, 4, 2]
+  console.log('SOM weights shape:', [weights.length, weights[0].length, weights[0][0].length]); // [4, 4, 2]
   
   // Calculate U-matrix for visualization
   const uMatrix = som.getUMatrix();

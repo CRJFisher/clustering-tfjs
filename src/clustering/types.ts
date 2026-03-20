@@ -349,6 +349,23 @@ export interface SOMState {
 }
 
 /**
+ * Options for the SOM 2-phase cluster() method.
+ */
+export interface SOMClusterOptions {
+  /**
+   * Linkage criterion for agglomerative clustering on SOM neurons.
+   * Default: 'ward'
+   */
+  linkage?: 'ward' | 'complete' | 'average' | 'single';
+
+  /**
+   * Distance metric for agglomerative clustering on SOM neurons.
+   * Default: 'euclidean'
+   */
+  metric?: 'euclidean' | 'manhattan' | 'cosine';
+}
+
+/**
  * Metrics for evaluating SOM quality.
  */
 export interface SOMMetrics {

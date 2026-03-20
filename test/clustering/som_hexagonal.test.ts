@@ -256,7 +256,9 @@ describe('SOM Hexagonal Topology', () => {
       
       // Test various methods work correctly
       const weights = som.getWeights();
-      expect(weights.shape).toEqual([4, 4, 2]);
+      expect(weights.length).toBe(4);
+      expect(weights[0].length).toBe(4);
+      expect(weights[0][0].length).toBe(2);
       
       const labels = await som.predict(data);
       expect(labels.length).toEqual(15);
@@ -273,7 +275,6 @@ describe('SOM Hexagonal Topology', () => {
       expect(topError).toBeLessThanOrEqual(1);
 
       // Clean up
-      weights.dispose();
       uMatrix.dispose();
       data.dispose();
     });
