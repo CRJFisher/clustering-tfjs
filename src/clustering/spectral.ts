@@ -278,32 +278,23 @@ export class SpectralClustering
       const { eigenvectors: U_full, eigenvalues } =
         smallest_eigenvectors_with_values(laplacian, numEigenvectors);
 
-      // Apply sklearn's normalization: just divide by degree (dd)
+      // Apply sklearn's normalization: divide by D^{1/2} (dd in sklearn)
       // NO diffusion map scaling for spectral clustering!
       const U_scaled = tf.tidy(() => {
-        // For spectral clustering, sklearn uses drop_first=False,
-        // so we keep all eigenvectors including the first one
-
-        // However, we only use nClusters eigenvectors for the final clustering
-        // If numComponents > nClusters, we still only use nClusters eigenvectors
-        // This allows k-means to group multiple components into fewer clusters
         const numToUse = this.params.nClusters;
 
-        // Select the eigenvectors we need
         const U_selected = tf.slice(
           U_full,
           [0, 0],
           [-1, numToUse],
         ) as tf.Tensor2D;
 
-        // Get the degree vector (not sqrt!)
-        // sqrtDegrees is D^{-1/2}, so we need to compute D = 1 / (sqrtDegrees^2)
-        const degrees = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
-
-        // sklearn divides by dd (the degree vector)
-        // This recovers the embedding from the normalized Laplacian eigenvectors
-        const degreesCol = degrees.reshape([-1, 1]) as tf.Tensor2D;
-        const U_normalized = U_selected.div(degreesCol) as tf.Tensor2D;
+        // Recover embedding from normalized Laplacian eigenvectors by dividing by D^{1/2}
+        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        // This matches sklearn's spectral_embedding: embedding /= dd where dd = D^{1/2}
+        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
+        const U_normalized = U_selected.div(sqrtDegCol) as tf.Tensor2D;
 
         return U_normalized;
       });
@@ -520,16 +511,17 @@ export class SpectralClustering
     const { eigenvectors: U_full, eigenvalues } =
       smallest_eigenvectors_with_values(laplacian, this.params.nClusters);
 
-    // Apply sklearn's normalization
+    // Apply sklearn's normalization: divide by D^{1/2}
     const embedding = tf.tidy(() => {
       const U_selected = tf.slice(
         U_full,
         [0, 0],
         [-1, this.params.nClusters],
       ) as tf.Tensor2D;
-      const degrees = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
-      const degreesCol = degrees.reshape([-1, 1]) as tf.Tensor2D;
-      return U_selected.div(degreesCol) as tf.Tensor2D;
+      // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+      const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+      const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
+      return U_selected.div(sqrtDegCol) as tf.Tensor2D;
     });
 
     // Capture embedding statistics
@@ -575,7 +567,7 @@ export class SpectralClustering
       affinity: tf.clone(affinity),
       laplacian: {
         laplacian: tf.clone(laplacian),
-        degrees: tf.clone(tf.pow(sqrtDegrees, -2) as tf.Tensor1D),
+        degrees: tf.clone(tf.pow(sqrtDegrees, -1) as tf.Tensor1D),
         sqrtDegrees: tf.clone(sqrtDegrees),
       },
       embedding: {
@@ -760,9 +752,10 @@ export class SpectralClustering
           [0, 0],
           [-1, numToUse],
         ) as tf.Tensor2D;
-        const degrees = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
-        const degreesCol = degrees.reshape([-1, 1]) as tf.Tensor2D;
-        const U_normalized = U_selected.div(degreesCol) as tf.Tensor2D;
+        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
+        const U_normalized = U_selected.div(sqrtDegCol) as tf.Tensor2D;
         return U_normalized;
       });
 

@@ -73,9 +73,10 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       );
     } else {
       // Standard approach: compute Laplacian and eigenvectors
+      // Must pass returnDiag=true to get sqrtDegrees for normalization
       const { normalised_laplacian } = await import('../utils/laplacian');
-      const laplacian = tf.tidy(() =>
-        normalised_laplacian(this.affinityMatrix_! as tf.Tensor2D),
+      const { laplacian, sqrtDegrees } = tf.tidy(() =>
+        normalised_laplacian(this.affinityMatrix_! as tf.Tensor2D, true),
       );
 
       const { smallest_eigenvectors_with_values } = await import(
@@ -85,24 +86,23 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       const { eigenvectors: U_full, eigenvalues } =
         smallest_eigenvectors_with_values(laplacian, numEigenvectors);
 
-      // Apply diffusion map scaling
+      // Apply sklearn's normalization: divide by D^{1/2}
       const U_scaled = tf.tidy(() => {
         const numToUse = this.params.nClusters;
-        const eigenvals = tf.slice(eigenvalues, [0], [numToUse]) as tf.Tensor1D;
-        const scalingFactors = tf.sqrt(
-          tf.maximum(tf.scalar(0), tf.sub(tf.scalar(1), eigenvals)),
-        ) as tf.Tensor1D;
-        const scalingFactors2D = scalingFactors.reshape([1, -1]) as tf.Tensor2D;
         const U_selected = tf.slice(
           U_full,
           [0, 0],
           [-1, numToUse],
         ) as tf.Tensor2D;
-        return U_selected.mul(scalingFactors2D) as tf.Tensor2D;
+        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
+        return U_selected.div(sqrtDegCol) as tf.Tensor2D;
       });
 
       U = U_scaled;
       laplacian.dispose();
+      sqrtDegrees.dispose();
       eigenvalues.dispose();
       U_full.dispose();
     }
