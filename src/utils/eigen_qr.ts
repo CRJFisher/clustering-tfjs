@@ -44,7 +44,7 @@ export function qr_eigen_decomposition(
     };
 
     let iter = 0;
-    let offDiag = Infinity;
+    let offDiag = offDiagonalNorm(A as tf.Tensor2D);
 
     // Apply Wilkinson shift for better convergence on small eigenvalues
     const wilkinsonShift = (M: tf.Tensor2D): number => {
@@ -54,6 +54,9 @@ export function qr_eigen_decomposition(
       const a = data[n - 2][n - 2];
       const b = data[n - 2][n - 1];
       const c = data[n - 1][n - 1];
+
+      // Off-diagonal is zero: submatrix is already diagonal, shift to c
+      if (b === 0) return c;
 
       // Compute shift as eigenvalue of 2x2 bottom-right submatrix closest to c
       const delta = (a - c) / 2;
@@ -160,7 +163,7 @@ export function tridiagonal_qr_eigen(
       );
   }
 
-  // QL algorithm (variant of QR for tridiagonal matrices)
+  // QL algorithm for tridiagonal matrices (Numerical Recipes tqli)
   for (let i = 0; i < n - 1; i++) {
     let iter = 0;
     let m: number;
@@ -178,20 +181,19 @@ export function tridiagonal_qr_eigen(
           break;
         }
 
-        // Compute shift
-        const g = (d[i + 1] - d[i]) / (2 * e[i]);
-        const r = Math.sqrt(g * g + 1);
-        const shift = d[m] - e[i] / (g + (g >= 0 ? r : -r));
+        // Compute shift using implicit QL formulation
+        let g = (d[i + 1] - d[i]) / (2 * e[i]);
+        let r = Math.sqrt(g * g + 1);
+        g = d[m] - d[i] + e[i] / (g + (g >= 0 ? r : -r));
 
-        // QR step
         let s = 1,
-          c = 1;
-        let p = 0;
+          c = 1,
+          p = 0;
 
         for (let j = m - 1; j >= i; j--) {
           const f = s * e[j];
           const b = c * e[j];
-          const r = Math.sqrt(f * f + (d[j] - shift) * (d[j] - shift));
+          r = Math.sqrt(f * f + g * g);
           e[j + 1] = r;
 
           if (r === 0) {
@@ -201,18 +203,19 @@ export function tridiagonal_qr_eigen(
           }
 
           s = f / r;
-          c = (d[j] - shift) / r;
-          const g = d[j + 1] - p;
-          const r2 = (d[j] - g) * s + 2 * c * b;
-          p = s * r2;
+          c = g / r;
+          g = d[j + 1] - p;
+          r = (d[j] - g) * s + 2 * c * b;
+          p = s * r;
           d[j + 1] = g + p;
+          g = c * r - b;
 
           // Update eigenvectors
           if (computeVectors && V) {
             for (let k = 0; k < n; k++) {
-              const f = V[k][j + 1];
-              V[k][j + 1] = s * V[k][j] + c * f;
-              V[k][j] = c * V[k][j] - s * f;
+              const vt = V[k][j + 1];
+              V[k][j + 1] = s * V[k][j] + c * vt;
+              V[k][j] = c * V[k][j] - s * vt;
             }
           }
         }

@@ -90,8 +90,16 @@ export function improved_jacobi_eigen(
         const diff = a_qq - a_pp;
         let t: number;
 
-        if (Math.abs(a_pq) < Math.abs(diff) * 1e-15) {
-          // Very small angle - use approximation
+        const absDiff = Math.abs(diff);
+        if (
+          absDiff <=
+          Number.EPSILON * Math.max(Math.abs(a_pp), Math.abs(a_qq), 1)
+        ) {
+          // Equal or nearly-equal diagonal elements: optimal rotation is pi/4
+          // t = sign(a_pq) following standard Jacobi (Golub & Van Loan)
+          t = a_pq >= 0 ? 1 : -1;
+        } else if (Math.abs(a_pq) < absDiff * 1e-15) {
+          // Very small angle - use approximation (diff is safely nonzero)
           t = a_pq / diff;
         } else {
           const theta = diff / (2 * a_pq);
@@ -163,13 +171,22 @@ export function improved_jacobi_eigen(
   // Extract eigenvalues
   let eigenvalues: number[] = D.map((row, i) => row[i]);
 
-  // Post-processing for PSD matrices
+  // Post-processing for PSD matrices: clamp only negative eigenvalues to zero.
+  // Small positive eigenvalues (e.g. 1e-9) are legitimate and represent
+  // weakly connected components or near-separability in the graph.
   if (isPSD) {
-    // Clamp small negative values to zero
-    // For normalized Laplacians, eigenvalues should be in [0, 2]
-    // Any negative value is due to numerical error
-    const threshold = 1e-8; // More relaxed threshold for PSD matrices
-    eigenvalues = eigenvalues.map((v) => (v < threshold ? 0 : v));
+    const negativeTolerance = tolerance * 100;
+    eigenvalues = eigenvalues.map((v) => {
+      if (v < 0) {
+        if (v < -negativeTolerance) {
+          console.warn(
+            `[spectral] Large negative eigenvalue ${v} in PSD matrix (exceeds tolerance ${negativeTolerance}). Clamping to 0.`,
+          );
+        }
+        return 0;
+      }
+      return v;
+    });
   }
 
   // Sort eigen-pairs
@@ -187,6 +204,23 @@ export function improved_jacobi_eigen(
     for (let row = 0; row < n; row++) {
       sortedVectors[row][newIdx] = V[row][oldIdx];
     }
+  }
+
+  // Post-condition: validate eigenvector orthogonality
+  let maxOrthError = 0;
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      let dot = 0;
+      for (let k = 0; k < n; k++) {
+        dot += sortedVectors[k][i] * sortedVectors[k][j];
+      }
+      maxOrthError = Math.max(maxOrthError, Math.abs(dot));
+    }
+  }
+  if (maxOrthError > 1e-6) {
+    console.warn(
+      `[spectral] Eigenvector orthogonality check: max |v_i · v_j| = ${maxOrthError.toExponential(3)} (threshold 1e-6)`,
+    );
   }
 
   return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
@@ -213,7 +247,7 @@ export function laplacian_eigen_decomposition(
 
     // For Laplacians, we know smallest eigenvalues should be very close to 0
     // Count how many are numerically zero
-    const TOL = 1e-5; // More relaxed than general case
+    const TOL = 1e-7;
     let numZeros = 0;
     for (const val of eigenvalues) {
       if (val <= TOL) numZeros++;

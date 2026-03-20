@@ -33,7 +33,7 @@ export function smallest_eigenvectors_with_values(
     });
 
     // 3) Determine number of numerically-zero eigenvalues
-    const TOL = 1e-2;
+    const TOL = 1e-7;
     let c = 0;
     for (const v of processed.eigenvalues) {
       if (v <= TOL) c += 1;
