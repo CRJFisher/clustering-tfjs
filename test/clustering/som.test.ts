@@ -4,7 +4,6 @@ import {
   initializeWeights,
   findBMU,
   findBMUBatch,
-  findSecondBMU,
   gaussianNeighborhood,
   bubbleNeighborhood,
   linearDecay,
@@ -561,57 +560,6 @@ describe('SOM', () => {
         expect(som['areNeighbors'](0, 0, 1, 0, 3, 3, 'rectangular')).toBe(true);
 
         som.dispose();
-      });
-    });
-
-    describe('AC#3: findSecondBMU iterative min-finding', () => {
-      it('should find correct second BMU for known weights', () => {
-        const sample = tf.tensor1d([0.9, 0.9]) as tf.Tensor1D;
-        const weights = tf.tensor3d([
-          [[0, 0], [1, 0]],
-          [[0, 1], [1, 1]],
-        ]) as tf.Tensor3D;
-
-        // BMU should be [1,1] (weight [1,1]) since sample is [0.9, 0.9]
-        const bmu = findBMU(sample, weights);
-        const bmuArray = bmu.arraySync();
-        expect(bmuArray[0]).toBe(1);
-        expect(bmuArray[1]).toBe(1);
-
-        // Second BMU should be one of the adjacent neurons
-        const secondBmu = findSecondBMU(sample, weights, bmu);
-        const secondArray = secondBmu.arraySync();
-
-        // Second BMU should not be the same as BMU
-        expect(secondArray[0] === bmuArray[0] && secondArray[1] === bmuArray[1]).toBe(false);
-
-        sample.dispose();
-        weights.dispose();
-        bmu.dispose();
-        secondBmu.dispose();
-      });
-
-      it('should not stack overflow on large grids', () => {
-        // 50x50 = 2,500 neurons — would overflow with Math.min(...spread)
-        const nFeatures = 2;
-        const weights = tf.randomUniform([50, 50, nFeatures], 0, 1, 'float32', 42) as tf.Tensor3D;
-        const sample = tf.randomUniform([nFeatures], 0, 1, 'float32', 42) as tf.Tensor1D;
-        const bmu = findBMU(sample, weights);
-
-        // Should not throw (the old spread approach would RangeError here)
-        const secondBmu = findSecondBMU(sample, weights, bmu);
-        const arr = secondBmu.arraySync();
-
-        // Validate returned coordinates are within grid bounds
-        expect(arr[0]).toBeGreaterThanOrEqual(0);
-        expect(arr[0]).toBeLessThan(50);
-        expect(arr[1]).toBeGreaterThanOrEqual(0);
-        expect(arr[1]).toBeLessThan(50);
-
-        secondBmu.dispose();
-        sample.dispose();
-        weights.dispose();
-        bmu.dispose();
       });
     });
 

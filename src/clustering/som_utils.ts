@@ -567,63 +567,6 @@ export function computeBMUDistances(
 }
 
 /**
- * Find the second-best matching unit for topographic error calculation.
- * 
- * @param sample Input sample [nFeatures]
- * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
- * @param bmu First BMU indices [2]
- * @returns Second BMU indices [2]
- */
-export function findSecondBMU(
-  sample: tf.Tensor1D,
-  weights: tf.Tensor3D,
-  bmu: tf.Tensor1D
-): tf.Tensor1D {
-  return tf.tidy(() => {
-    const [gridHeight, gridWidth, nFeatures] = weights.shape;
-    const totalNeurons = gridHeight * gridWidth;
-    
-    // Get BMU flat index
-    const bmuData = bmu.dataSync();
-    const bmuRow = bmuData[0];
-    const bmuCol = bmuData[1];
-    const bmuFlatIndex = bmuRow * gridWidth + bmuCol;
-    
-    // Reshape weights
-    const weightsFlat = weights.reshape([totalNeurons, nFeatures]);
-    
-    // Compute distances to all neurons
-    const sampleExpanded = sample.expandDims(0);
-    const diff = weightsFlat.sub(sampleExpanded);
-    const distances = diff.square().sum(1).sqrt();
-    
-    // Find second-best matching unit using iterative min-finding
-    // (avoids Math.min(...spread) which causes stack overflow on large grids)
-    const distancesArray = distances.dataSync();
-    let secondMinVal = Infinity;
-    let secondBMUIndex = -1;
-    for (let i = 0; i < distancesArray.length; i++) {
-      if (i === bmuFlatIndex) continue;
-      if (distancesArray[i] < secondMinVal) {
-        secondMinVal = distancesArray[i];
-        secondBMUIndex = i;
-      }
-    }
-    
-    // Guard against degenerate case (1x1 grid has no second BMU)
-    if (secondBMUIndex === -1) {
-      return tf.tensor1d([bmuRow, bmuCol]);
-    }
-
-    // Convert to grid coordinates
-    const row = Math.floor(secondBMUIndex / gridWidth);
-    const col = secondBMUIndex % gridWidth;
-
-    return tf.tensor1d([row, col]);
-  });
-}
-
-/**
  * ----------------------------------------------------------------------------
  * Neighborhood Functions for Weight Updates
  * ----------------------------------------------------------------------------

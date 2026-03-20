@@ -112,7 +112,7 @@ Hierarchical clustering using bottom-up approach.
 #### Constructor
 
 ```typescript
-new AgglomerativeClustering(params: AgglomerativeParams)
+new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 ```
 
 #### Parameters

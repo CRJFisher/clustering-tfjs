@@ -1,6 +1,5 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
 import { validateLabelsLength, convertValidationInputs } from './validate';
 
 /**
@@ -127,7 +126,7 @@ export function daviesBouldinEfficient(
   labels: LabelVector,
 ): number {
   validateLabelsLength(X, labels);
-  const { data, labelArray } = convertValidationInputs(X, labels);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   // Get unique labels
   const uniqueLabels = Array.from(new Set(labelArray));
@@ -135,7 +134,7 @@ export function daviesBouldinEfficient(
 
   // Validate
   if (k <= 1) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Davies-Bouldin score requires at least 2 clusters');
@@ -169,7 +168,7 @@ export function daviesBouldinEfficient(
   }
 
   // Clean up data tensor if we created it
-  if (!isTensor(X)) {
+  if (ownsTensor) {
     data.dispose();
   }
 

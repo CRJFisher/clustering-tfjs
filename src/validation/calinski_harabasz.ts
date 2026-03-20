@@ -1,6 +1,5 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
 import { validateLabelsLength, convertValidationInputs } from './validate';
 
 /**
@@ -97,7 +96,7 @@ export function calinskiHarabaszEfficient(
   labels: LabelVector,
 ): number {
   validateLabelsLength(X, labels);
-  const { data, labelArray } = convertValidationInputs(X, labels);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   const n = data.shape[0];
 
@@ -107,13 +106,13 @@ export function calinskiHarabaszEfficient(
 
   // Validate
   if (k <= 1) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Calinski-Harabasz score requires at least 2 clusters');
   }
   if (k >= n) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Number of clusters must be less than number of samples');
@@ -152,7 +151,7 @@ export function calinskiHarabaszEfficient(
 
   // Clean up
   globalCentroid.dispose();
-  if (!isTensor(X)) {
+  if (ownsTensor) {
     data.dispose();
   }
 

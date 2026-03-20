@@ -481,6 +481,10 @@ export class SpectralClustering
         : tf.tensor2d(X as number[][], undefined, 'float32');
 
     const nSamplesDebug = Xtensor.shape[0];
+    if (this.params.nClusters > nSamplesDebug) {
+      Xtensor.dispose();
+      throw new Error('nClusters cannot exceed number of samples.');
+    }
     const maxSamplesDebug = this.params.maxSamples ?? 10_000;
     if (nSamplesDebug > maxSamplesDebug) {
       Xtensor.dispose();

@@ -1,6 +1,5 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
 import { validateLabelsLength, convertValidationInputs } from './validate';
 
 /**
@@ -139,7 +138,7 @@ export function silhouetteScoreSubset(
   sampleIndices: number[],
 ): number {
   validateLabelsLength(X, labels);
-  const { data, labelArray } = convertValidationInputs(X, labels);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   const n = data.shape[0];
 
@@ -149,7 +148,7 @@ export function silhouetteScoreSubset(
 
   // Validate
   if (k <= 1) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Silhouette score requires at least 2 clusters');
@@ -232,7 +231,7 @@ export function silhouetteScoreSubset(
   }
 
   // Clean up data tensor if we created it
-  if (!isTensor(X)) {
+  if (ownsTensor) {
     data.dispose();
   }
 

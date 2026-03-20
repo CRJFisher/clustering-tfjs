@@ -54,6 +54,8 @@ export function makeBlobs(options: MakeBlobsOptions): MakeBlobsResult {
     const clusterSeed = randomState !== undefined ? randomState + i + 1 : undefined;
     const noise = tf.randomNormal([nSamplesCluster, nFeatures], 0, clusterStd, 'float32', clusterSeed);
     const clusterSamples = tf.add(noise, center) as tf.Tensor2D;
+    noise.dispose();
+    center.dispose();
 
     samples.push(clusterSamples);
     labels.push(...new Array(nSamplesCluster).fill(i));

@@ -251,7 +251,7 @@ async function largeDatesetClustering() {
   // Predict on batches
   for (let i = 0; i < totalSamples / batchSize; i++) {
     const batch = generateBatch();
-    const labels = await kmeans.predict(batch);
+    const labels = await kmeans.fitPredict(batch);
     // Process labels...
   }
 }
