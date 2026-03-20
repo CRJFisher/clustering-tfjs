@@ -9,7 +9,7 @@ import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
 import { SOM } from './clustering/som';
-import type { Platform, DetectedPlatform, PlatformFeatures } from './clustering-types';
+import type { Platform, PlatformFeatures } from './clustering-types';
 import { getPlatform } from './utils/platform';
 
 // Re-export all clustering algorithms and utilities
@@ -68,9 +68,9 @@ const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
  */
 export const Clustering = {
   /**
-   * Current platform
+   * Current platform (detected at runtime)
    */
-  platform: detectPlatform() as DetectedPlatform,
+  platform: detectPlatform(),
   
   /**
    * Platform features

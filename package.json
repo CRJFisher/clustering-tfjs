@@ -74,17 +74,18 @@
     "release": "node scripts/release.js",
     "serve:examples": "npx http-server examples/observable -p 8080 -o"
   },
-  "dependencies": {
-    "@tensorflow/tfjs-core": "^4.20.0",
-    "ml-matrix": "^6.12.1"
-  },
+  "dependencies": {},
   "peerDependencies": {
+    "@tensorflow/tfjs-core": "^4.20.0",
     "@tensorflow/tfjs": "^4.20.0",
     "@tensorflow/tfjs-backend-wasm": "^4.20.0",
     "@tensorflow/tfjs-node": "^4.20.0",
     "@tensorflow/tfjs-node-gpu": "^4.20.0"
   },
   "peerDependenciesMeta": {
+    "@tensorflow/tfjs-core": {
+      "optional": true
+    },
     "@tensorflow/tfjs": {
       "optional": true
     },
@@ -99,6 +100,7 @@
     }
   },
   "devDependencies": {
+    "@tensorflow/tfjs-core": "^4.20.0",
     "@tensorflow/tfjs-node": "^4.20.0",
     "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.9",

@@ -13,12 +13,13 @@ import type * as tf from '@tensorflow/tfjs-core';
 export type Platform = 'browser' | 'node' | 'react-native' | 'unknown';
 
 /**
- * Detect platform at compile time based on global objects
+ * Detect platform at compile time based on global objects.
+ * React Native detection is runtime-only (via isReactNative() in utils/platform.ts)
+ * because RN-specific globals are not available to the TypeScript type system.
  */
-export type DetectedPlatform = 
-  typeof globalThis extends { navigator: { product: 'ReactNative' } } ? 'react-native' :
+export type DetectedPlatform =
   typeof globalThis extends { window: unknown } ? 'browser' :
-  typeof globalThis extends { process: unknown } ? 'node' :
+  typeof globalThis extends { process: { versions: { node: unknown } } } ? 'node' :
   'unknown';
 
 /**

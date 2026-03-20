@@ -18,11 +18,24 @@ export function isNode(): boolean {
 }
 
 /**
- * Safely check if running in React Native environment
+ * Safely check if running in React Native environment.
+ * Uses multiple signals for robust detection across Hermes, JSC, and V8 engines.
  */
 export function isReactNative(): boolean {
-  return typeof navigator !== 'undefined' && 
-         navigator.product === 'ReactNative';
+  if (typeof globalThis === 'undefined') return false;
+
+  const g: Record<string, unknown> = globalThis as Record<string, unknown>;
+
+  // HermesInternal: present on the Hermes engine (default since RN 0.70)
+  if (typeof g['HermesInternal'] !== 'undefined') return true;
+
+  // __fbBatchedBridge: the core React Native bridge, present in all RN environments
+  if (typeof g['__fbBatchedBridge'] !== 'undefined') return true;
+
+  // nativeCallSyncHook: synchronous native call mechanism in RN
+  if (typeof g['nativeCallSyncHook'] !== 'undefined') return true;
+
+  return false;
 }
 
 /**
@@ -60,68 +73,83 @@ export function isCI(): boolean {
          process.env.CONTINUOUS_INTEGRATION === 'true';
 }
 
+interface AsyncStorageLike {
+  setItem(key: string, value: string): Promise<void>;
+  getItem(key: string): Promise<string | null>;
+  removeItem(key: string): Promise<void>;
+}
+
+interface PlatformGlobals {
+  AsyncStorage?: AsyncStorageLike;
+  __platformStorage?: Record<string, string>;
+}
+
+function getGlobals(): PlatformGlobals {
+  return globalThis as unknown as PlatformGlobals;
+}
+
 /**
  * Platform-safe data persistence
- * 
+ *
  * In React Native, this would use AsyncStorage
  * In Node.js, this could use file system
  * In browser, this uses localStorage
  */
 export class PlatformStorage {
   private platform: Platform;
-  
+
   constructor() {
     this.platform = getPlatform();
   }
-  
+
   async setItem(key: string, value: string): Promise<void> {
     if (this.platform === 'react-native') {
-      // In React Native, AsyncStorage would be used
-      // For now, we'll use in-memory storage as fallback
-      if (typeof (global as any).AsyncStorage !== 'undefined') {
-        await (global as any).AsyncStorage.setItem(key, value);
+      const g = getGlobals();
+      if (g.AsyncStorage) {
+        await g.AsyncStorage.setItem(key, value);
       } else {
-        // Fallback to in-memory storage
-        (global as any).__platformStorage = (global as any).__platformStorage || {};
-        (global as any).__platformStorage[key] = value;
+        g.__platformStorage = g.__platformStorage || {};
+        g.__platformStorage[key] = value;
       }
     } else if (this.platform === 'browser') {
       localStorage.setItem(key, value);
     } else {
-      // Node.js - use in-memory storage for now
-      (global as any).__platformStorage = (global as any).__platformStorage || {};
-      (global as any).__platformStorage[key] = value;
+      const g = getGlobals();
+      g.__platformStorage = g.__platformStorage || {};
+      g.__platformStorage[key] = value;
     }
   }
-  
+
   async getItem(key: string): Promise<string | null> {
     if (this.platform === 'react-native') {
-      if (typeof (global as any).AsyncStorage !== 'undefined') {
-        return await (global as any).AsyncStorage.getItem(key);
+      const g = getGlobals();
+      if (g.AsyncStorage) {
+        return await g.AsyncStorage.getItem(key);
       } else {
-        const storage = (global as any).__platformStorage || {};
+        const storage = g.__platformStorage || {};
         return storage[key] || null;
       }
     } else if (this.platform === 'browser') {
       return localStorage.getItem(key);
     } else {
-      const storage = (global as any).__platformStorage || {};
+      const storage = getGlobals().__platformStorage || {};
       return storage[key] || null;
     }
   }
-  
+
   async removeItem(key: string): Promise<void> {
     if (this.platform === 'react-native') {
-      if (typeof (global as any).AsyncStorage !== 'undefined') {
-        await (global as any).AsyncStorage.removeItem(key);
+      const g = getGlobals();
+      if (g.AsyncStorage) {
+        await g.AsyncStorage.removeItem(key);
       } else {
-        const storage = (global as any).__platformStorage || {};
+        const storage = g.__platformStorage || {};
         delete storage[key];
       }
     } else if (this.platform === 'browser') {
       localStorage.removeItem(key);
     } else {
-      const storage = (global as any).__platformStorage || {};
+      const storage = getGlobals().__platformStorage || {};
       delete storage[key];
     }
   }
@@ -132,13 +160,18 @@ export class PlatformStorage {
  */
 export async function platformFetch(url: string, options?: RequestInit): Promise<Response> {
   if (typeof fetch !== 'undefined') {
-    // Modern browsers and React Native have fetch
+    // Modern browsers, React Native, and Node 18+ have fetch
     return fetch(url, options);
   } else if (isNode()) {
-    // Node.js might need a polyfill
+    // Fallback for older Node.js without native fetch
     try {
       const nodeFetch = await import('node-fetch');
-      return nodeFetch.default(url, options) as Promise<Response>;
+      // node-fetch types diverge from DOM fetch types; cast through unknown
+      const response = await nodeFetch.default(
+        url,
+        options as import('node-fetch').RequestInit
+      );
+      return response as unknown as Response;
     } catch {
       throw new Error('Fetch not available. Install node-fetch for Node.js environments.');
     }
