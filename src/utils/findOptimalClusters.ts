@@ -118,7 +118,8 @@ function normalizeAndScoreEvaluations(
     if (metrics.includes('calinskiHarabasz')) {
       let nch: number;
       if (!Number.isFinite(evaluation.calinskiHarabasz)) {
-        nch = 0;
+        // CH = Infinity means perfect separation (WSS = 0) -> best score
+        nch = 1;
       } else if (chRange === 0 || !Number.isFinite(chRange)) {
         nch = 0.5;
       } else {
@@ -212,14 +213,14 @@ export async function findOptimalClusters(
   // Determine which metrics to compute based on method
   const computeSilhouette =
     method === 'silhouette' ||
-    method === 'combined' && metrics.includes('silhouette') ||
-    !!scoringFunction && metrics.includes('silhouette');
+    (method === 'combined' && metrics.includes('silhouette')) ||
+    (!!scoringFunction && metrics.includes('silhouette'));
   const computeDB =
-    method === 'combined' && metrics.includes('daviesBouldin') ||
-    !!scoringFunction && metrics.includes('daviesBouldin');
+    (method === 'combined' && metrics.includes('daviesBouldin')) ||
+    (!!scoringFunction && metrics.includes('daviesBouldin'));
   const computeCH =
-    method === 'combined' && metrics.includes('calinskiHarabasz') ||
-    !!scoringFunction && metrics.includes('calinskiHarabasz');
+    (method === 'combined' && metrics.includes('calinskiHarabasz')) ||
+    (!!scoringFunction && metrics.includes('calinskiHarabasz'));
   const computeWSS = method === 'elbow';
 
   const evaluations: ClusterEvaluation[] = [];
@@ -337,9 +338,10 @@ export async function findOptimalClusters(
       const result = findKnee(kValues, wssValues, { direction: 'concave' });
 
       if (result.kneeX !== null) {
-        // Use difference values as scores (higher = better elbow candidate)
+        // For concave curves, differences are negative (curve below diagonal).
+        // Negate so the knee (most negative diff) gets the highest score.
         for (let i = 0; i < evaluations.length; i++) {
-          evaluations[i].combinedScore = result.differences[i];
+          evaluations[i].combinedScore = -result.differences[i];
         }
       } else {
         // Fallback: prefer smallest k (parsimony)

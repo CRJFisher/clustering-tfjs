@@ -56,8 +56,10 @@ The findOptimalClusters default combined score adds raw unnormalized metrics (si
 ### Technical decisions
 - Kneedle uses deviation from the diagonal line connecting first/last normalized points; concave curves have negative deviations, so we negate for comparison
 - daviesBouldin coincident centroids: when both dispersions and centroid distance are 0, we `continue` (skip pair) matching sklearn's nanmax behavior
-- ARI: singleton-per-point clusterings return 0 (sklearn convention, denominator is 0)
+- ARI: structurally identical partitions (including all-same, all-singletons, single sample) return 1.0 matching sklearn
 - NMI: when both entropies are 0, return 1.0 (trivially identical partitions)
+- Infinity CH is mapped to best normalized score (1.0) since it indicates perfect separation
+- Elbow scoring negates differences for concave curves so knee point gets highest score
 
 ### New files
 - `src/validation/validate.ts` - shared labels-length validation

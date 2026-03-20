@@ -86,6 +86,23 @@ describe("Normalized Mutual Information", () => {
     });
   });
 
+  describe("sklearn reference values", () => {
+    it("should return 1.0 for single sample", () => {
+      expect(normalizedMutualInfo([0], [0])).toBeCloseTo(1.0, 10);
+    });
+
+    it("should match sklearn for partial agreement with arithmetic average", () => {
+      // sklearn: normalized_mutual_info_score([0,0,1,1,2], [0,0,1,1,1], average_method='arithmetic')
+      // ≈ 0.7790
+      const labelsTrue = [0, 0, 1, 1, 2];
+      const labelsPred = [0, 0, 1, 1, 1];
+
+      const nmi = normalizedMutualInfo(labelsTrue, labelsPred, "arithmetic");
+      expect(nmi).toBeGreaterThan(0.7);
+      expect(nmi).toBeLessThan(0.85);
+    });
+  });
+
   describe("Tensor inputs", () => {
     it("should produce same result with tensor inputs", () => {
       const labelsTrue = [0, 0, 1, 1, 2, 2];

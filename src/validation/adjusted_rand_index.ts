@@ -1,5 +1,4 @@
 import { LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
 import { buildContingencyTable, toLabelArray } from './contingency';
 
 /**
@@ -30,8 +29,8 @@ export function adjustedRandIndex(
     throw new Error('Label vectors must not be empty');
   }
 
-  const trueLen = isTensor(labelsTrue) ? labelsTrue.shape[0] : trueArr.length;
-  const predLen = isTensor(labelsPred) ? labelsPred.shape[0] : predArr.length;
+  const trueLen = trueArr.length;
+  const predLen = predArr.length;
 
   if (trueLen !== predLen) {
     throw new Error(
@@ -46,9 +45,9 @@ export function adjustedRandIndex(
 
   const nC2 = comb2(n);
 
-  // If only 0 or 1 sample, ARI is 0
+  // If only 0 or 1 sample, partitions are trivially identical
   if (nC2 === 0) {
-    return 0;
+    return 1.0;
   }
 
   // sum_ij C(n_ij, 2)
@@ -75,9 +74,11 @@ export function adjustedRandIndex(
 
   const denominator = maxIndex - expectedIndex;
 
-  // When denominator is 0 (trivial clustering), return 0 per sklearn convention
+  // When denominator is 0, check if clusterings are structurally identical.
+  // If index === expectedIndex, all pairs agree (perfect match) -> return 1.0.
+  // Otherwise return 0.0 (sklearn convention).
   if (denominator === 0) {
-    return 0;
+    return index === expectedIndex ? 1.0 : 0.0;
   }
 
   return (index - expectedIndex) / denominator;

@@ -394,5 +394,14 @@ describe("Silhouette Score", () => {
         "Silhouette score requires at least 2 clusters"
       );
     });
+
+    it("should throw when labels length mismatches data rows", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => silhouetteSamples(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
   });
 });

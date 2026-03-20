@@ -49,20 +49,19 @@ describe("Adjusted Rand Index", () => {
   });
 
   describe("Edge cases", () => {
-    it("should return 0 for all-same labels in both", () => {
+    it("should return 1.0 for all-same labels in both (identical partitions)", () => {
       const labelsTrue = [0, 0, 0];
       const labelsPred = [0, 0, 0];
 
-      expect(adjustedRandIndex(labelsTrue, labelsPred)).toBe(0);
+      expect(adjustedRandIndex(labelsTrue, labelsPred)).toBeCloseTo(1.0, 10);
     });
 
-    it("should return 0 for each-point-own-cluster in both (sklearn convention)", () => {
-      // When every point is a singleton cluster, the denominator is 0
-      // and sklearn returns 0
+    it("should return 1.0 for each-point-own-cluster in both (identical partitions)", () => {
+      // When every point is a singleton in both, the partitions are identical
       const labelsTrue = [0, 1, 2, 3];
       const labelsPred = [4, 5, 6, 7];
 
-      expect(adjustedRandIndex(labelsTrue, labelsPred)).toBe(0);
+      expect(adjustedRandIndex(labelsTrue, labelsPred)).toBeCloseTo(1.0, 10);
     });
 
     it("should throw for empty arrays", () => {
@@ -75,8 +74,8 @@ describe("Adjusted Rand Index", () => {
       );
     });
 
-    it("should return 0 for single sample", () => {
-      expect(adjustedRandIndex([0], [0])).toBe(0);
+    it("should return 1.0 for single sample (trivially identical)", () => {
+      expect(adjustedRandIndex([0], [0])).toBeCloseTo(1.0, 10);
     });
   });
 

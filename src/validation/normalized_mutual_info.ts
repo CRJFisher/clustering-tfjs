@@ -1,5 +1,4 @@
 import { LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
 import { buildContingencyTable, toLabelArray } from './contingency';
 
 /**
@@ -37,8 +36,8 @@ export function normalizedMutualInfo(
     throw new Error('Label vectors must not be empty');
   }
 
-  const trueLen = isTensor(labelsTrue) ? labelsTrue.shape[0] : trueArr.length;
-  const predLen = isTensor(labelsPred) ? labelsPred.shape[0] : predArr.length;
+  const trueLen = trueArr.length;
+  const predLen = predArr.length;
 
   if (trueLen !== predLen) {
     throw new Error(
