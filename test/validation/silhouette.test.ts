@@ -225,11 +225,11 @@ describe("Silhouette Score", () => {
       const X: number[][] = [];
       const labels: number[] = [];
       
+      const rng = make_random_stream(42);
       for (let i = 0; i < n; i++) {
         const cluster = i < n/2 ? 0 : 1;
         labels.push(cluster);
-        
-        const rng = make_random_stream(42);
+
         const noise = () => (rng.rand() - 0.5) * 0.5;
         if (cluster === 0) {
           X.push([0 + noise(), 0 + noise()]);

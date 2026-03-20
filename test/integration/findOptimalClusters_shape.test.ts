@@ -1,27 +1,25 @@
 import '../tensorflow-helper';
-import { findOptimalClusters } from '../../src/utils/findOptimalClusters';
+import { findOptimalClusters, ClusterEvaluation } from '../../src/utils/findOptimalClusters';
+import { make_random_stream } from '../../src/utils/rng';
 
-function assertClusterEvaluationShape(evaluation: unknown, nSamples: number): void {
-  const e = evaluation as Record<string, unknown>;
+function assertClusterEvaluationShape(evaluation: ClusterEvaluation, nSamples: number): void {
+  // Required fields exist and have correct runtime type
+  expect(typeof evaluation.k).toBe('number');
+  expect(Number.isInteger(evaluation.k)).toBe(true);
+  expect(evaluation.k).toBeGreaterThanOrEqual(2);
 
-  // Required fields exist and have correct type
-  expect(typeof e.k).toBe('number');
-  expect(Number.isInteger(e.k)).toBe(true);
-  expect(e.k as number).toBeGreaterThanOrEqual(2);
+  expect(typeof evaluation.silhouette).toBe('number');
+  expect(typeof evaluation.daviesBouldin).toBe('number');
+  expect(typeof evaluation.calinskiHarabasz).toBe('number');
+  expect(typeof evaluation.combinedScore).toBe('number');
 
-  expect(typeof e.silhouette).toBe('number');
-  expect(typeof e.daviesBouldin).toBe('number');
-  expect(typeof e.calinskiHarabasz).toBe('number');
-  expect(typeof e.combinedScore).toBe('number');
-
-  expect(Array.isArray(e.labels)).toBe(true);
-  const labels = e.labels as number[];
-  expect(labels).toHaveLength(nSamples);
-  for (const label of labels) {
+  expect(Array.isArray(evaluation.labels)).toBe(true);
+  expect(evaluation.labels).toHaveLength(nSamples);
+  for (const label of evaluation.labels) {
     expect(typeof label).toBe('number');
     expect(Number.isInteger(label)).toBe(true);
     expect(label).toBeGreaterThanOrEqual(0);
-    expect(label).toBeLessThan(e.k as number);
+    expect(label).toBeLessThan(evaluation.k);
   }
 }
 
@@ -92,9 +90,10 @@ describe('findOptimalClusters return shape', () => {
     const sizes = [5, 10, 20];
 
     for (const size of sizes) {
+      const rng = make_random_stream(42);
       const testData: number[][] = [];
       for (let i = 0; i < size; i++) {
-        testData.push([Math.random() * 10, Math.random() * 10]);
+        testData.push([rng.rand() * 10, rng.rand() * 10]);
       }
 
       const result = await findOptimalClusters(testData, {
@@ -111,9 +110,10 @@ describe('findOptimalClusters return shape', () => {
   }, 30000);
 
   it('evaluations length matches number of k values tested', async () => {
+    const rng = make_random_stream(42);
     const largerData: number[][] = [];
     for (let i = 0; i < 15; i++) {
-      largerData.push([Math.random() * 10, Math.random() * 10]);
+      largerData.push([rng.rand() * 10, rng.rand() * 10]);
     }
 
     const result = await findOptimalClusters(largerData, {
