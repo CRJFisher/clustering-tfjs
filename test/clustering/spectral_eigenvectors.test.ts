@@ -26,7 +26,7 @@ describe("SpectralClustering trivial eigenvector handling", () => {
       randomState: 42
     });
     
-    const labels = await model.fitPredict(X) as number[];
+    const labels = await model.fitPredict(X);
     
     // Each component should get its own unique label
     const comp1Labels = new Set([labels[0], labels[1], labels[2]]);
@@ -60,7 +60,7 @@ describe("SpectralClustering trivial eigenvector handling", () => {
     });
     
     // Should still return some clustering even if suboptimal
-    const labels = await model.fitPredict(X) as number[];
+    const labels = await model.fitPredict(X);
     expect(labels).toHaveLength(4);
     expect(new Set(labels).size).toBeLessThanOrEqual(3);
   });
@@ -81,7 +81,7 @@ describe("SpectralClustering trivial eigenvector handling", () => {
       randomState: 42
     });
     
-    const labels = await model.fitPredict(X) as number[];
+    const labels = await model.fitPredict(X);
     
     // Should identify 2 clusters (though assignment might not be perfect with k=1)
     expect(new Set(labels).size).toBe(2);

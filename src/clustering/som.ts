@@ -2,7 +2,6 @@ import * as tf from '../tf-adapter';
 import type {
   BaseClustering,
   DataMatrix,
-  LabelVector,
   SOMParams,
   SOMState,
   SOMTopology,
@@ -34,7 +33,7 @@ export class SOM implements BaseClustering<SOMParams> {
   
   // Model state
   public weights_: tf.Tensor3D | null = null;
-  public labels_: LabelVector | null = null;
+  public labels_: number[] | null = null;
   public bmus_: tf.Tensor2D | null = null;
   
   // Training state
@@ -70,12 +69,8 @@ export class SOM implements BaseClustering<SOMParams> {
       throw new Error('gridHeight must be >= 1');
     }
     
-    // Note: nClusters from BaseClusteringParams is not used for SOM
-    // Total neurons = gridWidth * gridHeight
-    
     return {
       ...params,
-      nClusters: params.gridWidth * params.gridHeight, // For compatibility
       topology: params.topology ?? SOM.DEFAULT_TOPOLOGY,
       neighborhood: params.neighborhood ?? SOM.DEFAULT_NEIGHBORHOOD,
       numEpochs: params.numEpochs ?? SOM.DEFAULT_NUM_EPOCHS,
@@ -345,7 +340,7 @@ export class SOM implements BaseClustering<SOMParams> {
   /**
    * Fit and return predicted labels.
    */
-  async fitPredict(X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     return this.labels_!;
   }
@@ -353,7 +348,7 @@ export class SOM implements BaseClustering<SOMParams> {
   /**
    * Predict labels for new data using trained SOM.
    */
-  async predict(X: DataMatrix): Promise<LabelVector> {
+  async predict(X: DataMatrix): Promise<number[]> {
     if (!this.weights_) {
       throw new Error('SOM must be fitted before prediction');
     }

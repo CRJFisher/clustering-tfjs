@@ -1,5 +1,5 @@
 import * as tf from '../tf-adapter';
-import { deterministic_eigenpair_processing } from './eigen_post';
+import { deterministicEigenpairProcessing } from './eigen_post';
 
 /**
  * Returns the `k` smallest eigenvectors AND eigenvalues of the provided symmetric matrix.
@@ -27,7 +27,7 @@ export function smallest_eigenvectors_with_values(
     });
 
     // 2) Deterministic ordering & sign fixing
-    const processed = deterministic_eigenpair_processing({
+    const processed = deterministicEigenpairProcessing({
       eigenvalues,
       eigenvectors,
     });

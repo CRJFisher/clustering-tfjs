@@ -29,8 +29,8 @@ describe("SpectralClustering – randomState propagation", () => {
     const model1 = new SpectralClustering({ nClusters: 2, randomState: seed });
     const model2 = new SpectralClustering({ nClusters: 2, randomState: seed });
 
-    const labels1 = (await model1.fitPredict(X)) as number[];
-    const labels2 = (await model2.fitPredict(X)) as number[];
+    const labels1 = await model1.fitPredict(X);
+    const labels2 = await model2.fitPredict(X);
 
     expect(labels1).toEqual(labels2);
   });
@@ -41,8 +41,8 @@ describe("SpectralClustering – randomState propagation", () => {
     const model1 = new SpectralClustering({ nClusters: 2, randomState: 1, nInit: 1 });
     const model2 = new SpectralClustering({ nClusters: 2, randomState: 2, nInit: 1 });
 
-    const labels1 = (await model1.fitPredict(X)) as number[];
-    const labels2 = (await model2.fitPredict(X)) as number[];
+    const labels1 = await model1.fitPredict(X);
+    const labels2 = await model2.fitPredict(X);
 
     // The entire label vector should not be identical. They may still share
     // some assignments due to dataset symmetry but at least one position

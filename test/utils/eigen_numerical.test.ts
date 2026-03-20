@@ -1,16 +1,16 @@
 import * as tf from "../tensorflow-helper";
 
 import {
-  normalised_laplacian,
-  jacobi_eigen_decomposition,
-} from "../../src";
+  normalisedLaplacian,
+  jacobiEigenDecomposition,
+} from "../../src/utils/laplacian";
 
 /**
  * Unit tests covering numerical-stability edge cases for the Jacobi eigen
  * decomposition helper.
  */
 
-describe("jacobi_eigen_decomposition – numerical edge cases", () => {
+describe("jacobiEigenDecomposition – numerical edge cases", () => {
   it("handles disconnected graphs (block-diagonal Laplacian)", () => {
     /*
      * Two disconnected components, each a 2-node line.  The affinity
@@ -30,8 +30,8 @@ describe("jacobi_eigen_decomposition – numerical edge cases", () => {
       [4, 4],
     );
 
-    const L = normalised_laplacian(A);
-    const { eigenvalues } = jacobi_eigen_decomposition(L);
+    const L = normalisedLaplacian(A);
+    const { eigenvalues } = jacobiEigenDecomposition(L);
 
     // Sort ascending just in case
     const sorted = [...eigenvalues].sort((a, b) => a - b);
@@ -55,8 +55,8 @@ describe("jacobi_eigen_decomposition – numerical edge cases", () => {
       [2, 2],
     );
 
-    const L = normalised_laplacian(A);
-    const { eigenvalues, eigenvectors } = jacobi_eigen_decomposition(L);
+    const L = normalisedLaplacian(A);
+    const { eigenvalues, eigenvectors } = jacobiEigenDecomposition(L);
 
     // All eigenvalues must be finite numbers (no NaN, Inf)
     eigenvalues.forEach((v) => {

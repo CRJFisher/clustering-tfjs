@@ -1,6 +1,5 @@
 import type {
   DataMatrix,
-  LabelVector,
   SpectralClusteringParams,
   BaseClustering,
 } from './types';
@@ -119,10 +118,7 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
-  constructor(
-    params: SpectralClusteringParams & { captureDebugInfo?: boolean },
-  ) {
-    // Extract captureDebugInfo if provided (for modular compatibility)
+  constructor(params: SpectralClusteringParams) {
     const { captureDebugInfo = false, ...clusteringParams } = params;
 
     // Freeze user params to avoid accidental mutation downstream.
@@ -248,19 +244,19 @@ export class SpectralClustering
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
       // Compute Laplacian and eigenvectors as before
-      const { normalised_laplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../utils/laplacian');
 
       // Compute normalized Laplacian AND get degree information for recovery
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D, true),
+        normalisedLaplacian(this.affinityMatrix_ as tf.Tensor2D, true),
       );
 
       // Capture Laplacian spectrum if requested
       if (this.captureDebugInfo) {
-        const { jacobi_eigen_decomposition } = await import(
+        const { jacobiEigenDecomposition } = await import(
           '../utils/laplacian'
         );
-        const { eigenvalues } = await jacobi_eigen_decomposition(laplacian);
+        const { eigenvalues } = await jacobiEigenDecomposition(laplacian);
         // Take first 10 eigenvalues for spectrum
         const spectrum = eigenvalues.slice(0, Math.min(10, eigenvalues.length));
         this.debugInfo_!.laplacianSpectrum = spectrum;
@@ -439,7 +435,7 @@ export class SpectralClustering
     }
   }
 
-  async fitPredict(X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
       throw new Error('SpectralClustering failed to compute labels.');
@@ -497,15 +493,15 @@ export class SpectralClustering
     };
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
-    const { normalised_laplacian } = await import('../utils/laplacian');
+    const { normalisedLaplacian } = await import('../utils/laplacian');
     const { laplacian, sqrtDegrees } = tf.tidy(() =>
-      normalised_laplacian(affinity, true),
+      normalisedLaplacian(affinity, true),
     );
 
     // Capture Laplacian spectrum
-    const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
+    const { jacobiEigenDecomposition } = await import('../utils/laplacian');
     const { eigenvalues: laplacianEigenvalues } =
-      await jacobi_eigen_decomposition(laplacian);
+      await jacobiEigenDecomposition(laplacian);
     const spectrum = laplacianEigenvalues.slice(
       0,
       Math.min(10, laplacianEigenvalues.length),
@@ -740,13 +736,13 @@ export class SpectralClustering
         numComponents,
       );
     } else {
-      const { normalised_laplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../utils/laplacian');
       const { smallest_eigenvectors_with_values } = await import(
         '../utils/smallest_eigenvectors_with_values'
       );
 
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalised_laplacian(affinityMatrix, true),
+        normalisedLaplacian(affinityMatrix, true),
       );
 
       const numEigenvectors = Math.max(this.params.nClusters, numComponents);

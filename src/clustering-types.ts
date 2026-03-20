@@ -51,15 +51,15 @@ export interface ExtendedBackendConfig<P extends Platform = DetectedPlatform> {
 /**
  * Type-safe clustering namespace with platform awareness
  */
-export interface ClusteringNamespace<P extends Platform = DetectedPlatform> {
-  init(config?: ExtendedBackendConfig<P>): Promise<void>;
+export interface ClusteringNamespace {
+  init(config?: import('./tf-backend').BackendConfig): Promise<void>;
   KMeans: typeof import('./clustering/kmeans').KMeans;
   SpectralClustering: typeof import('./clustering/spectral').SpectralClustering;
   AgglomerativeClustering: typeof import('./clustering/agglomerative').AgglomerativeClustering;
-  
-  // Platform-specific properties
-  platform: P;
-  features: PlatformFeatures<P>;
+  SOM: typeof import('./clustering/som').SOM;
+
+  platform: Platform;
+  features: BackendFeatures;
 }
 
 /**

@@ -136,7 +136,6 @@ export async function findOptimalClusters(
         const gridSize = Math.ceil(Math.sqrt(k));
         const params = algorithmParams as Record<string, unknown>;
         clusterer = new SOM({
-          nClusters: k,
           gridWidth: (params.gridWidth as number) || gridSize,
           gridHeight: (params.gridHeight as number) || Math.ceil(k / gridSize),
           ...algorithmParams,
@@ -148,13 +147,7 @@ export async function findOptimalClusters(
     }
 
     // Fit and predict
-    const labelsTensor = await clusterer.fitPredict(dataTensor);
-
-    // Convert labels to array if it's a tensor
-    const labels =
-      isTensor(labelsTensor)
-        ? ((await labelsTensor.data()) as unknown as number[])
-        : labelsTensor;
+    const labels = await clusterer.fitPredict(dataTensor);
 
     // Calculate metrics
     let silhouette = 0;
@@ -180,11 +173,6 @@ export async function findOptimalClusters(
       combinedScore: 0,
       labels: Array.from(labels),
     };
-
-    // Dispose labels tensor if needed
-    if (isTensor(labelsTensor)) {
-      labelsTensor.dispose();
-    }
 
     // Use custom scoring function or default
     if (scoringFunction) {

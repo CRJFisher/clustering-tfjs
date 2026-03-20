@@ -43,7 +43,7 @@ export interface EigenPairOutput {
 /**
  * Applies deterministic ordering and sign convention to raw eigen-pairs.
  */
-export function deterministic_eigenpair_processing(
+export function deterministicEigenpairProcessing(
   input: EigenPairInput,
 ): EigenPairOutput {
   const { eigenvalues, eigenvectors } = input;

@@ -12,7 +12,7 @@ describe("KMeans", () => {
 
   it("should cluster two obvious blobs", async () => {
     const km = new KMeans({ nClusters: 2, randomState: 42 });
-    const labels = (await km.fitPredict(X)) as number[];
+    const labels = await km.fitPredict(X);
 
     const cluster0 = labels.slice(0, 3);
     const cluster1 = labels.slice(3);

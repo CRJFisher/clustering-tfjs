@@ -45,6 +45,18 @@
         "import": "./dist/index.esm.js",
         "require": "./dist/index.js"
       }
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.esm.js",
+      "require": "./dist/utils/index.js",
+      "default": "./dist/utils/index.js"
+    },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.esm.js",
+      "require": "./dist/validation/index.js",
+      "default": "./dist/validation/index.js"
     }
   },
   "files": [

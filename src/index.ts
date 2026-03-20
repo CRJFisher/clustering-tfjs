@@ -8,6 +8,7 @@ export * from './types/platform';
 // Export the main Clustering namespace for initialization
 export { Clustering } from './clustering';
 export type { BackendConfig } from './tf-backend';
+export type { ClusteringNamespace } from './clustering-types';
 
 // Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
@@ -43,35 +44,14 @@ export {
   calinskiHarabaszEfficient,
 } from './validation/calinski_harabasz';
 
-// Graph Laplacian helpers (task-10)
-export {
-  degree_vector,
-  normalised_laplacian,
-  jacobi_eigen_decomposition,
-  smallest_eigenvectors,
-} from './utils/laplacian';
-
-// Deterministic eigenpair post-processing
-export { deterministic_eigenpair_processing } from './utils/eigen_post';
-
-// SOM-specific utilities
-export {
-  initializeWeights,
-  findBMU,
-  findBMUBatch,
-  gaussianNeighborhood,
-  bubbleNeighborhood,
-  mexicanHatNeighborhood,
-  linearDecay,
-  exponentialDecay,
-  DecayTracker,
-} from './clustering/som_utils';
-
+// SOM visualization utilities
 export {
   getComponentPlanes,
   getHitMap,
   getActivationMap,
   trackBMUTrajectory,
   getQuantizationQualityMap,
+  getDensityMap,
+  getNeighborDistanceMatrix,
   exportForVisualization,
 } from './utils/som_visualization';

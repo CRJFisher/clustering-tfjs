@@ -19,15 +19,23 @@ console.log('Building ES Modules...');
 fs.mkdirSync('dist-esm', { recursive: true });
 execSync('npx tsc -p tsconfig.esm.json --outDir dist-esm', { stdio: 'inherit' });
 
-// Copy ESM files with .esm.js extension
-const esmFiles = fs.readdirSync('dist-esm');
-esmFiles.forEach(file => {
-  if (file.endsWith('.js')) {
-    const content = fs.readFileSync(path.join('dist-esm', file), 'utf8');
-    const newFileName = file.replace('.js', '.esm.js');
-    fs.writeFileSync(path.join('dist', newFileName), content);
+// Copy ESM files with .esm.js extension (recursive)
+function copyEsmFiles(srcDir, destDir) {
+  const entries = fs.readdirSync(srcDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const srcPath = path.join(srcDir, entry.name);
+    const destPath = path.join(destDir, entry.name);
+    if (entry.isDirectory()) {
+      fs.mkdirSync(destPath, { recursive: true });
+      copyEsmFiles(srcPath, destPath);
+    } else if (entry.name.endsWith('.js')) {
+      const content = fs.readFileSync(srcPath, 'utf8');
+      const newFileName = entry.name.replace('.js', '.esm.js');
+      fs.writeFileSync(path.join(destDir, newFileName), content);
+    }
   }
-});
+}
+copyEsmFiles('dist-esm', 'dist');
 
 // Clean temporary ESM directory
 fs.rmSync('dist-esm', { recursive: true });

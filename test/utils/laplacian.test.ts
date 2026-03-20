@@ -1,11 +1,11 @@
 import * as tf from "../tensorflow-helper";
 
 import {
-  degree_vector,
-  normalised_laplacian,
-  jacobi_eigen_decomposition,
-  smallest_eigenvectors,
-} from "../../src";
+  degreeVector,
+  normalisedLaplacian,
+  jacobiEigenDecomposition,
+  smallestEigenvectors,
+} from "../../src/utils/laplacian";
 
 describe("Graph Laplacian utilities", () => {
   it("computes correct degree vector", () => {
@@ -17,7 +17,7 @@ describe("Graph Laplacian utilities", () => {
       ],
       [3, 3],
     );
-    const deg = degree_vector(A).arraySync();
+    const deg = degreeVector(A).arraySync();
     expect(deg).toEqual([3, 1, 2]);
   });
 
@@ -29,7 +29,7 @@ describe("Graph Laplacian utilities", () => {
       ],
       [2, 2],
     );
-    const L = normalised_laplacian(A);
+    const L = normalisedLaplacian(A);
     const Larr = L.arraySync() as number[][];
     // For a 2-node line the normalised Laplacian is [[1,-1],[ -1,1 ]]
     // after degree scaling (degrees are both 1 ⇒ scaling leaves unchanged)
@@ -49,13 +49,13 @@ describe("Graph Laplacian utilities", () => {
       [2, 2],
     );
 
-    const { eigenvalues } = jacobi_eigen_decomposition(L);
+    const { eigenvalues } = jacobiEigenDecomposition(L);
     // Expected eigenvalues: 0 (multiplicity 1), 2 (multiplicity 1)
     expect(eigenvalues[0]).toBeCloseTo(0, 6);
     expect(eigenvalues[1]).toBeCloseTo(2, 6);
 
     // Smallest eigenvector (k=1) corresponds to [1/sqrt(2), 1/sqrt(2)] or its negation
-    const vecs = smallest_eigenvectors(L, 1).arraySync() as number[][];
+    const vecs = smallestEigenvectors(L, 1).arraySync() as number[][];
     const v0 = vecs.map((row) => row[0]);
     const norm = Math.hypot(...v0);
     // Normalise for comparison

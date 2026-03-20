@@ -1,6 +1,6 @@
 import * as tf from '../tf-adapter';
 
-import { deterministic_eigenpair_processing } from './eigen_post';
+import { deterministicEigenpairProcessing } from './eigen_post';
 
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
@@ -16,7 +16,7 @@ import { deterministic_eigenpair_processing } from './eigen_post';
  *
  * The returned tensor is a 1-D vector where `deg[i] = Σ_j A[i,j]`.
  */
-export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
+export function degreeVector(A: tf.Tensor2D): tf.Tensor1D {
   if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
     throw new Error('Affinity matrix must be square (n × n).');
   }
@@ -38,12 +38,12 @@ export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
  * `D^{-1/2}` as **0** for the corresponding diagonal entry which leaves the
  * row & column of `L` equal to the identity matrix (no connections).
  */
-export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D;
-export function normalised_laplacian(
+export function normalisedLaplacian(A: tf.Tensor2D): tf.Tensor2D;
+export function normalisedLaplacian(
   A: tf.Tensor2D,
   returnDiag: true,
 ): { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D };
-export function normalised_laplacian(
+export function normalisedLaplacian(
   A: tf.Tensor2D,
   returnDiag = false,
 ): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D } {
@@ -56,7 +56,7 @@ export function normalised_laplacian(
     const diagMask = tf.sub(1, tf.eye(n));
     const A_no_diag = A.mul(diagMask) as tf.Tensor2D;
 
-    const deg = degree_vector(A_no_diag); // (n)
+    const deg = degreeVector(A_no_diag); // (n)
 
     // d^{-1/2} – set entries with deg == 0 to 1 (for isolated nodes)
     const invSqrt = tf.where(
@@ -108,7 +108,7 @@ export function normalised_laplacian(
  * optimised for large dense matrices.  It should *only* be used on matrices
  * of moderate size.
  */
-export function jacobi_eigen_decomposition(
+export function jacobiEigenDecomposition(
   matrix: tf.Tensor2D,
   {
     maxIterations = 2000,
@@ -272,7 +272,7 @@ export function jacobi_eigen_decomposition(
   });
 
   // Sort eigen-pairs ascending (deterministic sign handling is applied later
-  // in `smallest_eigenvectors` for the subset actually used in the spectral
+  // in `smallestEigenvectors` for the subset actually used in the spectral
   // pipeline – avoids unnecessary sign flips for callers that do not care).
 
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
@@ -306,7 +306,7 @@ export function jacobi_eigen_decomposition(
  * Convenience helper that returns the `k` smallest eigenvectors of the
  * provided symmetric matrix *as a TensorFlow.js tensor* (n × k).
  */
-export function smallest_eigenvectors(
+export function smallestEigenvectors(
   matrix: tf.Tensor2D,
   k: number,
 ): tf.Tensor2D {
@@ -328,7 +328,7 @@ export function smallest_eigenvectors(
     });
 
     // 2) Deterministic ordering & sign fixing (task-12.3.1 helper)
-    const { eigenvectors: vecSorted } = deterministic_eigenpair_processing({
+    const { eigenvectors: vecSorted } = deterministicEigenpairProcessing({
       eigenvalues,
       eigenvectors,
     });

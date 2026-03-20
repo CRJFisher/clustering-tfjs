@@ -26,7 +26,7 @@ describe("SpectralClustering – robustness", () => {
     const X = makeTwoBlobs();
 
     const model = new SpectralClustering({ nClusters: 2, randomState: 42 });
-    const labels = (await model.fitPredict(X)) as number[];
+    const labels = await model.fitPredict(X);
 
     // Expect exactly 2 unique labels
     const unique = Array.from(new Set(labels));

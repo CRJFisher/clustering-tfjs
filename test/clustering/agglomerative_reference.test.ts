@@ -47,7 +47,7 @@ describe("AgglomerativeClustering – reference parity with scikit-learn", () =>
         metric: fixture.params.metric as any,
       });
 
-      const ours = (await model.fitPredict(fixture.X)) as number[];
+      const ours = await model.fitPredict(fixture.X);
 
       expect(areLabelingsEquivalent(ours, fixture.labels)).toBe(true);
     });

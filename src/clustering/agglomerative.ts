@@ -1,6 +1,5 @@
 import type {
   DataMatrix,
-  LabelVector,
   AgglomerativeClusteringParams,
   BaseClustering,
 } from './types';
@@ -28,7 +27,7 @@ export class AgglomerativeClustering
    *
    * Populated after calling `fit`.
    */
-  public labels_: LabelVector | null = null;
+  public labels_: number[] | null = null;
 
   /**
    * Children of each non-leaf node in the hierarchical clustering tree.
@@ -193,7 +192,7 @@ export class AgglomerativeClustering
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  async fitPredict(_X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(_X: DataMatrix): Promise<number[]> {
     await this.fit(_X);
     if (this.labels_ == null) {
       throw new Error('AgglomerativeClustering failed to compute labels.');

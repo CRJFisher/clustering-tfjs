@@ -117,7 +117,7 @@ describe("SpectralClustering – reference parity with scikit-learn", () => {
 
       const model = new SpectralClustering(ctorParams);
 
-      const ours = (await model.fitPredict(fixture.X)) as number[];
+      const ours = await model.fitPredict(fixture.X);
 
       const ari = adjustedRandIndex(ours, fixture.labels);
       

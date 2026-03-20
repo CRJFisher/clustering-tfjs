@@ -2,7 +2,6 @@ import * as tf from '../tf-adapter';
 import { SpectralClustering } from './spectral';
 import {
   DataMatrix,
-  LabelVector as _LabelVector,
   SpectralClusteringParams,
 } from './types';
 import { isTensor } from '../utils/tensor-utils';
@@ -73,9 +72,9 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       );
     } else {
       // Standard approach: compute Laplacian and eigenvectors
-      const { normalised_laplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../utils/laplacian');
       const laplacian = tf.tidy(() =>
-        normalised_laplacian(this.affinityMatrix_! as tf.Tensor2D),
+        normalisedLaplacian(this.affinityMatrix_! as tf.Tensor2D),
       );
 
       const { smallest_eigenvectors_with_values } = await import(

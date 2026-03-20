@@ -9,20 +9,9 @@ import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { AgglomerativeClustering } from './clustering/agglomerative';
 import { SOM } from './clustering/som';
-import type { Platform, DetectedPlatform, PlatformFeatures } from './clustering-types';
+import type { Platform, PlatformFeatures } from './clustering-types';
+import type { ClusteringNamespace } from './clustering-types';
 import { getPlatform } from './utils/platform';
-
-// Re-export all clustering algorithms and utilities
-export * from './clustering/types';
-export { KMeans } from './clustering/kmeans';
-export { SpectralClustering } from './clustering/spectral';
-export { AgglomerativeClustering } from './clustering/agglomerative';
-export { SOM } from './clustering/som';
-export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
-export { findOptimalClusters } from './utils/findOptimalClusters';
-
-// Re-export advanced types
-export type { Platform, DetectedPlatform, PlatformFeatures, ExtendedBackendConfig } from './clustering-types';
 
 // Detect platform at runtime using utility function
 const detectPlatform = (): Platform => {
@@ -66,11 +55,11 @@ const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
 /**
  * Main clustering namespace with platform awareness
  */
-export const Clustering = {
+export const Clustering: ClusteringNamespace = {
   /**
    * Current platform
    */
-  platform: detectPlatform() as DetectedPlatform,
+  platform: detectPlatform(),
   
   /**
    * Platform features

@@ -35,10 +35,10 @@ describe("AgglomerativeClustering class structure & validation", () => {
       [5.1, 5],
     ];
     const model = new AgglomerativeClustering({ nClusters: 2, linkage: "single" });
-    const labels = (await model.fitPredict(X)) as number[];
+    const labels = await model.fitPredict(X);
     expect(labels.length).toBe(4);
     // Expect exactly two unique labels 0 and 1
-    const uniq = Array.from(new Set(labels as number[]));
+    const uniq = Array.from(new Set(labels));
     expect(uniq.length).toBe(2);
   });
 });
