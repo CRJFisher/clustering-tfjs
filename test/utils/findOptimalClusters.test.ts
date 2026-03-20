@@ -176,4 +176,171 @@ describe("findOptimalClusters", () => {
     expect(result.optimal.k).toBeGreaterThanOrEqual(2);
     expect(result.optimal.k).toBeLessThanOrEqual(3);
   });
+
+  describe("Normalized scoring (AC#1)", () => {
+    it("should produce combined scores in [0, 1] range", async () => {
+      const data = [
+        [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11],
+        [1.2, 1.9], [1.4, 1.7], [5.2, 8.1], [8.1, 8.2], [0.9, 0.5], [9.1, 11.2]
+      ];
+
+      const result = await findOptimalClusters(data, { maxClusters: 4 });
+
+      for (const e of result.evaluations) {
+        expect(e.combinedScore).toBeGreaterThanOrEqual(0);
+        expect(e.combinedScore).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("should not let calinski-harabasz dominate scoring", async () => {
+      const data = [
+        [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11],
+        [1.2, 1.9], [1.4, 1.7], [5.2, 8.1], [8.1, 8.2], [0.9, 0.5], [9.1, 11.2]
+      ];
+
+      const result = await findOptimalClusters(data, { maxClusters: 4 });
+
+      // Verify that the combined score is NOT dominated by CH
+      // (old behavior: score = silhouette + calinskiHarabasz - daviesBouldin)
+      // New behavior: all normalized to [0,1] and averaged
+      for (const e of result.evaluations) {
+        expect(e.combinedScore).not.toBe(e.calinskiHarabasz);
+      }
+    });
+
+    it("should handle single evaluation (min === max)", async () => {
+      const data = [[1, 2], [10, 11], [5, 6]];
+
+      const result = await findOptimalClusters(data, {
+        minClusters: 2,
+        maxClusters: 2
+      });
+
+      expect(result.evaluations).toHaveLength(1);
+      expect(isFinite(result.optimal.combinedScore)).toBe(true);
+      expect(isNaN(result.optimal.combinedScore)).toBe(false);
+    });
+
+    it("should still pass raw values to custom scoringFunction", async () => {
+      const data = [[1, 2], [2, 3], [10, 11], [11, 12]];
+
+      const result = await findOptimalClusters(data, {
+        maxClusters: 3,
+        scoringFunction: (evaluation) => evaluation.calinskiHarabasz
+      });
+
+      // Custom scorer gets raw (un-normalized) CH values
+      expect(result.optimal.combinedScore).toBe(result.optimal.calinskiHarabasz);
+    });
+  });
+
+  describe("Silhouette-only method (AC#3)", () => {
+    it("should select k with highest silhouette", async () => {
+      const data = [
+        [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11],
+        [1.2, 1.9], [1.4, 1.7], [5.2, 8.1], [8.1, 8.2], [0.9, 0.5], [9.1, 11.2]
+      ];
+
+      const result = await findOptimalClusters(data, {
+        method: 'silhouette',
+        maxClusters: 5
+      });
+
+      // Combined score should equal silhouette
+      expect(result.optimal.combinedScore).toBe(result.optimal.silhouette);
+
+      // Should be sorted by silhouette (descending)
+      for (let i = 1; i < result.evaluations.length; i++) {
+        expect(result.evaluations[i - 1].combinedScore).toBeGreaterThanOrEqual(
+          result.evaluations[i].combinedScore
+        );
+      }
+    });
+
+    it("should not compute DB or CH when using silhouette method", async () => {
+      const data = [[1, 2], [2, 3], [10, 11], [11, 12]];
+
+      const result = await findOptimalClusters(data, {
+        method: 'silhouette',
+        maxClusters: 3
+      });
+
+      // When silhouette method is used, DB and CH should be defaults
+      for (const e of result.evaluations) {
+        expect(e.daviesBouldin).toBe(Infinity);
+        expect(e.calinskiHarabasz).toBe(0);
+      }
+    });
+  });
+
+  describe("Elbow method (AC#2)", () => {
+    it("should populate wss field", async () => {
+      const data = [
+        [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]
+      ];
+
+      const result = await findOptimalClusters(data, {
+        method: 'elbow',
+        maxClusters: 4
+      });
+
+      for (const e of result.evaluations) {
+        expect(e.wss).toBeDefined();
+        expect(e.wss).toBeGreaterThanOrEqual(0);
+      }
+    });
+
+    it("should detect a reasonable knee for well-separated data", async () => {
+      const { X } = makeBlobs({
+        nSamples: 60,
+        nFeatures: 2,
+        centers: 3,
+        clusterStd: 0.5,
+        randomState: 42
+      });
+
+      try {
+        const result = await findOptimalClusters(X, {
+          method: 'elbow',
+          minClusters: 2,
+          maxClusters: 6
+        });
+
+        // The knee should be around k=3
+        expect(result.optimal.k).toBeGreaterThanOrEqual(2);
+        expect(result.optimal.k).toBeLessThanOrEqual(5);
+      } finally {
+        X.dispose();
+      }
+    });
+
+    it("should use KMeans inertia when algorithm is kmeans", async () => {
+      const data = [[1, 2], [2, 3], [10, 11], [11, 12]];
+
+      const result = await findOptimalClusters(data, {
+        method: 'elbow',
+        algorithm: 'kmeans',
+        maxClusters: 3
+      });
+
+      // WSS should be populated and positive
+      for (const e of result.evaluations) {
+        expect(e.wss).toBeDefined();
+        expect(e.wss!).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  it("should override method when scoringFunction is provided", async () => {
+    const data = [[1, 2], [2, 3], [10, 11], [11, 12]];
+
+    const result = await findOptimalClusters(data, {
+      method: 'silhouette',
+      maxClusters: 3,
+      scoringFunction: (evaluation) => evaluation.silhouette * 100
+    });
+
+    // Custom scorer should override method
+    expect(result.optimal.combinedScore).toBe(result.optimal.silhouette * 100);
+  });
 });

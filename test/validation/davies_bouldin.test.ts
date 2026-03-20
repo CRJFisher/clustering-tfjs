@@ -113,18 +113,73 @@ describe("Davies-Bouldin Score", () => {
       expect(score).toBeGreaterThan(0);
     });
 
-    it("should handle identical centroids gracefully", () => {
+    it("should return Infinity for coincident centroids with nonzero dispersions", () => {
       // Two clusters with same centroid but different dispersions
       const X = [
-        // Cluster 0 around (0, 0)
         [-1, 0], [1, 0], [0, -1], [0, 1],
-        // Cluster 1 also around (0, 0) but tighter
         [-0.1, 0], [0.1, 0], [0, -0.1], [0, 0.1]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
+
       const score = daviesBouldin(X, labels);
       expect(score).toBe(Infinity);
+    });
+
+    it("should return 0 for coincident centroids with zero dispersions (AC#5)", () => {
+      const X = [
+        [1, 1], [1, 1], [1, 1],
+        [1, 1], [1, 1], [1, 1],
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+
+      const score = daviesBouldin(X, labels);
+      expect(score).toBe(0);
+      expect(isFinite(score)).toBe(true);
+    });
+
+    it("should return 0 for coincident centroids with zero dispersions (efficient)", () => {
+      const X = [
+        [1, 1], [1, 1], [1, 1],
+        [1, 1], [1, 1], [1, 1],
+      ];
+      const labels = [0, 0, 0, 1, 1, 1];
+
+      const score = daviesBouldinEfficient(X, labels);
+      expect(score).toBe(0);
+      expect(isFinite(score)).toBe(true);
+    });
+
+    it("should handle mixed: some coincident, some separate centroids", () => {
+      const X = [
+        [0, 0], [0, 0],
+        [0, 0], [0, 0],
+        [10, 10], [10.1, 10.1],
+      ];
+      const labels = [0, 0, 1, 1, 2, 2];
+
+      const score = daviesBouldin(X, labels);
+      expect(isFinite(score)).toBe(true);
+      expect(score).toBeGreaterThanOrEqual(0);
+    });
+  });
+
+  describe("Labels length validation (AC#6)", () => {
+    it("should throw when labels length mismatches data rows", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => daviesBouldin(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
+
+    it("should throw for efficient version", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => daviesBouldinEfficient(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
     });
   });
 

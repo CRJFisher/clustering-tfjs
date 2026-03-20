@@ -185,4 +185,24 @@ describe("Calinski-Harabasz Score", () => {
       expect(elapsed).toBeLessThan(1000); // Should complete in < 1 second
     });
   });
+
+  describe("Labels length validation (AC#6)", () => {
+    it("should throw when labels length mismatches data rows", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => calinskiHarabasz(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
+
+    it("should throw for efficient version", () => {
+      const X = [[1, 2], [3, 4], [5, 6]];
+      const labels = [0, 1];
+
+      expect(() => calinskiHarabaszEfficient(X, labels)).toThrow(
+        "Labels length (2) does not match data rows (3)"
+      );
+    });
+  });
 });

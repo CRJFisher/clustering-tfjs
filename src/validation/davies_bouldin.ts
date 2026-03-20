@@ -1,6 +1,7 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
 import { isTensor } from '../utils/tensor-utils';
+import { validateLabelsLength } from './validate';
 
 /**
  * Computes the Davies-Bouldin score.
@@ -20,6 +21,7 @@ import { isTensor } from '../utils/tensor-utils';
  * @throws Error if k <= 1
  */
 export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
+  validateLabelsLength(X, labels);
   return tf.tidy(() => {
     // Convert inputs to tensors
     const data =
@@ -91,11 +93,17 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
         const diff = centroids[i].sub(centroids[j]);
         const distance = tf.sqrt(diff.square().sum()).dataSync()[0];
 
-        // Avoid division by zero
+        // Handle coincident centroids (distance === 0)
         if (distance === 0) {
-          // If centroids are identical, set similarity to infinity
-          maxSimilarity = Infinity;
-          break;
+          const numerator = dispersions[i] + dispersions[j];
+          if (numerator > 0) {
+            // Non-zero dispersion with coincident centroids -> Infinity
+            maxSimilarity = Infinity;
+            break;
+          }
+          // Both dispersions zero with coincident centroids -> skip
+          // (matches sklearn nanmax of 0/0 = NaN)
+          continue;
         }
 
         // Compute similarity ratio R_ij = (s_i + s_j) / d_ij
@@ -128,6 +136,7 @@ export function daviesBouldinEfficient(
   X: DataMatrix,
   labels: LabelVector,
 ): number {
+  validateLabelsLength(X, labels);
   // Convert inputs
   const data =
     isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
@@ -198,8 +207,14 @@ export function daviesBouldinEfficient(
       distance = Math.sqrt(distance);
 
       if (distance === 0) {
-        maxSimilarity = Infinity;
-        break;
+        const numerator = dispersions[i] + dispersions[j];
+        if (numerator > 0) {
+          maxSimilarity = Infinity;
+          break;
+        }
+        // Both dispersions zero with coincident centroids -> skip
+        // (matches sklearn nanmax of 0/0 = NaN)
+        continue;
       }
 
       const similarity = (dispersions[i] + dispersions[j]) / distance;
