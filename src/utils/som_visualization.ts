@@ -316,6 +316,11 @@ export async function getDensityMap(
 ): Promise<tf.Tensor2D> {
   const hitMap = await getHitMap(som, X);
 
+  // No smoothing needed for sigma <= 0
+  if (sigma <= 0) {
+    return hitMap;
+  }
+
   try {
     return tf.tidy(() => {
       // Create Gaussian kernel

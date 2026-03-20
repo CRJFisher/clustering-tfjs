@@ -600,16 +600,17 @@ describe('SOM', () => {
         const sample = tf.randomUniform([nFeatures], 0, 1, 'float32', 42) as tf.Tensor1D;
         const bmu = findBMU(sample, weights);
 
-        expect(() => {
-          const secondBmu = findSecondBMU(sample, weights, bmu);
-          const arr = secondBmu.arraySync();
-          expect(arr[0]).toBeGreaterThanOrEqual(0);
-          expect(arr[0]).toBeLessThan(50);
-          expect(arr[1]).toBeGreaterThanOrEqual(0);
-          expect(arr[1]).toBeLessThan(50);
-          secondBmu.dispose();
-        }).not.toThrow();
+        // Should not throw (the old spread approach would RangeError here)
+        const secondBmu = findSecondBMU(sample, weights, bmu);
+        const arr = secondBmu.arraySync();
 
+        // Validate returned coordinates are within grid bounds
+        expect(arr[0]).toBeGreaterThanOrEqual(0);
+        expect(arr[0]).toBeLessThan(50);
+        expect(arr[1]).toBeGreaterThanOrEqual(0);
+        expect(arr[1]).toBeLessThan(50);
+
+        secondBmu.dispose();
         sample.dispose();
         weights.dispose();
         bmu.dispose();

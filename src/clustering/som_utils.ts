@@ -179,10 +179,9 @@ export function initializeWeights(
         const nComps = Math.min(2, nFeaturesLin);
         const components = computePrincipalComponents(cov as tf.Tensor2D, nComps);
 
-        // Project data onto PCs to determine scale
+        // Project data onto PCs to determine scale (unbiased variance, consistent with covariance)
         const projections = tf.matMul(centered, components, false, true); // [nSamples, nComps]
-        const projMean = projections.mean(0);
-        const projVar = projections.sub(projMean).square().mean(0);
+        const projVar = projections.square().sum(0).div(nSamplesLin - 1); // unbiased (centered data has mean 0)
         const projStd = projVar.sqrt();
         const projStdData = projStd.dataSync();
 
@@ -218,7 +217,6 @@ export function initializeWeights(
         cov.dispose();
         components.dispose();
         projections.dispose();
-        projMean.dispose();
         projVar.dispose();
         projStd.dispose();
 
@@ -613,10 +611,15 @@ export function findSecondBMU(
       }
     }
     
+    // Guard against degenerate case (1x1 grid has no second BMU)
+    if (secondBMUIndex === -1) {
+      return tf.tensor1d([bmuRow, bmuCol]);
+    }
+
     // Convert to grid coordinates
     const row = Math.floor(secondBMUIndex / gridWidth);
     const col = secondBMUIndex % gridWidth;
-    
+
     return tf.tensor1d([row, col]);
   });
 }

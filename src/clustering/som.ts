@@ -324,10 +324,15 @@ export class SOM implements BaseClustering<SOMParams> {
       // Sum over samples
       const totalUpdate = weightedDiff.sum(0); // [totalNeurons, nFeatures]
 
-      // Normalize by sum of influences per neuron
+      // Normalize by sum of influences per neuron (sign-preserving for mexican_hat)
       const influenceSum = influence.sum(0); // [totalNeurons]
       const epsilon = 1e-8;
-      const influenceSumSafe = influenceSum.maximum(epsilon);
+      const absInfluenceSum = influenceSum.abs();
+      const influenceSumSafe = tf.where(
+        absInfluenceSum.greater(epsilon),
+        influenceSum,
+        tf.fill(influenceSum.shape, epsilon)
+      );
       const normalizedUpdate = totalUpdate.div(influenceSumSafe.expandDims(1));
 
       // Apply updates with learning rate
