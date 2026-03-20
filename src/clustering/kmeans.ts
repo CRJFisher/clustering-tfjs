@@ -1,7 +1,6 @@
 import type {
   BaseClustering,
   DataMatrix,
-  LabelVector,
   KMeansParams,
 } from './types';
 import * as tf from '../tf-adapter';
@@ -18,7 +17,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   public readonly params: KMeansParams;
 
   /** Lazily populated labels after calling {@link fit}. */
-  public labels_: LabelVector | null = null;
+  public labels_: number[] | null = null;
 
   /** Final cluster centroids (shape: nClusters × nFeatures). */
   public centroids_: tf.Tensor2D | null = null;
@@ -356,7 +355,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
     Xtensor.dispose();
   }
 
-  async fitPredict(X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
       throw new Error('KMeans.fit did not compute labels.');

@@ -328,7 +328,6 @@ async function somExample() {
   const som = new SOM({
     gridWidth: 4,
     gridHeight: 4,
-    nClusters: 16,
     topology: 'rectangular',  // or 'hexagonal'
     neighborhood: 'gaussian',
     initialization: 'pca',    // Use PCA for initialization
@@ -380,7 +379,6 @@ async function somVisualization() {
   const som = new SOM({
     gridWidth: 10,
     gridHeight: 10,
-    nClusters: 100,
     topology: 'hexagonal',    // Hexagonal grid for smoother transitions
     neighborhood: 'gaussian',
     initialization: 'pca',
@@ -426,7 +424,6 @@ async function onlineLearning() {
   const som = new SOM({
     gridWidth: 10,
     gridHeight: 10,
-    nClusters: 100,
     initialization: 'random',
     learningRate: 0.5,
     numEpochs: 10  // Few epochs per batch
@@ -469,7 +466,6 @@ async function compareTopologies() {
   const rectSom = new SOM({
     gridWidth: 5,
     gridHeight: 5,
-    nClusters: 25,
     topology: 'rectangular',
     initialization: 'pca'
   });
@@ -478,7 +474,6 @@ async function compareTopologies() {
   const hexSom = new SOM({
     gridWidth: 5,
     gridHeight: 5,
-    nClusters: 25,
     topology: 'hexagonal',
     initialization: 'pca'
   });

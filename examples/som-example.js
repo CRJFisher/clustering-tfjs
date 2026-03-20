@@ -52,7 +52,7 @@ async function basicSOMExample() {
     const som = new Clustering.SOM({
         gridWidth: 5,
         gridHeight: 5,
-        nClusters: 25,
+
         topology: 'rectangular',
         neighborhood: 'gaussian',
         initialization: 'pca',
@@ -94,7 +94,7 @@ async function compareTopologies() {
     const rectSom = new Clustering.SOM({
         gridWidth: 4,
         gridHeight: 4,
-        nClusters: 16,
+
         topology: 'rectangular',
         initialization: 'pca',
         numEpochs: 100,
@@ -113,7 +113,7 @@ async function compareTopologies() {
     const hexSom = new Clustering.SOM({
         gridWidth: 4,
         gridHeight: 4,
-        nClusters: 16,
+
         topology: 'hexagonal',
         initialization: 'pca',
         numEpochs: 100,
@@ -146,7 +146,7 @@ async function visualizationExample() {
     const som = new Clustering.SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         topology: 'hexagonal',
         neighborhood: 'gaussian',
         initialization: 'pca',
@@ -182,7 +182,7 @@ async function compareInitializations() {
     const params = {
         gridWidth: 4,
         gridHeight: 4,
-        nClusters: 16,
+
         topology: 'rectangular',
         numEpochs: 50,
         randomState: 42

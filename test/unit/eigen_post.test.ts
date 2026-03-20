@@ -1,8 +1,8 @@
 import * as tf from "../tensorflow-helper";
 
-import { deterministic_eigenpair_processing } from "../../src/utils/eigen_post";
+import { deterministicEigenpairProcessing } from "../../src/utils/eigen_post";
 
-describe("deterministic_eigenpair_processing", () => {
+describe("deterministicEigenpairProcessing", () => {
   it("sorts eigenpairs ascending and applies sign flip", () => {
     // Simple 3×3 symmetric matrix with repeated eigen-values
     // Matrix [[2,1,0],[1,2,0],[0,0,3]] has eigenvalues 1,3,3
@@ -21,11 +21,11 @@ describe("deterministic_eigenpair_processing", () => {
       eigenvectors: number[][];
     } => {
       // tf.linalg.eig is not available; use Jacobi solver from util.
-      const { jacobi_eigen_decomposition } = require("../../src/utils/laplacian");
-      return jacobi_eigen_decomposition(M as tf.Tensor2D);
+      const { jacobiEigenDecomposition } = require("../../src/utils/laplacian");
+      return jacobiEigenDecomposition(M as tf.Tensor2D);
     })();
 
-    const processed = deterministic_eigenpair_processing({
+    const processed = deterministicEigenpairProcessing({
       eigenvalues,
       eigenvectors,
     });

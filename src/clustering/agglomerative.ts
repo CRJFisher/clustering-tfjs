@@ -1,6 +1,5 @@
 import type {
   DataMatrix,
-  LabelVector,
   AgglomerativeClusteringParams,
   BaseClustering,
 } from './types';
@@ -19,7 +18,19 @@ export class AgglomerativeClustering
   implements BaseClustering<AgglomerativeClusteringParams>
 {
   public readonly params: AgglomerativeClusteringParams;
-  public labels_: LabelVector | null = null;
+
+  /**
+   * Cluster labels produced by `fit` / `fitPredict`.
+   *
+   * Populated after calling `fit`.
+   */
+  public labels_: number[] | null = null;
+
+  /**
+   * Children of each non-leaf node in the hierarchical clustering tree.
+   * Shape: `(nSamples-1, 2)` where each row gives the indices of the merged
+   * clusters. Lazily populated by future implementation.
+   */
   public children_: number[][] | null = null;
   public nLeaves_: number | null = null;
 
@@ -134,7 +145,7 @@ export class AgglomerativeClustering
     }
   }
 
-  async fitPredict(_X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(_X: DataMatrix): Promise<number[]> {
     await this.fit(_X);
     if (this.labels_ == null) {
       throw new Error('AgglomerativeClustering failed to compute labels.');

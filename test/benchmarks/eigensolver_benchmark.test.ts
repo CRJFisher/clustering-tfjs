@@ -1,7 +1,7 @@
 import * as tf from '../../src/tf-adapter';
 import { lanczos_smallest_eigenpairs } from '../../src/utils/lanczos';
 import { improved_jacobi_eigen } from '../../src/utils/eigen_improved';
-import { normalised_laplacian } from '../../src/utils/laplacian';
+import { normalisedLaplacian } from '../../src/utils/laplacian';
 import { compute_rbf_affinity } from '../../src/utils/affinity';
 
 /**
@@ -31,7 +31,7 @@ describe('Eigensolver benchmark: Lanczos vs Jacobi', () => {
     const affinity = compute_rbf_affinity(points);
     points.dispose();
 
-    const lap = normalised_laplacian(affinity) as tf.Tensor2D;
+    const lap = normalisedLaplacian(affinity) as tf.Tensor2D;
     affinity.dispose();
 
     return lap;

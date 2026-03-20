@@ -62,9 +62,7 @@ export async function benchmarkAlgorithm(
     case 'kmeans': {
       const kmeans = new KMeans({ nClusters: config.centers, randomState: 42 });
       await kmeans.fit(X);
-      _labels = Array.isArray(kmeans.labels_)
-        ? kmeans.labels_
-        : ((await kmeans.labels_!.array()) as number[]);
+      _labels = kmeans.labels_!;
       break;
     }
     case 'spectral': {
@@ -83,16 +81,13 @@ export async function benchmarkAlgorithm(
         linkage: 'average',
       });
       await agglo.fit(X);
-      _labels = Array.isArray(agglo.labels_)
-        ? agglo.labels_
-        : ((await agglo.labels_!.array()) as number[]);
+      _labels = agglo.labels_!;
       break;
     }
     case 'som': {
       // For SOM, use a square grid approximately matching the number of clusters
       const gridSize = Math.ceil(Math.sqrt(config.centers));
       const som = new SOM({
-        nClusters: gridSize * gridSize,
         gridWidth: gridSize,
         gridHeight: gridSize,
         topology: 'rectangular',
@@ -101,9 +96,7 @@ export async function benchmarkAlgorithm(
         randomState: 42,
       });
       await som.fit(X);
-      _labels = Array.isArray(som.labels_)
-        ? som.labels_
-        : ((await som.labels_!.array()) as number[]);
+      _labels = som.labels_!;
       break;
     }
   }

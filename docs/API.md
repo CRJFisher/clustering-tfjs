@@ -22,13 +22,12 @@ Complete API documentation for clustering-tfjs.
 All clustering algorithms implement the `BaseClustering` interface:
 
 ```typescript
-interface BaseClustering<P extends BaseClusteringParams> {
+interface BaseClustering<P extends CoreClusteringParams> {
   params: P;
-  labels_: LabelVector | null;
-  
+  labels_: number[] | null;
+
   fit(X: DataMatrix): Promise<void>;
-  predict(X: DataMatrix): Promise<LabelVector>;
-  fitPredict(X: DataMatrix): Promise<LabelVector>;
+  fitPredict(X: DataMatrix): Promise<number[]>;
 }
 ```
 
@@ -152,7 +151,6 @@ new SOM(params: SOMParams)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `nClusters` | `number` | required | Total number of neurons (gridWidth × gridHeight) |
 | `gridWidth` | `number` | required | Width of the SOM grid |
 | `gridHeight` | `number` | required | Height of the SOM grid |
 | `topology` | `'rectangular' \| 'hexagonal'` | `'rectangular'` | Grid topology (4/8 or 6 neighbors) |
@@ -166,7 +164,7 @@ new SOM(params: SOMParams)
 
 #### Methods
 
-##### fitPredict(X: DataMatrix): Promise<LabelVector>
+##### fitPredict(X: DataMatrix): Promise<number[]>
 Train the SOM and return cluster assignments.
 
 ##### fit(X: DataMatrix): Promise<void>
@@ -193,7 +191,6 @@ import { SOM } from 'clustering-tfjs';
 const som = new SOM({
   gridWidth: 5,
   gridHeight: 5,
-  nClusters: 25,
   topology: 'hexagonal',
   neighborhood: 'gaussian',
   initialization: 'pca',

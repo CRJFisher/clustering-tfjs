@@ -49,7 +49,7 @@ describe('SOM Hexagonal Topology', () => {
   describe('Neighbor Detection', () => {
     it('should correctly identify neighbors in hexagonal topology', () => {
       const som = new SOM({
-        nClusters: 9,
+
         gridHeight: 3,
         gridWidth: 3,
         topology: 'hexagonal'
@@ -82,7 +82,7 @@ describe('SOM Hexagonal Topology', () => {
 
     it('should handle edge cases correctly', () => {
       const som = new SOM({
-        nClusters: 25,
+
         gridHeight: 5,
         gridWidth: 5,
         topology: 'hexagonal'
@@ -106,7 +106,7 @@ describe('SOM Hexagonal Topology', () => {
       const data = tf.randomUniform([20, 2], 0, 1);
       
       const som = new SOM({
-        nClusters: 9,
+
         gridHeight: 3,
         gridWidth: 3,
         topology: 'hexagonal',
@@ -143,7 +143,7 @@ describe('SOM Hexagonal Topology', () => {
       
       // Create two SOMs with same parameters except topology
       const somRect = new SOM({
-        nClusters: 9,
+
         gridHeight: 3,
         gridWidth: 3,
         topology: 'rectangular',
@@ -154,7 +154,7 @@ describe('SOM Hexagonal Topology', () => {
       });
       
       const somHex = new SOM({
-        nClusters: 9,
+
         gridHeight: 3,
         gridWidth: 3,
         topology: 'hexagonal',
@@ -204,7 +204,7 @@ describe('SOM Hexagonal Topology', () => {
       ]);
       
       const som = new SOM({
-        nClusters: 9,
+
         gridHeight: 3,
         gridWidth: 3,
         topology: 'hexagonal',
@@ -241,7 +241,7 @@ describe('SOM Hexagonal Topology', () => {
       ]);
       
       const som = new SOM({
-        nClusters: 16,
+
         gridHeight: 4,
         gridWidth: 4,
         topology: 'hexagonal',
@@ -259,26 +259,21 @@ describe('SOM Hexagonal Topology', () => {
       expect(weights.shape).toEqual([4, 4, 2]);
       
       const labels = await som.predict(data);
-      // Labels should be an array of length 15 or tensor1d
-      const labelsArray = Array.isArray(labels) ? labels : await labels.array();
-      expect(labelsArray.length).toEqual(15);
-      
+      expect(labels.length).toEqual(15);
+
       // Instead of getActivationDistances, check quantization error
       const quantError = som.quantizationError();
       expect(quantError).toBeGreaterThanOrEqual(0);
-      
+
       const uMatrix = som.getUMatrix();
       expect(uMatrix.shape).toEqual([4, 4]);
-      
+
       const topError = await som.topographicError(data);
       expect(topError).toBeGreaterThanOrEqual(0);
       expect(topError).toBeLessThanOrEqual(1);
-      
+
       // Clean up
       weights.dispose();
-      if (!Array.isArray(labels)) {
-        labels.dispose();
-      }
       uMatrix.dispose();
       data.dispose();
     });

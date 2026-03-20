@@ -1,6 +1,5 @@
 import type {
   DataMatrix,
-  LabelVector,
   SpectralClusteringParams,
   BaseClustering,
 } from './types';
@@ -104,13 +103,6 @@ export class SpectralClustering
       this.affinityMatrix_ = null;
     }
 
-    if (
-      this.labels_ != null &&
-      (this.labels_ as unknown as tf.Tensor).dispose instanceof Function
-    ) {
-      // Only dispose if the labels are a Tensor (not plain array)
-      (this.labels_ as unknown as tf.Tensor).dispose();
-    }
     this.labels_ = null;
   }
 
@@ -121,10 +113,7 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
-  constructor(
-    params: SpectralClusteringParams & { captureDebugInfo?: boolean },
-  ) {
-    // Extract captureDebugInfo if provided (for modular compatibility)
+  constructor(params: SpectralClusteringParams) {
     const { captureDebugInfo = false, ...clusteringParams } = params;
 
     // Freeze user params to avoid accidental mutation downstream.
@@ -252,11 +241,11 @@ export class SpectralClustering
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
       // Compute Laplacian and eigenvectors as before
-      const { normalised_laplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../utils/laplacian');
 
       // Compute normalized Laplacian AND get degree information for recovery
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalised_laplacian(this.affinityMatrix_ as tf.Tensor2D, true),
+        normalisedLaplacian(this.affinityMatrix_ as tf.Tensor2D, true),
       );
 
       // Capture Laplacian spectrum if requested
@@ -417,7 +406,7 @@ export class SpectralClustering
       // Pass the embedding directly to k-means without row normalization
       await km.fit(U);
 
-      this.labels_ = km.labels_ as number[];
+      this.labels_ = km.labels_!;
 
       // Capture clustering metrics if requested
       if (this.captureDebugInfo && km.inertia_ !== null) {
@@ -435,7 +424,7 @@ export class SpectralClustering
     Xtensor.dispose();
   }
 
-  async fitPredict(X: DataMatrix): Promise<LabelVector> {
+  async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
       throw new Error('SpectralClustering failed to compute labels.');
@@ -495,9 +484,9 @@ export class SpectralClustering
     };
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
-    const { normalised_laplacian } = await import('../utils/laplacian');
+    const { normalisedLaplacian } = await import('../utils/laplacian');
     const { laplacian, sqrtDegrees } = tf.tidy(() =>
-      normalised_laplacian(affinity, true),
+      normalisedLaplacian(affinity, true),
     );
 
     // Capture Laplacian spectrum using same solver routing as the main pipeline
@@ -560,7 +549,7 @@ export class SpectralClustering
 
     const km = new KMeans(kmParams);
     await km.fit(embedding);
-    const labels = km.labels_ as number[];
+    const labels = km.labels_!;
 
     // Capture clustering metrics
     if (km.inertia_ !== null) {
@@ -742,13 +731,13 @@ export class SpectralClustering
         numComponents,
       );
     } else {
-      const { normalised_laplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../utils/laplacian');
       const { smallest_eigenvectors_with_values } = await import(
         '../utils/smallest_eigenvectors_with_values'
       );
 
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalised_laplacian(affinityMatrix, true),
+        normalisedLaplacian(affinityMatrix, true),
       );
 
       const numEigenvectors = Math.max(this.params.nClusters, numComponents);

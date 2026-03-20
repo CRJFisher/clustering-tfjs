@@ -129,7 +129,7 @@ describe('Memory regression tests', () => {
       const som = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
         numEpochs: 3,
         randomState: 42,
       });
@@ -146,7 +146,7 @@ describe('Memory regression tests', () => {
       const som = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
         numEpochs: 3,
         randomState: 42,
       });

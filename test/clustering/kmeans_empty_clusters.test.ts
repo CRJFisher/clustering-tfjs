@@ -31,7 +31,7 @@ describe("KMeans empty cluster handling", () => {
     await km.fit(X);
 
     // Check that all clusters have been assigned
-    const labels = km.labels_ as number[];
+    const labels = km.labels_!;
     const uniqueLabels = new Set(labels);
     expect(uniqueLabels.size).toBe(5);
 

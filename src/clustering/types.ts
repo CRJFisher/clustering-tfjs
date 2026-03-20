@@ -23,19 +23,25 @@ export type DataMatrix = tf.Tensor2D | number[][];
 export type LabelVector = tf.Tensor1D | number[];
 
 /**
- * Common options shared by *all* clustering algorithms.
+ * Minimal options shared by *all* clustering algorithms, including those
+ * that do not use an explicit cluster count (e.g. SOM).
  */
-export interface BaseClusteringParams {
-  /**
-   * Desired number of clusters. Must be ≥ 1.
-   */
-  nClusters: number;
-
+export interface CoreClusteringParams {
   /**
    * Optional random seed to ensure deterministic behaviour where the
    * underlying algorithm involves randomness (e.g. k-means init).
    */
   randomState?: number;
+}
+
+/**
+ * Common options for clustering algorithms that require an explicit cluster count.
+ */
+export interface BaseClusteringParams extends CoreClusteringParams {
+  /**
+   * Desired number of clusters. Must be ≥ 1.
+   */
+  nClusters: number;
 }
 
 /**
@@ -147,6 +153,14 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Default: [0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
    */
   gammaRange?: number[];
+
+  /**
+   * Whether to capture debug information during fitting.
+   * When enabled, intermediate statistics (affinity, Laplacian spectrum,
+   * embedding, clustering metrics) are stored and accessible via getDebugInfo().
+   * Default: false
+   */
+  captureDebugInfo?: boolean;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {
@@ -168,7 +182,7 @@ export interface AgglomerativeClusteringParams extends BaseClusteringParams {
  */
 
 export interface BaseClustering<
-  Params extends BaseClusteringParams = BaseClusteringParams,
+  Params extends CoreClusteringParams = BaseClusteringParams,
 > {
   /**
    * Hyper-parameters used by the estimator instance.
@@ -186,7 +200,7 @@ export interface BaseClustering<
    * Convenience wrapper that fits the model **and** immediately returns the
    * predicted labels for `X` in a single call.
    */
-  fitPredict(X: DataMatrix): Promise<LabelVector>;
+  fitPredict(X: DataMatrix): Promise<number[]>;
 }
 
 /**
@@ -217,11 +231,10 @@ export type DecayFunction = (epoch: number, totalEpochs: number) => number;
 
 /**
  * Parameters for Self-Organizing Maps algorithm.
- * 
- * Note: SOM doesn't use `nClusters` from BaseClusteringParams.
- * Instead, it uses gridWidth * gridHeight to define the map size.
+ *
+ * SOM uses gridWidth * gridHeight to define the map size rather than nClusters.
  */
-export interface SOMParams extends BaseClusteringParams {
+export interface SOMParams extends CoreClusteringParams {
   /**
    * Width of the SOM grid (number of neurons in x-axis).
    * Must be ≥ 1.

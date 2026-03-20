@@ -28,7 +28,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 5,
         gridHeight: 5,
-        nClusters: 25, // Compatibility param
+
         randomState: 42,
       });
 
@@ -42,13 +42,13 @@ describe('SOM', () => {
       expect(() => new SOM({
         gridWidth: 0,
         gridHeight: 5,
-        nClusters: 0,
+
       })).toThrow('gridWidth must be >= 1');
 
       expect(() => new SOM({
         gridWidth: 5,
         gridHeight: -1,
-        nClusters: 5,
+
       })).toThrow('gridHeight must be >= 1');
     });
 
@@ -56,7 +56,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         numEpochs: 10,
         randomState: 42,
       });
@@ -81,7 +81,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         numEpochs: 10,
         randomState: 42,
       });
@@ -289,7 +289,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         numEpochs: 10,
         onlineMode: true,
         randomState: 42,
@@ -319,7 +319,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         randomState: 42,
       });
 
@@ -338,7 +338,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         onlineMode: true,
         randomState: 42,
       });
@@ -365,7 +365,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
         numEpochs: 5,
         randomState: 42,
       });
@@ -386,7 +386,7 @@ describe('SOM', () => {
       const som2 = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
       });
 
       som2.loadState(state);
@@ -399,7 +399,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
         numEpochs: 5,
         randomState: 42,
       });
@@ -420,7 +420,7 @@ describe('SOM', () => {
       const som2 = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
       });
 
       await som2.loadFromJSON(json);
@@ -435,7 +435,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         numEpochs: 10,
         randomState: 42,
       });
@@ -460,7 +460,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 3,
         gridHeight: 3,
-        nClusters: 9,
+
         numEpochs: 10,
         randomState: 42,
       });
@@ -487,7 +487,7 @@ describe('SOM', () => {
       const som = new SOM({
         gridWidth: 2,
         gridHeight: 2,
-        nClusters: 4,
+
         numEpochs: 5,
         randomState: 42,
       });
@@ -517,7 +517,6 @@ describe('SOM', () => {
         const som = new SOM({
           gridWidth: 2,
           gridHeight: 2,
-          nClusters: 4,
           numEpochs: 1,
           randomState: 42,
           miniBatchSize: 100,
@@ -546,7 +545,6 @@ describe('SOM', () => {
         const som = new SOM({
           gridWidth: 3,
           gridHeight: 3,
-          nClusters: 9,
         });
 
         // Diagonal neighbors should be neighbors (8-connectivity)
@@ -625,11 +623,11 @@ describe('SOM', () => {
         ]);
 
         const som1 = new SOM({
-          gridWidth: 3, gridHeight: 3, nClusters: 9,
+          gridWidth: 3, gridHeight: 3,
           numEpochs: 10, randomState: 42,
         });
         const som2 = new SOM({
-          gridWidth: 3, gridHeight: 3, nClusters: 9,
+          gridWidth: 3, gridHeight: 3,
           numEpochs: 10, randomState: 42,
         });
 
@@ -696,7 +694,6 @@ describe('SOM', () => {
         const som = new SOM({
           gridWidth: 3,
           gridHeight: 3,
-          nClusters: 9,
           numEpochs: 10,
           randomState: 42,
         });

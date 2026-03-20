@@ -1,5 +1,5 @@
 import * as tf from '../tf-adapter';
-import { deterministic_eigenpair_processing } from './eigen_post';
+import { deterministicEigenpairProcessing } from './eigen_post';
 
 /**
  * Size threshold for choosing Lanczos over Jacobi.
@@ -108,7 +108,7 @@ function jacobi_path(
     });
 
     // Deterministic ordering & sign fixing
-    const processed = deterministic_eigenpair_processing({
+    const processed = deterministicEigenpairProcessing({
       eigenvalues,
       eigenvectors,
     });

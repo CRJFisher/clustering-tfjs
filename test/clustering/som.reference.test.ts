@@ -33,7 +33,7 @@ describe('SOM Reference Tests', () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
           gridHeight: fixture.params.gridHeight,
-          nClusters: fixture.params.gridWidth * fixture.params.gridHeight,
+
           topology: fixture.params.topology,
           neighborhood: fixture.params.neighborhood,
           learningRate: fixture.params.learningRate,
@@ -71,7 +71,7 @@ describe('SOM Reference Tests', () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
           gridHeight: fixture.params.gridHeight,
-          nClusters: fixture.params.gridWidth * fixture.params.gridHeight,
+
           topology: fixture.params.topology,
           neighborhood: fixture.params.neighborhood,
           learningRate: fixture.params.learningRate,
@@ -85,7 +85,7 @@ describe('SOM Reference Tests', () => {
 
         // Compare clustering similarity using adjusted Rand index concept
         const similarity = calculateClusteringSimilarity(
-          labels as number[],
+          labels,
           fixture.labels
         );
 
@@ -106,7 +106,7 @@ describe('SOM Reference Tests', () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
           gridHeight: fixture.params.gridHeight,
-          nClusters: fixture.params.gridWidth * fixture.params.gridHeight,
+
           topology: fixture.params.topology,
           neighborhood: fixture.params.neighborhood,
           learningRate: fixture.params.learningRate,
@@ -136,7 +136,7 @@ describe('SOM Reference Tests', () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
           gridHeight: fixture.params.gridHeight,
-          nClusters: fixture.params.gridWidth * fixture.params.gridHeight,
+
           topology: fixture.params.topology,
           neighborhood: fixture.params.neighborhood,
           learningRate: fixture.params.learningRate,

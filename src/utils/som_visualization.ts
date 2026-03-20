@@ -1,3 +1,4 @@
+import tfDefault from '../tf-adapter';
 import * as tf from '../tf-adapter';
 import type { SOM } from '../clustering/som';
 
@@ -359,7 +360,7 @@ export async function getDensityMap(
       const filter = kernelTensor.expandDims(-1).expandDims(-1) as tf.Tensor4D;
 
       // Apply 2D convolution with 'same' padding to preserve dimensions
-      const convolved = tf.conv2d(input, filter, 1, 'same');
+      const convolved = tfDefault.conv2d(input, filter, 1, 'same');
 
       // Squeeze back from [1, H, W, 1] to [H, W]
       return convolved.squeeze([0, 3]) as tf.Tensor2D;
