@@ -111,12 +111,6 @@ export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
       }
     }
 
-    // Clean up
-    xNorm.dispose();
-    xNormT.dispose();
-    cross.dispose();
-    distances.dispose();
-
     // Return mean silhouette score
     return silhouetteValues.reduce((sum, val) => sum + val, 0) / n;
   });

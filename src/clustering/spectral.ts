@@ -166,7 +166,9 @@ export class SpectralClustering
       this.params,
     );
 
-    const affinitySum = (await this.affinityMatrix_.sum().data())[0];
+    const sumTensor = this.affinityMatrix_.sum();
+    const affinitySum = (await sumTensor.data())[0];
+    sumTensor.dispose();
     if (affinitySum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
@@ -429,14 +431,13 @@ export class SpectralClustering
           iterations: 0, // KMeans doesn't expose iteration count currently
         };
       }
+      km.dispose();
     }
 
     /* --------------------------- Clean-up --------------------------------- */
     U.dispose();
 
-    if (!isTensor(_X)) {
-      Xtensor.dispose();
-    }
+    Xtensor.dispose();
   }
 
   async fitPredict(X: DataMatrix): Promise<LabelVector> {
@@ -475,7 +476,9 @@ export class SpectralClustering
       this.params,
     );
 
-    const affinitySum = (await affinity.sum().data())[0];
+    const affinitySumTensor = affinity.sum();
+    const affinitySum = (await affinitySumTensor.data())[0];
+    affinitySumTensor.dispose();
     if (affinitySum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
@@ -569,13 +572,15 @@ export class SpectralClustering
         iterations: 0, // KMeans doesn't expose iteration count currently
       };
     }
+    km.dispose();
 
     /* ---------------------------- Prepare Result ----------------------------- */
+    const degreesIntermediate = tf.pow(sqrtDegrees, -2) as tf.Tensor1D;
     const result: IntermediateSteps = {
       affinity: tf.clone(affinity),
       laplacian: {
         laplacian: tf.clone(laplacian),
-        degrees: tf.clone(tf.pow(sqrtDegrees, -2) as tf.Tensor1D),
+        degrees: tf.clone(degreesIntermediate),
         sqrtDegrees: tf.clone(sqrtDegrees),
       },
       embedding: {
@@ -585,6 +590,7 @@ export class SpectralClustering
       },
       labels: [...labels],
     };
+    degreesIntermediate.dispose();
 
     // Store labels for consistency
     this.labels_ = labels;
@@ -598,9 +604,7 @@ export class SpectralClustering
     eigenvalues.dispose();
     embedding.dispose();
 
-    if (!isTensor(X)) {
-      Xtensor.dispose();
-    }
+    Xtensor.dispose();
 
     return result;
   }

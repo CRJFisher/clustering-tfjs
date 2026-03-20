@@ -71,15 +71,11 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
         const distances = tf.sqrt(diff.square().sum(1));
         const avgDistance = distances.mean().dataSync()[0];
         dispersions.push(avgDistance);
-        distances.dispose();
-        diff.dispose();
       } else {
         // Single point cluster has zero dispersion
         dispersions.push(0);
       }
 
-      // Clean up
-      clusterData.dispose();
     }
 
     // Compute inter-cluster distances and similarity ratios
@@ -94,7 +90,6 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
         // Compute distance between centroids
         const diff = centroids[i].sub(centroids[j]);
         const distance = tf.sqrt(diff.square().sum()).dataSync()[0];
-        diff.dispose();
 
         // Avoid division by zero
         if (distance === 0) {
@@ -112,11 +107,6 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
       }
 
       maxSimilarities.push(maxSimilarity);
-    }
-
-    // Clean up centroids
-    for (const centroid of centroids) {
-      centroid.dispose();
     }
 
     // Compute Davies-Bouldin index as average of maximum similarities

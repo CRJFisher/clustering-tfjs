@@ -83,20 +83,10 @@ export function calinskiHarabasz(X: DataMatrix, labels: LabelVector): number {
       const centroidDiffSquared = centroidDiff.square().sum();
       betweenClusterSS += clusterSize * centroidDiffSquared.dataSync()[0];
 
-      // Clean up tensors
-      clusterData.dispose();
-      clusterCentroid.dispose();
-      diff.dispose();
-      squaredDiff.dispose();
-      centroidDiff.dispose();
-      centroidDiffSquared.dispose();
     }
 
     // Compute Calinski-Harabasz score
     const score = betweenClusterSS / (k - 1) / (withinClusterSS / (n - k));
-
-    // Clean up
-    globalCentroid.dispose();
 
     return score;
   });
