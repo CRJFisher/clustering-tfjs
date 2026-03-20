@@ -69,15 +69,17 @@ function lancewilliams(
 }
 
 /**
- * Scans all active clusters to find the nearest neighbor of cluster `idx`.
- * Returns the NN index and distance.
+ * Scans all active clusters to find the nearest neighbor of cluster `idx`
+ * and writes the result directly into the nn/nnDist arrays (zero allocation).
  */
-function findNearestNeighbor(
+function updateNearestNeighbor(
   D: Float64Array,
   n: number,
   active: Uint8Array,
   idx: number,
-): { nn: number; dist: number } {
+  nn: Int32Array,
+  nnDist: Float64Array,
+): void {
   let bestDist = Infinity;
   let bestNN = -1;
   const row = idx * n;
@@ -89,7 +91,8 @@ function findNearestNeighbor(
       bestNN = k;
     }
   }
-  return { nn: bestNN, dist: bestDist };
+  nn[idx] = bestNN;
+  nnDist[idx] = bestDist;
 }
 
 /**
@@ -99,7 +102,7 @@ function findNearestNeighbor(
  * For each active cluster, the nearest neighbor and its distance are cached.
  * The global minimum merge pair is found by scanning these cached distances
  * in O(n) time. After each merge, the cache is updated in O(n) amortized
- * time, yielding O(n²) total complexity.
+ * time, yielding O(n²) amortized total complexity.
  *
  * @param D     Flat n×n distance matrix (Float64Array). Mutated in place.
  * @param n     Number of original data points.
@@ -107,7 +110,7 @@ function findNearestNeighbor(
  * @param linkage   Linkage criterion.
  * @returns Array of MergeRecord describing each merge in order.
  */
-export function heapCluster(
+export function storedNNCluster(
   D: Float64Array,
   n: number,
   nClusters: number,
@@ -125,9 +128,7 @@ export function heapCluster(
 
   // Initialize NN cache — O(n²)
   for (let i = 0; i < n; i++) {
-    const result = findNearestNeighbor(D, n, active, i);
-    nn[i] = result.nn;
-    nnDist[i] = result.dist;
+    updateNearestNeighbor(D, n, active, i, nn, nnDist);
   }
 
   const merges: MergeRecord[] = [];
@@ -144,6 +145,8 @@ export function heapCluster(
         minI = i;
       }
     }
+
+    if (minI === -1) break; // no active clusters remain
 
     const j = nn[minI];
     const survivor = Math.min(minI, j);
@@ -183,9 +186,7 @@ export function heapCluster(
       // Update k's NN cache
       if (nn[k] === removed || nn[k] === survivor) {
         // k's NN was involved in the merge — need full rescan
-        const result = findNearestNeighbor(D, n, active, k);
-        nn[k] = result.nn;
-        nnDist[k] = result.dist;
+        updateNearestNeighbor(D, n, active, k, nn, nnDist);
       } else if (newDist < nnDist[k]) {
         // The merged cluster is now closer to k than k's current NN
         nn[k] = survivor;
@@ -196,9 +197,7 @@ export function heapCluster(
     clusterSizes[survivor] += clusterSizes[removed];
 
     // Rescan survivor's NN
-    const result = findNearestNeighbor(D, n, active, survivor);
-    nn[survivor] = result.nn;
-    nnDist[survivor] = result.dist;
+    updateNearestNeighbor(D, n, active, survivor, nn, nnDist);
   }
 
   return merges;

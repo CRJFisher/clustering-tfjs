@@ -1,4 +1,4 @@
-import { heapCluster, LinkageCriterion } from '../src/clustering/linkage';
+import { storedNNCluster, LinkageCriterion } from '../src/clustering/linkage';
 
 /**
  * Helper: build a flat Float64Array distance matrix from a 2D array.
@@ -14,7 +14,7 @@ function toFlat(D2d: number[][]): Float64Array {
   return flat;
 }
 
-describe('heapCluster', () => {
+describe('storedNNCluster', () => {
   /**
    * Base distance matrix for three singleton clusters:
    *
@@ -34,7 +34,7 @@ describe('heapCluster', () => {
 
   it('produces the correct number of merges', () => {
     const D = toFlat(baseMatrix);
-    const merges = heapCluster(D, 3, 1, 'single');
+    const merges = storedNNCluster(D, 3, 1, 'single');
     // 3 clusters down to 1 = 2 merges
     expect(merges.length).toBe(2);
   });
@@ -43,7 +43,7 @@ describe('heapCluster', () => {
     const linkages: LinkageCriterion[] = ['single', 'complete', 'average', 'ward'];
     for (const linkage of linkages) {
       const D = toFlat(baseMatrix);
-      const merges = heapCluster(D, 3, 1, linkage);
+      const merges = storedNNCluster(D, 3, 1, linkage);
       // First merge should be clusters 0 and 1 (distance 2)
       expect(merges[0].clusterA).toBe(0);
       expect(merges[0].clusterB).toBe(1);
@@ -64,14 +64,14 @@ describe('heapCluster', () => {
   expectedSecondMergeDist.forEach(({ linkage, expectedDist }) => {
     it(`${linkage} linkage: second merge distance is correct`, () => {
       const D = toFlat(baseMatrix);
-      const merges = heapCluster(D, 3, 1, linkage);
+      const merges = storedNNCluster(D, 3, 1, linkage);
       expect(merges[1].distance).toBeCloseTo(expectedDist, 6);
     });
   });
 
   it('stops at the requested number of clusters', () => {
     const D = toFlat(baseMatrix);
-    const merges = heapCluster(D, 3, 2, 'single');
+    const merges = storedNNCluster(D, 3, 2, 'single');
     // 3 clusters down to 2 = 1 merge
     expect(merges.length).toBe(1);
     expect(merges[0].clusterA).toBe(0);
@@ -90,7 +90,7 @@ describe('heapCluster', () => {
       [9, 8, 3, 0],
     ];
     const D = toFlat(D2d);
-    const merges = heapCluster(D, 4, 1, 'single');
+    const merges = storedNNCluster(D, 4, 1, 'single');
 
     expect(merges.length).toBe(3);
 
@@ -110,7 +110,7 @@ describe('heapCluster', () => {
 
   it('cluster sizes are tracked correctly', () => {
     const D = toFlat(baseMatrix);
-    const merges = heapCluster(D, 3, 1, 'average');
+    const merges = storedNNCluster(D, 3, 1, 'average');
     expect(merges[0].newSize).toBe(2); // merge of two singletons
     expect(merges[1].newSize).toBe(3); // merge size-2 with singleton
   });

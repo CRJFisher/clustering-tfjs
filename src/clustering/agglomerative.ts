@@ -6,14 +6,14 @@ import type {
 } from './types';
 import * as tf from '../tf-adapter';
 import { pairwiseDistanceMatrix } from '../utils/pairwise_distance';
-import { heapCluster } from './linkage';
+import { storedNNCluster } from './linkage';
 
 /**
- * Agglomerative (hierarchical) clustering using a priority-queue-based
+ * Agglomerative (hierarchical) clustering using a stored-nearest-neighbor
  * merge strategy with Lance–Williams distance updates.
  *
- * Achieves O(n² log n) complexity instead of the naive O(n³) approach by
- * maintaining a min-heap of candidate merge pairs with lazy deletion.
+ * Achieves O(n²) amortized complexity instead of the naive O(n³) approach by
+ * caching per-cluster nearest neighbors and updating them incrementally.
  */
 export class AgglomerativeClustering
   implements BaseClustering<AgglomerativeClusteringParams>
@@ -67,7 +67,7 @@ export class AgglomerativeClustering
 
     // Compute initial pairwise distance matrix
     const distanceTensor = pairwiseDistanceMatrix(points, metric);
-    const D2d: number[][] = (await distanceTensor.array()) as number[][];
+    const D2d = (await distanceTensor.array()) as number[][];
     distanceTensor.dispose();
 
     // Convert to flat Float64Array for cache-friendly access and in-place updates
@@ -78,8 +78,8 @@ export class AgglomerativeClustering
       }
     }
 
-    // Run priority-queue-based clustering — O(n² log n)
-    const merges = heapCluster(D, nSamples, nClusters, linkage);
+    // Run stored-nearest-neighbor clustering — O(n²) amortized
+    const merges = storedNNCluster(D, nSamples, nClusters, linkage);
 
     // Build children_ array using global cluster IDs (sklearn convention:
     // original samples are 0..n-1, each merge creates n, n+1, n+2, ...)
