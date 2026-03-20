@@ -199,11 +199,19 @@ export function getNeighborDistanceMatrix(som: SOM): tf.Tensor2D {
         // Define neighbors based on topology
         const neighbors: [number, number][] = [];
         if (topology === 'rectangular') {
-          // 4-connected neighbors
-          if (i > 0) neighbors.push([i - 1, j]);
-          if (i < gridHeight - 1) neighbors.push([i + 1, j]);
-          if (j > 0) neighbors.push([i, j - 1]);
-          if (j < gridWidth - 1) neighbors.push([i, j + 1]);
+          // 8-connected neighbors (consistent with getUMatrix and areNeighbors)
+          const deltas = [
+            [-1, -1], [-1, 0], [-1, 1],
+            [0, -1],           [0, 1],
+            [1, -1],  [1, 0],  [1, 1]
+          ];
+          for (const [di, dj] of deltas) {
+            const ni = i + di;
+            const nj = j + dj;
+            if (ni >= 0 && ni < gridHeight && nj >= 0 && nj < gridWidth) {
+              neighbors.push([ni, nj]);
+            }
+          }
         } else {
           // Hexagonal neighbors (6-connected)
           const evenRow = i % 2 === 0;
@@ -307,37 +315,52 @@ export async function getDensityMap(
   sigma: number = 1.0
 ): Promise<tf.Tensor2D> {
   const hitMap = await getHitMap(som, X);
-  
-  // Apply Gaussian smoothing for better visualization
-  return tf.tidy(() => {
-    // const [gridHeight, gridWidth] = hitMap.shape;  // Reserved for future Gaussian smoothing
-    
-    // Create Gaussian kernel
-    const kernelSize = Math.ceil(sigma * 3) * 2 + 1;
-    const kernel = tf.buffer([kernelSize, kernelSize]);
-    const center = Math.floor(kernelSize / 2);
-    
-    let sum = 0;
-    for (let i = 0; i < kernelSize; i++) {
-      for (let j = 0; j < kernelSize; j++) {
-        const distance = Math.sqrt(
-          Math.pow(i - center, 2) + Math.pow(j - center, 2)
-        );
-        const value = Math.exp(-distance * distance / (2 * sigma * sigma));
-        kernel.set(value, i, j);
-        sum += value;
-      }
-    }
-    
-    // Normalize kernel
-    for (let i = 0; i < kernelSize; i++) {
-      for (let j = 0; j < kernelSize; j++) {
-        kernel.set(kernel.get(i, j) / sum, i, j);
-      }
-    }
-    
-    // Convolve hit map with kernel (simplified)
-    // For full implementation, would use tf.conv2d
+
+  // No smoothing needed for sigma <= 0
+  if (sigma <= 0) {
     return hitMap;
-  });
+  }
+
+  try {
+    return tf.tidy(() => {
+      // Create Gaussian kernel
+      const kernelSize = Math.ceil(sigma * 3) * 2 + 1;
+      const kernel = tf.buffer([kernelSize, kernelSize]);
+      const center = Math.floor(kernelSize / 2);
+
+      let sum = 0;
+      for (let i = 0; i < kernelSize; i++) {
+        for (let j = 0; j < kernelSize; j++) {
+          const distance = Math.sqrt(
+            Math.pow(i - center, 2) + Math.pow(j - center, 2)
+          );
+          const value = Math.exp(-distance * distance / (2 * sigma * sigma));
+          kernel.set(value, i, j);
+          sum += value;
+        }
+      }
+
+      // Normalize kernel
+      for (let i = 0; i < kernelSize; i++) {
+        for (let j = 0; j < kernelSize; j++) {
+          kernel.set(kernel.get(i, j) / sum, i, j);
+        }
+      }
+
+      // Reshape hitMap [H, W] -> [1, H, W, 1] for conv2d
+      const input = hitMap.expandDims(0).expandDims(-1) as tf.Tensor4D;
+
+      // Reshape kernel [K, K] -> [K, K, 1, 1] for conv2d filter
+      const kernelTensor = kernel.toTensor();
+      const filter = kernelTensor.expandDims(-1).expandDims(-1) as tf.Tensor4D;
+
+      // Apply 2D convolution with 'same' padding to preserve dimensions
+      const convolved = tf.conv2d(input, filter, 1, 'same');
+
+      // Squeeze back from [1, H, W, 1] to [H, W]
+      return convolved.squeeze([0, 3]) as tf.Tensor2D;
+    });
+  } finally {
+    hitMap.dispose();
+  }
 }

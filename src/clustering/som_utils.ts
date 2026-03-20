@@ -160,52 +160,66 @@ export function initializeWeights(
       }
       
       case 'linear': {
-        // Linear initialization along first two principal components
-        // For simplicity, we'll use the data's variance directions
-        
+        // Linear initialization: span 2D grid along first two principal components
+        // Following MiniSom's pca_weights_init approach
+        const [nSamplesLin, nFeaturesLin] = X.shape;
+
+        if (nSamplesLin < 2 || nFeaturesLin < 2) {
+          return initializeWeights(X, gridHeight, gridWidth, 'random', randomSeed);
+        }
+
         // Center the data
-        const mean = X.mean(0);
-        const _centered = X.sub(mean);
-        
-        // Compute covariance matrix (simplified PCA)
-        // Note: Full PCA implementation would use covariance matrix
-        // const cov = tf.matMul(centered, centered, true, false).div(nSamples);
-        
-        // Get eigenvectors (using SVD as approximation)
-        // Note: TensorFlow.js doesn't have full eigen decomposition,
-        // so we'll use a simplified approach
-        
-        // For linear initialization, create a linear grid in data space
-        const xMin = X.min(0);
-        const xMax = X.max(0);
-        const xRange = xMax.sub(xMin);
-        
-        // Create grid coordinates
-        const rowCoords = tf.linspace(0, 1, gridHeight);
-        const colCoords = tf.linspace(0, 1, gridWidth);
-        
-        // Initialize weights as a linear combination
+        const mean = X.mean(0, true); // [1, nFeatures]
+        const centered = X.sub(mean);
+
+        // Compute covariance matrix
+        const cov = tf.matMul(centered, centered, true, false).div(nSamplesLin - 1);
+
+        // Get first 2 principal components via power iteration
+        const nComps = Math.min(2, nFeaturesLin);
+        const components = computePrincipalComponents(cov as tf.Tensor2D, nComps);
+
+        // Project data onto PCs to determine scale (unbiased variance, consistent with covariance)
+        const projections = tf.matMul(centered, components, false, true); // [nSamples, nComps]
+        const projVar = projections.square().sum(0).div(nSamplesLin - 1); // unbiased (centered data has mean 0)
+        const projStd = projVar.sqrt();
+        const projStdData = projStd.dataSync();
+
+        // Scale eigenvectors by projection standard deviations
+        const componentsData = components.arraySync() as number[][];
+        const scaledPC1 = componentsData[0].map(v => v * projStdData[0]);
+        const scaledPC2 = nComps > 1
+          ? componentsData[1].map(v => v * projStdData[1])
+          : new Array(nFeaturesLin).fill(0);
+
+        const meanData = mean.squeeze().dataSync();
+
+        // Build weights: mean + c1 * scaledPC1 + c2 * scaledPC2
+        // c1, c2 range from -1 to 1 (MiniSom convention)
         const weights: number[][][] = [];
         for (let i = 0; i < gridHeight; i++) {
           const rowWeights: number[][] = [];
+          const c1 = gridHeight > 1 ? -1 + 2 * i / (gridHeight - 1) : 0;
           for (let j = 0; j < gridWidth; j++) {
-            // Linear interpolation in data space
-            const alpha = i / Math.max(1, gridHeight - 1);
-            const beta = j / Math.max(1, gridWidth - 1);
-            
-            // Create weight vector
-            const weight = xMin.add(
-              xRange.mul(tf.tensor1d([alpha * 0.7 + beta * 0.3]))
-            );
-            rowWeights.push(Array.from(weight.dataSync()));
-            weight.dispose();
+            const c2 = gridWidth > 1 ? -1 + 2 * j / (gridWidth - 1) : 0;
+            const weight: number[] = [];
+            for (let f = 0; f < nFeaturesLin; f++) {
+              weight.push(meanData[f] + c1 * scaledPC1[f] + c2 * scaledPC2[f]);
+            }
+            rowWeights.push(weight);
           }
           weights.push(rowWeights);
         }
-        
-        rowCoords.dispose();
-        colCoords.dispose();
-        
+
+        // Cleanup
+        mean.dispose();
+        centered.dispose();
+        cov.dispose();
+        components.dispose();
+        projections.dispose();
+        projVar.dispose();
+        projStd.dispose();
+
         return tf.tensor3d(weights);
       }
       
@@ -584,17 +598,28 @@ export function findSecondBMU(
     const diff = weightsFlat.sub(sampleExpanded);
     const distances = diff.square().sum(1).sqrt();
     
-    // Set BMU distance to infinity to exclude it
-    const distancesArray = Array.from(distances.dataSync());
-    distancesArray[bmuFlatIndex] = Infinity;
+    // Find second-best matching unit using iterative min-finding
+    // (avoids Math.min(...spread) which causes stack overflow on large grids)
+    const distancesArray = distances.dataSync();
+    let secondMinVal = Infinity;
+    let secondBMUIndex = -1;
+    for (let i = 0; i < distancesArray.length; i++) {
+      if (i === bmuFlatIndex) continue;
+      if (distancesArray[i] < secondMinVal) {
+        secondMinVal = distancesArray[i];
+        secondBMUIndex = i;
+      }
+    }
     
-    // Find second minimum
-    const secondBMUIndex = distancesArray.indexOf(Math.min(...distancesArray.filter(d => d !== Infinity)));
-    
+    // Guard against degenerate case (1x1 grid has no second BMU)
+    if (secondBMUIndex === -1) {
+      return tf.tensor1d([bmuRow, bmuCol]);
+    }
+
     // Convert to grid coordinates
     const row = Math.floor(secondBMUIndex / gridWidth);
     const col = secondBMUIndex % gridWidth;
-    
+
     return tf.tensor1d([row, col]);
   });
 }

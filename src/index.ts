@@ -73,5 +73,7 @@ export {
   getActivationMap,
   trackBMUTrajectory,
   getQuantizationQualityMap,
+  getDensityMap,
+  getNeighborDistanceMatrix,
   exportForVisualization,
 } from './utils/som_visualization';

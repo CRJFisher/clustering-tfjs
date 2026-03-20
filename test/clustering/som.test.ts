@@ -4,6 +4,7 @@ import {
   initializeWeights,
   findBMU,
   findBMUBatch,
+  findSecondBMU,
   gaussianNeighborhood,
   bubbleNeighborhood,
   linearDecay,
@@ -507,6 +508,239 @@ describe('SOM', () => {
       
       // Should have cleaned up most tensors (allowing small tolerance)
       expect(finalMemory).toBeLessThanOrEqual(initialMemory + 4);
+    });
+  });
+
+  describe('Task-37 correctness fixes', () => {
+    describe('AC#1: Weight update normalization', () => {
+      it('should produce finite weights with large batch sizes', async () => {
+        const som = new SOM({
+          gridWidth: 2,
+          gridHeight: 2,
+          nClusters: 4,
+          numEpochs: 1,
+          randomState: 42,
+          miniBatchSize: 100,
+        });
+
+        const X = tf.randomUniform([100, 3], -5, 5, 'float32', 42) as tf.Tensor2D;
+        await som.fit(X);
+
+        const weights = som.getWeights().arraySync();
+        for (const row of weights) {
+          for (const neuron of row) {
+            for (const val of neuron) {
+              expect(isFinite(val)).toBe(true);
+              expect(Math.abs(val)).toBeLessThan(100);
+            }
+          }
+        }
+
+        X.dispose();
+        som.dispose();
+      });
+    });
+
+    describe('AC#2: Rectangular 8-connectivity consistency', () => {
+      it('should treat diagonal neighbors as neighbors in rectangular topology', () => {
+        const som = new SOM({
+          gridWidth: 3,
+          gridHeight: 3,
+          nClusters: 9,
+        });
+
+        // Diagonal neighbors should be neighbors (8-connectivity)
+        expect(som['areNeighbors'](0, 0, 1, 1, 3, 3, 'rectangular')).toBe(true);
+        expect(som['areNeighbors'](1, 1, 0, 0, 3, 3, 'rectangular')).toBe(true);
+        expect(som['areNeighbors'](1, 1, 2, 2, 3, 3, 'rectangular')).toBe(true);
+
+        // Non-adjacent should not be neighbors
+        expect(som['areNeighbors'](0, 0, 2, 2, 3, 3, 'rectangular')).toBe(false);
+        expect(som['areNeighbors'](0, 0, 0, 2, 3, 3, 'rectangular')).toBe(false);
+
+        // Cardinal neighbors still work
+        expect(som['areNeighbors'](0, 0, 0, 1, 3, 3, 'rectangular')).toBe(true);
+        expect(som['areNeighbors'](0, 0, 1, 0, 3, 3, 'rectangular')).toBe(true);
+
+        som.dispose();
+      });
+    });
+
+    describe('AC#3: findSecondBMU iterative min-finding', () => {
+      it('should find correct second BMU for known weights', () => {
+        const sample = tf.tensor1d([0.9, 0.9]) as tf.Tensor1D;
+        const weights = tf.tensor3d([
+          [[0, 0], [1, 0]],
+          [[0, 1], [1, 1]],
+        ]) as tf.Tensor3D;
+
+        // BMU should be [1,1] (weight [1,1]) since sample is [0.9, 0.9]
+        const bmu = findBMU(sample, weights);
+        const bmuArray = bmu.arraySync();
+        expect(bmuArray[0]).toBe(1);
+        expect(bmuArray[1]).toBe(1);
+
+        // Second BMU should be one of the adjacent neurons
+        const secondBmu = findSecondBMU(sample, weights, bmu);
+        const secondArray = secondBmu.arraySync();
+
+        // Second BMU should not be the same as BMU
+        expect(secondArray[0] === bmuArray[0] && secondArray[1] === bmuArray[1]).toBe(false);
+
+        sample.dispose();
+        weights.dispose();
+        bmu.dispose();
+        secondBmu.dispose();
+      });
+
+      it('should not stack overflow on large grids', () => {
+        // 50x50 = 2,500 neurons — would overflow with Math.min(...spread)
+        const nFeatures = 2;
+        const weights = tf.randomUniform([50, 50, nFeatures], 0, 1, 'float32', 42) as tf.Tensor3D;
+        const sample = tf.randomUniform([nFeatures], 0, 1, 'float32', 42) as tf.Tensor1D;
+        const bmu = findBMU(sample, weights);
+
+        // Should not throw (the old spread approach would RangeError here)
+        const secondBmu = findSecondBMU(sample, weights, bmu);
+        const arr = secondBmu.arraySync();
+
+        // Validate returned coordinates are within grid bounds
+        expect(arr[0]).toBeGreaterThanOrEqual(0);
+        expect(arr[0]).toBeLessThan(50);
+        expect(arr[1]).toBeGreaterThanOrEqual(0);
+        expect(arr[1]).toBeLessThan(50);
+
+        secondBmu.dispose();
+        sample.dispose();
+        weights.dispose();
+        bmu.dispose();
+      });
+    });
+
+    describe('AC#4: Data shuffling between epochs', () => {
+      it('should produce deterministic results with same randomState', async () => {
+        const X = tf.tensor2d([
+          [0, 0], [0, 1], [1, 0], [1, 1],
+          [0.5, 0.5], [0.2, 0.8], [0.8, 0.2], [0.3, 0.3],
+        ]);
+
+        const som1 = new SOM({
+          gridWidth: 3, gridHeight: 3, nClusters: 9,
+          numEpochs: 10, randomState: 42,
+        });
+        const som2 = new SOM({
+          gridWidth: 3, gridHeight: 3, nClusters: 9,
+          numEpochs: 10, randomState: 42,
+        });
+
+        await som1.fit(X);
+        await som2.fit(X);
+
+        const w1 = som1.getWeights().arraySync();
+        const w2 = som2.getWeights().arraySync();
+
+        // Same seed should produce identical weights
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            for (let k = 0; k < 2; k++) {
+              expect(w1[i][j][k]).toBeCloseTo(w2[i][j][k], 5);
+            }
+          }
+        }
+
+        X.dispose();
+        som1.dispose();
+        som2.dispose();
+      });
+    });
+
+    describe('AC#5: Linear initialization with PCA', () => {
+      it('should span a 2D surface, not a 1D line', () => {
+        // Data with clear 2-axis variance
+        const X = tf.tensor2d([
+          [3, 0, 0], [-3, 0, 0],
+          [0, 2, 0], [0, -2, 0],
+          [1, 1, 0], [-1, -1, 0],
+        ]);
+
+        const weights = initializeWeights(X, 3, 3, 'linear');
+        const w = weights.arraySync();
+
+        // Verify 2D surface: row direction and column direction should not be parallel
+        const topLeft = w[0][0];
+        const topRight = w[0][2];
+        const bottomLeft = w[2][0];
+
+        const rowDir = topRight.map((v, i) => v - topLeft[i]);
+        const colDir = bottomLeft.map((v, i) => v - topLeft[i]);
+
+        const magRow = Math.sqrt(rowDir.reduce((s, v) => s + v * v, 0));
+        const magCol = Math.sqrt(colDir.reduce((s, v) => s + v * v, 0));
+
+        // Both directions should have non-trivial magnitude
+        expect(magRow).toBeGreaterThan(0.01);
+        expect(magCol).toBeGreaterThan(0.01);
+
+        // Directions should not be parallel (cosine < 0.5)
+        const dot = rowDir.reduce((s, v, i) => s + v * colDir[i], 0);
+        const cosAngle = Math.abs(dot / (magRow * magCol + 1e-10));
+        expect(cosAngle).toBeLessThan(0.5);
+
+        X.dispose();
+        weights.dispose();
+      });
+    });
+
+    describe('AC#6: getDensityMap Gaussian convolution', () => {
+      it('should apply smoothing and preserve output shape', async () => {
+        const som = new SOM({
+          gridWidth: 3,
+          gridHeight: 3,
+          nClusters: 9,
+          numEpochs: 10,
+          randomState: 42,
+        });
+
+        const X = tf.tensor2d([
+          [0, 0], [0, 1], [1, 0], [1, 1],
+        ]);
+
+        await som.fit(X);
+
+        const { getDensityMap, getHitMap } = await import('../../src/utils/som_visualization');
+
+        const hitMap = await getHitMap(som, X);
+        const densityMap = await getDensityMap(som, X, 1.0);
+
+        // Shape should be preserved
+        expect(densityMap.shape).toEqual([3, 3]);
+
+        const hitData = await hitMap.array();
+        const densityData = await densityMap.array();
+
+        // Density map should differ from raw hitMap (smoothing applied)
+        let hasDifference = false;
+        for (let i = 0; i < 3; i++) {
+          for (let j = 0; j < 3; j++) {
+            if (Math.abs(hitData[i][j] - densityData[i][j]) > 0.001) {
+              hasDifference = true;
+            }
+          }
+        }
+        expect(hasDifference).toBe(true);
+
+        // All density values should be non-negative
+        for (const row of densityData) {
+          for (const val of row) {
+            expect(val).toBeGreaterThanOrEqual(0);
+          }
+        }
+
+        hitMap.dispose();
+        densityMap.dispose();
+        X.dispose();
+        som.dispose();
+      });
     });
   });
 });
