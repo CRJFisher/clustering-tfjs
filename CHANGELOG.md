@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-20
+
+### Added
+
+- React Native backend support with environment detection, platform-specific loader, and I/O compatibility
+- `SOM.cluster()` method for two-phase SOM clustering with meaningful cluster output
+- Lanczos iterative eigensolver for scalable spectral clustering (49.8x speedup at n=500, enables n=5000+)
+- Adjusted Rand Index (ARI) and Normalized Mutual Information (NMI) validation metrics
+- Elbow method and silhouette-only evaluation for cluster selection
+- `partialFit()` dimension validation for SOM
+- `dispose()` methods for proper tensor cleanup across all algorithms
+- Comprehensive test coverage improvements (~1800 lines of new tests)
+
+### Changed
+
+- Agglomerative clustering optimized from O(n³) to O(n² log n)
+- Unified TF.js backend architecture with lazy adapter wrappers
+- Reduced public API surface from ~130 to ~33 exports
+- Moved `@tensorflow/tfjs-core` to peerDependencies
+- `SOM.getWeights()` returns plain arrays instead of tensors
+- `Clustering.init()` is now idempotent with promise-based concurrency guard
+- Build output restructured to flat `dist/` layout with `sideEffects: false` for tree-shaking
+
+### Fixed
+
+- Spectral embedding normalization using D^(1/2) instead of D across all four spectral paths
+- Tensor memory leaks across KMeans, SpectralClustering, SOM, and validation functions
+- 6 SOM algorithmic correctness issues (weight update normalization, 8-connectivity, iterative BMU, epoch shuffling, PCA initialization, density map convolution)
+- 6 eigendecomposition numerical stability issues (division by zero, PSD clamping, variable shadowing, Wilkinson shift NaN, tolerance, eigenvector orthogonality)
+- Broken `package.json` exports and build output structure; test files no longer shipped to npm
+- `findOptimalClusters` combined scoring and NaN handling
+- Platform detection reliability with multi-signal approach
+
 ## [0.4.0] - 2025-09-03
 
 ### Added
@@ -84,6 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CommonJS and ES module builds
 - Zero required native dependencies (optional tfjs-node for better performance)
 
+[0.5.0]: https://github.com/CRJFisher/clustering-tfjs/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/CRJFisher/clustering-tfjs/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/CRJFisher/clustering-tfjs/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/CRJFisher/clustering-tfjs/compare/v0.2.0...v0.3.0
