@@ -33,20 +33,12 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "browser": {
-        "import": "./dist/index.esm.js",
-        "require": "./dist/clustering.browser.js"
-      },
-      "node": {
-        "import": "./dist/index.esm.js",
-        "require": "./dist/index.js"
-      },
-      "default": {
-        "import": "./dist/index.esm.js",
-        "require": "./dist/index.js"
-      }
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
     }
   },
+  "sideEffects": false,
   "files": [
     "dist",
     "README.md",

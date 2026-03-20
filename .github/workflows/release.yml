@@ -40,7 +40,7 @@ jobs:
       - name: Verify all platform builds
         run: |
           echo "=== Verifying platform builds ==="
-          for file in dist/clustering.browser.js dist/clustering.node.js dist/index.js dist/clustering.esm.js; do
+          for file in dist/clustering.browser.js dist/clustering.node.js dist/index.js dist/index.esm.js dist/index.d.ts; do
             if [ ! -f "$file" ]; then
               echo "ERROR: Missing required build file: $file"
               exit 1

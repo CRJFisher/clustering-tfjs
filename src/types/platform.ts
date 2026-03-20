@@ -72,6 +72,16 @@ export interface ExtendedBackendConfig {
 }
 
 /**
+ * Backend-specific features available in different environments
+ */
+export interface PlatformFeatures {
+  gpuAcceleration: boolean;
+  wasmSimd: boolean;
+  nodeBindings: boolean;
+  webgl: boolean;
+}
+
+/**
  * Platform detection result
  */
 export interface PlatformInfo {
