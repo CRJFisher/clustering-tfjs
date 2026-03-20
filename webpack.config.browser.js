@@ -16,13 +16,6 @@ module.exports = {
   },
   resolve: {
     extensions: ['.ts', '.js'],
-    alias: {
-      // Use browser-specific adapter
-      '../tf-adapter': path.resolve(__dirname, 'src/tf-adapter.browser.ts'),
-      './tf-adapter': path.resolve(__dirname, 'src/tf-adapter.browser.ts'),
-      // Replace Node.js loader with browser loader
-      './tf-loader.node': path.resolve(__dirname, 'src/tf-loader.browser.ts'),
-    },
     fallback: {
       // Browser doesn't have Node.js modules
       fs: false,

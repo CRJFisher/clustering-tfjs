@@ -56,7 +56,7 @@ const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
  */
 export const Clustering = {
   /**
-   * Current platform
+   * Current platform (detected at runtime)
    */
   platform: detectPlatform(),
   
