@@ -206,9 +206,15 @@ export function improved_jacobi_eigen(
     }
   }
 
-  // Post-condition: validate eigenvector orthogonality
+  // Post-condition: validate eigenvector orthonormality
   let maxOrthError = 0;
+  let maxNormError = 0;
   for (let i = 0; i < n; i++) {
+    let selfDot = 0;
+    for (let k = 0; k < n; k++) {
+      selfDot += sortedVectors[k][i] * sortedVectors[k][i];
+    }
+    maxNormError = Math.max(maxNormError, Math.abs(selfDot - 1));
     for (let j = i + 1; j < n; j++) {
       let dot = 0;
       for (let k = 0; k < n; k++) {
@@ -217,9 +223,9 @@ export function improved_jacobi_eigen(
       maxOrthError = Math.max(maxOrthError, Math.abs(dot));
     }
   }
-  if (maxOrthError > 1e-6) {
+  if (maxOrthError > 1e-6 || maxNormError > 1e-6) {
     console.warn(
-      `[spectral] Eigenvector orthogonality check: max |v_i · v_j| = ${maxOrthError.toExponential(3)} (threshold 1e-6)`,
+      `[spectral] Eigenvector orthonormality check: max |v_i · v_j| = ${maxOrthError.toExponential(3)}, max ||v_i|| - 1| = ${maxNormError.toExponential(3)} (threshold 1e-6)`,
     );
   }
 

@@ -125,6 +125,49 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
     expectOrthonormal(eigenvectors, 3, 3);
     L.dispose();
   });
+
+  it("handles negative off-diagonal with equal diagonals", () => {
+    // [[3, -1], [-1, 3]] has eigenvalues 2 and 4
+    const M = tf.tensor2d(
+      [
+        [3, -1],
+        [-1, 3],
+      ],
+      [2, 2],
+    );
+    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(M);
+
+    eigenvalues.forEach((v) => expect(Number.isFinite(v)).toBe(true));
+    expect(eigenvalues[0]).toBeCloseTo(2, 10);
+    expect(eigenvalues[1]).toBeCloseTo(4, 10);
+
+    expectOrthonormal(eigenvectors, 2, 2);
+    expectReconstruction(
+      eigenvalues,
+      eigenvectors,
+      M.arraySync() as number[][],
+    );
+    M.dispose();
+  });
+
+  it("handles zero diagonals with off-diagonal coupling", () => {
+    // [[0, 1], [1, 0]] has eigenvalues -1 and 1
+    const M = tf.tensor2d(
+      [
+        [0, 1],
+        [1, 0],
+      ],
+      [2, 2],
+    );
+    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(M);
+
+    eigenvalues.forEach((v) => expect(Number.isFinite(v)).toBe(true));
+    expect(eigenvalues[0]).toBeCloseTo(-1, 10);
+    expect(eigenvalues[1]).toBeCloseTo(1, 10);
+
+    expectOrthonormal(eigenvectors, 2, 2);
+    M.dispose();
+  });
 });
 
 /* ========================================================================== */
@@ -375,6 +418,27 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     result.eigenvalues.dispose();
     M.dispose();
   });
+
+  it("eigenvalue 5e-8 IS treated as zero (below tolerance)", () => {
+    const M = tf.tensor2d(
+      [
+        [0, 0, 0],
+        [0, 5e-8, 0],
+        [0, 0, 1.5],
+      ],
+      [3, 3],
+    );
+
+    const result = smallest_eigenvectors_with_values(M, 1);
+
+    // c = 2 (both 0 and 5e-8 are <= 1e-7)
+    // sliceCols = min(1 + 2, 3) = 3
+    expect(result.eigenvectors.shape[1]).toBe(3);
+
+    result.eigenvectors.dispose();
+    result.eigenvalues.dispose();
+    M.dispose();
+  });
 });
 
 /* ========================================================================== */
@@ -399,7 +463,7 @@ describe("eigenvector orthogonality validation", () => {
   });
 
   it("tridiagonal QR produces orthonormal eigenvectors", () => {
-    const { eigenvalues, eigenvectors } = tridiagonal_qr_eigen(
+    const { eigenvectors } = tridiagonal_qr_eigen(
       [4, 3, 2, 1],
       [0.5, 0.7, 0.3],
     );
