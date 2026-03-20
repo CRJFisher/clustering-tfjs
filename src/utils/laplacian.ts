@@ -1,7 +1,5 @@
 import * as tf from '../tf-adapter';
 
-import { deterministic_eigenpair_processing } from './eigen_post';
-
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
 /* -------------------------------------------------------------------------- */
@@ -305,6 +303,9 @@ export function jacobi_eigen_decomposition(
 /**
  * Convenience helper that returns the `k` smallest eigenvectors of the
  * provided symmetric matrix *as a TensorFlow.js tensor* (n × k).
+ *
+ * Delegates to `smallest_eigenvectors_with_values` for consistent
+ * solver selection (Lanczos for large matrices, Jacobi for small).
  */
 export function smallest_eigenvectors(
   matrix: tf.Tensor2D,
@@ -314,47 +315,9 @@ export function smallest_eigenvectors(
     throw new Error('k must be a positive integer.');
   }
 
-  return tf.tidy(() => {
-    // Import improved solver for better accuracy
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { improved_jacobi_eigen } = require('./eigen_improved');
-
-    // 1) Full eigendecomposition with improved solver
-    // For normalized Laplacians, we know it's PSD
-    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {
-      isPSD: true,
-      maxIterations: 3000,
-      tolerance: 1e-14,
-    });
-
-    // 2) Deterministic ordering & sign fixing (task-12.3.1 helper)
-    const { eigenvectors: vecSorted } = deterministic_eigenpair_processing({
-      eigenvalues,
-      eigenvectors,
-    });
-
-    // 3) Determine number of numerically-zero eigenvalues `c` (≤ n).  We must
-    //    include *all* corresponding eigenvectors because each represents a
-    //    connected component in the affinity graph.  scikit-learn retains
-    //    them initially and discards them later after constructing the full
-    //    embedding.  We mimic this contract so callers can remove the block
-    //    in one go.
-
-    const n = vecSorted.length;
-    // For spectral clustering, we want exactly k eigenvectors
-    // INCLUDING any with zero eigenvalues (they encode component structure)
-    const sliceCols = Math.min(k, n);
-    const selected: number[][] = Array.from(
-      { length: n },
-      () => new Array(sliceCols),
-    );
-
-    for (let col = 0; col < sliceCols; col++) {
-      for (let row = 0; row < n; row++) {
-        selected[row][col] = vecSorted[row][col];
-      }
-    }
-
-    return tf.tensor2d(selected, [n, sliceCols], 'float32');
-  });
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { smallest_eigenvectors_with_values } = require('./smallest_eigenvectors_with_values');
+  const { eigenvectors, eigenvalues } = smallest_eigenvectors_with_values(matrix, k) as { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D };
+  eigenvalues.dispose();
+  return eigenvectors;
 }

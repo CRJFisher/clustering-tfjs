@@ -92,6 +92,10 @@ export async function validationBasedOptimization(
 /**
  * Performs intensive parameter sweep for difficult clustering problems.
  * Tests multiple gamma values and validation configurations.
+ *
+ * Optimized: computes the eigendecomposition (via embedding) only ONCE per
+ * gamma value, then reuses it across all metric/attempt combinations.
+ * This reduces eigendecompositions from 9×(1+3×3)=90 to just 9.
  */
 export async function intensiveParameterSweep(
   X: tf.Tensor2D,
@@ -123,111 +127,96 @@ export async function intensiveParameterSweep(
   };
   let bestScore = -Infinity;
 
-  // Test without validation first
+  // Process each gamma value: compute affinity + embedding ONCE,
+  // then run all k-means variations against the cached embedding.
   for (const gamma of gammaRange) {
-    // Recompute affinity and embedding with new gamma
     const affinityMatrix = computeAffinityMatrix(X, {
       ...params,
       gamma,
     });
 
     const embedding = await computeEmbeddingFromAffinity(affinityMatrix);
+    affinityMatrix.dispose(); // No longer needed after embedding is computed
 
-    // Simple k-means without validation
-    const km = new KMeans({
-      nClusters: params.nClusters,
-      randomState: params.randomState,
-      nInit: 10,
-    });
+    try {
+      // Phase A: non-validation k-means with nInit=10
+      const km = new KMeans({
+        nClusters: params.nClusters,
+        randomState: params.randomState,
+        nInit: 10,
+      });
 
-    await km.fit(embedding);
-    const labels = km.labels_ as number[];
+      await km.fit(embedding);
+      const labels = km.labels_ as number[];
 
-    // Evaluate with all metrics and pick best
-    let avgScore = 0;
-    for (const metric of metrics) {
-      let score: number;
-      switch (metric) {
-        case 'calinski-harabasz':
-          score = validationModule.calinskiHarabasz(embedding, labels);
-          break;
-        case 'davies-bouldin':
-          score = -validationModule.daviesBouldin(embedding, labels); // Negate so higher is better
-          break;
-        case 'silhouette':
-          score = validationModule.silhouetteScore(embedding, labels);
-          break;
-      }
-      avgScore += score;
-    }
-    avgScore /= metrics.length;
-
-    if (avgScore > bestScore) {
-      bestScore = avgScore;
-      bestResult = {
-        labels,
-        config: {
-          gamma,
-          metric: 'calinski-harabasz',
-          attempts: 0,
-          useValidation: false,
-        },
-      };
-    }
-
-    // Clean up
-    affinityMatrix.dispose();
-    embedding.dispose();
-  }
-
-  // Test with validation
-  for (const gamma of gammaRange) {
-    for (const attempts of attemptsRange) {
+      // Evaluate with all metrics
+      let avgScore = 0;
       for (const metric of metrics) {
-        try {
-          // Recompute affinity and embedding
-          const affinityMatrix = computeAffinityMatrix(X, {
-            ...params,
+        let score: number;
+        switch (metric) {
+          case 'calinski-harabasz':
+            score = validationModule.calinskiHarabasz(embedding, labels);
+            break;
+          case 'davies-bouldin':
+            score = -validationModule.daviesBouldin(embedding, labels);
+            break;
+          case 'silhouette':
+            score = validationModule.silhouetteScore(embedding, labels);
+            break;
+        }
+        avgScore += score;
+      }
+      avgScore /= metrics.length;
+
+      if (avgScore > bestScore) {
+        bestScore = avgScore;
+        bestResult = {
+          labels,
+          config: {
             gamma,
-          });
+            metric: 'calinski-harabasz',
+            attempts: 0,
+            useValidation: false,
+          },
+        };
+      }
 
-          const embedding = await computeEmbeddingFromAffinity(affinityMatrix);
+      // Phase B: validation-based optimization (reusing the same embedding)
+      for (const attempts of attemptsRange) {
+        for (const metric of metrics) {
+          try {
+            const result = await validationBasedOptimization(
+              embedding,
+              params.nClusters,
+              metric,
+              attempts,
+              params.randomState,
+            );
 
-          // Validation-based optimization
-          const result = await validationBasedOptimization(
-            embedding,
-            params.nClusters,
-            metric,
-            attempts,
-            params.randomState,
-          );
+            const normalizedScore =
+              metric === 'davies-bouldin'
+                ? -(result.score ?? 0)
+                : (result.score ?? 0);
 
-          // Normalize score for comparison
-          const normalizedScore =
-            metric === 'davies-bouldin'
-              ? -(result.score ?? 0)
-              : (result.score ?? 0);
-
-          if (normalizedScore > bestScore) {
-            bestScore = normalizedScore;
-            bestResult = {
-              labels: result.labels,
-              config: {
-                gamma,
-                metric,
-                attempts,
-                useValidation: true,
-              },
-            };
+            if (normalizedScore > bestScore) {
+              bestScore = normalizedScore;
+              bestResult = {
+                labels: result.labels,
+                config: {
+                  gamma,
+                  metric,
+                  attempts,
+                  useValidation: true,
+                },
+              };
+            }
+          } catch (_e) {
+            // Skip if validation fails
           }
-
-          // Clean up
-          affinityMatrix.dispose();
-          embedding.dispose();
-        } catch (e) {
-          // Skip if validation fails
         }
       }
+    } finally {
+      embedding.dispose(); // Guaranteed cleanup
     }
   }
 

@@ -17,7 +17,7 @@
 
 export interface EigenPairInput {
   eigenvalues: number[];
-  eigenvectors: number[][]; // shape (n, n) – column j belongs to eigenvalue j
+  eigenvectors: number[][]; // shape (n, m) – column j belongs to eigenvalue j (m may equal n or k)
 }
 
 export interface EigenPairOutput {
@@ -35,7 +35,7 @@ export interface EigenPairOutput {
    * Column-wise eigen-vectors after sign correction.
    * Same dual naming scheme as for the eigen-values.
    */
-  eigenvectors: number[][]; // shape (n,n)
+  eigenvectors: number[][]; // shape (n, m)
   /** Alias matching task spec wording */
   vectorsSorted: number[][];
 }
@@ -57,15 +57,13 @@ export function deterministic_eigenpair_processing(
     };
   }
 
-  const n = eigenvectors.length;
+  const n = eigenvectors.length;       // number of rows (samples)
+  const m = eigenvalues.length;        // number of eigenpairs (may be < n)
 
-  // Validate shape (n rows, n columns)
-  if (
-    eigenvectors.some((row) => row.length !== n) ||
-    eigenvalues.length !== n
-  ) {
+  // Validate shape: each row must have m columns, matching eigenvalues count
+  if (eigenvectors.some((row) => row.length !== m)) {
     throw new Error(
-      'eigenvectors must be square (n×n) and eigenvalues length must equal n.',
+      `eigenvectors column count must match eigenvalues length (${m}).`,
     );
   }
 
@@ -76,11 +74,11 @@ export function deterministic_eigenpair_processing(
   const eigenvaluesSorted: number[] = indexed.map((p) => p.val);
   const eigenvectorsSorted: number[][] = Array.from(
     { length: n },
-    () => new Array(n),
+    () => new Array(m),
   );
 
   // Step 2: for each eigenvector apply sign fix while copying into new matrix
-  for (let newCol = 0; newCol < n; newCol++) {
+  for (let newCol = 0; newCol < m; newCol++) {
     const srcCol = indexed[newCol].idx;
 
     // Find entry with maximum absolute magnitude

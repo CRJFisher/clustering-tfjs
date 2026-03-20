@@ -257,16 +257,17 @@ export class SpectralClustering
 
       // Capture Laplacian spectrum if requested
       if (this.captureDebugInfo) {
-        const { jacobi_eigen_decomposition } = await import(
-          '../utils/laplacian'
+        const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
+          '../utils/smallest_eigenvectors_with_values'
         );
-        const { eigenvalues } = await jacobi_eigen_decomposition(laplacian);
-        // Take first 10 eigenvalues for spectrum
-        const spectrum = eigenvalues.slice(0, Math.min(10, eigenvalues.length));
-        this.debugInfo_!.laplacianSpectrum = spectrum;
+        const spectrumK = Math.min(10, laplacian.shape[0]);
+        const { eigenvalues: specEvals } = spectrumHelper(laplacian, spectrumK);
+        const specData = await specEvals.data();
+        this.debugInfo_!.laplacianSpectrum = Array.from(specData);
+        specEvals.dispose();
       }
 
-      // Get eigenvectors AND eigenvalues for diffusion map scaling
+      // Get eigenvectors AND eigenvalues for D^{1/2} normalization
       const { smallest_eigenvectors_with_values } = await import(
         '../utils/smallest_eigenvectors_with_values'
       );
@@ -502,15 +503,15 @@ export class SpectralClustering
       normalised_laplacian(affinity, true),
     );
 
-    // Capture Laplacian spectrum
-    const { jacobi_eigen_decomposition } = await import('../utils/laplacian');
-    const { eigenvalues: laplacianEigenvalues } =
-      await jacobi_eigen_decomposition(laplacian);
-    const spectrum = laplacianEigenvalues.slice(
-      0,
-      Math.min(10, laplacianEigenvalues.length),
+    // Capture Laplacian spectrum using same solver routing as the main pipeline
+    const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
+      '../utils/smallest_eigenvectors_with_values'
     );
-    this.debugInfo_.laplacianSpectrum = spectrum;
+    const spectrumK = Math.min(10, laplacian.shape[0]);
+    const { eigenvalues: specEvals } = spectrumHelper(laplacian, spectrumK);
+    const specData = await specEvals.data();
+    this.debugInfo_.laplacianSpectrum = Array.from(specData);
+    specEvals.dispose();
 
     /* ---------------------------- 3) Embedding ----------------------------- */
     const { smallest_eigenvectors_with_values } = await import(

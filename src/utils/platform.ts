@@ -138,7 +138,8 @@ export async function platformFetch(url: string, options?: RequestInit): Promise
     // Node.js might need a polyfill
     try {
       const nodeFetch = await import('node-fetch');
-      return nodeFetch.default(url, options) as Promise<Response>;
+      // node-fetch types differ slightly from DOM fetch — cast through unknown
+      return nodeFetch.default(url as string, options as Record<string, unknown>) as unknown as Promise<Response>;
     } catch {
       throw new Error('Fetch not available. Install node-fetch for Node.js environments.');
     }
