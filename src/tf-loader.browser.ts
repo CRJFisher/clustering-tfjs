@@ -16,7 +16,7 @@ export async function loadTensorFlow() {
   try {
     const tf = await import('@tensorflow/tfjs');
     return tf as typeof import('@tensorflow/tfjs');
-  } catch (error) {
+  } catch {
     throw new Error(
       'TensorFlow.js not found. Please load it before using this library:\n' +
       '<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>'

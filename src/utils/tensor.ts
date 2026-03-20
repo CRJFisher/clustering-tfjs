@@ -65,8 +65,8 @@ export function manhattanDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  */
 export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
   return tf.tidy(() => {
-    const aNorm = a.norm();
-    const bNorm = b.norm();
+    const aNorm = a.norm('euclidean', -1);
+    const bNorm = b.norm('euclidean', -1);
     const dot = a.mul(b).sum(-1);
     const eps = tf.scalar(1e-8);
     const denom = aNorm.mul(bNorm).add(eps);

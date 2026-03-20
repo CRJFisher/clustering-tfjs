@@ -15,9 +15,7 @@ import { isTensor } from '../utils/tensor-utils';
 import { make_random_stream, type RandomStream } from '../utils/rng';
 import {
   initializeWeights,
-  findBMU,
   findBMUBatch,
-  findSecondBMU,
   computeNeighborhoodInfluenceBatch,
   createGridDistanceMatrix,
   computeBMUDistances,
@@ -44,6 +42,7 @@ export class SOM implements BaseClustering<SOMParams> {
   private learningRateScheduler_: DecayFunction | null = null;
   private radiusScheduler_: DecayFunction | null = null;
   private totalSamplesLearned_: number = 0;
+  private lastBatchSize_: number = 0;
   private currentEpoch_: number = 0;
   private quantizationErrors_: number[] = [];
   
@@ -502,7 +501,8 @@ export class SOM implements BaseClustering<SOMParams> {
     
     try {
       const [nSamples] = xTensor.shape;
-      
+      this.lastBatchSize_ = nSamples;
+
       // Initialize if first call
       if (!this.weights_) {
         // Initialize weights and grid
@@ -671,50 +671,64 @@ export class SOM implements BaseClustering<SOMParams> {
     if (!this.weights_) {
       throw new Error('SOM must be fitted first');
     }
-    
+
     if (!X) {
       throw new Error('Input data required for topographic error calculation');
     }
-    
+
     const xTensor = isTensor(X) ? X as tf.Tensor2D : tf.tensor2d(X);
-    
+
     try {
       const { gridWidth, gridHeight, topology } = this.params;
-      const [nSamples] = xTensor.shape;
-      
+      const [nSamples, nFeatures] = xTensor.shape;
+      const totalNeurons = gridHeight * gridWidth;
+
+      // Compute distance matrix [nSamples, totalNeurons] in one batch
+      const { bmu1Coords, bmu2Coords } = tf.tidy(() => {
+        const weightsFlat = this.weights_!.reshape([totalNeurons, nFeatures]);
+        const samplesNorm = xTensor.square().sum(1, true);
+        const weightsNorm = weightsFlat.square().sum(1, true).transpose();
+        const dotProduct = tf.matMul(xTensor, weightsFlat, false, true);
+        const distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
+
+        // First BMU: argmin of distances
+        const bmu1Indices = distances.argMin(1);
+
+        // Second BMU: mask first BMU with large value, then argmin again
+        const oneHot = tf.oneHot(bmu1Indices, totalNeurons);
+        const maskedDistances = distances.add(oneHot.mul(1e30));
+        const bmu2Indices = maskedDistances.argMin(1);
+
+        // Convert flat indices to grid coordinates
+        const bmu1Rows = bmu1Indices.div(gridWidth).floor();
+        const bmu1Cols = bmu1Indices.mod(gridWidth);
+        const bmu2Rows = bmu2Indices.div(gridWidth).floor();
+        const bmu2Cols = bmu2Indices.mod(gridWidth);
+
+        return {
+          bmu1Coords: tf.stack([bmu1Rows, bmu1Cols], 1) as tf.Tensor2D,
+          bmu2Coords: tf.stack([bmu2Rows, bmu2Cols], 1) as tf.Tensor2D,
+        };
+      });
+
+      // Read coordinates and check neighbors in plain JS
+      const bmu1Data = bmu1Coords.dataSync();
+      const bmu2Data = bmu2Coords.dataSync();
+      bmu1Coords.dispose();
+      bmu2Coords.dispose();
+
       let errors = 0;
-      
-      // Process each sample
       for (let i = 0; i < nSamples; i++) {
-        const sample = xTensor.slice([i, 0], [1, -1]).squeeze() as tf.Tensor1D;
-        
-        // Find first BMU
-        const bmu1 = findBMU(sample, this.weights_);
-        
-        // Find second BMU
-        const bmu2 = findSecondBMU(sample, this.weights_, bmu1);
-        
-        // Get BMU coordinates
-        const bmu1Array = await bmu1.array() as number[];
-        const bmu2Array = await bmu2.array() as number[];
-        
-        // Check if BMUs are neighbors based on topology
         const isNeighbor = this.areNeighbors(
-          bmu1Array[0], bmu1Array[1],
-          bmu2Array[0], bmu2Array[1],
-          gridHeight, gridWidth, topology!
+          bmu1Data[i * 2], bmu1Data[i * 2 + 1],
+          bmu2Data[i * 2], bmu2Data[i * 2 + 1],
+          gridHeight, gridWidth, topology!,
         );
-        
         if (!isNeighbor) {
           errors++;
         }
-        
-        // Clean up
-        sample.dispose();
-        bmu1.dispose();
-        bmu2.dispose();
       }
-      
+
       return errors / nSamples;
     } finally {
       if (!isTensor(X)) {
@@ -868,8 +882,15 @@ export class SOM implements BaseClustering<SOMParams> {
    * Configures the SOM for online learning with optimal settings.
    */
   enableStreamingMode(batchSize?: number): void {
-    this.params.onlineMode = true;
-    this.params.miniBatchSize = batchSize || SOM.DEFAULT_MINI_BATCH_SIZE;
+    Object.defineProperty(this, 'params', {
+      value: {
+        ...this.params,
+        onlineMode: true,
+        miniBatchSize: batchSize || SOM.DEFAULT_MINI_BATCH_SIZE,
+      },
+      writable: false,
+      configurable: true,
+    });
     
     // Adjust schedulers for continuous learning
     // Use slower decay for streaming scenarios
@@ -912,9 +933,10 @@ export class SOM implements BaseClustering<SOMParams> {
       if (autoTrain) {
         await this.partialFit(xTensor);
       } else {
-        // Accumulate samples for batch training
-        // This would need a buffer implementation
-        console.log('Batch accumulation not yet implemented');
+        throw new Error(
+          'processStream with autoTrain=false is not supported. ' +
+          'Use autoTrain=true or call partialFit() directly.',
+        );
       }
     } finally {
       if (!isTensor(sample)) {
@@ -933,7 +955,8 @@ export class SOM implements BaseClustering<SOMParams> {
     currentRadius: number;
     latestQuantizationError: number;
   } {
-    const virtualEpoch = Math.floor(this.totalSamplesLearned_ / 100);
+    const batchSize = this.lastBatchSize_ || this.params.miniBatchSize || 1;
+    const virtualEpoch = Math.floor(this.totalSamplesLearned_ / batchSize);
     
     return {
       totalSamples: this.totalSamplesLearned_,
@@ -988,5 +1011,6 @@ export class SOM implements BaseClustering<SOMParams> {
     this.gridDistanceMatrix_ = null;
     this.bmus_?.dispose();
     this.bmus_ = null;
+    this.labels_ = null;
   }
 }

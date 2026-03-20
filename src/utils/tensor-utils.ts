@@ -31,3 +31,4 @@ export function isTensor(value: unknown): value is tf.Tensor {
 export function isTensor2D(value: unknown): value is tf.Tensor2D {
   return isTensor(value) && (value as tf.Tensor).rank === 2;
 }
+

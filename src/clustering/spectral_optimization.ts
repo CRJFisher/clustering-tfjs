@@ -212,7 +212,7 @@ export async function intensiveParameterSweep(
                 },
               };
             }
-          } catch (_e) {
+          } catch {
             // Skip if validation fails
           }
         }

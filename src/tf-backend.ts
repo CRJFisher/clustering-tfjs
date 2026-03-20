@@ -138,17 +138,17 @@ export function resetBackend(): void {
 function loadBackendSync(): typeof tfType {
   try {
     require.resolve('@tensorflow/tfjs-node');
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     return require('@tensorflow/tfjs-node') as typeof tfType;
   } catch {
     try {
       require.resolve('@tensorflow/tfjs');
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       return require('@tensorflow/tfjs') as typeof tfType;
     } catch {
       try {
         require.resolve('@tensorflow/tfjs-core');
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         return require('@tensorflow/tfjs-core') as typeof tfType;
       } catch {
         throw new Error(

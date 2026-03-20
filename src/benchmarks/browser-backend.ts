@@ -14,7 +14,8 @@ const benchmarkHTML = `
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.20.0/dist/tf.min.js"
+          crossorigin="anonymous"></script>
 </head>
 <body>
   <script>

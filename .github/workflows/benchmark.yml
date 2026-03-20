@@ -1,8 +1,6 @@
 name: Benchmark
 
 on:
-  push:
-    branches: [main]
   pull_request:
     types: [opened, synchronize]
   workflow_dispatch:
@@ -17,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.x, 22.x]
     
     steps:
     - uses: actions/checkout@v4
@@ -26,10 +24,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-    
+        cache: 'npm'
+
     - name: Install dependencies
       run: npm ci
-    
+
     - name: Build
       run: npm run build
     
@@ -102,10 +101,11 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: 20.x
-    
+        cache: 'npm'
+
     - name: Install dependencies
       run: npm ci
-    
+
     - name: Install tfjs-node
       run: npm install @tensorflow/tfjs-node
       continue-on-error: true

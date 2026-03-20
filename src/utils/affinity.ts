@@ -47,9 +47,8 @@ export function compute_rbf_affinity(
  *
  * For each sample the `k` closest neighbours are connected with affinity
  * value **1**. Self-loops are included to ensure connectivity, matching
- * sklearn's behavior. The final matrix is **symmetrised** via `max(A, Aᵀ)`
- * so that an edge is present when either sample appears in the other's
- * neighbourhood.
+ * sklearn's behavior. The final matrix is **symmetrised** via `0.5 * (A + Aᵀ)`.
+ * Mutual edges get weight 1.0 while asymmetric edges get weight 0.5.
  *
  * The result is returned as a dense `tf.Tensor2D` containing zeros for
  * non-connected pairs.  While a sparse representation would be more memory

@@ -239,7 +239,6 @@ All algorithms implement the same interface:
 ```typescript
 interface ClusteringAlgorithm {
   fit(X: Tensor2D | number[][]): Promise<void>;
-  predict(X: Tensor2D | number[][]): Promise<number[]>;
   fitPredict(X: Tensor2D | number[][]): Promise<number[]>;
 }
 ```
@@ -249,11 +248,10 @@ interface ClusteringAlgorithm {
 ```typescript
 new KMeans({
   nClusters: number;
-  init?: 'k-means++' | 'random' | number[][];
   nInit?: number;
   maxIter?: number;
   tol?: number;
-  // backend selection coming in future version
+  randomState?: number;
 })
 ```
 
@@ -265,7 +263,6 @@ new SpectralClustering({
   affinity?: 'rbf' | 'nearest_neighbors';
   gamma?: number;
   nNeighbors?: number;
-  // backend selection coming in future version
 })
 ```
 
@@ -275,9 +272,27 @@ new SpectralClustering({
 new AgglomerativeClustering({
   nClusters: number;
   linkage?: 'ward' | 'complete' | 'average' | 'single';
-  // backend selection coming in future version
 })
 ```
+
+### SOM (Self-Organizing Maps)
+
+```typescript
+new SOM({
+  gridWidth: number;
+  gridHeight: number;
+  topology?: 'rectangular' | 'hexagonal';
+  neighborhood?: 'gaussian' | 'bubble' | 'mexican_hat';
+  initialization?: 'random' | 'linear' | 'pca';
+  learningRate?: number | DecayFunction;
+  radius?: number | DecayFunction;
+  numEpochs?: number;
+  tol?: number;
+  randomState?: number;
+})
+```
+
+Note: SOM additionally provides `predict()` and `partialFit()` methods for labeling new data and online learning.
 
 ### Validation Metrics
 
@@ -301,14 +316,10 @@ Try these interactive examples directly in your browser:
 - [**Interactive Clustering Visualization**](https://observablehq.com/@observablehq/clustering-tfjs-demo) - Explore all algorithms with different datasets
 - [**Local Examples**](examples/observable/) - Run examples locally with HTML files
 
-Observable notebooks coming soon! In the meantime, check out the [local examples](examples/observable/) which can be:
+Check out the [local examples](examples/observable/) which can be:
 - Opened directly in your browser
 - Served locally with `npm run serve:examples`
 - Used as templates for your own visualizations
-
-### Code Examples
-
-Coming soon: Example notebooks and CodePen demos
 
 ## Performance
 

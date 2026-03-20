@@ -46,7 +46,6 @@ new KMeans(params: KMeansParams)
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `nClusters` | `number` | required | Number of clusters to form |
-| `init` | `'k-means++' \| 'random' \| number[][]` | `'k-means++'` | Initialization method |
 | `nInit` | `number` | `10` | Number of initializations to run |
 | `maxIter` | `number` | `300` | Maximum iterations per run |
 | `tol` | `number` | `1e-4` | Convergence tolerance |
@@ -59,7 +58,6 @@ import { KMeans } from 'clustering-tfjs';
 
 const kmeans = new KMeans({
   nClusters: 3,
-  init: 'k-means++',
   nInit: 10,
   maxIter: 300
 });
@@ -114,7 +112,7 @@ Hierarchical clustering using bottom-up approach.
 #### Constructor
 
 ```typescript
-new AgglomerativeClustering(params: AgglomerativeParams)
+new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 ```
 
 #### Parameters

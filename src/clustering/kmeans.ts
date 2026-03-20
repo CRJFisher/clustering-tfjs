@@ -5,13 +5,13 @@ import type {
 } from './types';
 import * as tf from '../tf-adapter';
 import { isTensor } from '../utils/tensor-utils';
+import { make_random_stream } from '../utils/rng';
 
 /**
- * Extremely lightweight – yet reasonably efficient – K-Means implementation
- * intended solely as an internal helper for SpectralClustering.
+ * K-Means clustering algorithm using Lloyd's iteration with K-means++ initialization.
  *
- * The class purposefully **does not** try to match the full scikit-learn API
- * but merely exposes the minimal surface required by downstream tasks.
+ * Supports multiple random initializations (`nInit`) and selects the solution
+ * with the lowest inertia, matching scikit-learn's default behavior.
  */
 export class KMeans implements BaseClustering<KMeansParams> {
   public readonly params: KMeansParams;
@@ -34,6 +34,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
   // clustering tests.
   private static readonly DEFAULT_N_INIT = 10;
 
+  /**
+   * @param params - Configuration for K-Means clustering.
+   */
   constructor(params: KMeansParams) {
     this.params = { ...params };
     KMeans.validateParams(this.params);
@@ -45,8 +48,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
   /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
   private static makeRandomStream(seed?: number) {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { make_random_stream } = require('../utils/rng');
     return make_random_stream(seed);
   }
 
@@ -85,6 +86,20 @@ export class KMeans implements BaseClustering<KMeansParams> {
     this.inertia_ = null;
   }
 
+  /**
+   * Fits the K-Means model to the input data.
+   *
+   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @returns A promise that resolves when fitting is complete.
+   * @throws {Error} If input data is empty or nClusters exceeds nSamples.
+   *
+   * @example
+   * ```typescript
+   * const kmeans = new KMeans({ nClusters: 3 });
+   * await kmeans.fit([[1, 2], [3, 4], [5, 6]]);
+   * console.log(kmeans.labels_);
+   * ```
+   */
   async fit(X: DataMatrix): Promise<void> {
     // Validate input dimensions before creating tensors to avoid leaks on throw.
     const nSamples = isTensor(X) ? (X as tf.Tensor2D).shape[0] : (X as number[][]).length;
@@ -144,12 +159,15 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
       // ----------------------- k-means++ seeding ----------------------- //
       const centroidIdxs: number[] = [];
-      centroidIdxs.push(randStream.randInt(nSamples));
+      const centroidSet = new Set<number>();
+      const firstIdx = randStream.randInt(nSamples);
+      centroidIdxs.push(firstIdx);
+      centroidSet.add(firstIdx);
 
       while (centroidIdxs.length < K) {
         // 1) Compute squared distance to nearest existing centroid for each point
         const distances: number[] = pointsArr.map((p, idx) => {
-          if (centroidIdxs.includes(idx)) return 0;
+          if (centroidSet.has(idx)) return 0;
           let minD2 = Number.POSITIVE_INFINITY;
           for (const cIdx of centroidIdxs) {
             const c = pointsArr[cIdx];
@@ -167,8 +185,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
         if (currentPot === 0) {
           // All remaining points identical to existing centroids – pick first unused index deterministically
           for (let i = 0; i < nSamples; i++) {
-            if (!centroidIdxs.includes(i)) {
+            if (!centroidSet.has(i)) {
               centroidIdxs.push(i);
+              centroidSet.add(i);
               break;
             }
           }
@@ -225,6 +244,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
         }
 
         centroidIdxs.push(bestCandidate);
+        centroidSet.add(bestCandidate);
       }
 
       let centroids = tf.tensor2d(
@@ -241,7 +261,8 @@ export class KMeans implements BaseClustering<KMeansParams> {
           const xNorm = Xtensor.square().sum(1).reshape([nSamples, 1]);
           const cNorm = centroids.square().sum(1).reshape([1, K]);
           const cross = tf.matMul(Xtensor, centroids.transpose());
-          return xNorm.add(cNorm).sub(cross.mul(2));
+          const distSq = xNorm.add(cNorm).sub(cross.mul(2));
+          return tf.maximum(distSq, tf.scalar(0, 'float32'));
         });
 
         const argMinTensor = distances.argMin(1);
@@ -355,6 +376,13 @@ export class KMeans implements BaseClustering<KMeansParams> {
     Xtensor.dispose();
   }
 
+  /**
+   * Fits the model and returns cluster labels.
+   *
+   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @returns Array of cluster labels for each sample.
+   * @throws {Error} If input data is empty or nClusters exceeds nSamples.
+   */
   async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {

@@ -509,7 +509,6 @@ function tridiagonal_ql(
   for (let l = 0; l < m; l++) {
     let iter = 0;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       // Find smallest mm >= l such that e[mm] is negligible
       let mm: number;
