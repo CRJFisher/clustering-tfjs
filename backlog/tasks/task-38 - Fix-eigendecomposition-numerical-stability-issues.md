@@ -2,8 +2,10 @@
 id: task-38
 title: Fix eigendecomposition numerical stability issues
 status: Done
-assignee: [claude]
+assignee:
+  - claude
 created_date: '2026-03-20'
+updated_date: '2026-03-20'
 labels: []
 dependencies: []
 ---
