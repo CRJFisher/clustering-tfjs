@@ -3,6 +3,8 @@ import * as tf from '../../src/tf-adapter';
 import * as fs from 'fs';
 import * as path from 'path';
 
+jest.setTimeout(120_000);
+
 describe('SOM Reference Tests', () => {
   // Use path relative to project root for fixtures
   const fixturesDir = path.join(process.cwd(), 'test', 'fixtures', 'som');
@@ -28,7 +30,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Weight matrix comparison', () => {
-    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
+    fixtures.forEach(fixture => {
       it(`should approximate weights for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
@@ -66,7 +68,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Label assignment comparison', () => {
-    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
+    fixtures.forEach(fixture => {
       it(`should produce similar clustering for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,
@@ -98,7 +100,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('Quality metrics comparison', () => {
-    fixtures.slice(0, 2).forEach(fixture => {  // Test only first 2 for speed
+    fixtures.forEach(fixture => {
       // Skip the blobs_10x10 test which has known 55% variance (documented in task-33.13)
       // This is acceptable due to different random initialization strategies and floating point differences
       const testFn = fixture.name === 'blobs_10x10_gaussian_rectangular' ? it.skip : it;
@@ -131,7 +133,7 @@ describe('SOM Reference Tests', () => {
   });
 
   describe('U-Matrix comparison', () => {
-    fixtures.slice(0, 2).forEach(fixture => { // Test subset for speed
+    fixtures.forEach(fixture => {
       it(`should produce similar U-matrix for ${fixture.name}`, async () => {
         const som = new SOM({
           gridWidth: fixture.params.gridWidth,

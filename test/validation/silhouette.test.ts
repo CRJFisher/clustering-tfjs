@@ -1,11 +1,14 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { silhouetteScore, silhouetteScoreSubset, silhouetteSamples } from "../../src/validation/silhouette";
+import { make_random_stream } from "../../src/utils/rng";
 
 describe("Silhouette Score", () => {
-  afterEach(() => {
-    // Clean up any remaining tensors
+  beforeEach(() => {
     tf.engine().startScope();
+  });
+
+  afterEach(() => {
     tf.engine().endScope();
   });
 
@@ -226,7 +229,8 @@ describe("Silhouette Score", () => {
         const cluster = i < n/2 ? 0 : 1;
         labels.push(cluster);
         
-        const noise = () => (Math.random() - 0.5) * 0.5;
+        const rng = make_random_stream(42);
+        const noise = () => (rng.rand() - 0.5) * 0.5;
         if (cluster === 0) {
           X.push([0 + noise(), 0 + noise()]);
         } else {
