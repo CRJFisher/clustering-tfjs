@@ -1,10 +1,13 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { computeWss } from "../../src/utils/computeWss";
 
 describe("computeWss", () => {
-  afterEach(() => {
+  beforeEach(() => {
     tf.engine().startScope();
+  });
+
+  afterEach(() => {
     tf.engine().endScope();
   });
 

@@ -1,11 +1,14 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { daviesBouldin, daviesBouldinEfficient } from "../../src/validation/davies_bouldin";
+import { make_random_stream } from "../../src/utils/rng";
 
 describe("Davies-Bouldin Score", () => {
-  afterEach(() => {
-    // Clean up any remaining tensors
+  beforeEach(() => {
     tf.engine().startScope();
+  });
+
+  afterEach(() => {
     tf.engine().endScope();
   });
 
@@ -261,12 +264,13 @@ describe("Davies-Bouldin Score", () => {
       const labels: number[] = [];
       
       // Generate 3 well-separated clusters
+      const rng = make_random_stream(42);
       for (let i = 0; i < n; i++) {
         const cluster = Math.floor(i / (n / 3));
         labels.push(cluster);
-        
+
         // Add small noise to cluster centers
-        const noise = () => (Math.random() - 0.5) * 0.2;
+        const noise = () => (rng.rand() - 0.5) * 0.2;
         if (cluster === 0) {
           X.push([0 + noise(), 0 + noise()]);
         } else if (cluster === 1) {

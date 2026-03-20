@@ -17,9 +17,11 @@ describe("findOptimalClusters", () => {
     }
   });
 
-  afterEach(() => {
-    // Clean up any tensors
+  beforeEach(() => {
     tf.engine().startScope();
+  });
+
+  afterEach(() => {
     tf.engine().endScope();
   });
 

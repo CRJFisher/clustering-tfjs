@@ -1,4 +1,5 @@
 import { SpectralClustering } from "../../src";
+import { make_random_stream } from "../../src/utils/rng";
 
 /**
  * Unit test verifying that the `randomState` provided to `SpectralClustering`
@@ -9,14 +10,14 @@ import { SpectralClustering } from "../../src";
 function makeChallengingData(): number[][] {
   // Generate points in two overlapping Gaussian clouds to make centroid
   // initialisation matter. Random seed fixed for determinism in test.
-  const rng = () => Math.sin(42 + Math.random()); // pseudo, but ok for test
+  const rng = make_random_stream(42);
 
   const points: number[][] = [];
   for (let i = 0; i < 50; i++) {
-    points.push([Math.random() * 0.5, Math.random() * 0.5]); // near origin
+    points.push([rng.rand() * 0.5, rng.rand() * 0.5]); // near origin
   }
   for (let i = 0; i < 50; i++) {
-    points.push([1 + Math.random() * 0.5, 1 + Math.random() * 0.5]);
+    points.push([1 + rng.rand() * 0.5, 1 + rng.rand() * 0.5]);
   }
   return points;
 }

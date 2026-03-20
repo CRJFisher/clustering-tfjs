@@ -8,14 +8,22 @@ const FIXTURE_DIR = path.join(process.cwd(), "test", "fixtures", "agglomerative"
 
 function areLabelingsEquivalent(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;
-  const mapping = new Map<number, number>();
+  const forwardMapping = new Map<number, number>();
+  const reverseMapping = new Map<number, number>();
   for (let i = 0; i < a.length; i++) {
     const ai = a[i];
     const bi = b[i];
-    if (!mapping.has(ai)) {
-      mapping.set(ai, bi);
-    } else if (mapping.get(ai) !== bi) {
-      return false;
+    // Check forward mapping: a -> b
+    if (forwardMapping.has(ai)) {
+      if (forwardMapping.get(ai) !== bi) return false;
+    } else {
+      forwardMapping.set(ai, bi);
+    }
+    // Check reverse mapping: b -> a
+    if (reverseMapping.has(bi)) {
+      if (reverseMapping.get(bi) !== ai) return false;
+    } else {
+      reverseMapping.set(bi, ai);
     }
   }
   return true;
