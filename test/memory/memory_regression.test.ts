@@ -33,6 +33,20 @@ describe('Memory regression tests', () => {
       expect(after).toBe(before);
     });
 
+    it('fit() + dispose() with tensor input should not leak tensors', async () => {
+      const X = tf.tensor2d(data);
+      const before = tf.memory().numTensors;
+
+      const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
+      await km.fit(X);
+      km.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+
+      X.dispose();
+    });
+
     it('fitPredict() + dispose() should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
@@ -45,15 +59,16 @@ describe('Memory regression tests', () => {
     });
 
     it('re-fitting should not leak tensors', async () => {
+      const before = tf.memory().numTensors;
+
       const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
       await km.fit(data);
-
-      const before = tf.memory().numTensors;
+      // Re-fit: dispose() is called internally, freeing old centroids
       await km.fit(data);
       km.dispose();
 
       const after = tf.memory().numTensors;
-      expect(after).toBeLessThanOrEqual(before);
+      expect(after).toBe(before);
     });
   });
 
@@ -82,6 +97,28 @@ describe('Memory regression tests', () => {
       expect(after).toBe(before);
 
       X.dispose();
+    });
+
+    it('fitWithIntermediateSteps should not leak tensors after cleanup', async () => {
+      const before = tf.memory().numTensors;
+
+      const sc = new SpectralClustering({ nClusters: 2, randomState: 42 });
+      const result = await sc.fitWithIntermediateSteps(data);
+
+      // Dispose all returned intermediate tensors
+      result.affinity.dispose();
+      result.laplacian.laplacian.dispose();
+      result.laplacian.degrees?.dispose();
+      result.laplacian.sqrtDegrees?.dispose();
+      result.embedding.embedding.dispose();
+      result.embedding.eigenvalues.dispose();
+      result.embedding.rawEigenvectors?.dispose();
+      result.embedding.scalingFactors?.dispose();
+
+      sc.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
     });
   });
 

@@ -87,6 +87,16 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   async fit(X: DataMatrix): Promise<void> {
+    // Validate input dimensions before creating tensors to avoid leaks on throw.
+    const nSamples = isTensor(X) ? (X as tf.Tensor2D).shape[0] : (X as number[][]).length;
+    if (nSamples === 0) {
+      throw new Error('Input data must contain at least one sample.');
+    }
+    const K = this.params.nClusters;
+    if (K > nSamples) {
+      throw new Error('nClusters cannot exceed number of samples.');
+    }
+
     // Dispose previous state if the estimator is re-used.
     this.dispose();
 
@@ -98,16 +108,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
       ? (X as tf.Tensor2D).clone()
       : tf.tensor2d(X as number[][], undefined, 'float32');
 
-    const [nSamples, nFeatures] = Xtensor.shape;
-
-    if (nSamples === 0) {
-      throw new Error('Input data must contain at least one sample.');
-    }
-
-    const K = this.params.nClusters;
-    if (K > nSamples) {
-      throw new Error('nClusters cannot exceed number of samples.');
-    }
+    const [, nFeatures] = Xtensor.shape;
 
     const nInit = this.params.nInit ?? KMeans.DEFAULT_N_INIT;
 
