@@ -113,6 +113,9 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
+  /**
+   * @param params - Configuration for spectral clustering.
+   */
   constructor(params: SpectralClusteringParams) {
     const { captureDebugInfo = false, ...clusteringParams } = params;
 
@@ -150,6 +153,22 @@ export class SpectralClustering
       isTensor(_X)
         ? (tf.cast(_X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(_X as number[][], undefined, 'float32');
+
+    const nSamples = Xtensor.shape[0];
+    if (this.params.nClusters > nSamples) {
+      Xtensor.dispose();
+      throw new Error('nClusters cannot exceed number of samples.');
+    }
+
+    const maxSamples = this.params.maxSamples ?? 10_000;
+    if (nSamples > maxSamples) {
+      Xtensor.dispose();
+      throw new Error(
+        `Input has ${nSamples} samples, which exceeds the maximum of ${maxSamples} ` +
+        `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
+        `Set maxSamples in params to override this limit if you have sufficient memory.`,
+      );
+    }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
     this.affinityMatrix_ = SpectralClustering.computeAffinityMatrix(
@@ -424,6 +443,13 @@ export class SpectralClustering
     Xtensor.dispose();
   }
 
+  /**
+   * Fits the model and returns cluster labels.
+   *
+   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @returns Array of cluster labels for each sample.
+   * @throws {Error} If nClusters exceeds nSamples or nSamples exceeds maxSamples.
+   */
   async fitPredict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
@@ -453,6 +479,17 @@ export class SpectralClustering
       isTensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32');
+
+    const nSamplesDebug = Xtensor.shape[0];
+    const maxSamplesDebug = this.params.maxSamples ?? 10_000;
+    if (nSamplesDebug > maxSamplesDebug) {
+      Xtensor.dispose();
+      throw new Error(
+        `Input has ${nSamplesDebug} samples, which exceeds the maximum of ${maxSamplesDebug} ` +
+        `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
+        `Set maxSamples in params to override this limit if you have sufficient memory.`,
+      );
+    }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
     const affinity = SpectralClustering.computeAffinityMatrix(

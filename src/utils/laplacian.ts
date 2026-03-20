@@ -1,4 +1,5 @@
 import * as tf from '../tf-adapter';
+import { smallest_eigenvectors_with_values } from './smallest_eigenvectors_with_values';
 
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
@@ -10,7 +11,7 @@ import * as tf from '../tf-adapter';
  *
  * The input must be a **square** `tf.Tensor2D` whose entries represent edge
  * weights `A[i,j]` of an undirected graph.  For *k*-NN graphs the matrix is
- * expected to be symmetrised (`A = max(A, Aᵀ)`).
+ * expected to be symmetrised (`A = 0.5 * (A + Aᵀ)`).
  *
  * The returned tensor is a 1-D vector where `deg[i] = Σ_j A[i,j]`.
  */
@@ -315,9 +316,7 @@ export function smallestEigenvectors(
     throw new Error('k must be a positive integer.');
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  const { smallest_eigenvectors_with_values } = require('./smallest_eigenvectors_with_values');
-  const { eigenvectors, eigenvalues } = smallest_eigenvectors_with_values(matrix, k) as { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D };
+  const { eigenvectors, eigenvalues } = smallest_eigenvectors_with_values(matrix, k);
   eigenvalues.dispose();
   return eigenvectors;
 }

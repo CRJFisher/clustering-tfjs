@@ -50,6 +50,7 @@ export const fill: typeof tfTypes.fill = (...args) => ensureBackend().fill(...ar
 export const eye: typeof tfTypes.eye = (...args) => ensureBackend().eye(...args);
 export const linspace: typeof tfTypes.linspace = (...args) => ensureBackend().linspace(...args);
 export const buffer: typeof tfTypes.buffer = (...args) => ensureBackend().buffer(...args);
+export const oneHot: typeof tfTypes.oneHot = (...args) => ensureBackend().oneHot(...args);
 
 // Math operations
 export const add: typeof tfTypes.add = (...args) => ensureBackend().add(...args);

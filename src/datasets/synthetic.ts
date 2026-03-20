@@ -22,18 +22,16 @@ export function makeBlobs(options: MakeBlobsOptions): MakeBlobsResult {
     randomState,
   } = options;
 
-  // Set random seed if provided
-  if (randomState !== undefined) {
-    tf.randomUniform([1], 0, 1, 'float32', randomState);
-  }
-
   let centersTensor: tf.Tensor2D;
   let nCenters: number;
 
   if (typeof centers === 'number') {
     nCenters = centers;
-    // Generate random centers
-    centersTensor = tf.randomUniform([centers, nFeatures], -10, 10);
+    // Generate random centers with seed if provided
+    centersTensor = tf.randomUniform(
+      [centers, nFeatures], -10, 10, 'float32',
+      randomState,
+    );
   } else {
     centersTensor = centers;
     nCenters = centersTensor.shape[0];
@@ -52,8 +50,9 @@ export function makeBlobs(options: MakeBlobsOptions): MakeBlobsResult {
     // Get center for this cluster
     const center = centersTensor.slice([i, 0], [1, nFeatures]);
 
-    // Generate samples around this center
-    const noise = tf.randomNormal([nSamplesCluster, nFeatures], 0, clusterStd);
+    // Generate samples around this center with a derived seed per cluster
+    const clusterSeed = randomState !== undefined ? randomState + i + 1 : undefined;
+    const noise = tf.randomNormal([nSamplesCluster, nFeatures], 0, clusterStd, 'float32', clusterSeed);
     const clusterSamples = tf.add(noise, center) as tf.Tensor2D;
 
     samples.push(clusterSamples);

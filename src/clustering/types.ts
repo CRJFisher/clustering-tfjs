@@ -161,6 +161,14 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Default: false
    */
   captureDebugInfo?: boolean;
+
+  /**
+   * Maximum number of samples allowed. Spectral clustering requires O(n^2)
+   * memory for the affinity matrix, so very large datasets can cause OOM.
+   * Set to a higher value if you have sufficient memory.
+   * Default: 10000
+   */
+  maxSamples?: number;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {

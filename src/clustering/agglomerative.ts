@@ -4,6 +4,7 @@ import type {
   BaseClustering,
 } from './types';
 import * as tf from '../tf-adapter';
+import { isTensor } from '../utils/tensor-utils';
 import { pairwiseDistanceMatrix } from '../utils/pairwise_distance';
 import { storedNNCluster } from './linkage';
 
@@ -47,28 +48,56 @@ export class AgglomerativeClustering
     'cosine',
   ] as const;
 
+  /**
+   * @param params - Configuration for agglomerative clustering.
+   */
   constructor(params: AgglomerativeClusteringParams) {
     this.params = { ...params };
     AgglomerativeClustering.validateParams(this.params);
   }
 
+  /**
+   * Fits the agglomerative clustering model to the input data.
+   *
+   * @param _X - Input data matrix of shape [nSamples, nFeatures].
+   * @returns A promise that resolves when fitting is complete.
+   * @throws {Error} If input is empty or nClusters exceeds nSamples.
+   *
+   * @example
+   * ```typescript
+   * const agg = new AgglomerativeClustering({ nClusters: 3 });
+   * await agg.fit([[1, 2], [3, 4], [5, 6]]);
+   * console.log(agg.labels_);
+   * ```
+   */
   async fit(_X: DataMatrix): Promise<void> {
-    if (Array.isArray(_X) && _X.length === 0) {
-      throw new Error('Input X must contain at least one sample.');
-    }
-
-    const points: tf.Tensor2D = Array.isArray(_X)
-      ? tf.tensor2d(_X)
+    const ownedTensor = !isTensor(_X);
+    const points: tf.Tensor2D = ownedTensor
+      ? tf.tensor2d(_X as number[][])
       : (_X as tf.Tensor2D);
 
     const nSamples = points.shape[0];
+
+    if (nSamples === 0) {
+      if (ownedTensor) {
+        points.dispose();
+      }
+      throw new Error('Input X must contain at least one sample.');
+    }
+
+    if (this.params.nClusters > nSamples) {
+      if (ownedTensor) {
+        points.dispose();
+      }
+      throw new Error('nClusters cannot exceed number of samples.');
+    }
 
     // Handle trivial case of single sample separately
     if (nSamples === 1) {
       this.labels_ = [0];
       this.children_ = [];
       this.nLeaves_ = 1;
-      if (Array.isArray(_X)) {
+      if (ownedTensor) {
         points.dispose();
       }
       return;
@@ -140,11 +169,18 @@ export class AgglomerativeClustering
     this.nLeaves_ = nSamples;
 
     // Dispose tensor if we created it from array input
-    if (Array.isArray(_X)) {
+    if (ownedTensor) {
       points.dispose();
     }
   }
 
+  /**
+   * Fits the model and returns cluster labels.
+   *
+   * @param _X - Input data matrix of shape [nSamples, nFeatures].
+   * @returns Array of cluster labels for each sample.
+   * @throws {Error} If input is empty or nClusters exceeds nSamples.
+   */
   async fitPredict(_X: DataMatrix): Promise<number[]> {
     await this.fit(_X);
     if (this.labels_ == null) {

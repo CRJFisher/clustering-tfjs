@@ -135,7 +135,6 @@ export function initializeWeights(
 ): tf.Tensor3D {
   return tf.tidy(() => {
     const [_nSamples, nFeatures] = X.shape;
-    const _totalNeurons = gridHeight * gridWidth;
     
     switch (initialization) {
       case 'random': {
@@ -621,61 +620,6 @@ export function findSecondBMU(
     const col = secondBMUIndex % gridWidth;
 
     return tf.tensor1d([row, col]);
-  });
-}
-
-/**
- * Optimized BMU search using pre-allocated tensors for better memory management.
- * This version is designed for use in training loops where tensors can be reused.
- * 
- * @param samples Input samples [nSamples, nFeatures]
- * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
- * @param distanceBuffer Optional pre-allocated distance buffer
- * @returns Object containing BMU indices and distances
- */
-export function findBMUOptimized(
-  samples: tf.Tensor2D,
-  weights: tf.Tensor3D,
-  distanceBuffer?: tf.Tensor2D
-): { bmus: tf.Tensor2D; distances: tf.Tensor1D } {
-  return tf.tidy(() => {
-    const [_nSamples, nFeatures] = samples.shape;
-    const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
-    const totalNeurons = gridHeight * gridWidth;
-    
-    // Reshape weights efficiently
-    const weightsFlat = weights.reshape([totalNeurons, nFeatures]);
-    
-    // Use optimized matrix multiplication for distance calculation
-    // This leverages GPU acceleration maximally
-    const samplesNorm = samples.square().sum(1, true);
-    const weightsNorm = weightsFlat.square().sum(1, true).transpose();
-    
-    // Main computational bottleneck - optimized matrix multiplication
-    const dotProduct = tf.matMul(samples, weightsFlat, false, true);
-    
-    // Compute distance matrix
-    let distances: tf.Tensor2D;
-    if (distanceBuffer) {
-      // Reuse buffer if provided
-      distances = distanceBuffer;
-      distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
-    } else {
-      distances = samplesNorm.add(weightsNorm).sub(dotProduct.mul(2));
-    }
-    
-    // Find BMUs
-    const bmuIndices = distances.argMin(1);
-    
-    // Get minimum distances for each sample
-    const minDistances = distances.min(1).sqrt();
-    
-    // Convert to grid coordinates
-    const rows = bmuIndices.div(gridWidth).floor();
-    const cols = bmuIndices.mod(gridWidth);
-    const bmus = tf.stack([rows, cols], 1) as tf.Tensor2D;
-    
-    return { bmus, distances: minDistances as tf.Tensor1D };
   });
 }
 

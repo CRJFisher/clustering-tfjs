@@ -77,7 +77,6 @@ export function pairwiseDistanceMatrix(
       });
 
     default:
-      // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
       throw new Error(`Unsupported metric '${metric}'.`);
   }
 }
