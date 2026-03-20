@@ -11,7 +11,9 @@ import { isTensor } from '../utils/tensor-utils';
 // Types for intermediate step results
 export interface LaplacianResult {
   laplacian: tf.Tensor2D;
+  /** D^{1/2} — square root of the degree vector, matching scipy's dd from csgraph_laplacian. */
   degrees?: tf.Tensor1D;
+  /** D^{-1/2} — inverse square root of the degree vector, as returned by normalised_laplacian. */
   sqrtDegrees?: tf.Tensor1D;
 }
 
@@ -266,7 +268,7 @@ export class SpectralClustering
         this.debugInfo_!.laplacianSpectrum = spectrum;
       }
 
-      // Get eigenvectors AND eigenvalues for diffusion map scaling
+      // Get eigenvectors AND eigenvalues for D^{1/2} normalization
       const { smallest_eigenvectors_with_values } = await import(
         '../utils/smallest_eigenvectors_with_values'
       );
@@ -563,11 +565,16 @@ export class SpectralClustering
     }
 
     /* ---------------------------- Prepare Result ----------------------------- */
+    // Compute D^{1/2} for the result, disposing the intermediate to avoid leak
+    const sqrtDegResult = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+    const sqrtDegClone = tf.clone(sqrtDegResult);
+    sqrtDegResult.dispose();
+
     const result: IntermediateSteps = {
       affinity: tf.clone(affinity),
       laplacian: {
         laplacian: tf.clone(laplacian),
-        degrees: tf.clone(tf.pow(sqrtDegrees, -1) as tf.Tensor1D),
+        degrees: sqrtDegClone,
         sqrtDegrees: tf.clone(sqrtDegrees),
       },
       embedding: {

@@ -3,7 +3,7 @@ import { deterministic_eigenpair_processing } from './eigen_post';
 
 /**
  * Returns the `k` smallest eigenvectors AND eigenvalues of the provided symmetric matrix.
- * This is needed to apply diffusion map scaling like sklearn does.
+ * This is needed for spectral embedding normalization (dividing by D^{1/2}).
  */
 export function smallest_eigenvectors_with_values(
   matrix: tf.Tensor2D,
