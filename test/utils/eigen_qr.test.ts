@@ -127,9 +127,9 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
   // Known bug: Wilkinson-shifted QR produces NaN for non-diagonal matrices
   // when the last off-diagonal element equals zero in the shift calculation.
   // These tests document the bug; remove .failing when the solver is fixed.
-  it.failing("handles degenerate eigenvalues from non-diagonal matrix", () => {
-    // [[3,1,1],[1,3,1],[1,1,3]] has eigenvalues [1, 4, 4]
-    // (eigenvalue 1 with eigenvector in null space of A-I, eigenvalue 4 with multiplicity 2)
+  it("handles degenerate eigenvalues from non-diagonal matrix", () => {
+    // [[3,1,1],[1,3,1],[1,1,3]] has eigenvalues [2, 2, 5]
+    // (eigenvalue 2 with multiplicity 2, eigenvalue 5)
     const A: number[][] = [
       [3, 1, 1],
       [1, 3, 1],
@@ -140,17 +140,15 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     const { eigenvalues, eigenvectors } = qr_eigen_decomposition(mat);
 
     expect(eigenvalues).toHaveLength(3);
-    // Sorted ascending: should be approximately [1, 4, 4]
-    // Allow for either sort order by checking the set
     const sorted = [...eigenvalues].sort((a, b) => a - b);
-    expect(sorted[0]).toBeCloseTo(1, 4);
-    expect(sorted[1]).toBeCloseTo(4, 4);
-    expect(sorted[2]).toBeCloseTo(4, 4);
+    expect(sorted[0]).toBeCloseTo(2, 4);
+    expect(sorted[1]).toBeCloseTo(2, 4);
+    expect(sorted[2]).toBeCloseTo(5, 4);
     expectOrthonormal(eigenvectors, 3);
     expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
-  it.failing("reconstructs a general symmetric matrix correctly", () => {
+  it("reconstructs a general symmetric matrix correctly", () => {
     // A symmetric matrix with known structure
     const A: number[][] = [
       [4, 2, 1],
@@ -166,9 +164,7 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
-  // QR eigensolver returns wrong eigenvalue order on some platforms (macOS)
-  // but works on others (Windows/Node 18) — skip to avoid cross-platform flakiness
-  it.skip("solves known 2x2 case ([[2,1],[1,2]] has eigenvalues [1,3])", () => {
+  it("solves known 2x2 case ([[2,1],[1,2]] has eigenvalues [1,3])", () => {
     const A: number[][] = [
       [2, 1],
       [1, 2],
