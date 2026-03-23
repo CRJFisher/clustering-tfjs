@@ -80,6 +80,7 @@ jobs:
                 await Clustering.init({ backend: 'webgl' });
               } catch (e) {
                 // Fall back to CPU if WebGL not available
+                Clustering.reset();
                 await Clustering.init({ backend: 'cpu' });
               }
               
@@ -97,6 +98,7 @@ jobs:
             // Test that we can switch to CPU backend
             const cpuResult = await page.evaluate(async () => {
               const { Clustering } = window.ClusteringTFJS;
+              Clustering.reset();
               await Clustering.init({ backend: 'cpu' });
               const tf = window.tf;
               return {
