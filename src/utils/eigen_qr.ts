@@ -1,4 +1,5 @@
 import * as tf from '../tf-adapter';
+import { gramSchmidtColumns } from './orthogonalize';
 
 /**
  * QR Algorithm-based eigendecomposition for symmetric matrices.
@@ -147,8 +148,9 @@ export function qr_eigen_decomposition(
     const A_data = A.arraySync() as number[][];
     const eigenvalues = A_data.map((row, i) => row[i]);
 
-    // Extract eigenvectors
+    // Extract eigenvectors and fix accumulated float32 orthonormality drift
     const V_data = V.arraySync() as number[][];
+    gramSchmidtColumns(V_data, n);
 
     // Sort by eigenvalue (ascending)
     const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
