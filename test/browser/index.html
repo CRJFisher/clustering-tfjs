@@ -84,8 +84,9 @@
                         throw new Error(`Unexpected backend '${backend}'`);
                     }
                 } catch (error) {
-                    // If WebGL fails, try CPU backend
+                    // If WebGL fails, reset and try CPU backend
                     console.log('WebGL not available, falling back to CPU backend');
+                    ClusteringTFJS.Clustering.reset();
                     await ClusteringTFJS.Clustering.init({ backend: 'cpu' });
                     const backend = await tf.getBackend();
                     if (backend !== 'cpu') {

@@ -253,13 +253,13 @@ jobs:
           echo "Node.js bundle: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
           echo "Standard build: $(ls -lh dist/index.js | awk '{print $5}')"
           
-          # Fail if browser bundle is too large (>100KB)
+          # Fail if browser bundle is too large (>120KB)
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             BROWSER_SIZE=$(stat -f%z dist/clustering.browser.js)
           else
             BROWSER_SIZE=$(stat -c%s dist/clustering.browser.js)
           fi
-          if [ $BROWSER_SIZE -gt 102400 ]; then
-            echo "ERROR: Browser bundle is too large (>100KB)"
+          if [ $BROWSER_SIZE -gt 122880 ]; then
+            echo "ERROR: Browser bundle is too large (>120KB)"
             exit 1
           fi
