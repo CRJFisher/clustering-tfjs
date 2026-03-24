@@ -51,9 +51,10 @@ jobs:
           echo "All platform builds verified!"
       
       - name: Publish to npm
-        run: |
-          npm config delete //registry.npmjs.org/:_authToken
-          npm publish --provenance --access public --ignore-scripts
+        env:
+          NPM_CONFIG_USERCONFIG: ''
+          NODE_AUTH_TOKEN: ''
+        run: npm publish --provenance --access public --ignore-scripts
       
       - name: Extract release notes from PR
         id: release_notes
