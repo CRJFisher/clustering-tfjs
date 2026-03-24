@@ -1,6 +1,6 @@
 {
   "name": "clustering-tfjs",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "High-performance TypeScript clustering algorithms (K-Means, Spectral, Agglomerative) with TensorFlow.js acceleration and scikit-learn compatibility",
   "keywords": [
     "clustering",
@@ -26,7 +26,7 @@
     "url": "git+https://github.com/CRJFisher/clustering-tfjs.git"
   },
   "license": "MIT",
-  "author": "Your Name <your.email@example.com>",
+  "author": "CRJFisher",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
@@ -66,7 +66,7 @@
     "dev": "ts-node src/index.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src --ext .ts",
+    "lint": "eslint src",
     "type-check": "tsc --noEmit",
     "benchmark": "ts-node scripts/benchmark.ts",
     "benchmark:node": "ts-node scripts/benchmark.ts",
@@ -78,11 +78,10 @@
     "release": "node scripts/release.js",
     "serve:examples": "npx http-server examples/observable -p 8080 -o"
   },
-  "dependencies": {},
   "peerDependencies": {
-    "@tensorflow/tfjs-core": "^4.20.0",
     "@tensorflow/tfjs": "^4.20.0",
     "@tensorflow/tfjs-backend-wasm": "^4.20.0",
+    "@tensorflow/tfjs-core": "^4.20.0",
     "@tensorflow/tfjs-node": "^4.20.0",
     "@tensorflow/tfjs-node-gpu": "^4.20.0"
   },
@@ -108,12 +107,8 @@
     "@tensorflow/tfjs-node": "^4.20.0",
     "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/puppeteer": "^5.4.7",
-    "@typescript-eslint/eslint-plugin": "^6.7.0",
-    "@typescript-eslint/parser": "^6.7.0",
-    "eslint": "^8.50.0",
-    "eslint-config-prettier": "^9.0.0",
-    "eslint-plugin-import": "^2.28.0",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
     "jest": "^29.6.0",
     "js-yaml": "^4.1.0",
     "prettier": "^3.0.0",
@@ -123,6 +118,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
+    "typescript-eslint": "^8.57.1",
     "webpack": "^5.101.0",
     "webpack-cli": "^6.0.1",
     "webpack-node-externals": "^3.0.0"

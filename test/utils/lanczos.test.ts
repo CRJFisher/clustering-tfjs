@@ -1,6 +1,8 @@
 import * as tf from '../../src/tf-adapter';
 import { lanczos_smallest_eigenpairs } from '../../src/utils/lanczos';
 import { improved_jacobi_eigen } from '../../src/utils/eigen_improved';
+import { normalisedLaplacian } from '../../src/utils/laplacian';
+import { make_random_stream } from '../../src/utils/rng/index';
 
 describe('Lanczos eigensolver', () => {
 
@@ -73,8 +75,7 @@ describe('Lanczos eigensolver', () => {
         [0, 1, 1, 0],
       ]);
 
-      const { normalised_laplacian } = require('../../src/utils/laplacian');
-      const L = normalised_laplacian(A) as tf.Tensor2D;
+      const L = normalisedLaplacian(A) as tf.Tensor2D;
       A.dispose();
 
       const result = lanczos_smallest_eigenpairs(L, 2, {
@@ -98,8 +99,7 @@ describe('Lanczos eigensolver', () => {
         [0, 0, 1, 0],
       ]);
 
-      const { normalised_laplacian } = require('../../src/utils/laplacian');
-      const L = normalised_laplacian(A) as tf.Tensor2D;
+      const L = normalisedLaplacian(A) as tf.Tensor2D;
       A.dispose();
 
       const result = lanczos_smallest_eigenpairs(L, 3, {
@@ -122,7 +122,7 @@ describe('Lanczos eigensolver', () => {
       const k = 5;
 
       // Create a random symmetric matrix via A = Q * diag * Q^T + I
-      const rng = require('../../src/utils/rng/index').make_random_stream(42);
+      const rng = make_random_stream(42);
       const raw: number[][] = Array.from({ length: n }, () =>
         Array.from({ length: n }, () => rng.rand() - 0.5),
       );

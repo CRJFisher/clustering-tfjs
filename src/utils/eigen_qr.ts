@@ -1,4 +1,5 @@
 import * as tf from '../tf-adapter';
+import { gramSchmidtColumns } from './orthogonalize';
 
 /**
  * QR Algorithm-based eigendecomposition for symmetric matrices.
@@ -71,10 +72,45 @@ export function qr_eigen_decomposition(
       // Apply shift for better convergence
       const shift = wilkinsonShift(A);
       const I = tf.eye(n);
-      const A_shifted = shift !== 0 ? A.sub(I.mul(shift)) : A;
+      const A_shifted: tf.Tensor2D = shift !== 0
+        ? A.sub(I.mul(shift)) as tf.Tensor2D
+        : A;
 
       // QR decomposition
       const [Q, R] = tf.linalg.qr(A_shifted);
+
+      // When the Wilkinson shift equals an exact eigenvalue, A_shifted is
+      // singular and tf.linalg.qr can produce NaN on some platforms.
+      // Detect this and retry without the shift. Float32 precision makes
+      // small perturbations invisible, so falling back to unshifted QR
+      // (which always works on a valid symmetric matrix) is the safest option.
+      const R_data = R.arraySync() as number[][];
+      const qrHasNaN = R_data.some(row => row.some(v => !isFinite(v)));
+
+      if (qrHasNaN) {
+        Q.dispose();
+        R.dispose();
+        if (shift !== 0) {
+          I.dispose();
+          A_shifted.dispose();
+        }
+
+        // Unshifted QR step — always valid for non-singular input
+        const [Q2, R2] = tf.linalg.qr(A);
+        const A_new = R2.matMul(Q2) as tf.Tensor2D;
+        const V_new = V.matMul(Q2) as tf.Tensor2D;
+
+        A.dispose();
+        V.dispose();
+        A = A_new;
+        V = V_new;
+
+        offDiag = offDiagonalNorm(A);
+        Q2.dispose();
+        R2.dispose();
+        iter++;
+        continue;
+      }
 
       // Update A = RQ + shift*I
       A.dispose();
@@ -112,8 +148,9 @@ export function qr_eigen_decomposition(
     const A_data = A.arraySync() as number[][];
     const eigenvalues = A_data.map((row, i) => row[i]);
 
-    // Extract eigenvectors
+    // Extract eigenvectors and fix accumulated float32 orthonormality drift
     const V_data = V.arraySync() as number[][];
+    gramSchmidtColumns(V_data, n);
 
     // Sort by eigenvalue (ascending)
     const indexed = eigenvalues.map((val, idx) => ({ val, idx }));

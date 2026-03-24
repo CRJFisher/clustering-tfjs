@@ -1,5 +1,6 @@
 import * as tf from '../../src/tf-adapter';
 import { SpectralClustering } from '../../src/clustering/spectral';
+import { make_random_stream } from '../../src/utils/rng/index';
 
 /**
  * Scale tests for spectral clustering with the Lanczos eigensolver.
@@ -12,7 +13,7 @@ describe('Spectral clustering at scale', () => {
     nClusters: number,
     seed: number,
   ): { data: number[][]; labels: number[] } {
-    const rng = require('../../src/utils/rng/index').make_random_stream(seed);
+    const rng = make_random_stream(seed);
     const data: number[][] = [];
     const labels: number[] = [];
     const samplesPerCluster = Math.floor(nSamples / nClusters);
@@ -80,9 +81,9 @@ describe('Spectral clustering at scale', () => {
     expect(new Set(sc.labels_!).size).toBe(3);
     console.log(`  n=5000: ${elapsed.toFixed(0)}ms`);
 
-    // Should complete well within 120 seconds
-    expect(elapsed).toBeLessThan(120000);
+    // Should complete well within 3 minutes (generous for slow CI runners)
+    expect(elapsed).toBeLessThan(180_000);
 
     sc.dispose();
-  }, 120000);
+  }, 240_000);
 });

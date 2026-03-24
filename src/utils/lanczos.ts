@@ -1,4 +1,5 @@
 import * as tf from '../tf-adapter';
+import { reorthogonalizeVector } from './orthogonalize';
 import { make_random_stream } from './rng/index';
 
 /* -------------------------------------------------------------------------- */
@@ -305,20 +306,9 @@ function vecNorm(v: Float64Array, n: number): number {
 
 /**
  * Full reorthogonalization: projects out components along all basis vectors.
- * Modifies w in place.
+ * Modifies w in place. Delegates to the shared utility.
  */
-function reorthogonalize(
-  w: Float64Array,
-  basis: Float64Array[],
-  n: number,
-): void {
-  for (let b = 0; b < basis.length; b++) {
-    const q = basis[b];
-    let dot = 0;
-    for (let i = 0; i < n; i++) dot += q[i] * w[i];
-    for (let i = 0; i < n; i++) w[i] -= dot * q[i];
-  }
-}
+const reorthogonalize = reorthogonalizeVector<Float64Array>;
 
 /**
  * Generates a random unit vector orthogonal to all basis vectors.
@@ -509,7 +499,6 @@ function tridiagonal_ql(
   for (let l = 0; l < m; l++) {
     let iter = 0;
 
-    // eslint-disable-next-line no-constant-condition
     while (true) {
       // Find smallest mm >= l such that e[mm] is negligible
       let mm: number;

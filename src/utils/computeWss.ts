@@ -1,6 +1,6 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from './tensor-utils';
+import { convertValidationInputs } from '../validation/validate';
 
 /**
  * Computes the Within-Cluster Sum of Squares (WSS / inertia) for a clustering.
@@ -13,10 +13,7 @@ import { isTensor } from './tensor-utils';
  * @returns The within-cluster sum of squares
  */
 export function computeWss(X: DataMatrix, labels: LabelVector): number {
-  const data = isTensor(X) ? X : tf.tensor2d(X as number[][]);
-  const labelArray = isTensor(labels)
-    ? Array.from(labels.dataSync() as Float32Array).map((l) => Math.round(l))
-    : (labels as number[]);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   const uniqueLabels = Array.from(new Set(labelArray));
   let wss = 0;
@@ -36,8 +33,8 @@ export function computeWss(X: DataMatrix, labels: LabelVector): number {
     });
   }
 
-  if (!isTensor(X)) {
-    (data as tf.Tensor2D).dispose();
+  if (ownsTensor) {
+    data.dispose();
   }
 
   return wss;

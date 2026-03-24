@@ -161,6 +161,14 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Default: false
    */
   captureDebugInfo?: boolean;
+
+  /**
+   * Maximum number of samples allowed. Spectral clustering requires O(n^2)
+   * memory for the affinity matrix, so very large datasets can cause OOM.
+   * Set to a higher value if you have sufficient memory.
+   * Default: 10000
+   */
+  maxSamples?: number;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {
@@ -346,6 +354,23 @@ export interface SOMState {
    * Configuration parameters.
    */
   params: SOMParams;
+}
+
+/**
+ * Options for the SOM 2-phase cluster() method.
+ */
+export interface SOMClusterOptions {
+  /**
+   * Linkage criterion for agglomerative clustering on SOM neurons.
+   * Default: 'ward'
+   */
+  linkage?: 'ward' | 'complete' | 'average' | 'single';
+
+  /**
+   * Distance metric for agglomerative clustering on SOM neurons.
+   * Default: 'euclidean'
+   */
+  metric?: 'euclidean' | 'manhattan' | 'cosine';
 }
 
 /**

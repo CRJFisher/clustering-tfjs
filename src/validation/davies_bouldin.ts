@@ -1,7 +1,6 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
-import { validateLabelsLength } from './validate';
+import { validateLabelsLength, convertValidationInputs } from './validate';
 
 /**
  * Computes the Davies-Bouldin score.
@@ -23,17 +22,7 @@ import { validateLabelsLength } from './validate';
 export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
   validateLabelsLength(X, labels);
   return tf.tidy(() => {
-    // Convert inputs to tensors
-    const data =
-      isTensor(X)
-        ? (X as tf.Tensor2D)
-        : tf.tensor2d(X as number[][]);
-    const labelArray =
-      isTensor(labels)
-        ? Array.from(labels.dataSync() as Float32Array).map((l) =>
-            Math.round(l),
-          )
-        : (labels as number[]);
+    const { data, labelArray } = convertValidationInputs(X, labels);
 
     // Get unique labels
     const uniqueLabels = Array.from(new Set(labelArray));
@@ -137,13 +126,7 @@ export function daviesBouldinEfficient(
   labels: LabelVector,
 ): number {
   validateLabelsLength(X, labels);
-  // Convert inputs
-  const data =
-    isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
-  const labelArray =
-    isTensor(labels)
-      ? Array.from(labels.dataSync() as Float32Array).map((l) => Math.round(l))
-      : (labels as number[]);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   // Get unique labels
   const uniqueLabels = Array.from(new Set(labelArray));
@@ -151,7 +134,7 @@ export function daviesBouldinEfficient(
 
   // Validate
   if (k <= 1) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Davies-Bouldin score requires at least 2 clusters');
@@ -185,7 +168,7 @@ export function daviesBouldinEfficient(
   }
 
   // Clean up data tensor if we created it
-  if (!isTensor(X)) {
+  if (ownsTensor) {
     data.dispose();
   }
 

@@ -1,24 +1,26 @@
 import { KMeans } from "../../src/clustering/kmeans";
+import { make_random_stream } from "../../src/utils/rng";
 
 describe("KMeans empty cluster handling", () => {
   it("should reassign empty clusters to farthest points like sklearn", async () => {
     // Create a dataset that will likely produce empty clusters
     // 3 tight groups, but asking for 5 clusters
+    const rng = make_random_stream(42);
     const X = [
       // Group 1: 20 points near origin
       ...Array.from({ length: 20 }, () => [
-        Math.random() * 0.5,
-        Math.random() * 0.5,
+        rng.rand() * 0.5,
+        rng.rand() * 0.5,
       ]),
       // Group 2: 5 points at (5, 5)
       ...Array.from({ length: 5 }, () => [
-        5 + Math.random() * 0.5,
-        5 + Math.random() * 0.5,
+        5 + rng.rand() * 0.5,
+        5 + rng.rand() * 0.5,
       ]),
       // Group 3: 5 points at (5, -5)
       ...Array.from({ length: 5 }, () => [
-        5 + Math.random() * 0.5,
-        -5 + Math.random() * 0.5,
+        5 + rng.rand() * 0.5,
+        -5 + rng.rand() * 0.5,
       ]),
     ];
 

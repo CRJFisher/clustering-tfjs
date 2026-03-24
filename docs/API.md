@@ -46,7 +46,6 @@ new KMeans(params: KMeansParams)
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `nClusters` | `number` | required | Number of clusters to form |
-| `init` | `'k-means++' \| 'random' \| number[][]` | `'k-means++'` | Initialization method |
 | `nInit` | `number` | `10` | Number of initializations to run |
 | `maxIter` | `number` | `300` | Maximum iterations per run |
 | `tol` | `number` | `1e-4` | Convergence tolerance |
@@ -59,7 +58,6 @@ import { KMeans } from 'clustering-tfjs';
 
 const kmeans = new KMeans({
   nClusters: 3,
-  init: 'k-means++',
   nInit: 10,
   maxIter: 300
 });
@@ -114,7 +112,7 @@ Hierarchical clustering using bottom-up approach.
 #### Constructor
 
 ```typescript
-new AgglomerativeClustering(params: AgglomerativeParams)
+new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 ```
 
 #### Parameters
@@ -170,17 +168,26 @@ Train the SOM and return cluster assignments.
 ##### fit(X: DataMatrix): Promise<void>
 Train the SOM on the provided data. Supports incremental/online learning - can be called multiple times with new data batches to continue training.
 
-##### getWeights(): tf.Tensor3D
-Get the trained weight vectors of all neurons. Shape: [gridHeight, gridWidth, nFeatures]
+##### cluster(nClusters: number, options?: SOMClusterOptions): Promise<number[]>
+Perform 2-phase clustering: agglomerative clustering on SOM weight vectors to produce `nClusters` meaningful clusters. Returns one label per data point from the most recent `fit()` call.
+
+##### getWeights(): number[][][]
+Get the trained weight vectors of all neurons as a plain JavaScript array. Shape: [gridHeight][gridWidth][nFeatures]. Returns a snapshot — safe to use after `dispose()`.
 
 ##### getUMatrix(): tf.Tensor2D
-Calculate the U-matrix (unified distance matrix) showing average distances between neurons and their neighbors. Useful for visualization.
+Calculate the U-matrix (unified distance matrix) showing average distances between neurons and their neighbors. Useful for visualization. Caller owns the returned tensor.
 
 ##### quantizationError(): number
 Calculate the average distance between samples and their Best Matching Units (BMUs).
 
 ##### topographicError(X?: DataMatrix): Promise<number>
 Calculate the proportion of samples for which the first and second BMUs are not adjacent. Lower values indicate better topology preservation.
+
+##### partialFit(X: DataMatrix): Promise<void>
+Incremental learning. Requires `onlineMode: true`. Input must have the same number of features as the initial fit.
+
+##### dispose(): void
+Release all GPU/WebGL memory. Safe to call multiple times. Previously returned `getWeights()` arrays remain valid. Previously returned tensors from `getUMatrix()` are unaffected (caller-owned).
 
 #### Example
 
@@ -204,9 +211,13 @@ const som = new SOM({
 const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
 const labels = await som.fitPredict(data);
 
-// Get the trained weights
+// Get meaningful clusters (2-phase: SOM + agglomerative)
+const clusterLabels = await som.cluster(3);
+console.log('Cluster labels:', clusterLabels); // e.g. [0, 0, 1, 2, 0, 2]
+
+// Get the trained weights (plain array, no dispose needed)
 const weights = som.getWeights();
-console.log('Weight shape:', weights.shape); // [5, 5, 2]
+console.log('Weight shape:', [weights.length, weights[0].length, weights[0][0].length]); // [5, 5, 2]
 
 // Calculate U-matrix for visualization
 const uMatrix = som.getUMatrix();
@@ -219,9 +230,9 @@ console.log('Quantization error:', quantError);
 const topoError = await som.topographicError(data);
 console.log('Topographic error:', topoError);
 
-// Clean up tensors
-weights.dispose();
+// Clean up — only tensor values need disposing
 uMatrix.dispose();
+som.dispose();
 ```
 
 ## Validation Metrics

@@ -17,10 +17,11 @@ import type { SOM } from '../clustering/som';
  */
 export function getComponentPlanes(som: SOM): tf.Tensor3D {
   const weights = som.getWeights();
-  
+
   return tf.tidy(() => {
+    const weightsTensor = tf.tensor3d(weights);
     // Transpose from [height, width, features] to [features, height, width]
-    return weights.transpose([2, 0, 1]);
+    return weightsTensor.transpose([2, 0, 1]);
   });
 }
 
@@ -67,21 +68,23 @@ export function getActivationMap(
   sample: tf.Tensor1D
 ): tf.Tensor2D {
   const weights = som.getWeights();
-  
+  const { gridHeight, gridWidth } = som.params;
+  const nFeatures = weights[0][0].length;
+
   return tf.tidy(() => {
-    const [gridHeight, gridWidth, nFeatures] = weights.shape;
-    
+    const weightsTensor = tf.tensor3d(weights);
+
     // Reshape weights for computation
-    const weightsFlat = weights.reshape([gridHeight * gridWidth, nFeatures]);
-    
+    const weightsFlat = weightsTensor.reshape([gridHeight * gridWidth, nFeatures]);
+
     // Compute distances from sample to all neurons
     const diff = weightsFlat.sub(sample.expandDims(0));
     const distances = diff.square().sum(1).sqrt();
-    
+
     // Convert distances to activations (inverse relationship)
     const maxDist = distances.max();
     const activations = maxDist.sub(distances).div(maxDist);
-    
+
     // Reshape to grid
     return activations.reshape([gridHeight, gridWidth]) as tf.Tensor2D;
   });
@@ -127,18 +130,17 @@ export async function getQuantizationQualityMap(
   X: tf.Tensor2D
 ): Promise<tf.Tensor2D> {
   const { gridHeight, gridWidth } = som.params;
-  const weights = som.getWeights();
-  
+  const weightsArray = som.getWeights();
+
   // Get labels and compute distances
   const labels = await som.predict(X);
-  
+
   // Initialize quality map
   const qualityMap = tf.buffer([gridHeight, gridWidth]);
   const counts = tf.buffer([gridHeight, gridWidth]);
-  
+
   // Compute average distance for each neuron
   const xArray = await X.array();
-  const weightsArray = await weights.array();
   
   if (Array.isArray(labels)) {
     for (let i = 0; i < labels.length; i++) {
@@ -184,12 +186,11 @@ export async function getQuantizationQualityMap(
  * @returns Neighbor distances [gridHeight, gridWidth]
  */
 export function getNeighborDistanceMatrix(som: SOM): tf.Tensor2D {
-  const weights = som.getWeights();
+  const weightsArray = som.getWeights();
   const { gridHeight, gridWidth, topology } = som.params;
-  
+
   return tf.tidy(() => {
     const distanceMap = tf.buffer([gridHeight, gridWidth]);
-    const weightsArray = weights.arraySync();
     
     for (let i = 0; i < gridHeight; i++) {
       for (let j = 0; j < gridWidth; j++) {
@@ -265,12 +266,11 @@ export async function exportForVisualization(
   som: SOM,
   format: 'json' | 'csv' = 'json'
 ): Promise<string> {
-  const weights = som.getWeights();
+  const weightsArray = som.getWeights();
   const uMatrix = som.getUMatrix();
   const { gridHeight, gridWidth } = som.params;
 
   try {
-    const weightsArray = await weights.array();
     const uMatrixArray = await uMatrix.array();
 
     if (format === 'json') {

@@ -1,5 +1,7 @@
 import * as tf from '../tf-adapter';
 import { deterministicEigenpairProcessing } from './eigen_post';
+import { lanczos_smallest_eigenpairs } from './lanczos';
+import { improved_jacobi_eigen } from './eigen_improved';
 
 /**
  * Size threshold for choosing Lanczos over Jacobi.
@@ -46,8 +48,6 @@ function lanczos_path(
   const kRequest = Math.min(k + 5, n);
 
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { lanczos_smallest_eigenpairs } = require('./lanczos');
     const result = lanczos_smallest_eigenpairs(matrix, kRequest, {
       isPSD: true,
       randomSeed: 42,
@@ -97,8 +97,6 @@ function jacobi_path(
   k: number,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   return tf.tidy(() => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { improved_jacobi_eigen } = require('./eigen_improved');
 
     // Full eigendecomposition
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {

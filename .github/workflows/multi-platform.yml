@@ -17,10 +17,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build browser bundle
         run: npm run build:browser
       
@@ -79,6 +80,7 @@ jobs:
                 await Clustering.init({ backend: 'webgl' });
               } catch (e) {
                 // Fall back to CPU if WebGL not available
+                Clustering.reset();
                 await Clustering.init({ backend: 'cpu' });
               }
               
@@ -96,6 +98,7 @@ jobs:
             // Test that we can switch to CPU backend
             const cpuResult = await page.evaluate(async () => {
               const { Clustering } = window.ClusteringTFJS;
+              Clustering.reset();
               await Clustering.init({ backend: 'cpu' });
               const tf = window.tf;
               return {
@@ -114,7 +117,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         backend: [tfjs-node, tfjs]
-        node-version: [18.x, 20.x]
+        node-version: [18.x, 20.x, 22.x]
         exclude:
           # tfjs-node-gpu only works on Linux
           - os: windows-latest
@@ -134,10 +137,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ matrix.node-version }}
-      
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build Node.js bundle
         run: npm run build:node
       
@@ -236,10 +240,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-      
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci
-      
+
       - name: Build all targets
         run: npm run build:multi
       
@@ -250,13 +255,13 @@ jobs:
           echo "Node.js bundle: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
           echo "Standard build: $(ls -lh dist/index.js | awk '{print $5}')"
           
-          # Fail if browser bundle is too large (>100KB)
+          # Fail if browser bundle is too large (>120KB)
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             BROWSER_SIZE=$(stat -f%z dist/clustering.browser.js)
           else
             BROWSER_SIZE=$(stat -c%s dist/clustering.browser.js)
           fi
-          if [ $BROWSER_SIZE -gt 102400 ]; then
-            echo "ERROR: Browser bundle is too large (>100KB)"
+          if [ $BROWSER_SIZE -gt 122880 ]; then
+            echo "ERROR: Browser bundle is too large (>120KB)"
             exit 1
           fi

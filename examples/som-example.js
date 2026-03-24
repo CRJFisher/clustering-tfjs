@@ -71,7 +71,7 @@ async function basicSOMExample() {
     
     // Get the weight vectors
     const weights = som.getWeights();
-    console.log(`\nWeight vectors shape: [${weights.shape}]`);
+    console.log(`\nWeight vectors shape: [${weights.length}, ${weights[0].length}, ${weights[0][0].length}]`);
     
     // Calculate quality metrics
     const quantError = som.quantizationError();

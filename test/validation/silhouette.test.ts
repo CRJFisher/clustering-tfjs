@@ -1,11 +1,14 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { silhouetteScore, silhouetteScoreSubset, silhouetteSamples } from "../../src/validation/silhouette";
+import { make_random_stream } from "../../src/utils/rng";
 
 describe("Silhouette Score", () => {
-  afterEach(() => {
-    // Clean up any remaining tensors
+  beforeEach(() => {
     tf.engine().startScope();
+  });
+
+  afterEach(() => {
     tf.engine().endScope();
   });
 
@@ -222,11 +225,12 @@ describe("Silhouette Score", () => {
       const X: number[][] = [];
       const labels: number[] = [];
       
+      const rng = make_random_stream(42);
       for (let i = 0; i < n; i++) {
         const cluster = i < n/2 ? 0 : 1;
         labels.push(cluster);
-        
-        const noise = () => (Math.random() - 0.5) * 0.5;
+
+        const noise = () => (rng.rand() - 0.5) * 0.5;
         if (cluster === 0) {
           X.push([0 + noise(), 0 + noise()]);
         } else {
@@ -234,25 +238,16 @@ describe("Silhouette Score", () => {
         }
       }
       
-      // Time full computation
-      const fullStart = Date.now();
       const fullScore = silhouetteScore(X, labels);
-      const fullTime = Date.now() - fullStart;
-      
-      // Time subset computation (10% of samples)
+
+      // Subset computation (10% of samples)
       const subsetSize = Math.floor(n * 0.1);
-      const subsetIndices = Array.from({ length: subsetSize }, 
+      const subsetIndices = Array.from({ length: subsetSize },
         (_, i) => Math.floor(i * n / subsetSize));
-      
-      const subsetStart = Date.now();
+
       const subsetScore = silhouetteScoreSubset(X, labels, subsetIndices);
-      const subsetTime = Date.now() - subsetStart;
-      
-      // Subset should not be significantly slower than full computation
-      // Allow up to 2x slower to account for overhead on small datasets
-      expect(subsetTime).toBeLessThan(fullTime * 2);
-      
-      // Scores should be similar
+
+      // On small datasets overhead dominates; just verify scores agree
       expect(Math.abs(fullScore - subsetScore)).toBeLessThan(0.1);
     });
   });

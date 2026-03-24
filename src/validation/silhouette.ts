@@ -1,7 +1,6 @@
 import * as tf from '../tf-adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
-import { validateLabelsLength } from './validate';
+import { validateLabelsLength, convertValidationInputs } from './validate';
 
 /**
  * Computes per-sample silhouette coefficients.
@@ -23,17 +22,7 @@ import { validateLabelsLength } from './validate';
 export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] {
   validateLabelsLength(X, labels);
   return tf.tidy(() => {
-    // Convert inputs to tensors
-    const data =
-      isTensor(X)
-        ? (X as tf.Tensor2D)
-        : tf.tensor2d(X as number[][]);
-    const labelArray =
-      isTensor(labels)
-        ? Array.from(labels.dataSync() as Float32Array).map((l) =>
-            Math.round(l),
-          )
-        : (labels as number[]);
+    const { data, labelArray } = convertValidationInputs(X, labels);
 
     const n = data.shape[0];
 
@@ -57,7 +46,7 @@ export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] 
 
     // Compute silhouette for each sample
     const silhouetteValues: number[] = [];
-    const distancesArray = distances.arraySync();
+    const distancesFlat = distances.dataSync() as Float32Array;
 
     for (let i = 0; i < n; i++) {
       const sampleLabel = labelArray[i];
@@ -84,7 +73,7 @@ export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] 
       let a = 0;
       if (sameClusterIndices.length > 0) {
         for (const j of sameClusterIndices) {
-          a += distancesArray[i][j];
+          a += distancesFlat[i * n + j];
         }
         a /= sameClusterIndices.length;
       }
@@ -94,7 +83,7 @@ export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] 
       for (const [_label, indices] of otherClusterIndices) {
         let meanDist = 0;
         for (const j of indices) {
-          meanDist += distancesArray[i][j];
+          meanDist += distancesFlat[i * n + j];
         }
         meanDist /= indices.length;
 
@@ -149,13 +138,7 @@ export function silhouetteScoreSubset(
   sampleIndices: number[],
 ): number {
   validateLabelsLength(X, labels);
-  // Convert inputs
-  const data =
-    isTensor(X) ? (X as tf.Tensor2D) : tf.tensor2d(X as number[][]);
-  const labelArray =
-    isTensor(labels)
-      ? Array.from(labels.dataSync() as Float32Array).map((l) => Math.round(l))
-      : (labels as number[]);
+  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
 
   const n = data.shape[0];
 
@@ -165,7 +148,7 @@ export function silhouetteScoreSubset(
 
   // Validate
   if (k <= 1) {
-    if (!isTensor(X)) {
+    if (ownsTensor) {
       data.dispose();
     }
     throw new Error('Silhouette score requires at least 2 clusters');
@@ -248,7 +231,7 @@ export function silhouetteScoreSubset(
   }
 
   // Clean up data tensor if we created it
-  if (!isTensor(X)) {
+  if (ownsTensor) {
     data.dispose();
   }
 

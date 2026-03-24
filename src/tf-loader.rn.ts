@@ -26,7 +26,7 @@ export async function loadTensorFlow() {
     try {
       await tf.setBackend('rn-webgl');
       console.log('Using TensorFlow.js React Native WebGL backend (GPU accelerated)');
-    } catch (webglError) {
+    } catch {
       // Fallback to CPU backend if WebGL not available
       console.warn('WebGL backend not available, falling back to CPU');
       await tf.setBackend('cpu');
@@ -34,7 +34,7 @@ export async function loadTensorFlow() {
     }
     
     return tf;
-  } catch (error) {
+  } catch {
     throw new Error(
       'TensorFlow.js React Native not found. Please install:\n' +
       '- @tensorflow/tfjs-react-native\n' +

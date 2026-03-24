@@ -251,7 +251,7 @@ async function largeDatesetClustering() {
   // Predict on batches
   for (let i = 0; i < totalSamples / batchSize; i++) {
     const batch = generateBatch();
-    const labels = await kmeans.predict(batch);
+    const labels = await kmeans.fitPredict(batch);
     // Process labels...
   }
 }
@@ -342,9 +342,9 @@ async function somExample() {
   const labels = await som.fitPredict(data);
   console.log('Cluster assignments:', labels);
   
-  // Get the weight vectors (codebook)
+  // Get the weight vectors (codebook) — plain array, no dispose needed
   const weights = som.getWeights();
-  console.log('SOM weights shape:', weights.shape); // [4, 4, 2]
+  console.log('SOM weights shape:', [weights.length, weights[0].length, weights[0][0].length]); // [4, 4, 2]
   
   // Calculate U-matrix for visualization
   const uMatrix = som.getUMatrix();
@@ -501,5 +501,5 @@ async function compareTopologies() {
 ## Next Steps
 
 - Check out the [API Reference](../API.md) for detailed method documentation
-- See [Performance Guide](../performance.md) for optimization tips
-- Read [Migration Guide](../migration-guide.md) if coming from scikit-learn
+- See [benchmarks](../../benchmarks/) for performance data and optimization tips
+- Read [Migration Guide](../../MIGRATION.md) if coming from scikit-learn

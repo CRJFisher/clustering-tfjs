@@ -56,15 +56,13 @@ describe('tf-backend', () => {
       expect(tf1).toBe(tf2);
     });
 
-    it('respects backend switch when already initialized', async () => {
+    it('returns the cached instance regardless of config after initialization', async () => {
       const tf = await initializeBackend();
-      const currentBackend = tf.getBackend();
-      expect(currentBackend).toBeDefined();
-
-      // Switching to cpu should work
+      // Config conflict detection is handled at the Clustering.init() level,
+      // not at the initializeBackend() level. Once initialized, initializeBackend
+      // always returns the cached instance.
       const tf2 = await initializeBackend({ backend: 'cpu' });
       expect(tf2).toBe(tf);
-      expect(tf2.getBackend()).toBe('cpu');
     });
 
     it('returns the in-flight promise on concurrent calls', async () => {
@@ -84,11 +82,11 @@ describe('tf-backend', () => {
     });
 
     it('allows re-initialization after reset', async () => {
-      const tf1 = await initializeBackend();
+      await initializeBackend();
       resetBackend();
-      const tf2 = await initializeBackend();
-      expect(tf2).toBeDefined();
-      expect(typeof tf2.tensor2d).toBe('function');
+      const tf = await initializeBackend();
+      expect(tf).toBeDefined();
+      expect(typeof tf.tensor2d).toBe('function');
     });
   });
 });

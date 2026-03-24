@@ -50,6 +50,7 @@ export const fill: typeof tfTypes.fill = (...args) => ensureBackend().fill(...ar
 export const eye: typeof tfTypes.eye = (...args) => ensureBackend().eye(...args);
 export const linspace: typeof tfTypes.linspace = (...args) => ensureBackend().linspace(...args);
 export const buffer: typeof tfTypes.buffer = (...args) => ensureBackend().buffer(...args);
+export const oneHot: typeof tfTypes.oneHot = (...args) => ensureBackend().oneHot(...args);
 
 // Math operations
 export const add: typeof tfTypes.add = (...args) => ensureBackend().add(...args);
@@ -116,7 +117,7 @@ const tf: typeof tfTypes = new Proxy({} as typeof tfTypes, {
     // Keep in sync with the named exports above.
     const namedExports: Record<string, unknown> = {
       tensor, tensor1d, tensor2d, tensor3d, scalar, zeros, ones, onesLike,
-      fill, eye, linspace, buffer, add, sub, pow, sqrt, square,
+      fill, eye, linspace, buffer, oneHot, add, sub, pow, sqrt, square,
       maximum, matMul, sum, argMin, gather, topk, scatterND, slice, concat,
       stack, cast, expandDims, where, tidy, keep, clone, dispose,
       randomUniform, randomNormal, setBackend, ready, memory, getBackend,

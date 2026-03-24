@@ -60,7 +60,12 @@ module.exports = {
       new TerserPlugin({
         terserOptions: {
           compress: {
-            drop_console: false,
+            drop_console: true,
+            passes: 2,
+            pure_getters: true,
+          },
+          mangle: {
+            properties: false,
           },
           format: {
             comments: false,
