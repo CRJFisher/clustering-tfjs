@@ -156,10 +156,10 @@ function normalize_and_score_evaluations(
  *
  * @example
  * ```typescript
- * import { findOptimalClusters } from 'clustering-tfjs';
+ * import { find_optimal_clusters } from 'clustering-tfjs';
  *
  * const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
- * const result = await findOptimalClusters(data, { maxClusters: 5 });
+ * const result = await find_optimal_clusters(data, { max_clusters: 5 });
  *
  * console.log(`Optimal number of clusters: ${result.optimal.k}`);
  * console.log(`Best silhouette score: ${result.optimal.silhouette}`);
@@ -197,7 +197,7 @@ export async function find_optimal_clusters(
   const data_tensor = is_input_tensor ? X : tf.tensor2d(X as number[][]);
   const n_samples = data_tensor.shape[0];
 
-  // Adjust maxClusters if it exceeds number of samples
+  // Adjust max_clusters if it exceeds number of samples
   const effective_max_clusters = Math.min(max_clusters, n_samples - 1);
 
   if (effective_max_clusters < min_clusters) {
@@ -250,7 +250,7 @@ export async function find_optimal_clusters(
         break;
       case 'som': {
         // For SOM, we need to determine grid dimensions
-        // Use square grid as default, can be overridden via algorithmParams
+        // Use square grid as default, can be overridden via algorithm_params
         const grid_size = Math.ceil(Math.sqrt(k));
         const params = algorithm_params as Record<string, unknown>;
         clusterer = new SOM({

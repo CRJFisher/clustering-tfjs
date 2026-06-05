@@ -4,13 +4,13 @@ import { createServer } from 'http';
 export interface BrowserBenchmarkResult {
   algorithm: string;
   backend: 'webgl' | 'wasm' | 'cpu';
-  datasetSize: number;
+  dataset_size: number;
   features: number;
-  executionTime: number;
-  memoryUsed: number;
+  execution_time: number;
+  memory_used: number;
 }
 
-const benchmarkHTML = `
+const benchmark_html = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -26,7 +26,7 @@ const benchmarkHTML = `
       await tf.setBackend(backend);
       await tf.ready();
       
-      // Generate random data (simplified makeBlobs)
+      // Generate random data (simplified make_blobs)
       const X = tf.randomNormal([samples, features]);
       
       // Track memory
@@ -51,7 +51,7 @@ const benchmarkHTML = `
         centroids.dispose();
       }
       
-      const executionTime = performance.now() - start;
+      const execution_time = performance.now() - start;
       const memAfter = tf.memory();
       
       X.dispose();
@@ -59,10 +59,10 @@ const benchmarkHTML = `
       return {
         algorithm,
         backend,
-        datasetSize: samples,
+        dataset_size: samples,
         features,
-        executionTime,
-        memoryUsed: memAfter.numBytes - memBefore.numBytes,
+        execution_time,
+        memory_used: memAfter.numBytes - memBefore.numBytes,
       };
     };
   </script>
@@ -70,7 +70,7 @@ const benchmarkHTML = `
 </html>
 `;
 
-export async function benchmarkInBrowser(
+export async function benchmark_in_browser(
   configs: Array<{
     algorithm: string;
     backend: 'webgl' | 'wasm' | 'cpu';
@@ -82,7 +82,7 @@ export async function benchmarkInBrowser(
   // Create a simple HTTP server to serve the benchmark page
   const server = createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(benchmarkHTML);
+    res.end(benchmark_html);
   });
 
   await new Promise<void>((resolve) => {
@@ -119,9 +119,9 @@ export async function benchmarkInBrowser(
       );
       results.push(result);
     } catch (error: unknown) {
-      const errorMessage =
+      const error_message =
         error instanceof Error ? error.message : String(error);
-      console.error(`Failed: ${errorMessage}`);
+      console.error(`Failed: ${error_message}`);
     }
   }
 

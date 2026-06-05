@@ -56,7 +56,7 @@ export interface DebugInfo {
  * This initial implementation only covers:
  *   • Constructor & hyper-parameter validation
  *   • Public instance properties
- *   • Synchronous method stubs for `fit` / `fitPredict`
+ *   • Synchronous method stubs for `fit` / `fit_predict`
  *
  * The heavy lifting – affinity matrix construction, graph Laplacian
  * computation, eigen-decomposition and the final k-means step – will be
@@ -78,10 +78,10 @@ export class SpectralClustering
   /** Lazy-filled cluster labels after calling `fit`. */
   public labels_: number[] | null = null;
 
-  /** Cached affinity matrix (shape: nSamples × nSamples). */
+  /** Cached affinity matrix (shape: n_samples × n_samples). */
   public affinity_matrix_: tf.Tensor2D | null = null;
 
-  /** Debug information (populated when using returnIntermediateSteps) */
+  /** Debug information (populated when using return_intermediate_steps) */
   private debug_info_: DebugInfo | null = null;
 
   /** Whether to capture debug information (modular compatibility) */
@@ -117,10 +117,10 @@ export class SpectralClustering
    * @param params - Configuration for spectral clustering.
    */
   constructor(params: SpectralClusteringParams) {
-    const { capture_debug_info = false, ...clusteringParams } = params;
+    const { capture_debug_info = false, ...clustering_params } = params;
 
     // Freeze user params to avoid accidental mutation downstream.
-    this.params = { ...clusteringParams };
+    this.params = { ...clustering_params };
     this.capture_debug_info = capture_debug_info;
 
     SpectralClustering.validate_params(this.params);
@@ -225,7 +225,7 @@ export class SpectralClustering
         '../graph/component_indicators'
       );
 
-      // Use all component indicators, not just nClusters
+      // Use all component indicators, not just n_clusters
       // This allows k-means to properly group components into clusters
       U = create_component_indicators(
         component_labels,
@@ -269,15 +269,15 @@ export class SpectralClustering
 
       // Capture Laplacian spectrum if requested
       if (this.capture_debug_info) {
-        const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
+        const { smallest_eigenvectors_with_values: spectrum_helper } = await import(
           '../eigen/smallest_eigenvectors_with_values'
         );
         const spectrum_k = Math.min(10, laplacian.shape[0]);
-        const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrum_k);
-        const spec_data = await specEvals.data();
+        const { eigenvalues: spec_evals, eigenvectors: spec_vecs } = spectrum_helper(laplacian, spectrum_k);
+        const spec_data = await spec_evals.data();
         this.debug_info_!.laplacian_spectrum = Array.from(spec_data);
-        specEvals.dispose();
-        specVecs.dispose();
+        spec_evals.dispose();
+        spec_vecs.dispose();
       }
 
       // Get eigenvectors AND eigenvalues for D^{1/2} normalization
@@ -304,7 +304,7 @@ export class SpectralClustering
         ) as tf.Tensor2D;
 
         // Recover embedding from normalized Laplacian eigenvectors by dividing by D^{1/2}
-        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        // sqrt_degrees is D^{-1/2}, so D^{1/2} = pow(sqrt_degrees, -1)
         // This matches sklearn's spectral_embedding: embedding /= dd where dd = D^{1/2}
         const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
         const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
@@ -446,9 +446,9 @@ export class SpectralClustering
   /**
    * Fits the model and returns cluster labels.
    *
-   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @param X - Input data matrix of shape [n_samples, n_features].
    * @returns Array of cluster labels for each sample.
-   * @throws {Error} If nClusters exceeds nSamples or nSamples exceeds maxSamples.
+   * @throws {Error} If n_clusters exceeds n_samples or n_samples exceeds max_samples.
    */
   async fit_predict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
@@ -531,15 +531,15 @@ export class SpectralClustering
     );
 
     // Capture Laplacian spectrum using same solver routing as the main pipeline
-    const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
+    const { smallest_eigenvectors_with_values: spectrum_helper } = await import(
       '../eigen/smallest_eigenvectors_with_values'
     );
     const spectrum_k = Math.min(10, laplacian.shape[0]);
-    const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrum_k);
-    const spec_data = await specEvals.data();
+    const { eigenvalues: spec_evals, eigenvectors: spec_vecs } = spectrum_helper(laplacian, spectrum_k);
+    const spec_data = await spec_evals.data();
     this.debug_info_.laplacian_spectrum = Array.from(spec_data);
-    specEvals.dispose();
-    specVecs.dispose();
+    spec_evals.dispose();
+    spec_vecs.dispose();
 
     /* ---------------------------- 3) Embedding ----------------------------- */
     const { smallest_eigenvectors_with_values } = await import(
@@ -556,7 +556,7 @@ export class SpectralClustering
         [0, 0],
         [-1, this.params.n_clusters],
       ) as tf.Tensor2D;
-      // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+      // sqrt_degrees is D^{-1/2}, so D^{1/2} = pow(sqrt_degrees, -1)
       const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
       const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
       return U_selected.div(sqrt_deg_col) as tf.Tensor2D;
@@ -602,7 +602,7 @@ export class SpectralClustering
     km.dispose();
 
     /* ---------------------------- Prepare Result ----------------------------- */
-    // Compute D^{1/2} for the result (sqrtDegrees is D^{-1/2}, so pow(-1) gives D^{1/2})
+    // Compute D^{1/2} for the result (sqrt_degrees is D^{-1/2}, so pow(-1) gives D^{1/2})
     const degrees_intermediate = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
     const result: IntermediateSteps = {
       affinity: tf.clone(affinity),
@@ -644,7 +644,7 @@ export class SpectralClustering
   private static validate_params(params: SpectralClusteringParams): void {
     const { n_clusters, affinity = 'rbf', gamma, n_neighbors } = params;
 
-    // nClusters must be a positive integer
+    // n_clusters must be a positive integer
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
       throw new Error('nClusters must be a positive integer (>= 1).');
     }
@@ -670,9 +670,9 @@ export class SpectralClustering
       throw new Error("gamma is only applicable when affinity is 'rbf'.");
     }
 
-    // nNeighbors checks for nearest_neighbors affinity
+    // n_neighbors checks for nearest_neighbors affinity
     if (!is_callable && affinity === 'nearest_neighbors') {
-      // If nNeighbors is provided, validate it
+      // If n_neighbors is provided, validate it
       if (
         n_neighbors !== undefined &&
         (!Number.isInteger(n_neighbors) || n_neighbors < 1)
@@ -686,7 +686,7 @@ export class SpectralClustering
       );
     }
 
-    // precomputed: gamma / nNeighbors not allowed
+    // precomputed: gamma / n_neighbors not allowed
     if (!is_callable && affinity === 'precomputed') {
       if (gamma !== undefined) {
         throw new Error(
@@ -792,7 +792,7 @@ export class SpectralClustering
           [0, 0],
           [-1, num_to_use],
         ) as tf.Tensor2D;
-        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        // sqrt_degrees is D^{-1/2}, so D^{1/2} = pow(sqrt_degrees, -1)
         const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
         const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
         const U_normalized = U_selected.div(sqrt_deg_col) as tf.Tensor2D;

@@ -2,7 +2,7 @@ import { SpectralClustering } from "../index";
 import { make_random_stream } from "../random";
 
 /**
- * Unit test verifying that the `randomState` provided to `SpectralClustering`
+ * Unit test verifying that the `random_state` provided to `SpectralClustering`
  * is forwarded to the internal `KMeans` initialisation which makes the final
  * cluster labels fully reproducible.
  */

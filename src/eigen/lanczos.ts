@@ -73,7 +73,7 @@ export function lanczos_smallest_eigenpairs(
   }
 
   const {
-    max_subspace_size: maxSubspaceSizeOpt,
+    max_subspace_size: max_subspace_size_opt,
     max_restarts = 10,
     convergence_tol = CONVERGENCE_TOL_DEFAULT,
     random_seed = 42,
@@ -81,7 +81,7 @@ export function lanczos_smallest_eigenpairs(
   } = options ?? {};
 
   // Subspace size: need enough room beyond k for convergence
-  const m_max = maxSubspaceSizeOpt ?? Math.min(Math.max(2 * k + 20, 4 * k), n, 200);
+  const m_max = max_subspace_size_opt ?? Math.min(Math.max(2 * k + 20, 4 * k), n, 200);
 
   // Extract the matrix to JS arrays once — avoids repeated GPU→CPU transfers.
   // The matvec A*v will be done in pure JS. For n=5000 this is ~25M entries
@@ -411,7 +411,7 @@ function extract_smallest(
     eigenvalues.push(lambda);
 
     // Reconstruct Ritz vector: u = Q * s_idx
-    // Q is [n, m_basis] where m_basis = basisVectors.length, s is [m, 1]
+    // Q is [n, m_basis] where m_basis = basis_vectors.length, s is [m, 1]
     const basis_count = Math.min(basis_vectors.length, m);
     for (let row = 0; row < n; row++) {
       let sum = 0;

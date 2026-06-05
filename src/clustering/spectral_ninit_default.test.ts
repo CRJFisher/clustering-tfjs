@@ -12,7 +12,9 @@ describe("SpectralClustering – implicit nInit default", () => {
 
     // The secret debug property is added by the implementation solely for
     // unit-testing / introspection purposes.
-    const params = (model as any)._debug_last_kmeans_params_;
+    const params = (model as SpectralClustering & {
+      _debug_last_kmeans_params_: { n_init?: number };
+    })._debug_last_kmeans_params_;
     expect(params).toBeDefined();
     expect(params.n_init).toBe(10);
   });

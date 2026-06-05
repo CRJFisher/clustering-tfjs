@@ -360,7 +360,7 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     const result = smallest_eigenvectors_with_values(M, 2);
 
     // c = 1 (only eigenvalue 0 is zero with tolerance 1e-7)
-    // sliceCols = min(2 + 1, 4) = 3
+    // slice_cols = min(2 + 1, 4) = 3
     expect(result.eigenvectors.shape[1]).toBe(3);
 
     const eigen_data = result.eigenvalues.arraySync() as number[];
@@ -386,7 +386,7 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
 
     const result = smallest_eigenvectors_with_values(M, 2);
 
-    // c = 2 (two zero eigenvalues), sliceCols = min(2 + 2, 4) = 4
+    // c = 2 (two zero eigenvalues), slice_cols = min(2 + 2, 4) = 4
     expect(result.eigenvectors.shape[1]).toBe(4);
 
     const eigen_data = result.eigenvalues.arraySync() as number[];
@@ -411,7 +411,7 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     const result = smallest_eigenvectors_with_values(M, 2);
 
     // c = 1 (only exact 0 is zero; 1e-6 > 1e-7)
-    // sliceCols = min(2 + 1, 3) = 3
+    // slice_cols = min(2 + 1, 3) = 3
     expect(result.eigenvectors.shape[1]).toBe(3);
 
     result.eigenvectors.dispose();
@@ -432,7 +432,7 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     const result = smallest_eigenvectors_with_values(M, 1);
 
     // c = 2 (both 0 and 5e-8 are <= 1e-7)
-    // sliceCols = min(1 + 2, 3) = 3
+    // slice_cols = min(1 + 2, 3) = 3
     expect(result.eigenvectors.shape[1]).toBe(3);
 
     result.eigenvectors.dispose();

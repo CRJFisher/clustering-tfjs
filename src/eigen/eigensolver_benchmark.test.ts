@@ -3,6 +3,7 @@ import { lanczos_smallest_eigenpairs } from './lanczos';
 import { improved_jacobi_eigen } from './improved';
 import { normalised_laplacian } from '../graph/laplacian';
 import { compute_rbf_affinity } from '../graph/affinity';
+import { make_random_stream } from '../random';
 
 /**
  * Benchmark: Lanczos vs Jacobi eigensolver.
@@ -10,7 +11,7 @@ import { compute_rbf_affinity } from '../graph/affinity';
  */
 describe('Eigensolver benchmark: Lanczos vs Jacobi', () => {
   function generate_symmetric_laplacian(n: number, seed: number): tf.Tensor2D {
-    const rng = require('../random').make_random_stream(seed);
+    const rng = make_random_stream(seed);
     const data: number[][] = [];
     const n_clusters = 3;
     const samples_per_cluster = Math.floor(n / n_clusters);

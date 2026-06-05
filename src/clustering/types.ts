@@ -7,7 +7,7 @@ import * as tf from '../backend/adapter';
  */
 
 /**
- * Two-dimensional data matrix accepted by `fit`/`fitPredict` methods.
+ * Two-dimensional data matrix accepted by `fit`/`fit_predict` methods.
  *
  * Either a `tf.Tensor2D` **or** a plain nested JavaScript array. Allowing both
  * keeps the public API flexible while still supporting efficient tensor based
@@ -16,7 +16,7 @@ import * as tf from '../backend/adapter';
 export type DataMatrix = tf.Tensor2D | number[][];
 
 /**
- * One-dimensional vector of cluster assignments returned by `fitPredict`.
+ * One-dimensional vector of cluster assignments returned by `fit_predict`.
  *
  * The choice of `tf.Tensor1D` or plain `number[]` again mirrors `DataMatrix`.
  */
@@ -67,7 +67,7 @@ export interface KMeansParams extends BaseClusteringParams {
 
   /**
    * Number of random initialisations to perform. The algorithm will run
-   * k-means++ `nInit` times and keep the solution with the lowest inertia.
+   * k-means++ `n_init` times and keep the solution with the lowest inertia.
    * Mirrors scikit-learn’s `n_init` parameter. Must be ≥ 1. Defaults to 10.
    */
   n_init?: number;
@@ -113,21 +113,21 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
   use_validation?: boolean;
 
   /**
-   * Number of different random seeds to try when useValidation is enabled.
+   * Number of different random seeds to try when use_validation is enabled.
    * Each seed generates a different k-means++ initialization.
    * Default: 20
    */
   validation_attempts?: number;
 
   /**
-   * Whether to also optimize affinity parameters (gamma for RBF, nNeighbors for kNN)
-   * when useValidation is enabled. This performs a grid search over parameter values.
+   * Whether to also optimize affinity parameters (gamma for RBF, n_neighbors for kNN)
+   * when use_validation is enabled. This performs a grid search over parameter values.
    * Default: false
    */
   optimize_affinity_params?: boolean;
 
   /**
-   * Which validation metric to use for optimization when useValidation is enabled.
+   * Which validation metric to use for optimization when use_validation is enabled.
    * - 'calinski-harabasz': Fast O(n·k), higher is better (default)
    * - 'davies-bouldin': O(n·k + k²), lower is better
    * - 'silhouette': Most accurate but O(n²), higher is better
@@ -149,7 +149,7 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
 
   /**
    * Custom gamma values to test during intensive parameter sweep.
-   * Only used when intensiveParameterSweep is true and affinity is 'rbf'.
+   * Only used when intensive_parameter_sweep is true and affinity is 'rbf'.
    * Default: [0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]
    */
   gamma_range?: number[];
@@ -157,7 +157,7 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
   /**
    * Whether to capture debug information during fitting.
    * When enabled, intermediate statistics (affinity, Laplacian spectrum,
-   * embedding, clustering metrics) are stored and accessible via getDebugInfo().
+   * embedding, clustering metrics) are stored and accessible via get_debug_info().
    * Default: false
    */
   capture_debug_info?: boolean;
@@ -240,7 +240,7 @@ export type DecayFunction = (epoch: number, total_epochs: number) => number;
 /**
  * Parameters for Self-Organizing Maps algorithm.
  *
- * SOM uses gridWidth * gridHeight to define the map size rather than nClusters.
+ * SOM uses grid_width * grid_height to define the map size rather than n_clusters.
  */
 export interface SOMParams extends CoreClusteringParams {
   /**
@@ -281,7 +281,7 @@ export interface SOMParams extends CoreClusteringParams {
   /**
    * Initial learning rate or custom decay function.
    * If number: uses exponential decay from this initial value.
-   * If function: custom decay schedule (epoch, totalEpochs) => rate.
+   * If function: custom decay schedule (epoch, total_epochs) => rate.
    * Default: 0.5
    */
   learning_rate?: number | DecayFunction;
@@ -289,8 +289,8 @@ export interface SOMParams extends CoreClusteringParams {
   /**
    * Initial neighborhood radius or custom decay function.
    * If number: uses exponential decay from this initial value.
-   * If function: custom decay schedule (epoch, totalEpochs) => radius.
-   * Default: max(gridWidth, gridHeight) / 2
+   * If function: custom decay schedule (epoch, total_epochs) => radius.
+   * Default: max(grid_width, grid_height) / 2
    */
   radius?: number | DecayFunction;
 
@@ -305,14 +305,14 @@ export interface SOMParams extends CoreClusteringParams {
 
   /**
    * Enable online/incremental learning mode.
-   * When true, allows using partialFit() for streaming data.
+   * When true, allows using partial_fit() for streaming data.
    * Default: false
    */
   online_mode?: boolean;
 
   /**
    * Mini-batch size for online learning.
-   * Only used when onlineMode is true.
+   * Only used when online_mode is true.
    * Default: 32
    */
   mini_batch_size?: number;

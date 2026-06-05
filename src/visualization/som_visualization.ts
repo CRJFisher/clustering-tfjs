@@ -13,7 +13,7 @@ import type { SOM } from '../clustering/som';
  * Shows how each input feature is distributed across the SOM grid.
  * 
  * @param som Trained SOM instance
- * @returns Component planes tensor [nFeatures, gridHeight, gridWidth]
+ * @returns Component planes tensor [n_features, grid_height, grid_width]
  */
 export function get_component_planes(som: SOM): tf.Tensor3D {
   const weights = som.get_weights();
@@ -30,7 +30,7 @@ export function get_component_planes(som: SOM): tf.Tensor3D {
  * 
  * @param som Trained SOM instance
  * @param X Input data used for training
- * @returns Hit map tensor [gridHeight, gridWidth] with counts
+ * @returns Hit map tensor [grid_height, grid_width] with counts
  */
 export async function get_hit_map(
   som: SOM,
@@ -60,8 +60,8 @@ export async function get_hit_map(
  * Shows how strongly each neuron responds to the input.
  * 
  * @param som Trained SOM instance
- * @param sample Input sample tensor [nFeatures]
- * @returns Activation map [gridHeight, gridWidth]
+ * @param sample Input sample tensor [n_features]
+ * @returns Activation map [grid_height, grid_width]
  */
 export function get_activation_map(
   som: SOM,
@@ -95,8 +95,8 @@ export function get_activation_map(
  * Useful for analyzing temporal patterns.
  * 
  * @param som Trained SOM instance
- * @param sequence Sequence of samples [nSamples, nFeatures]
- * @returns BMU positions [nSamples, 2] with grid coordinates
+ * @param sequence Sequence of samples [n_samples, n_features]
+ * @returns BMU positions [n_samples, 2] with grid coordinates
  */
 export async function track_bmu_trajectory(
   som: SOM,
@@ -123,7 +123,7 @@ export async function track_bmu_trajectory(
  * 
  * @param som Trained SOM instance
  * @param X Input data
- * @returns Quality map [gridHeight, gridWidth]
+ * @returns Quality map [grid_height, grid_width]
  */
 export async function get_quantization_quality_map(
   som: SOM,
@@ -183,7 +183,7 @@ export async function get_quantization_quality_map(
  * Generate neighbor distance matrix for topology preservation analysis.
  * 
  * @param som Trained SOM instance
- * @returns Neighbor distances [gridHeight, gridWidth]
+ * @returns Neighbor distances [grid_height, grid_width]
  */
 export function get_neighbor_distance_matrix(som: SOM): tf.Tensor2D {
   const weights_array = som.get_weights();
@@ -201,7 +201,7 @@ export function get_neighbor_distance_matrix(som: SOM): tf.Tensor2D {
         // Define neighbors based on topology
         const neighbors: [number, number][] = [];
         if (topology === 'rectangular') {
-          // 8-connected neighbors (consistent with getUMatrix and areNeighbors)
+          // 8-connected neighbors (consistent with get_u_matrix and are_neighbors)
           const deltas = [
             [-1, -1], [-1, 0], [-1, 1],
             [0, -1],           [0, 1],
@@ -312,7 +312,7 @@ export async function export_for_visualization(
  * @param som Trained SOM instance
  * @param X Input data
  * @param sigma Gaussian kernel width for smoothing
- * @returns Density map [gridHeight, gridWidth]
+ * @returns Density map [grid_height, grid_width]
  */
 export async function get_density_map(
   som: SOM,
@@ -352,7 +352,7 @@ export async function get_density_map(
         }
       }
 
-      // Reshape hitMap [H, W] -> [1, H, W, 1] for conv2d
+      // Reshape hit_map [H, W] -> [1, H, W, 1] for conv2d
       const input = hit_map.expandDims(0).expandDims(-1) as tf.Tensor4D;
 
       // Reshape kernel [K, K] -> [K, K, 1, 1] for conv2d filter

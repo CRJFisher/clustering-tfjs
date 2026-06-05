@@ -2,12 +2,12 @@
 import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
 import { BenchmarkResult } from '../benchmarks';
-import { analyzeBackendPerformance, generateBackendRecommendations } from '../benchmarks/compare';
+import { analyze_backend_performance, generate_backend_recommendations } from '../benchmarks/compare';
 import * as yaml from 'js-yaml';
 
-function loadLatestBenchmark(): BenchmarkResult[] {
-  const benchmarkDir = join(process.cwd(), 'benchmarks');
-  const files = readdirSync(benchmarkDir)
+function load_latest_benchmark(): BenchmarkResult[] {
+  const benchmark_dir = join(process.cwd(), 'benchmarks');
+  const files = readdirSync(benchmark_dir)
     .filter(f => f.endsWith('.yaml') || f.endsWith('.json'))
     .sort()
     .reverse();
@@ -16,11 +16,11 @@ function loadLatestBenchmark(): BenchmarkResult[] {
     throw new Error('No benchmark results found. Run npm run benchmark first.');
   }
   
-  const latestFile = files[0];
-  console.log(`Loading benchmark results from: ${latestFile}\n`);
+  const latest_file = files[0];
+  console.log(`Loading benchmark results from: ${latest_file}\n`);
   
-  const content = readFileSync(join(benchmarkDir, latestFile), 'utf8');
-  if (latestFile.endsWith('.yaml')) {
+  const content = readFileSync(join(benchmark_dir, latest_file), 'utf8');
+  if (latest_file.endsWith('.yaml')) {
     return yaml.load(content) as BenchmarkResult[];
   } else {
     return JSON.parse(content);
@@ -29,19 +29,19 @@ function loadLatestBenchmark(): BenchmarkResult[] {
 
 async function main() {
   try {
-    const results = loadLatestBenchmark();
-    const comparisons = analyzeBackendPerformance(results);
-    const recommendations = generateBackendRecommendations(comparisons);
+    const results = load_latest_benchmark();
+    const comparisons = analyze_backend_performance(results);
+    const recommendations = generate_backend_recommendations(comparisons);
     
     console.log(recommendations);
     
     // Save recommendations
-    const outputPath = join(process.cwd(), 'benchmarks', 'backend-recommendations.md');
-    writeFileSync(outputPath, recommendations);
-    console.log(`\nRecommendations saved to: ${outputPath}`);
+    const output_path = join(process.cwd(), 'benchmarks', 'backend-recommendations.md');
+    writeFileSync(output_path, recommendations);
+    console.log(`\nRecommendations saved to: ${output_path}`);
     
   } catch (error) {
-    console.error('Error:', error.message);
+    console.error('Error:', error instanceof Error ? error.message : String(error));
     process.exit(1);
   }
 }

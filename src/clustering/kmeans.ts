@@ -10,7 +10,7 @@ import { make_random_stream } from '../random';
 /**
  * K-Means clustering algorithm using Lloyd's iteration with K-means++ initialization.
  *
- * Supports multiple random initializations (`nInit`) and selects the solution
+ * Supports multiple random initializations (`n_init`) and selects the solution
  * with the lowest inertia, matching scikit-learn's default behavior.
  */
 export class KMeans implements BaseClustering<KMeansParams> {
@@ -19,7 +19,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /** Lazily populated labels after calling {@link fit}. */
   public labels_: number[] | null = null;
 
-  /** Final cluster centroids (shape: nClusters × nFeatures). */
+  /** Final cluster centroids (shape: n_clusters × n_features). */
   public centroids_: tf.Tensor2D | null = null;
 
   /** Final value of the inertia criterion (sum of squared distances). */
@@ -89,13 +89,13 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /**
    * Fits the K-Means model to the input data.
    *
-   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @param X - Input data matrix of shape [n_samples, n_features].
    * @returns A promise that resolves when fitting is complete.
-   * @throws {Error} If input data is empty or nClusters exceeds nSamples.
+   * @throws {Error} If input data is empty or n_clusters exceeds n_samples.
    *
    * @example
    * ```typescript
-   * const kmeans = new KMeans({ nClusters: 3 });
+   * const kmeans = new KMeans({ n_clusters: 3 });
    * await kmeans.fit([[1, 2], [3, 4], [5, 6]]);
    * console.log(kmeans.labels_);
    * ```
@@ -122,7 +122,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
       ? (X as tf.Tensor2D).clone()
       : tf.tensor2d(X as number[][], undefined, 'float32');
 
-    const [, nFeatures] = Xtensor.shape;
+    const [, n_features] = Xtensor.shape;
 
     const n_init = this.params.n_init ?? KMeans.DEFAULT_N_INIT;
 
@@ -172,7 +172,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
           for (const c_idx of centroid_idxs) {
             const c = points_arr[c_idx];
             let d2 = 0;
-            for (let j = 0; j < nFeatures; j++) {
+            for (let j = 0; j < n_features; j++) {
               const diff = p[j] - c[j];
               d2 += diff * diff;
             }
@@ -230,7 +230,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
           for (let i = 0; i < n_samples; i++) {
             const p = points_arr[i];
             let d2 = 0;
-            for (let j = 0; j < nFeatures; j++) {
+            for (let j = 0; j < n_features; j++) {
               const diff = p[j] - cand_point[j];
               d2 += diff * diff;
             }
@@ -249,7 +249,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
       let centroids = tf.tensor2d(
         centroid_idxs.map((i) => points_arr[i]),
-        [K, nFeatures],
+        [K, n_features],
         'float32',
       );
 
@@ -279,7 +279,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
         distances.dispose();
 
         const new_centroids_arr: number[][] = Array.from({ length: K }, () =>
-          Array(nFeatures).fill(0),
+          Array(n_features).fill(0),
         );
         const counts: number[] = Array(K).fill(0);
 
@@ -287,7 +287,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
           const label = labels[i];
           counts[label]++;
           const row = points_arr[i];
-          for (let j = 0; j < nFeatures; j++) {
+          for (let j = 0; j < n_features; j++) {
             new_centroids_arr[label][j] += row[j];
           }
         }
@@ -298,13 +298,13 @@ export class KMeans implements BaseClustering<KMeansParams> {
           if (counts[k_idx] === 0) {
             empty_clusters.push(k_idx);
             // Keep old centroid temporarily
-            const slice_tensor = centroids.slice([k_idx, 0], [1, nFeatures]);
+            const slice_tensor = centroids.slice([k_idx, 0], [1, n_features]);
             new_centroids_arr[k_idx] = Array.from(
               await slice_tensor.array(),
             )[0] as number[];
             slice_tensor.dispose();
           } else {
-            for (let j = 0; j < nFeatures; j++) {
+            for (let j = 0; j < n_features; j++) {
               new_centroids_arr[k_idx][j] /= counts[k_idx];
             }
           }
@@ -332,7 +332,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
         const new_centroids = tf.tensor2d(
           new_centroids_arr,
-          [K, nFeatures],
+          [K, n_features],
           'float32',
         );
 
@@ -379,9 +379,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /**
    * Fits the model and returns cluster labels.
    *
-   * @param X - Input data matrix of shape [nSamples, nFeatures].
+   * @param X - Input data matrix of shape [n_samples, n_features].
    * @returns Array of cluster labels for each sample.
-   * @throws {Error} If input data is empty or nClusters exceeds nSamples.
+   * @throws {Error} If input data is empty or n_clusters exceeds n_samples.
    */
   async fit_predict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);

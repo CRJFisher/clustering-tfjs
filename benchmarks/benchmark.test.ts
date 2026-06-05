@@ -5,7 +5,7 @@ describe('Benchmarking System', () => {
     const backends = await get_available_backends();
     expect(backends).toContain('cpu');
     // WASM backend check is currently disabled due to missing types
-    // expect(backends).toContain('wasm');
+    // expect(backends).to_contain('wasm');
     // tfjs-node might not be available in all environments
   });
 

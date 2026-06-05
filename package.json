@@ -60,7 +60,7 @@
     "dev": "ts-node src/index.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
-    "lint": "eslint src",
+    "lint": "eslint src test_support benchmarks",
     "type-check": "tsc --noEmit",
     "benchmark": "ts-node scripts/benchmark.ts",
     "benchmark:node": "ts-node scripts/benchmark.ts",

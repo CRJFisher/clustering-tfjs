@@ -9,9 +9,9 @@ import * as tf from '../backend/adapter';
  * @param affinity - Affinity/adjacency matrix (n x n)
  * @param tolerance - Tolerance for detecting zero eigenvalues (default: 1e-2)
  * @returns Object containing:
- *   - numComponents: Number of connected components
- *   - isFullyConnected: Whether the graph has only 1 component
- *   - componentLabels: Array indicating which component each node belongs to
+ *   - num_components: Number of connected components
+ *   - is_fully_connected: Whether the graph has only 1 component
+ *   - component_labels: Array indicating which component each node belongs to
  */
 export function detect_connected_components(
   affinity: tf.Tensor2D,

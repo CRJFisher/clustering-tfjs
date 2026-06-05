@@ -27,13 +27,13 @@ describe('tf-backend', () => {
 
     it('throws if async init is in progress (race condition prevention)', async () => {
       // Start async init but don't await it yet.
-      // initializeBackend sets initializationPromise synchronously before awaiting.
+      // initialize_backend sets initialization_promise synchronously before awaiting.
       const init_promise = initialize_backend({ backend: 'cpu' });
 
-      // At this point initializationPromise is set but tfInstance is still null
-      // (the promise hasn't resolved yet). A synchronous ensureBackend() call
+      // At this point initialization_promise is set but tf_instance is still null
+      // (the promise hasn't resolved yet). A synchronous ensure_backend() call
       // should detect the in-flight promise and throw rather than silently
-      // loading a different backend via loadBackendSync().
+      // loading a different backend via load_backend_sync().
       expect(() => ensure_backend()).toThrow(
         'TensorFlow.js is being initialized asynchronously'
       );
@@ -59,7 +59,7 @@ describe('tf-backend', () => {
     it('returns the cached instance regardless of config after initialization', async () => {
       const tf = await initialize_backend();
       // Config conflict detection is handled at the Clustering.init() level,
-      // not at the initializeBackend() level. Once initialized, initializeBackend
+      // not at the initialize_backend() level. Once initialized, initialize_backend
       // always returns the cached instance.
       const tf2 = await initialize_backend({ backend: 'cpu' });
       expect(tf2).toBe(tf);

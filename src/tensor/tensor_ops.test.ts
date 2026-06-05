@@ -6,12 +6,11 @@ import {
   euclidean_distance,
   manhattan_distance,
   cosine_distance,
-  pairwise_euclidean_matrix,
 } from "./tensor_ops";
 
-function close_to(a: any, b: any, eps = 1e-4): boolean {
-  const flat = (x: any): number[] =>
-    Array.isArray(x) ? x.flat(Infinity) as number[] : [x as number];
+function close_to(a: unknown, b: unknown, eps = 1e-4): boolean {
+  const flat = (x: unknown): number[] =>
+    Array.isArray(x) ? (x.flat(Infinity) as number[]) : [x as number];
   const arr_a = flat(a);
   const arr_b = flat(b);
   return arr_a.length === arr_b.length && arr_a.every((v, i) => Math.abs(v - arr_b[i]) < eps);

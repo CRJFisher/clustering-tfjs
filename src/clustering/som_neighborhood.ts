@@ -119,12 +119,12 @@ export function get_neighbors(
 /**
  * Initialize SOM weights based on the specified strategy.
  * 
- * @param X Input data tensor [nSamples, nFeatures]
+ * @param X Input data tensor [n_samples, n_features]
  * @param grid_height Height of the SOM grid
  * @param grid_width Width of the SOM grid
  * @param initialization Initialization strategy
  * @param random_seed Random seed for reproducibility
- * @returns Weight tensor [gridHeight, gridWidth, nFeatures]
+ * @returns Weight tensor [grid_height, grid_width, n_features]
  */
 export function initialize_weights(
   X: tf.Tensor2D,
@@ -134,7 +134,7 @@ export function initialize_weights(
   random_seed?: number
 ): tf.Tensor3D {
   return tf.tidy(() => {
-    const [_nSamples, nFeatures] = X.shape;
+    const [_n_samples, n_features] = X.shape;
     
     switch (initialization) {
       case 'random': {
@@ -145,7 +145,7 @@ export function initialize_weights(
         
         // Create random weights within data range
         const random_weights = tf.random_uniform(
-          [grid_height, grid_width, nFeatures],
+          [grid_height, grid_width, n_features],
           0,
           1,
           undefined,
@@ -154,16 +154,16 @@ export function initialize_weights(
         
         // Scale to data range
         return random_weights
-          .mul(range.reshape([1, 1, nFeatures]))
-          .add(x_min.reshape([1, 1, nFeatures]));
+          .mul(range.reshape([1, 1, n_features]))
+          .add(x_min.reshape([1, 1, n_features]));
       }
       
       case 'linear': {
         // Linear initialization: span 2D grid along first two principal components
         // Following MiniSom's pca_weights_init approach
-        const [nSamplesLin, nFeaturesLin] = X.shape;
+        const [n_samples_lin, n_features_lin] = X.shape;
 
-        if (nSamplesLin < 2 || nFeaturesLin < 2) {
+        if (n_samples_lin < 2 || n_features_lin < 2) {
           return initialize_weights(X, grid_height, grid_width, 'random', random_seed);
         }
 
@@ -172,15 +172,15 @@ export function initialize_weights(
         const centered = X.sub(mean);
 
         // Compute covariance matrix
-        const cov = tf.mat_mul(centered, centered, true, false).div(nSamplesLin - 1);
+        const cov = tf.mat_mul(centered, centered, true, false).div(n_samples_lin - 1);
 
         // Get first 2 principal components via power iteration
-        const n_comps = Math.min(2, nFeaturesLin);
+        const n_comps = Math.min(2, n_features_lin);
         const components = compute_principal_components(cov as tf.Tensor2D, n_comps);
 
         // Project data onto PCs to determine scale (unbiased variance, consistent with covariance)
         const projections = tf.mat_mul(centered, components, false, true); // [nSamples, nComps]
-        const proj_var = projections.square().sum(0).div(nSamplesLin - 1); // unbiased (centered data has mean 0)
+        const proj_var = projections.square().sum(0).div(n_samples_lin - 1); // unbiased (centered data has mean 0)
         const proj_std = proj_var.sqrt();
         const proj_std_data = proj_std.dataSync();
 
@@ -189,11 +189,11 @@ export function initialize_weights(
         const scaled_pc1 = components_data[0].map(v => v * proj_std_data[0]);
         const scaled_pc2 = n_comps > 1
           ? components_data[1].map(v => v * proj_std_data[1])
-          : new Array(nFeaturesLin).fill(0);
+          : new Array(n_features_lin).fill(0);
 
         const mean_data = mean.squeeze().dataSync();
 
-        // Build weights: mean + c1 * scaledPC1 + c2 * scaledPC2
+        // Build weights: mean + c1 * scaled_pc1 + c2 * scaled_pc2
         // c1, c2 range from -1 to 1 (MiniSom convention)
         const weights: number[][][] = [];
         for (let i = 0; i < grid_height; i++) {
@@ -202,7 +202,7 @@ export function initialize_weights(
           for (let j = 0; j < grid_width; j++) {
             const c2 = grid_width > 1 ? -1 + 2 * j / (grid_width - 1) : 0;
             const weight: number[] = [];
-            for (let f = 0; f < nFeaturesLin; f++) {
+            for (let f = 0; f < n_features_lin; f++) {
               weight.push(mean_data[f] + c1 * scaled_pc1[f] + c2 * scaled_pc2[f]);
             }
             row_weights.push(weight);
@@ -224,9 +224,9 @@ export function initialize_weights(
       
       case 'pca': {
         // PCA-based initialization - place weights along principal components
-        const [_nSamples, nFeatures] = X.shape;
+        const [_n_samples, n_features] = X.shape;
         
-        if (_nSamples < 2) {
+        if (_n_samples < 2) {
           // Fall back to random initialization if not enough samples
           return initialize_weights(X, grid_height, grid_width, 'random', random_seed);
         }
@@ -236,10 +236,10 @@ export function initialize_weights(
         const centered = X.sub(mean);
         
         // Compute covariance matrix
-        const cov = tf.mat_mul(centered, centered, true, false).div(_nSamples - 1);
+        const cov = tf.mat_mul(centered, centered, true, false).div(_n_samples - 1);
         
         // Get principal components
-        const n_comps = Math.min(2, nFeatures);
+        const n_comps = Math.min(2, n_features);
         const components = compute_principal_components(cov as tf.Tensor2D, n_comps);
         
         // Project data onto principal components
@@ -305,9 +305,9 @@ export function initialize_weights(
  * Compute principal components using power iteration.
  * TensorFlow.js doesn't have eigendecomposition, so we use power iteration.
  * 
- * @param cov_matrix Covariance matrix [nFeatures, nFeatures]
+ * @param cov_matrix Covariance matrix [n_features, n_features]
  * @param n_components Number of components to extract
- * @returns Principal components [nComponents, nFeatures]
+ * @returns Principal components [n_components, n_features]
  */
 function compute_principal_components(
   cov_matrix: tf.Tensor2D,
@@ -371,7 +371,7 @@ function compute_principal_components(
  * @param grid_height Grid height
  * @param grid_width Grid width
  * @param topology Grid topology
- * @returns Distance matrix [totalNeurons, totalNeurons]
+ * @returns Distance matrix [total_neurons, total_neurons]
  */
 export function create_grid_distance_matrix(
   grid_height: number,
@@ -401,7 +401,7 @@ export function create_grid_distance_matrix(
  * @param grid_height Grid height
  * @param grid_width Grid width
  * @param topology Grid topology
- * @returns Coordinates tensor [totalNeurons, 2] with (x, y) positions
+ * @returns Coordinates tensor [total_neurons, 2] with (x, y) positions
  */
 export function get_grid_coordinates(
   grid_height: number,
@@ -435,8 +435,8 @@ export function get_grid_coordinates(
 /**
  * Find the Best Matching Unit for a single sample.
  * 
- * @param sample Input sample tensor [nFeatures]
- * @param weights SOM weights tensor [gridHeight, gridWidth, nFeatures]
+ * @param sample Input sample tensor [n_features]
+ * @param weights SOM weights tensor [grid_height, grid_width, n_features]
  * @returns BMU indices as [row, col]
  */
 export function find_bmu(
@@ -444,11 +444,11 @@ export function find_bmu(
   weights: tf.Tensor3D
 ): tf.Tensor1D {
   return tf.tidy(() => {
-    const [gridHeight, gridWidth, nFeatures] = weights.shape;
+    const [grid_height, grid_width, n_features] = weights.shape;
     
     // Reshape weights to 2D for efficient computation
-    // [gridHeight * gridWidth, nFeatures]
-    const weights_flat = weights.reshape([gridHeight * gridWidth, nFeatures]);
+    // [grid_height * grid_width, n_features]
+    const weights_flat = weights.reshape([grid_height * grid_width, n_features]);
     
     // Compute squared distances to all neurons
     // ||sample - weight||^2 = ||sample||^2 + ||weight||^2 - 2 * sample . weight
@@ -471,8 +471,8 @@ export function find_bmu(
       : bmu_index_array as number;
     
     // Convert flat index back to grid coordinates  
-    const row_value = Math.floor(bmu_index_value / gridWidth);
-    const col_value = bmu_index_value % gridWidth;
+    const row_value = Math.floor(bmu_index_value / grid_width);
+    const col_value = bmu_index_value % grid_width;
     
     return tf.tensor1d([row_value, col_value]);
   });
@@ -481,31 +481,31 @@ export function find_bmu(
 /**
  * Find BMUs for a batch of samples using optimized matrix operations.
  * 
- * @param samples Batch of input samples [nSamples, nFeatures]
- * @param weights SOM weights tensor [gridHeight, gridWidth, nFeatures]
- * @returns BMU indices tensor [nSamples, 2] with [row, col] for each sample
+ * @param samples Batch of input samples [n_samples, n_features]
+ * @param weights SOM weights tensor [grid_height, grid_width, n_features]
+ * @returns BMU indices tensor [n_samples, 2] with [row, col] for each sample
  */
 export function find_bmu_batch(
   samples: tf.Tensor2D,
   weights: tf.Tensor3D
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const [_nSamples, nFeatures] = samples.shape;
-    const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
-    const total_neurons = gridHeight * gridWidth;
+    const [_n_samples, n_features] = samples.shape;
+    const [grid_height, grid_width, _n_features_weight] = weights.shape;
+    const total_neurons = grid_height * grid_width;
     
     // Reshape weights for batch computation
-    // [totalNeurons, nFeatures]
-    const weights_flat = weights.reshape([total_neurons, nFeatures]);
+    // [total_neurons, n_features]
+    const weights_flat = weights.reshape([total_neurons, n_features]);
     
     // Compute pairwise squared distances using broadcasting
-    // Distance matrix will be [nSamples, totalNeurons]
+    // Distance matrix will be [n_samples, total_neurons]
     
     // ||x - w||^2 = ||x||^2 + ||w||^2 - 2 * x . w
     const samples_norm = samples.square().sum(1, true); // [nSamples, 1]
     const weights_norm = weights_flat.square().sum(1, true).transpose(); // [1, totalNeurons]
     
-    // Dot product: [nSamples, nFeatures] x [nFeatures, totalNeurons]
+    // Dot product: [n_samples, n_features] x [n_features, total_neurons]
     const dot_product = tf.mat_mul(samples, weights_flat, false, true);
     
     // Compute distances
@@ -515,8 +515,8 @@ export function find_bmu_batch(
     const bmu_indices = distances.argMin(1); // [nSamples]
     
     // Convert flat indices to grid coordinates
-    const rows = bmu_indices.div(gridWidth).floor();
-    const cols = bmu_indices.mod(gridWidth);
+    const rows = bmu_indices.div(grid_width).floor();
+    const cols = bmu_indices.mod(grid_width);
     
     return tf.stack([rows, cols], 1) as tf.Tensor2D;
   });
@@ -526,10 +526,10 @@ export function find_bmu_batch(
  * Compute distances from samples to their BMUs.
  * Used for quantization error calculation.
  * 
- * @param samples Input samples [nSamples, nFeatures]
- * @param weights SOM weights [gridHeight, gridWidth, nFeatures]
- * @param bmus BMU indices [nSamples, 2]
- * @returns Distances tensor [nSamples]
+ * @param samples Input samples [n_samples, n_features]
+ * @param weights SOM weights [grid_height, grid_width, n_features]
+ * @param bmus BMU indices [n_samples, 2]
+ * @returns Distances tensor [n_samples]
  */
 export function compute_bmu_distances(
   samples: tf.Tensor2D,
@@ -537,21 +537,21 @@ export function compute_bmu_distances(
   bmus: tf.Tensor2D
 ): tf.Tensor1D {
   // Get data outside tf.tidy to avoid disposal issues
-  const [_nSamples, _nFeatures] = samples.shape;
-  const [gridHeight, gridWidth, _nFeaturesWeight] = weights.shape;
+  const [_n_samples, _n_features] = samples.shape;
+  const [grid_height, grid_width, _n_features_weight] = weights.shape;
   const bmus_array = bmus.arraySync();
   
   return tf.tidy(() => {
     // Reshape weights for easier indexing
-    const weights_flat = weights.reshape([gridHeight * gridWidth, _nFeatures]);
+    const weights_flat = weights.reshape([grid_height * grid_width, _n_features]);
     
     // Convert BMU coordinates to flat indices
     const bmu_indices: number[] = [];
     
-    for (let i = 0; i < _nSamples; i++) {
+    for (let i = 0; i < _n_samples; i++) {
       const row = bmus_array[i][0];
       const col = bmus_array[i][1];
-      bmu_indices.push(row * gridWidth + col);
+      bmu_indices.push(row * grid_width + col);
     }
     
     // Gather BMU weights using indices
@@ -644,13 +644,13 @@ export function mexican_hat_neighborhood(
 /**
  * Compute neighborhood influence for all neurons given BMU positions.
  * 
- * @param bmus BMU positions [nSamples, 2]
+ * @param bmus BMU positions [n_samples, 2]
  * @param grid_height Grid height
  * @param grid_width Grid width
  * @param radius Current neighborhood radius
  * @param neighborhood Neighborhood function type
  * @param topology Grid topology
- * @returns Influence matrix [nSamples, gridHeight * gridWidth]
+ * @returns Influence matrix [n_samples, grid_height * grid_width]
  */
 export function compute_neighborhood_influence(
   bmus: tf.Tensor2D,
@@ -661,7 +661,7 @@ export function compute_neighborhood_influence(
   topology: SOMTopology
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const [_nSamples] = bmus.shape;
+    const [_n_samples] = bmus.shape;
     const total_neurons = grid_height * grid_width;
     
     // Pre-compute grid distance matrix if not cached
@@ -670,7 +670,7 @@ export function compute_neighborhood_influence(
     // Get BMU flat indices
     const bmus_data = bmus.bufferSync();
     const bmu_indices: number[] = [];
-    for (let i = 0; i < _nSamples; i++) {
+    for (let i = 0; i < _n_samples; i++) {
       const row = bmus_data.get(i, 0);
       const col = bmus_data.get(i, 1);
       bmu_indices.push(row * grid_width + col);
@@ -711,11 +711,11 @@ export function compute_neighborhood_influence(
  * Compute neighborhood influence matrix for batch update.
  * Optimized version that computes influence for all BMUs at once.
  * 
- * @param bmu_indices Flat BMU indices [nSamples]
- * @param grid_distance_matrix Pre-computed grid distances [totalNeurons, totalNeurons]
+ * @param bmu_indices Flat BMU indices [n_samples]
+ * @param grid_distance_matrix Pre-computed grid distances [total_neurons, total_neurons]
  * @param radius Current neighborhood radius
  * @param neighborhood Neighborhood function type
- * @returns Influence matrix [nSamples, totalNeurons]
+ * @returns Influence matrix [n_samples, total_neurons]
  */
 export function compute_neighborhood_influence_batch(
   bmu_indices: tf.Tensor1D,
@@ -750,7 +750,7 @@ export function compute_neighborhood_influence_batch(
  * @param radius Neighborhood radius
  * @param neighborhood Neighborhood function type
  * @param topology Grid topology
- * @returns Influence lookup table [totalNeurons, totalNeurons]
+ * @returns Influence lookup table [total_neurons, total_neurons]
  */
 export function create_neighborhood_lookup_table(
   grid_height: number,
@@ -947,14 +947,14 @@ export function decay_tensor(
       }
       
       case 'exponential': {
-        // exponential: final + (initial - final) * exp(-epoch / timeConstant)
+        // exponential: final + (initial - final) * exp(-epoch / time_constant)
         const time_constant = total_epochs_t.div(5); // decay rate = 5
         const decay_factor = epoch_t.div(time_constant).neg().exp();
         return final_t.add(initial_t.sub(final_t).mul(decay_factor));
       }
       
       case 'inverse': {
-        // inverse: final + (initial - final) / (1 + epoch / totalEpochs)
+        // inverse: final + (initial - final) / (1 + epoch / total_epochs)
         const decay_factor = tf.scalar(1).div(
           tf.scalar(1).add(epoch_t.div(total_epochs_t))
         );

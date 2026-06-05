@@ -6,7 +6,7 @@
  *
  * All TF.js access goes through this module:
  * - Explicit: await Clustering.init({ backend: 'wasm' }) before using algorithms
- * - Implicit: ensureBackend() auto-loads the best available backend on first use
+ * - Implicit: ensure_backend() auto-loads the best available backend on first use
  */
 
 import type * as tfType from '@tensorflow/tfjs-core';

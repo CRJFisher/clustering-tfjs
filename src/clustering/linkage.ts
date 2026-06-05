@@ -70,7 +70,7 @@ function lancewilliams(
 
 /**
  * Scans all active clusters to find the nearest neighbor of cluster `idx`
- * and writes the result directly into the nn/nnDist arrays (zero allocation).
+ * and writes the result directly into the nn/nn_dist arrays (zero allocation).
  */
 function update_nearest_neighbor(
   D: Float64Array,

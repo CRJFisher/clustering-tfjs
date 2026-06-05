@@ -9,8 +9,8 @@ import * as tf from '../backend/adapter';
  *
  * @param component_labels - Array indicating which component each node belongs to
  * @param num_components - Total number of components detected
- * @param max_indicators - Maximum number of indicator vectors to create (usually nClusters)
- * @returns Component indicator matrix (n_samples x min(numComponents, maxIndicators))
+ * @param max_indicators - Maximum number of indicator vectors to create (usually n_clusters)
+ * @returns Component indicator matrix (n_samples x min(num_components, max_indicators))
  */
 export function create_component_indicators(
   component_labels: Int32Array,

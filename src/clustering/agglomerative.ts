@@ -21,7 +21,7 @@ export class AgglomerativeClustering
   public readonly params: AgglomerativeClusteringParams;
 
   /**
-   * Cluster labels produced by `fit` / `fitPredict`.
+   * Cluster labels produced by `fit` / `fit_predict`.
    *
    * Populated after calling `fit`.
    */
@@ -29,7 +29,7 @@ export class AgglomerativeClustering
 
   /**
    * Children of each non-leaf node in the hierarchical clustering tree.
-   * Shape: `(nSamples-1, 2)` where each row gives the indices of the merged
+   * Shape: `(n_samples-1, 2)` where each row gives the indices of the merged
    * clusters. Lazily populated by future implementation.
    */
   public children_: number[][] | null = null;
@@ -59,13 +59,13 @@ export class AgglomerativeClustering
   /**
    * Fits the agglomerative clustering model to the input data.
    *
-   * @param _X - Input data matrix of shape [nSamples, nFeatures].
+   * @param _X - Input data matrix of shape [n_samples, n_features].
    * @returns A promise that resolves when fitting is complete.
-   * @throws {Error} If input is empty or nClusters exceeds nSamples.
+   * @throws {Error} If input is empty or n_clusters exceeds n_samples.
    *
    * @example
    * ```typescript
-   * const agg = new AgglomerativeClustering({ nClusters: 3 });
+   * const agg = new AgglomerativeClustering({ n_clusters: 3 });
    * await agg.fit([[1, 2], [3, 4], [5, 6]]);
    * console.log(agg.labels_);
    * ```
@@ -152,7 +152,7 @@ export class AgglomerativeClustering
       parent[rb] = ra;
     }
 
-    // Assign contiguous labels 0..nClusters-1
+    // Assign contiguous labels 0..n_clusters-1
     const labels = new Array<number>(n_samples);
     const root_to_label = new Map<number, number>();
     let next_label = 0;
@@ -177,9 +177,9 @@ export class AgglomerativeClustering
   /**
    * Fits the model and returns cluster labels.
    *
-   * @param _X - Input data matrix of shape [nSamples, nFeatures].
+   * @param _X - Input data matrix of shape [n_samples, n_features].
    * @returns Array of cluster labels for each sample.
-   * @throws {Error} If input is empty or nClusters exceeds nSamples.
+   * @throws {Error} If input is empty or n_clusters exceeds n_samples.
    */
   async fit_predict(_X: DataMatrix): Promise<number[]> {
     await this.fit(_X);

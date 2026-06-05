@@ -14,11 +14,13 @@ describe("AgglomerativeClustering class structure & validation", () => {
   });
 
   it("throws for invalid linkage", () => {
-    expect(() => new AgglomerativeClustering({ n_clusters: 2, linkage: "foo" as any })).toThrow();
+    // @ts-expect-error - invalid linkage value; testing runtime validation
+    expect(() => new AgglomerativeClustering({ n_clusters: 2, linkage: "foo" })).toThrow();
   });
 
   it("throws for invalid metric", () => {
-    expect(() => new AgglomerativeClustering({ n_clusters: 2, metric: "hamming" as any })).toThrow();
+    // @ts-expect-error - invalid metric value; testing runtime validation
+    expect(() => new AgglomerativeClustering({ n_clusters: 2, metric: "hamming" })).toThrow();
   });
 
   it("throws when ward linkage used with non-euclidean metric", () => {

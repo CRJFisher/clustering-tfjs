@@ -114,7 +114,7 @@ describe('SOM Visualization Utilities', () => {
         try {
           const values = Array.from(result.dataSync());
           const max_val = Math.max(...values);
-          // Activation is (maxDist - dist) / maxDist, so BMU gets the highest value
+          // Activation is (max_dist - dist) / max_dist, so BMU gets the highest value
           expect(max_val).toBeGreaterThan(0.5);
           // There should be exactly one maximum
           const max_count = values.filter(v => Math.abs(v - max_val) < 1e-6).length;

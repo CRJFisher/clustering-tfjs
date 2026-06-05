@@ -140,7 +140,7 @@ export async function intensive_parameter_sweep(
     affinity_matrix.dispose(); // No longer needed after embedding is computed
 
     try {
-      // Phase A: non-validation k-means with nInit=10
+      // Phase A: non-validation k-means with n_init=10
       const km = new KMeans({
         n_clusters: params.n_clusters,
         random_state: params.random_state,

@@ -64,7 +64,7 @@ export function normalised_laplacian(
       deg.pow(-0.5),
     ) as tf.Tensor1D; // (n)
 
-    // Build outer product invSqrt[:,None] * invSqrt[None,:]  (n,n)
+    // Build outer product inv_sqrt[:,None] * inv_sqrt[None,:]  (n,n)
     const diag_col = inv_sqrt.reshape([n, 1]);
     const diag_row = inv_sqrt.reshape([1, n]);
     const scaling = diag_col.matMul(diag_row) as tf.Tensor2D; // (n,n)
@@ -72,14 +72,14 @@ export function normalised_laplacian(
     // Scale the affinity matrix (with diagonal already zeroed)
     const scaled_affinity = A_no_diag.mul(scaling) as tf.Tensor2D;
 
-    // L = I - scaledAffinity
+    // L = I - scaled_affinity
     // This ensures diagonal entries are exactly 1 for non-isolated nodes
     const I = tf.eye(n);
     const laplacian = I.sub(scaled_affinity) as tf.Tensor2D;
 
     if (return_diag) {
       // Return both Laplacian and sqrt(degrees) for eigenvector recovery
-      // Note: we return invSqrt which is D^(-1/2), so for recovery we need to divide by it
+      // Note: we return inv_sqrt which is D^(-1/2), so for recovery we need to divide by it
       return {
         laplacian: laplacian,
         sqrt_degrees: inv_sqrt,
@@ -271,7 +271,7 @@ export function jacobi_eigen_decomposition(
   });
 
   // Sort eigen-pairs ascending (deterministic sign handling is applied later
-  // in `smallestEigenvectors` for the subset actually used in the spectral
+  // in `smallest_eigenvectors` for the subset actually used in the spectral
   // pipeline – avoids unnecessary sign flips for callers that do not care).
 
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));

@@ -260,7 +260,7 @@ export function laplacian_eigen_decomposition(
       else break;
     }
 
-    // Return k + numZeros columns
+    // Return k + num_zeros columns
     const n = eigenvectors.length;
     const num_cols = Math.min(k + num_zeros, n);
 

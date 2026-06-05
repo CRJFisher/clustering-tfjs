@@ -1,7 +1,11 @@
 import fs from "fs";
 import path from "path";
 
-import { AgglomerativeClustering, DataMatrix } from "..";
+import {
+  AgglomerativeClustering,
+  AgglomerativeClusteringParams,
+  DataMatrix,
+} from "..";
 
 // Use path relative to project root for fixtures
 const FIXTURE_DIR = path.join(process.cwd(), "__fixtures__", "agglomerative");
@@ -51,8 +55,8 @@ describe("AgglomerativeClustering – reference parity with scikit-learn", () =>
     it(`matches sklearn labels for ${file}`, async () => {
       const model = new AgglomerativeClustering({
         n_clusters: fixture.params.n_clusters,
-        linkage: fixture.params.linkage as any,
-        metric: fixture.params.metric as any,
+        linkage: fixture.params.linkage as AgglomerativeClusteringParams['linkage'],
+        metric: fixture.params.metric as AgglomerativeClusteringParams['metric'],
       });
 
       const ours = await model.fit_predict(fixture.X);

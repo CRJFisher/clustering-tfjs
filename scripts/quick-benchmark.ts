@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { benchmarkAlgorithm, formatBenchmarkResults, getAvailableBackends } from '../benchmarks';
-import { analyzeBackendPerformance, generateBackendRecommendations } from '../benchmarks/compare';
+import { benchmark_algorithm, format_benchmark_results, get_available_backends } from '../benchmarks';
+import { analyze_backend_performance, generate_backend_recommendations } from '../benchmarks/compare';
 
 // Quick benchmark with smaller datasets
 const QUICK_CONFIGS = [
@@ -11,7 +11,7 @@ const QUICK_CONFIGS = [
 async function main() {
   console.log('Running quick benchmark...\n');
   
-  const backends = await getAvailableBackends();
+  const backends = await get_available_backends();
   console.log(`Available backends: ${backends.join(', ')}\n`);
   
   const results = [];
@@ -27,11 +27,11 @@ async function main() {
         console.log(`  ${algorithm} on ${config.label} dataset...`);
         
         try {
-          const result = await benchmarkAlgorithm(algorithm, config, backend);
+          const result = await benchmark_algorithm(algorithm, config, backend);
           results.push(result);
           
-          console.log(`    Time: ${result.executionTime.toFixed(2)}ms`);
-          console.log(`    Memory: ${(result.memoryUsed / 1024 / 1024).toFixed(2)}MB`);
+          console.log(`    Time: ${result.execution_time.toFixed(2)}ms`);
+          console.log(`    Memory: ${(result.memory_used / 1024 / 1024).toFixed(2)}MB`);
         } catch (error) {
           console.error(`    Failed: ${error instanceof Error ? error.message : String(error)}`);
         }
@@ -39,11 +39,11 @@ async function main() {
     }
   }
   
-  console.log('\n' + formatBenchmarkResults(results));
+  console.log('\n' + format_benchmark_results(results));
   
   // Generate backend comparison
-  const comparisons = analyzeBackendPerformance(results);
-  const recommendations = generateBackendRecommendations(comparisons);
+  const comparisons = analyze_backend_performance(results);
+  const recommendations = generate_backend_recommendations(comparisons);
   console.log('\n' + recommendations);
 }
 

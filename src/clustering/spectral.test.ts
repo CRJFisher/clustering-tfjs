@@ -23,7 +23,8 @@ describe("SpectralClustering class structure & validation", () => {
 
   it("throws for invalid affinity string", () => {
     expect(
-      () => new SpectralClustering({ n_clusters: 2, affinity: "foo" as any }),
+      // @ts-expect-error - invalid affinity value; testing runtime validation
+      () => new SpectralClustering({ n_clusters: 2, affinity: "foo" }),
     ).toThrow();
   });
 

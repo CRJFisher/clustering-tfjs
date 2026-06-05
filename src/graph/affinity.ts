@@ -118,8 +118,8 @@ export function compute_knn_affinity(
       const neg_dists = dists_squared.neg(); // Want k smallest ⇒ largest of negative values.
 
       // topk on each row
-      // When includeSelf=true, k neighbors include self
-      // When includeSelf=false, we need k+1 to later filter out self
+      // When include_self=true, k neighbors include self
+      // When include_self=false, we need k+1 to later filter out self
       const top_k = include_self ? k : k + 1;
       const { indices } = tf.topk(neg_dists, top_k);
 
@@ -135,7 +135,7 @@ export function compute_knn_affinity(
 
         let neighbours: number[];
         if (include_self) {
-          // When includeSelf=true, the k neighbors already include self
+          // When include_self=true, the k neighbors already include self
           neighbours = ind_arr[i];
         } else {
           // Remove self-index to get exactly k neighbors (excluding self)

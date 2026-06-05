@@ -75,7 +75,7 @@ export function adjusted_rand_index(
   const denominator = max_index - expected_index;
 
   // When denominator is 0, check if clusterings are structurally identical.
-  // If index === expectedIndex, all pairs agree (perfect match) -> return 1.0.
+  // If index === expected_index, all pairs agree (perfect match) -> return 1.0.
   // Otherwise return 0.0 (sklearn convention).
   if (denominator === 0) {
     return index === expected_index ? 1.0 : 0.0;

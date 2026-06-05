@@ -44,7 +44,7 @@ export function tensor_to_array(
  * ```ts
  * const a = tf.tensor([[0, 0], [1, 1]]); // (2, 2)
  * const b = tf.tensor([1, 0]);           // (2)
- * euclideanDistance(a, b)  // => Tensor([1, 1])
+ * euclidean_distance(a, b)  // => Tensor([1, 1])
  * ```
  */
 export function euclidean_distance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {

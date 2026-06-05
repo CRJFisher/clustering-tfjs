@@ -24,7 +24,7 @@ export interface EigenPairOutput {
   /**
    * Eigen-values sorted in ascending order.  We expose them under two
    * property names to stay compatible with the acceptance criteria drafted
-   * in task-12.3.1 (valuesSorted) *and* with existing internal call-sites
+   * in task-12.3.1 (values_sorted) *and* with existing internal call-sites
    * (eigenvalues).
    */
   eigenvalues: number[];

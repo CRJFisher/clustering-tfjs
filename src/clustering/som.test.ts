@@ -663,7 +663,7 @@ describe('SOM', () => {
         const hit_data = await hit_map.array();
         const density_data = await density_map.array();
 
-        // Density map should differ from raw hitMap (smoothing applied)
+        // Density map should differ from raw hit_map (smoothing applied)
         let has_difference = false;
         for (let i = 0; i < 3; i++) {
           for (let j = 0; j < 3; j++) {

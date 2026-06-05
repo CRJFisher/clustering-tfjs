@@ -3,13 +3,13 @@ import { BenchmarkResult } from './';
 export interface BackendComparison {
   backend: string;
   algorithm: string;
-  datasetSize: string;
-  speedupVsCPU: number;
-  memoryRatio: number;
+  dataset_size: string;
+  speedup_vs_cpu: number;
+  memory_ratio: number;
   recommendation: string;
 }
 
-export function analyzeBackendPerformance(
+export function analyze_backend_performance(
   results: BenchmarkResult[],
 ): BackendComparison[] {
   const comparisons: BackendComparison[] = [];
@@ -18,7 +18,7 @@ export function analyzeBackendPerformance(
   const grouped = new Map<string, BenchmarkResult[]>();
 
   for (const result of results) {
-    const key = `${result.algorithm}-${result.datasetSize}x${result.features}`;
+    const key = `${result.algorithm}-${result.dataset_size}x${result.features}`;
     if (!grouped.has(key)) {
       grouped.set(key, []);
     }
@@ -26,13 +26,13 @@ export function analyzeBackendPerformance(
   }
 
   // Compare each backend against CPU baseline
-  for (const [_key, groupResults] of grouped) {
-    const cpuResult = groupResults.find((r) => r.backend === 'cpu');
-    if (!cpuResult) continue;
+  for (const [_key, group_results] of grouped) {
+    const cpu_result = group_results.find((r) => r.backend === 'cpu');
+    if (!cpu_result) continue;
 
-    for (const result of groupResults) {
-      const speedup = cpuResult.executionTime / result.executionTime;
-      const memoryRatio = result.memoryUsed / cpuResult.memoryUsed;
+    for (const result of group_results) {
+      const speedup = cpu_result.execution_time / result.execution_time;
+      const memory_ratio = result.memory_used / cpu_result.memory_used;
 
       let recommendation = '';
       if (speedup > 10) {
@@ -48,16 +48,16 @@ export function analyzeBackendPerformance(
       }
 
       // Adjust recommendation based on memory usage
-      if (memoryRatio > 2) {
+      if (memory_ratio > 2) {
         recommendation += ' (high memory usage)';
       }
 
       comparisons.push({
         backend: result.backend,
         algorithm: result.algorithm,
-        datasetSize: `${result.datasetSize}x${result.features}`,
-        speedupVsCPU: speedup,
-        memoryRatio,
+        dataset_size: `${result.dataset_size}x${result.features}`,
+        speedup_vs_cpu: speedup,
+        memory_ratio,
         recommendation,
       });
     }
@@ -66,26 +66,26 @@ export function analyzeBackendPerformance(
   return comparisons;
 }
 
-export function generateBackendRecommendations(
+export function generate_backend_recommendations(
   comparisons: BackendComparison[],
 ): string {
   let output = '# Backend Recommendations\n\n';
 
   // Group by dataset size
-  const bySize = new Map<string, BackendComparison[]>();
+  const by_size = new Map<string, BackendComparison[]>();
   for (const comp of comparisons) {
-    const size = comp.datasetSize;
-    if (!bySize.has(size)) {
-      bySize.set(size, []);
+    const size = comp.dataset_size;
+    if (!by_size.has(size)) {
+      by_size.set(size, []);
     }
-    bySize.get(size)!.push(comp);
+    by_size.get(size)!.push(comp);
   }
 
   // Sort by dataset size
-  const sizes = Array.from(bySize.keys()).sort((a, b) => {
-    const aNum = parseInt(a.split('x')[0]);
-    const bNum = parseInt(b.split('x')[0]);
-    return aNum - bNum;
+  const sizes = Array.from(by_size.keys()).sort((a, b) => {
+    const a_num = parseInt(a.split('x')[0]);
+    const b_num = parseInt(b.split('x')[0]);
+    return a_num - b_num;
   });
 
   for (const size of sizes) {
@@ -95,19 +95,19 @@ export function generateBackendRecommendations(
     output +=
       '|-----------|---------|----------------|--------------|----------------|\n';
 
-    const sizeComps = bySize.get(size)!;
+    const size_comps = by_size.get(size)!;
     // Sort by algorithm then speedup
-    sizeComps.sort((a, b) => {
+    size_comps.sort((a, b) => {
       if (a.algorithm !== b.algorithm) {
         return a.algorithm.localeCompare(b.algorithm);
       }
-      return b.speedupVsCPU - a.speedupVsCPU;
+      return b.speedup_vs_cpu - a.speedup_vs_cpu;
     });
 
-    for (const comp of sizeComps) {
+    for (const comp of size_comps) {
       if (comp.backend === 'cpu') continue; // Skip CPU baseline
 
-      output += `| ${comp.algorithm} | ${comp.backend} | ${comp.speedupVsCPU.toFixed(2)}x | ${comp.memoryRatio.toFixed(2)}x | ${comp.recommendation} |\n`;
+      output += `| ${comp.algorithm} | ${comp.backend} | ${comp.speedup_vs_cpu.toFixed(2)}x | ${comp.memory_ratio.toFixed(2)}x | ${comp.recommendation} |\n`;
     }
     output += '\n';
   }

@@ -1,4 +1,3 @@
-import * as tf from "../../test_support/tensorflow_helper";
 import { SpectralClustering } from "..";
 
 describe("SpectralClustering trivial eigenvector handling", () => {
@@ -67,7 +66,7 @@ describe("SpectralClustering trivial eigenvector handling", () => {
   
   it("should handle graphs with multiple constant eigenvectors", async () => {
     // Create a graph that will have multiple near-zero eigenvalues
-    // This is a case where we have some connected components but not enough for nClusters
+    // This is a case where we have some connected components but not enough for n_clusters
     const X = [
       // Two connected components
       [0, 0], [0.1, 0],     // Component 1

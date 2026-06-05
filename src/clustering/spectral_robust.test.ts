@@ -1,6 +1,6 @@
 import * as tf from "../../test_support/tensorflow_helper";
 
-import { SpectralClustering } from "..";
+import { SpectralClustering, DataMatrix } from "..";
 
 /* -------------------------------------------------------------------------- */
 /*                      Helper to build a simple toy dataset                  */
@@ -56,7 +56,7 @@ describe("SpectralClustering – robustness", () => {
 
   it("throws when callable affinity returns non-square matrix", async () => {
     const X = make_two_blobs();
-    const bad_callable = (_: any) =>
+    const bad_callable = (_: DataMatrix) =>
       tf.tensor2d(Array(X.shape[0] * (X.shape[0] + 1)).fill(0), [
         X.shape[0],
         X.shape[0] + 1,

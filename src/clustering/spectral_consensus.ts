@@ -74,7 +74,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
       );
     } else {
       // Standard approach: compute Laplacian and eigenvectors
-      // Must pass returnDiag=true to get sqrtDegrees for normalization
+      // Must pass return_diag=true to get sqrt_degrees for normalization
       const { normalised_laplacian } = await import('../graph/laplacian');
       const { laplacian, sqrt_degrees } = tf.tidy(() =>
         normalised_laplacian(this.affinity_matrix_! as tf.Tensor2D, true),
@@ -95,7 +95,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
           [0, 0],
           [-1, num_to_use],
         ) as tf.Tensor2D;
-        // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
+        // sqrt_degrees is D^{-1/2}, so D^{1/2} = pow(sqrt_degrees, -1)
         const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
         const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
         return U_selected.div(sqrt_deg_col) as tf.Tensor2D;

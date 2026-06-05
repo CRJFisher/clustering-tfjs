@@ -1,5 +1,4 @@
 import { find_optimal_clusters } from "./find_optimal_clusters";
-import { KMeans } from "../clustering/kmeans";
 import { make_blobs } from "../datasets/synthetic";
 import * as tf from "../../test_support/tensorflow_helper";
 
@@ -27,7 +26,7 @@ describe("findOptimalClusters", () => {
 
   it("should find optimal k for well-separated clusters", async () => {
     // Create dataset with 3 well-separated clusters
-    const { X, y } = make_blobs({
+    const { X } = make_blobs({
       n_samples: 150,
       n_features: 2,
       centers: 3,
@@ -160,7 +159,8 @@ describe("findOptimalClusters", () => {
     // Use more samples to avoid the "not enough samples" error
     const more_data = [[1, 2], [2, 3], [10, 11], [11, 12]];
     await expect(
-      find_optimal_clusters(more_data, { algorithm: 'invalid' as any })
+      // @ts-expect-error - invalid algorithm value; testing runtime validation
+      find_optimal_clusters(more_data, { algorithm: 'invalid' })
     ).rejects.toThrow('Unknown algorithm: invalid');
   });
 
@@ -203,7 +203,7 @@ describe("findOptimalClusters", () => {
       const result = await find_optimal_clusters(data, { max_clusters: 4 });
 
       // Verify that the combined score is NOT dominated by CH
-      // (old behavior: score = silhouette + calinskiHarabasz - daviesBouldin)
+      // (old behavior: score = silhouette + calinski_harabasz - davies_bouldin)
       // New behavior: all normalized to [0,1] and averaged
       for (const e of result.evaluations) {
         expect(e.combined_score).not.toBe(e.calinski_harabasz);

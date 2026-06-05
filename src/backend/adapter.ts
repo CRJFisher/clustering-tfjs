@@ -2,7 +2,7 @@
  * TensorFlow.js adapter module
  *
  * Provides a platform-agnostic, lazy-loaded interface to TensorFlow.js.
- * All function calls are deferred through ensureBackend() in backend.ts,
+ * All function calls are deferred through ensure_backend() in backend.ts,
  * which means:
  *
  * - Clustering.init({ backend: 'wasm' }) controls which backend is used
@@ -34,7 +34,7 @@ export type {
 
 // ---------------------------------------------------------------------------
 // Lazy runtime wrappers — only functions used by clustering algorithms
-// Each call goes through ensureBackend() to guarantee a backend is loaded.
+// Each call goes through ensure_backend() to guarantee a backend is loaded.
 // ---------------------------------------------------------------------------
 
 // Tensor creation
@@ -106,7 +106,7 @@ export const linalg: typeof tfTypes.linalg = new Proxy({} as typeof tfTypes.lina
 });
 
 // ---------------------------------------------------------------------------
-// Default export — a Proxy that delegates all property access to ensureBackend()
+// Default export — a Proxy that delegates all property access to ensure_backend()
 // Used by code that accesses tf as a namespace object (e.g. tf.someFunction)
 // ---------------------------------------------------------------------------
 const tf: typeof tfTypes = new Proxy({} as typeof tfTypes, {

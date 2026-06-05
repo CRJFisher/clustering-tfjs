@@ -263,7 +263,7 @@ describe('SOM Hexagonal Topology', () => {
       const labels = await som.predict(data);
       expect(labels.length).toEqual(15);
 
-      // Instead of getActivationDistances, check quantization error
+      // Instead of get_activation_distances, check quantization error
       const quant_error = som.quantization_error();
       expect(quant_error).toBeGreaterThanOrEqual(0);
 
