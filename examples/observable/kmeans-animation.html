@@ -301,9 +301,9 @@
       if (!kmeans) {
         // Initialize K-means
         kmeans = new window.ClusteringLib.KMeans({
-          nClusters: 3,
-          maxIter: 1,  // Run one iteration at a time
-          nInit: 1
+          n_clusters: 3,
+          max_iter: 1,  // Run one iteration at a time
+          n_init: 1
         });
         
         // Convert data to array format
@@ -321,9 +321,9 @@
         // Create new K-means instance with previous centroids
         const prevCentroids = centroids.slice();
         kmeans = new window.ClusteringLib.KMeans({
-          nClusters: 3,
-          maxIter: 1,
-          nInit: 1,
+          n_clusters: 3,
+          max_iter: 1,
+          n_init: 1,
           init: prevCentroids
         });
         

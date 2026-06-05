@@ -9,7 +9,7 @@ const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
 async function run() {
   const ctrParams = { ...fixture.params };
   const model = new SpectralClustering(ctrParams);
-  const labels = await model.fitPredict(fixture.X);
+  const labels = await model.fit_predict(fixture.X);
   console.log('our labels first 30', labels.slice(0,30));
   console.log('labels unique count', new Set(labels).size);
   console.log('fixture unique', Array.from(new Set(fixture.labels)).length);

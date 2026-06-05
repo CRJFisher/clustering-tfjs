@@ -46,8 +46,8 @@ data = {
 
 // Cell 4: Run K-Means clustering
 clusters = {
-  const kmeans = new clustering.KMeans({ nClusters: 3 });
-  const labels = await kmeans.fitPredict(data);
+  const kmeans = new clustering.KMeans({ n_clusters: 3 });
+  const labels = await kmeans.fit_predict(data);
   return data.map((point, i) => ({
     x: point[0],
     y: point[1],
@@ -142,7 +142,7 @@ data = {
 ```javascript
 // Run clustering
 clusters = {
-  const kmeans = new Clustering.KMeans({ nClusters: 3 });
+  const kmeans = new Clustering.KMeans({ n_clusters: 3 });
   const dataArray = data.map(d => [d.x, d.y]);
   await kmeans.fit(dataArray);
   const labels = await kmeans.predict(dataArray);
@@ -184,10 +184,10 @@ To convert the HTML examples to Observable notebooks:
 Example conversion:
 ```javascript
 // HTML version
-const nClusters = document.getElementById('nClusters').value;
+const n_clusters = document.getElementById('n_clusters').value;
 
 // Observable version
-viewof nClusters = Inputs.range([2, 10], {step: 1, value: 3, label: "Number of clusters"})
+viewof n_clusters = Inputs.range([2, 10], {step: 1, value: 3, label: "Number of clusters"})
 ```
 
 ## Resources

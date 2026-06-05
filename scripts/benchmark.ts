@@ -1,10 +1,10 @@
 #!/usr/bin/env node
-import { runBenchmarkSuite, BenchmarkResult } from '../src/benchmarks';
+import { run_benchmark_suite, BenchmarkResult } from '../benchmarks';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'js-yaml';
 
-function formatBenchmarkTable(results: BenchmarkResult[]): string {
+function format_benchmark_table(results: BenchmarkResult[]): string {
   const headers = [
     'Algorithm',
     'Backend',
@@ -15,52 +15,52 @@ function formatBenchmarkTable(results: BenchmarkResult[]): string {
   ];
 
   // Find maximum column widths
-  const columnWidths = headers.map((header) => header.length);
+  const column_widths = headers.map((header) => header.length);
 
   results.forEach((row) => {
-    const datasetLabel = `${row.datasetSize}x${row.features}`;
-    columnWidths[0] = Math.max(columnWidths[0], row.algorithm.length);
-    columnWidths[1] = Math.max(columnWidths[1], row.backend.length);
-    columnWidths[2] = Math.max(columnWidths[2], datasetLabel.length);
-    columnWidths[3] = Math.max(
-      columnWidths[3],
-      row.executionTime.toFixed(2).length,
+    const dataset_label = `${row.dataset_size}x${row.features}`;
+    column_widths[0] = Math.max(column_widths[0], row.algorithm.length);
+    column_widths[1] = Math.max(column_widths[1], row.backend.length);
+    column_widths[2] = Math.max(column_widths[2], dataset_label.length);
+    column_widths[3] = Math.max(
+      column_widths[3],
+      row.execution_time.toFixed(2).length,
     );
-    columnWidths[4] = Math.max(
-      columnWidths[4],
-      (row.memoryUsed / 1024 / 1024).toFixed(2).length,
+    column_widths[4] = Math.max(
+      column_widths[4],
+      (row.memory_used / 1024 / 1024).toFixed(2).length,
     );
-    columnWidths[5] = Math.max(
-      columnWidths[5],
-      row.backendInitTime.toFixed(2).length,
+    column_widths[5] = Math.max(
+      column_widths[5],
+      row.backend_init_time.toFixed(2).length,
     );
   });
 
   // Create header row
-  const headerRow = headers
-    .map((header, i) => header.padEnd(columnWidths[i]))
+  const header_row = headers
+    .map((header, i) => header.padEnd(column_widths[i]))
     .join(' | ');
   const separator = headers
-    .map((_, i) => '-'.repeat(columnWidths[i]))
+    .map((_, i) => '-'.repeat(column_widths[i]))
     .join('-|-');
 
   // Create data rows
-  const dataRows = results.map((row) => {
-    const datasetLabel = `${row.datasetSize}x${row.features}`;
+  const data_rows = results.map((row) => {
+    const dataset_label = `${row.dataset_size}x${row.features}`;
     return [
-      row.algorithm.padEnd(columnWidths[0]),
-      row.backend.padEnd(columnWidths[1]),
-      datasetLabel.padEnd(columnWidths[2]),
-      row.executionTime.toFixed(2).padStart(columnWidths[3]),
-      (row.memoryUsed / 1024 / 1024).toFixed(2).padStart(columnWidths[4]),
-      row.backendInitTime.toFixed(2).padStart(columnWidths[5]),
+      row.algorithm.padEnd(column_widths[0]),
+      row.backend.padEnd(column_widths[1]),
+      dataset_label.padEnd(column_widths[2]),
+      row.execution_time.toFixed(2).padStart(column_widths[3]),
+      (row.memory_used / 1024 / 1024).toFixed(2).padStart(column_widths[4]),
+      row.backend_init_time.toFixed(2).padStart(column_widths[5]),
     ].join(' | ');
   });
 
-  return [headerRow, separator, ...dataRows].join('\n');
+  return [header_row, separator, ...data_rows].join('\n');
 }
 
-function formatSpeedupTable(results: BenchmarkResult[]): string {
+function format_speedup_table(results: BenchmarkResult[]): string {
   // Group results by algorithm and dataset
   const grouped = new Map<
     string,
@@ -68,7 +68,7 @@ function formatSpeedupTable(results: BenchmarkResult[]): string {
   >();
 
   results.forEach((result) => {
-    const key = `${result.algorithm}-${result.datasetSize}x${result.features}`;
+    const key = `${result.algorithm}-${result.dataset_size}x${result.features}`;
     if (!grouped.has(key)) {
       grouped.set(key, {});
     }
@@ -88,100 +88,100 @@ function formatSpeedupTable(results: BenchmarkResult[]): string {
     'Speedup',
     'Memory Ratio',
   ];
-  const columnWidths = headers.map((header) => header.length);
+  const column_widths = headers.map((header) => header.length);
 
   // Calculate max widths
   grouped.forEach((group, key) => {
     const [algorithm, dataset] = key.split('-');
-    columnWidths[0] = Math.max(columnWidths[0], algorithm.length);
-    columnWidths[1] = Math.max(columnWidths[1], dataset.length);
+    column_widths[0] = Math.max(column_widths[0], algorithm.length);
+    column_widths[1] = Math.max(column_widths[1], dataset.length);
 
     if (group.cpu && group.tensorflow) {
       const speedup =
-        (group.cpu.executionTime / group.tensorflow.executionTime).toFixed(2) +
+        (group.cpu.execution_time / group.tensorflow.execution_time).toFixed(2) +
         'x';
-      const memoryRatio = (
-        group.tensorflow.memoryUsed / group.cpu.memoryUsed
+      const memory_ratio = (
+        group.tensorflow.memory_used / group.cpu.memory_used
       ).toFixed(2);
 
-      columnWidths[2] = Math.max(
-        columnWidths[2],
-        group.cpu.executionTime.toFixed(2).length,
+      column_widths[2] = Math.max(
+        column_widths[2],
+        group.cpu.execution_time.toFixed(2).length,
       );
-      columnWidths[3] = Math.max(
-        columnWidths[3],
-        group.tensorflow.executionTime.toFixed(2).length,
+      column_widths[3] = Math.max(
+        column_widths[3],
+        group.tensorflow.execution_time.toFixed(2).length,
       );
-      columnWidths[4] = Math.max(columnWidths[4], speedup.length);
-      columnWidths[5] = Math.max(columnWidths[5], memoryRatio.length);
+      column_widths[4] = Math.max(column_widths[4], speedup.length);
+      column_widths[5] = Math.max(column_widths[5], memory_ratio.length);
     }
   });
 
   // Create header
-  const headerRow = headers
-    .map((header, i) => header.padEnd(columnWidths[i]))
+  const header_row = headers
+    .map((header, i) => header.padEnd(column_widths[i]))
     .join(' | ');
   const separator = headers
-    .map((_, i) => '-'.repeat(columnWidths[i]))
+    .map((_, i) => '-'.repeat(column_widths[i]))
     .join('-|-');
 
   // Create data rows
-  const dataRows: string[] = [];
+  const data_rows: string[] = [];
   grouped.forEach((group, key) => {
     const [algorithm, dataset] = key.split('-');
 
     if (group.cpu && group.tensorflow) {
       const speedup =
-        (group.cpu.executionTime / group.tensorflow.executionTime).toFixed(2) +
+        (group.cpu.execution_time / group.tensorflow.execution_time).toFixed(2) +
         'x';
-      const memoryRatio =
-        group.cpu.memoryUsed > 0
-          ? (group.tensorflow.memoryUsed / group.cpu.memoryUsed).toFixed(2)
-          : group.tensorflow.memoryUsed > 0
+      const memory_ratio =
+        group.cpu.memory_used > 0
+          ? (group.tensorflow.memory_used / group.cpu.memory_used).toFixed(2)
+          : group.tensorflow.memory_used > 0
             ? '∞'
             : 'N/A';
 
-      const speedupDisplay = speedup.padStart(columnWidths[4]);
-      const speedupFormatted =
+      const speedup_display = speedup.padStart(column_widths[4]);
+      const speedup_formatted =
         parseFloat(speedup) >= 1.0
-          ? `↑ ${speedupDisplay}`
-          : `↓ ${speedupDisplay}`;
+          ? `↑ ${speedup_display}`
+          : `↓ ${speedup_display}`;
 
-      dataRows.push(
+      data_rows.push(
         [
-          algorithm.padEnd(columnWidths[0]),
-          dataset.padEnd(columnWidths[1]),
-          group.cpu.executionTime.toFixed(2).padStart(columnWidths[2]),
-          group.tensorflow.executionTime.toFixed(2).padStart(columnWidths[3]),
-          speedupFormatted,
-          memoryRatio.padStart(columnWidths[5]),
+          algorithm.padEnd(column_widths[0]),
+          dataset.padEnd(column_widths[1]),
+          group.cpu.execution_time.toFixed(2).padStart(column_widths[2]),
+          group.tensorflow.execution_time.toFixed(2).padStart(column_widths[3]),
+          speedup_formatted,
+          memory_ratio.padStart(column_widths[5]),
         ].join(' | '),
       );
     }
   });
 
-  return [headerRow, separator, ...dataRows].join('\n');
+  return [header_row, separator, ...data_rows].join('\n');
 }
 
 async function main() {
   console.log('Starting benchmark suite...\n');
 
-  const startTime = Date.now();
-  const results = await runBenchmarkSuite();
-  const duration = (Date.now() - startTime) / 1000;
+  const start_time = Date.now();
+  const results = await run_benchmark_suite();
+  const duration = (Date.now() - start_time) / 1000;
 
   console.log(`\nBenchmark completed in ${duration.toFixed(1)}s\n`);
 
   // Print results to console with nice formatting
   console.log('## Benchmark Results\n');
-  console.log(formatBenchmarkTable(results));
+  console.log(format_benchmark_table(results));
 
   console.log('\n## Speedup Comparison (TensorFlow vs CPU)\n');
-  console.log(formatSpeedupTable(results));
+  console.log(format_speedup_table(results));
 
   // Save results to file with timestamp
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const outputPath = join(
+  const output_path = join(
     process.cwd(),
     'benchmarks',
     `results-${timestamp}.yaml`,
@@ -194,28 +194,28 @@ async function main() {
   }
 
   // Save YAML results
-  const yamlContent = yaml.dump(results, {
+  const yaml_content = yaml.dump(results, {
     indent: 2,
     lineWidth: -1,
     noRefs: true,
     sortKeys: false
   });
-  writeFileSync(outputPath, yamlContent);
-  console.log(`\nResults saved to: ${outputPath}`);
+  writeFileSync(output_path, yaml_content);
+  console.log(`\nResults saved to: ${output_path}`);
 
   // Save markdown report with formatted table
-  const mdPath = outputPath.replace('.yaml', '.md');
-  const markdownContent = `# Benchmark Results
+  const md_path = output_path.replace('.yaml', '.md');
+  const markdown_content = `# Benchmark Results
 
 Generated on: ${new Date().toISOString()}
 
 ## Performance Summary
 
-${formatBenchmarkTable(results)}
+${format_benchmark_table(results)}
 
 ## Speedup Comparison (TensorFlow vs CPU)
 
-${formatSpeedupTable(results)}
+${format_speedup_table(results)}
 
 ## Key Observations
 
@@ -238,8 +238,8 @@ ${formatSpeedupTable(results)}
 - **Memory usage** is generally higher with TensorFlow but scales similarly
 `;
 
-  writeFileSync(mdPath, markdownContent);
-  console.log(`Report saved to: ${mdPath}`);
+  writeFileSync(md_path, markdown_content);
+  console.log(`Report saved to: ${md_path}`);
 }
 
 main().catch(console.error);

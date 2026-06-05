@@ -1,6 +1,6 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { validateLabelsLength, convertValidationInputs } from './validate';
+import { validate_labels_length, convert_validation_inputs } from './validate';
 
 /**
  * Computes the Davies-Bouldin score.
@@ -19,14 +19,14 @@ import { validateLabelsLength, convertValidationInputs } from './validate';
  * @returns The Davies-Bouldin score (lower is better)
  * @throws Error if k <= 1
  */
-export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
-  validateLabelsLength(X, labels);
+export function davies_bouldin(X: DataMatrix, labels: LabelVector): number {
+  validate_labels_length(X, labels);
   return tf.tidy(() => {
-    const { data, labelArray } = convertValidationInputs(X, labels);
+    const { data, label_array } = convert_validation_inputs(X, labels);
 
     // Get unique labels
-    const uniqueLabels = Array.from(new Set(labelArray));
-    const k = uniqueLabels.length;
+    const unique_labels = Array.from(new Set(label_array));
+    const k = unique_labels.length;
 
     // Validate inputs
     if (k <= 1) {
@@ -37,31 +37,31 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
     const centroids: tf.Tensor1D[] = [];
     const dispersions: number[] = [];
 
-    for (const label of uniqueLabels) {
+    for (const label of unique_labels) {
       // Get indices for this cluster
-      const clusterIndices: number[] = [];
-      for (let i = 0; i < labelArray.length; i++) {
-        if (labelArray[i] === label) {
-          clusterIndices.push(i);
+      const cluster_indices: number[] = [];
+      for (let i = 0; i < label_array.length; i++) {
+        if (label_array[i] === label) {
+          cluster_indices.push(i);
         }
       }
 
-      const clusterSize = clusterIndices.length;
-      if (clusterSize === 0) continue;
+      const cluster_size = cluster_indices.length;
+      if (cluster_size === 0) continue;
 
       // Extract cluster points
-      const clusterData = tf.gather(data, clusterIndices);
+      const cluster_data = tf.gather(data, cluster_indices);
 
       // Compute centroid
-      const centroid = clusterData.mean(0) as tf.Tensor1D;
+      const centroid = cluster_data.mean(0) as tf.Tensor1D;
       centroids.push(centroid);
 
       // Compute intra-cluster dispersion (average distance to centroid)
-      if (clusterSize > 1) {
-        const diff = clusterData.sub(centroid.reshape([1, -1]));
+      if (cluster_size > 1) {
+        const diff = cluster_data.sub(centroid.reshape([1, -1]));
         const distances = tf.sqrt(diff.square().sum(1));
-        const avgDistance = distances.mean().dataSync()[0];
-        dispersions.push(avgDistance);
+        const avg_distance = distances.mean().dataSync()[0];
+        dispersions.push(avg_distance);
       } else {
         // Single point cluster has zero dispersion
         dispersions.push(0);
@@ -70,10 +70,10 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
     }
 
     // Compute inter-cluster distances and similarity ratios
-    const maxSimilarities: number[] = [];
+    const max_similarities: number[] = [];
 
     for (let i = 0; i < k; i++) {
-      let maxSimilarity = 0;
+      let max_similarity = 0;
 
       for (let j = 0; j < k; j++) {
         if (i === j) continue;
@@ -87,7 +87,7 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
           const numerator = dispersions[i] + dispersions[j];
           if (numerator > 0) {
             // Non-zero dispersion with coincident centroids -> Infinity
-            maxSimilarity = Infinity;
+            max_similarity = Infinity;
             break;
           }
           // Both dispersions zero with coincident centroids -> skip
@@ -98,18 +98,18 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
         // Compute similarity ratio R_ij = (s_i + s_j) / d_ij
         const similarity = (dispersions[i] + dispersions[j]) / distance;
 
-        if (similarity > maxSimilarity) {
-          maxSimilarity = similarity;
+        if (similarity > max_similarity) {
+          max_similarity = similarity;
         }
       }
 
-      maxSimilarities.push(maxSimilarity);
+      max_similarities.push(max_similarity);
     }
 
     // Compute Davies-Bouldin index as average of maximum similarities
-    const dbScore = maxSimilarities.reduce((sum, val) => sum + val, 0) / k;
+    const db_score = max_similarities.reduce((sum, val) => sum + val, 0) / k;
 
-    return dbScore;
+    return db_score;
   });
 }
 
@@ -121,44 +121,44 @@ export function daviesBouldin(X: DataMatrix, labels: LabelVector): number {
  * @param labels - Cluster labels for each sample
  * @returns The Davies-Bouldin score (lower is better)
  */
-export function daviesBouldinEfficient(
+export function davies_bouldin_efficient(
   X: DataMatrix,
   labels: LabelVector,
 ): number {
-  validateLabelsLength(X, labels);
-  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
+  validate_labels_length(X, labels);
+  const { data, label_array, owns_tensor } = convert_validation_inputs(X, labels);
 
   // Get unique labels
-  const uniqueLabels = Array.from(new Set(labelArray));
-  const k = uniqueLabels.length;
+  const unique_labels = Array.from(new Set(label_array));
+  const k = unique_labels.length;
 
   // Validate
   if (k <= 1) {
-    if (ownsTensor) {
+    if (owns_tensor) {
       data.dispose();
     }
     throw new Error('Davies-Bouldin score requires at least 2 clusters');
   }
 
   // Store centroids and dispersions
-  const centroidArrays: number[][] = [];
+  const centroid_arrays: number[][] = [];
   const dispersions: number[] = [];
 
   // Compute centroids and dispersions
-  for (const label of uniqueLabels) {
-    const clusterIndices = labelArray
+  for (const label of unique_labels) {
+    const cluster_indices = label_array
       .map((l, i) => (l === label ? i : -1))
       .filter((i) => i >= 0);
 
-    if (clusterIndices.length === 0) continue;
+    if (cluster_indices.length === 0) continue;
 
     tf.tidy(() => {
-      const clusterData = tf.gather(data, clusterIndices);
-      const centroid = clusterData.mean(0) as tf.Tensor1D;
-      centroidArrays.push(Array.from(centroid.dataSync()));
+      const cluster_data = tf.gather(data, cluster_indices);
+      const centroid = cluster_data.mean(0) as tf.Tensor1D;
+      centroid_arrays.push(Array.from(centroid.dataSync()));
 
-      if (clusterIndices.length > 1) {
-        const diff = clusterData.sub(centroid.reshape([1, -1]));
+      if (cluster_indices.length > 1) {
+        const diff = cluster_data.sub(centroid.reshape([1, -1]));
         const distances = tf.sqrt(diff.square().sum(1));
         dispersions.push(distances.mean().dataSync()[0]);
       } else {
@@ -168,23 +168,23 @@ export function daviesBouldinEfficient(
   }
 
   // Clean up data tensor if we created it
-  if (ownsTensor) {
+  if (owns_tensor) {
     data.dispose();
   }
 
   // Compute Davies-Bouldin index
-  let dbSum = 0;
+  let db_sum = 0;
 
   for (let i = 0; i < k; i++) {
-    let maxSimilarity = 0;
+    let max_similarity = 0;
 
     for (let j = 0; j < k; j++) {
       if (i === j) continue;
 
       // Compute Euclidean distance between centroids
       let distance = 0;
-      for (let d = 0; d < centroidArrays[i].length; d++) {
-        const diff = centroidArrays[i][d] - centroidArrays[j][d];
+      for (let d = 0; d < centroid_arrays[i].length; d++) {
+        const diff = centroid_arrays[i][d] - centroid_arrays[j][d];
         distance += diff * diff;
       }
       distance = Math.sqrt(distance);
@@ -192,7 +192,7 @@ export function daviesBouldinEfficient(
       if (distance === 0) {
         const numerator = dispersions[i] + dispersions[j];
         if (numerator > 0) {
-          maxSimilarity = Infinity;
+          max_similarity = Infinity;
           break;
         }
         // Both dispersions zero with coincident centroids -> skip
@@ -201,13 +201,13 @@ export function daviesBouldinEfficient(
       }
 
       const similarity = (dispersions[i] + dispersions[j]) / distance;
-      if (similarity > maxSimilarity) {
-        maxSimilarity = similarity;
+      if (similarity > max_similarity) {
+        max_similarity = similarity;
       }
     }
 
-    dbSum += maxSimilarity;
+    db_sum += max_similarity;
   }
 
-  return dbSum / k;
+  return db_sum / k;
 }

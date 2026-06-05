@@ -28,13 +28,13 @@ export type LinkageCriterion = 'single' | 'complete' | 'average' | 'ward';
  */
 export interface MergeRecord {
   /** Index of the surviving cluster (min of the two merged indices). */
-  clusterA: number;
+  cluster_a: number;
   /** Index of the removed cluster (max of the two merged indices). */
-  clusterB: number;
+  cluster_b: number;
   /** Distance at which the merge occurred. */
   distance: number;
   /** Size of the merged cluster after the merge. */
-  newSize: number;
+  new_size: number;
 }
 
 /**
@@ -70,29 +70,29 @@ function lancewilliams(
 
 /**
  * Scans all active clusters to find the nearest neighbor of cluster `idx`
- * and writes the result directly into the nn/nnDist arrays (zero allocation).
+ * and writes the result directly into the nn/nn_dist arrays (zero allocation).
  */
-function updateNearestNeighbor(
+function update_nearest_neighbor(
   D: Float64Array,
   n: number,
   active: Uint8Array,
   idx: number,
   nn: Int32Array,
-  nnDist: Float64Array,
+  nn_dist: Float64Array,
 ): void {
-  let bestDist = Infinity;
-  let bestNN = -1;
+  let best_dist = Infinity;
+  let best_nn = -1;
   const row = idx * n;
   for (let k = 0; k < n; k++) {
     if (!active[k] || k === idx) continue;
     const d = D[row + k];
-    if (d < bestDist) {
-      bestDist = d;
-      bestNN = k;
+    if (d < best_dist) {
+      best_dist = d;
+      best_nn = k;
     }
   }
-  nn[idx] = bestNN;
-  nnDist[idx] = bestDist;
+  nn[idx] = best_nn;
+  nn_dist[idx] = best_dist;
 }
 
 /**
@@ -106,64 +106,64 @@ function updateNearestNeighbor(
  *
  * @param D     Flat n×n distance matrix (Float64Array). Mutated in place.
  * @param n     Number of original data points.
- * @param nClusters Target number of clusters.
+ * @param n_clusters Target number of clusters.
  * @param linkage   Linkage criterion.
  * @returns Array of MergeRecord describing each merge in order.
  */
-export function storedNNCluster(
+export function stored_nn_cluster(
   D: Float64Array,
   n: number,
-  nClusters: number,
+  n_clusters: number,
   linkage: LinkageCriterion,
 ): MergeRecord[] {
   const active = new Uint8Array(n);
   active.fill(1);
 
-  const clusterSizes = new Float64Array(n);
-  clusterSizes.fill(1);
+  const cluster_sizes = new Float64Array(n);
+  cluster_sizes.fill(1);
 
   // Per-cluster nearest neighbor cache (the "priority queue")
   const nn = new Int32Array(n);      // nn[i] = nearest neighbor of i
-  const nnDist = new Float64Array(n); // nnDist[i] = distance to nn[i]
+  const nn_dist = new Float64Array(n); // nnDist[i] = distance to nn[i]
 
   // Initialize NN cache — O(n²)
   for (let i = 0; i < n; i++) {
-    updateNearestNeighbor(D, n, active, i, nn, nnDist);
+    update_nearest_neighbor(D, n, active, i, nn, nn_dist);
   }
 
   const merges: MergeRecord[] = [];
-  const targetMerges = n - nClusters;
+  const target_merges = n - n_clusters;
 
-  while (merges.length < targetMerges) {
+  while (merges.length < target_merges) {
     // Find the active cluster with the smallest NN distance — O(n)
-    let minDist = Infinity;
-    let minI = -1;
+    let min_dist = Infinity;
+    let min_i = -1;
     for (let i = 0; i < n; i++) {
       if (!active[i]) continue;
-      if (nnDist[i] < minDist) {
-        minDist = nnDist[i];
-        minI = i;
+      if (nn_dist[i] < min_dist) {
+        min_dist = nn_dist[i];
+        min_i = i;
       }
     }
 
-    if (minI === -1) break; // no active clusters remain
+    if (min_i === -1) break; // no active clusters remain
 
-    const j = nn[minI];
-    const survivor = Math.min(minI, j);
-    const removed = Math.max(minI, j);
-    const mergeDist = D[survivor * n + removed];
+    const j = nn[min_i];
+    const survivor = Math.min(min_i, j);
+    const removed = Math.max(min_i, j);
+    const merge_dist = D[survivor * n + removed];
 
     merges.push({
-      clusterA: survivor,
-      clusterB: removed,
-      distance: mergeDist,
-      newSize: clusterSizes[survivor] + clusterSizes[removed],
+      cluster_a: survivor,
+      cluster_b: removed,
+      distance: merge_dist,
+      new_size: cluster_sizes[survivor] + cluster_sizes[removed],
     });
 
     // Update distances from survivor to all other active clusters
-    const dij = mergeDist;
-    const ni = clusterSizes[survivor];
-    const nj = clusterSizes[removed];
+    const dij = merge_dist;
+    const ni = cluster_sizes[survivor];
+    const nj = cluster_sizes[removed];
 
     // Deactivate the removed cluster first
     active[removed] = 0;
@@ -171,33 +171,33 @@ export function storedNNCluster(
     for (let k = 0; k < n; k++) {
       if (!active[k] || k === survivor) continue;
 
-      const newDist = lancewilliams(
+      const new_dist = lancewilliams(
         D[survivor * n + k],
         D[removed * n + k],
         dij,
         ni,
         nj,
-        clusterSizes[k],
+        cluster_sizes[k],
         linkage,
       );
-      D[survivor * n + k] = newDist;
-      D[k * n + survivor] = newDist;
+      D[survivor * n + k] = new_dist;
+      D[k * n + survivor] = new_dist;
 
       // Update k's NN cache
       if (nn[k] === removed || nn[k] === survivor) {
         // k's NN was involved in the merge — need full rescan
-        updateNearestNeighbor(D, n, active, k, nn, nnDist);
-      } else if (newDist < nnDist[k]) {
+        update_nearest_neighbor(D, n, active, k, nn, nn_dist);
+      } else if (new_dist < nn_dist[k]) {
         // The merged cluster is now closer to k than k's current NN
         nn[k] = survivor;
-        nnDist[k] = newDist;
+        nn_dist[k] = new_dist;
       }
     }
 
-    clusterSizes[survivor] += clusterSizes[removed];
+    cluster_sizes[survivor] += cluster_sizes[removed];
 
     // Rescan survivor's NN
-    updateNearestNeighbor(D, n, active, survivor, nn, nnDist);
+    update_nearest_neighbor(D, n, active, survivor, nn, nn_dist);
   }
 
   return merges;

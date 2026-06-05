@@ -80,8 +80,8 @@
                 
                 // K-Means clustering
                 log('Running K-Means clustering...');
-                const kmeans = new ClusteringTFJS.KMeans({ nClusters: 3 });
-                const kmeansLabels = await kmeans.fitPredict(data);
+                const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 3 });
+                const kmeansLabels = await kmeans.fit_predict(data);
                 
                 resultsEl.innerHTML += `
                     <h3>K-Means Results:</h3>
@@ -91,11 +91,11 @@
                 // Spectral clustering
                 log('Running Spectral clustering...');
                 const spectral = new ClusteringTFJS.SpectralClustering({ 
-                    nClusters: 3,
+                    n_clusters: 3,
                     affinity: 'rbf',
                     gamma: 1.0
                 });
-                const spectralLabels = await spectral.fitPredict(data);
+                const spectralLabels = await spectral.fit_predict(data);
                 
                 resultsEl.innerHTML += `
                     <h3>Spectral Clustering Results:</h3>
@@ -105,10 +105,10 @@
                 // Agglomerative clustering
                 log('Running Agglomerative clustering...');
                 const agglomerative = new ClusteringTFJS.AgglomerativeClustering({ 
-                    nClusters: 3,
+                    n_clusters: 3,
                     linkage: 'ward'
                 });
-                const aggLabels = await agglomerative.fitPredict(data);
+                const aggLabels = await agglomerative.fit_predict(data);
                 
                 resultsEl.innerHTML += `
                     <h3>Agglomerative Clustering Results:</h3>

@@ -5,6 +5,7 @@ coverage
 .claude
 .jest_cache
 .venv_test
+.eslintcache
 
 # Prevent compiled files in src directory
 src/**/*.js

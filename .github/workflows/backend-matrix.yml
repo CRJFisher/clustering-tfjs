@@ -121,7 +121,7 @@ jobs:
                     
                     // Test KMeans
                     console.log('Creating KMeans instance...');
-                    const kmeans = new Clustering.KMeans({ nClusters: 2 });
+                    const kmeans = new Clustering.KMeans({ n_clusters: 2 });
                     const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
                     console.log('Fitting KMeans with data:', data);
                     await kmeans.fit(data);
@@ -131,7 +131,7 @@ jobs:
                     
                     // Test SpectralClustering
                     console.log('Creating SpectralClustering instance...');
-                    const spectral = new Clustering.SpectralClustering({ nClusters: 2 });
+                    const spectral = new Clustering.SpectralClustering({ n_clusters: 2 });
                     console.log('Fitting SpectralClustering...');
                     await spectral.fit(data);
                     console.log('SpectralClustering successful with', actualBackend);
@@ -251,7 +251,7 @@ jobs:
               console.log('✅ tfjs-node backend loaded successfully');
               
               // Run actual clustering
-              const kmeans = new ClusteringNode.KMeans({ nClusters: 2 });
+              const kmeans = new ClusteringNode.KMeans({ n_clusters: 2 });
               const data = [[0, 0], [1, 1], [10, 10], [11, 11]];
               await kmeans.fit(data);
               console.log('✅ Clustering with tfjs-node successful');

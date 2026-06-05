@@ -178,8 +178,8 @@
       </div>
       
       <div class="control-item">
-        <label for="nClusters">Clusters:</label>
-        <select id="nClusters">
+        <label for="n_clusters">Clusters:</label>
+        <select id="n_clusters">
           <option value="2">2</option>
           <option value="3" selected>3</option>
           <option value="4">4</option>
@@ -251,16 +251,16 @@
     }
     
     // Generate datasets
-    function generateDataset(type, nSamples = 300) {
+    function generateDataset(type, n_samples = 300) {
       const points = [];
       
       switch (type) {
         case 'blobs':
-          const nClusters = parseInt(document.getElementById('nClusters').value);
-          for (let i = 0; i < nClusters; i++) {
+          const n_clusters = parseInt(document.getElementById('n_clusters').value);
+          for (let i = 0; i < n_clusters; i++) {
             const centerX = Math.random() * 6 + 2;
             const centerY = Math.random() * 6 + 2;
-            const samplesPerCluster = Math.floor(nSamples / nClusters);
+            const samplesPerCluster = Math.floor(n_samples / n_clusters);
             
             for (let j = 0; j < samplesPerCluster; j++) {
               points.push([
@@ -273,8 +273,8 @@
           
         case 'moons':
           const noise = 0.15;
-          for (let i = 0; i < nSamples / 2; i++) {
-            const angle = Math.PI * i / (nSamples / 2);
+          for (let i = 0; i < n_samples / 2; i++) {
+            const angle = Math.PI * i / (n_samples / 2);
             points.push([
               Math.cos(angle) + (Math.random() - 0.5) * noise,
               Math.sin(angle) + (Math.random() - 0.5) * noise
@@ -287,7 +287,7 @@
           break;
           
         case 'circles':
-          for (let i = 0; i < nSamples / 2; i++) {
+          for (let i = 0; i < n_samples / 2; i++) {
             const angle1 = 2 * Math.PI * Math.random();
             const angle2 = 2 * Math.PI * Math.random();
             points.push([
@@ -304,7 +304,7 @@
         case 'anisotropic':
           for (let i = 0; i < 3; i++) {
             const angle = (i * 2 * Math.PI) / 3;
-            const samplesPerCluster = Math.floor(nSamples / 3);
+            const samplesPerCluster = Math.floor(n_samples / 3);
             
             for (let j = 0; j < samplesPerCluster; j++) {
               const t = (Math.random() - 0.5) * 3;
@@ -372,7 +372,7 @@
         generateNewData();
       }
       
-      const nClusters = parseInt(document.getElementById('nClusters').value);
+      const n_clusters = parseInt(document.getElementById('n_clusters').value);
       const runButton = document.getElementById('runButton');
       
       runButton.disabled = true;
@@ -384,8 +384,8 @@
         // K-Means
         const kmeansStart = performance.now();
         const kmeans = new clustering.KMeans({
-          nClusters: nClusters,
-          nInit: 10
+          n_clusters: n_clusters,
+          n_init: 10
         });
         await kmeans.fit(data);
         const kmeansLabels = await kmeans.predict(data);
@@ -395,21 +395,21 @@
         // Spectral
         const spectralStart = performance.now();
         const spectral = new clustering.SpectralClustering({
-          nClusters: nClusters,
+          n_clusters: n_clusters,
           gamma: 1.0,
           affinity: 'rbf'
         });
-        const spectralLabels = await spectral.fitPredict(data);
+        const spectralLabels = await spectral.fit_predict(data);
         metrics.spectral = performance.now() - spectralStart;
         plotData('spectralChart', data, spectralLabels);
         
         // Agglomerative
         const aggloStart = performance.now();
         const agglomerative = new clustering.AgglomerativeClustering({
-          nClusters: nClusters,
+          n_clusters: n_clusters,
           linkage: 'average'
         });
-        const aggloLabels = await agglomerative.fitPredict(data);
+        const aggloLabels = await agglomerative.fit_predict(data);
         metrics.agglomerative = performance.now() - aggloStart;
         plotData('agglomerativeChart', data, aggloLabels);
         

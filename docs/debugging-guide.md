@@ -36,9 +36,9 @@ This guide provides procedures and best practices for debugging clustering imple
 1. Use debug mode to capture intermediate results:
    ```typescript
    const spectral = new SpectralClustering({
-     nClusters: 2,
+     n_clusters: 2,
      affinity: 'rbf',
-     captureDebugInfo: true,
+     capture_debug_info: true,
    });
    ```
 2. Compare step-by-step with reference:
@@ -70,9 +70,9 @@ This guide provides procedures and best practices for debugging clustering imple
 ```typescript
 // JavaScript/TypeScript
 const spectral = new SpectralClustering({
-  nClusters: 2,
+  n_clusters: 2,
   affinity: 'rbf',
-  captureDebugInfo: true,
+  capture_debug_info: true,
 });
 const affinity = await spectral.computeAffinityMatrix(X);
 console.log('Affinity stats:', spectral.getDebugInfo()?.affinityStats);
@@ -220,7 +220,7 @@ npm test -- --clearCache
 npm test -- --verbose
 
 # Run specific test file
-npm test -- test/integration/spectral_steps.test.ts
+npm test -- src/clustering/spectral_steps.test.ts
 ```
 
 ## Performance Profiling

@@ -96,19 +96,28 @@ backlog task 42 --plain
 - Use interfaces for object shapes
 - Document complex types with JSDoc comments
 
+### Naming Conventions
+
+This project uses Python-style naming throughout:
+
+- `snake_case` for variables, functions, methods, properties, parameters, and file names
+- `PascalCase` for classes, interfaces, type aliases, and enums
+- `UPPER_SNAKE_CASE` for module-level constants
+- No `camelCase` in the project's own code (external API calls such as TensorFlow.js `matMul` keep their original spelling)
+
 ### Code Style
 
 ```typescript
 // ✅ Good
-export function calculateDistance(
-  pointA: number[],
-  pointB: number[]
+export function calculate_distance(
+  point_a: number[],
+  point_b: number[],
 ): number {
   // Implementation
 }
 
 // ❌ Bad
-export function calculateDistance(pointA, pointB) {
+export function calculate_distance(point_a, point_b) {
   // Implementation
 }
 ```
@@ -147,47 +156,45 @@ When working with TensorFlow.js tensors:
 3. Type imports last
 
 ```typescript
-import * as tf from "@tensorflow/tfjs-node";
-import { Matrix } from "ml-matrix";
+import * as tf from '@tensorflow/tfjs-node';
+import { Matrix } from 'ml-matrix';
 
-import { KMeans } from "../clustering/kmeans";
-import { pairwiseDistance } from "../utils/distance";
+import { KMeans } from '../clustering/kmeans';
+import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 
-import type { DataMatrix, LabelVector } from "../types";
+import type { DataMatrix, LabelVector } from '../clustering/types';
 ```
 
 ## Testing Guidelines
 
 ### Test Structure
 
-- Unit tests: `test/unit/`
-- Integration tests: `test/integration/`
-- Algorithm tests: `test/clustering/`
-- Utility tests: `test/utils/`
+Tests are colocated with the source they cover: `foo.ts` is tested by `foo.test.ts` in the same directory. Shared reference fixtures live in `__fixtures__/`.
+
+- Algorithm tests: `src/clustering/*.test.ts`
+- Validation metric tests: `src/validation/*.test.ts`
+- Model selection tests: `src/model_selection/*.test.ts`
 
 ### Writing Tests
 
 ```typescript
-describe("AlgorithmName", () => {
-  beforeAll(() => {
-    tf.setBackend("tensorflow");
-  });
+import * as tf from '../../test_support/tensorflow_helper';
+import { KMeans } from '..';
 
-  afterEach(() => {
-    // Clean up tensors
-    tf.engine().startScope();
-    tf.engine().endScope();
-  });
-
-  it("should produce expected results", async () => {
+describe('KMeans', () => {
+  it('should produce expected results', async () => {
     // Arrange
-    const data = [[1, 2], [3, 4]];
-    
-    // Act
-    const result = await algorithm.fit(data);
-    
+    const data = [
+      [1, 2],
+      [3, 4],
+    ];
+
+    // Act — estimators dispose their own intermediate tensors via tf.tidy
+    const model = new KMeans({ n_clusters: 2, random_state: 42 });
+    const labels = await model.fit_predict(data);
+
     // Assert
-    expect(result).toEqual(expected);
+    expect(labels).toHaveLength(data.length);
   });
 });
 ```
@@ -209,20 +216,20 @@ When implementing algorithms, ensure compatibility with scikit-learn:
 - Include parameter descriptions and examples
 - Document complex algorithms with references
 
-```typescript
+````typescript
 /**
  * Performs K-means clustering on the input data.
- * 
+ *
  * @param X - Input data matrix (n_samples × n_features)
  * @param options - Clustering options
  * @returns Cluster labels for each sample
- * 
+ *
  * @example
  * ```typescript
- * const labels = await kmeans.fitPredict([[1, 2], [3, 4]]);
+ * const labels = await kmeans.fit_predict([[1, 2], [3, 4]]);
  * ```
  */
-```
+````
 
 ### Task Documentation
 
@@ -268,12 +275,19 @@ When completing a task, add an "Implementation Notes" section:
 
 ```
 clustering-tfjs/
-├── src/
-│   ├── clustering/      # Algorithm implementations
-│   ├── utils/           # Helper functions
-│   ├── validation/      # Metrics (silhouette, etc.)
+├── src/                 # Source, organized by domain (tests colocated as *.test.ts)
+│   ├── clustering/      # Estimators (KMeans, Spectral, Agglomerative, SOM)
+│   ├── validation/      # Metrics (silhouette, Davies–Bouldin, etc.)
+│   ├── model_selection/ # Choosing the number of clusters
+│   ├── distance/        # Pairwise distance computation
+│   ├── backend/         # TensorFlow.js adapter and platform loaders
+│   ├── eigen/           # Eigendecomposition routines
+│   ├── graph/           # Affinity, Laplacian, connected components
+│   ├── tensor/          # Tensor conversion helpers and guards
+│   ├── random/          # Deterministic RNG
+│   ├── datasets/        # Synthetic dataset generators
+│   ├── visualization/   # SOM visualization helpers
 │   └── index.ts         # Main exports
-├── test/                # Test files
 ├── tools/               # Development tools
 │   └── sklearn_comparison/  # Scikit-learn comparison
 ├── backlog/             # Task management

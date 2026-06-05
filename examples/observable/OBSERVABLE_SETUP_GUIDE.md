@@ -52,8 +52,8 @@ data = {
 **Cell 4 - Run K-Means Clustering:**
 ```javascript
 clusters = {
-  const kmeans = new clustering.KMeans({ nClusters: 3 });
-  const labels = await kmeans.fitPredict(data);
+  const kmeans = new clustering.KMeans({ n_clusters: 3 });
+  const labels = await kmeans.fit_predict(data);
   return data.map((point, i) => ({
     x: point[0],
     y: point[1],
@@ -89,7 +89,7 @@ For a more interactive experience, add these cells:
 
 **Cell 6 - Add Controls:**
 ```javascript
-viewof nClusters = Inputs.range([2, 10], {step: 1, value: 3, label: "Number of clusters"})
+viewof n_clusters = Inputs.range([2, 10], {step: 1, value: 3, label: "Number of clusters"})
 viewof algorithm = Inputs.select(["kmeans", "spectral", "agglomerative"], {label: "Algorithm"})
 ```
 
@@ -99,17 +99,17 @@ dynamicClusters = {
   let model;
   switch(algorithm) {
     case "kmeans":
-      model = new clustering.KMeans({ nClusters });
+      model = new clustering.KMeans({ n_clusters });
       break;
     case "spectral":
-      model = new clustering.SpectralClustering({ nClusters });
+      model = new clustering.SpectralClustering({ n_clusters });
       break;
     case "agglomerative":
-      model = new clustering.AgglomerativeClustering({ nClusters });
+      model = new clustering.AgglomerativeClustering({ n_clusters });
       break;
   }
   
-  const labels = await model.fitPredict(data);
+  const labels = await model.fit_predict(data);
   return data.map((point, i) => ({
     x: point[0],
     y: point[1],
@@ -138,7 +138,7 @@ Plot.plot({
   width: 600,
   height: 400,
   grid: true,
-  caption: `${algorithm} clustering with ${nClusters} clusters`
+  caption: `${algorithm} clustering with ${n_clusters} clusters`
 })
 ```
 
@@ -171,13 +171,13 @@ labels // Just return the value, Observable displays it
 ```javascript
 // HTML version
 document.getElementById('slider').addEventListener('change', (e) => {
-  nClusters = e.target.value;
+  n_clusters = e.target.value;
   runClustering();
 });
 
 // Observable version
-viewof nClusters = Inputs.range([2, 10], {value: 3})
-// Other cells automatically re-run when nClusters changes
+viewof n_clusters = Inputs.range([2, 10], {value: 3})
+// Other cells automatically re-run when n_clusters changes
 ```
 
 **Use Observable Plot instead of D3/Chart.js:**
@@ -239,13 +239,13 @@ function generateMoons() {
 ```javascript
 metrics = {
   const startTime = performance.now();
-  const labels = await model.fitPredict(data);
+  const labels = await model.fit_predict(data);
   const endTime = performance.now();
   
   return {
     time: (endTime - startTime).toFixed(2) + " ms",
-    silhouette: await clustering.metrics.silhouetteScore(data, labels),
-    daviesBouldin: await clustering.metrics.daviesBouldin(data, labels)
+    silhouette: await clustering.metrics.silhouette_score(data, labels),
+    davies_bouldin: await clustering.metrics.davies_bouldin(data, labels)
   };
 }
 ```
@@ -255,18 +255,18 @@ metrics = {
 ```javascript
 // Store iterations
 kmeans = new clustering.KMeans({ 
-  nClusters: 3,
-  maxIter: 1  // Run one iteration at a time
+  n_clusters: 3,
+  max_iter: 1  // Run one iteration at a time
 });
 
 // Animate
 iterations = {
   const frames = [];
-  const model = new clustering.KMeans({ nClusters: 3 });
+  const model = new clustering.KMeans({ n_clusters: 3 });
   
   for (let i = 0; i < 10; i++) {
-    model.maxIter = i + 1;
-    const labels = await model.fitPredict(data);
+    model.max_iter = i + 1;
+    const labels = await model.fit_predict(data);
     const centroids = await model.clusterCenters_;
     
     frames.push({

@@ -3,11 +3,11 @@
 /* ------------------------------------------------------------------------- */
 
 export * from './clustering/types';
-export * from './types/platform';
+export * from './backend/platform_types';
 
 // Export the main Clustering namespace for initialization
-export { Clustering } from './clustering';
-export type { BackendConfig } from './tf-backend';
+export { Clustering } from './clustering/init';
+export type { BackendConfig } from './backend/backend';
 
 // Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
@@ -22,45 +22,45 @@ export { KMeans } from './clustering/kmeans';
 export { SOM } from './clustering/som';
 
 // Utilities
-export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
-export { findOptimalClusters } from './utils/findOptimalClusters';
+export { pairwise_distance_matrix } from './distance/pairwise_distance';
+export { find_optimal_clusters } from './model_selection/find_optimal_clusters';
 export type {
   ClusterEvaluation,
   FindOptimalClustersOptions,
   OptimalClustersMethod,
-} from './utils/findOptimalClusters';
-export { computeWss } from './utils/computeWss';
-export { findKnee } from './utils/kneedle';
-export type { KneedleOptions, KneedleResult } from './utils/kneedle';
+} from './model_selection/find_optimal_clusters';
+export { compute_wss } from './model_selection/compute_wss';
+export { find_knee } from './model_selection/kneedle';
+export type { KneedleOptions, KneedleResult } from './model_selection/kneedle';
 
 // Validation metrics
 export {
-  silhouetteSamples,
-  silhouetteScore,
-  silhouetteScoreSubset,
+  silhouette_samples,
+  silhouette_score,
+  silhouette_score_subset,
 } from './validation/silhouette';
 export {
-  daviesBouldin,
-  daviesBouldinEfficient,
+  davies_bouldin,
+  davies_bouldin_efficient,
 } from './validation/davies_bouldin';
 export {
-  calinskiHarabasz,
-  calinskiHarabaszEfficient,
+  calinski_harabasz,
+  calinski_harabasz_efficient,
 } from './validation/calinski_harabasz';
-export { adjustedRandIndex } from './validation/adjusted_rand_index';
+export { adjusted_rand_index } from './validation/adjusted_rand_index';
 export {
-  normalizedMutualInfo,
+  normalized_mutual_info,
   type NMIAverage,
 } from './validation/normalized_mutual_info';
 
 // SOM visualization utilities
 export {
-  getComponentPlanes,
-  getHitMap,
-  getActivationMap,
-  trackBMUTrajectory,
-  getQuantizationQualityMap,
-  getDensityMap,
-  getNeighborDistanceMatrix,
-  exportForVisualization,
-} from './utils/som_visualization';
+  get_component_planes,
+  get_hit_map,
+  get_activation_map,
+  track_bmu_trajectory,
+  get_quantization_quality_map,
+  get_density_map,
+  get_neighbor_distance_matrix,
+  export_for_visualization,
+} from './visualization/som_visualization';

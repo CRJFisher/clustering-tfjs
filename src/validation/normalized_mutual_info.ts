@@ -1,5 +1,5 @@
 import { LabelVector } from '../clustering/types';
-import { buildContingencyTable, toLabelArray } from './contingency';
+import { build_contingency_table, to_label_array } from './contingency';
 
 /**
  * Averaging method for NMI normalization.
@@ -18,50 +18,50 @@ export type NMIAverage = 'arithmetic' | 'geometric' | 'min' | 'max';
  * - 1: Perfect agreement
  * - 0: No mutual information (independent labelings)
  *
- * @param labelsTrue - Ground truth class labels
- * @param labelsPred - Predicted cluster labels
+ * @param labels_true - Ground truth class labels
+ * @param labels_pred - Predicted cluster labels
  * @param average - Averaging method for normalization (default: 'arithmetic')
  * @returns The Normalized Mutual Information (range: [0, 1])
  * @throws Error if label vectors have different lengths or are empty
  */
-export function normalizedMutualInfo(
-  labelsTrue: LabelVector,
-  labelsPred: LabelVector,
+export function normalized_mutual_info(
+  labels_true: LabelVector,
+  labels_pred: LabelVector,
   average: NMIAverage = 'arithmetic',
 ): number {
-  const trueArr = toLabelArray(labelsTrue);
-  const predArr = toLabelArray(labelsPred);
+  const true_arr = to_label_array(labels_true);
+  const pred_arr = to_label_array(labels_pred);
 
-  if (trueArr.length === 0) {
+  if (true_arr.length === 0) {
     throw new Error('Label vectors must not be empty');
   }
 
-  const trueLen = trueArr.length;
-  const predLen = predArr.length;
+  const true_len = true_arr.length;
+  const pred_len = pred_arr.length;
 
-  if (trueLen !== predLen) {
+  if (true_len !== pred_len) {
     throw new Error(
-      `Label vectors must have the same length (got ${trueLen} and ${predLen})`,
+      `Label vectors must have the same length (got ${true_len} and ${pred_len})`,
     );
   }
 
-  const { table, rowSums, colSums, n } = buildContingencyTable(trueArr, predArr);
+  const { table, row_sums, col_sums, n } = build_contingency_table(true_arr, pred_arr);
 
   // Compute entropy H(U) from row sums
-  let hTrue = 0;
-  for (const a of rowSums) {
+  let h_true = 0;
+  for (const a of row_sums) {
     if (a > 0) {
       const p = a / n;
-      hTrue -= p * Math.log(p);
+      h_true -= p * Math.log(p);
     }
   }
 
   // Compute entropy H(V) from column sums
-  let hPred = 0;
-  for (const b of colSums) {
+  let h_pred = 0;
+  for (const b of col_sums) {
     if (b > 0) {
       const p = b / n;
-      hPred -= p * Math.log(p);
+      h_pred -= p * Math.log(p);
     }
   }
 
@@ -71,7 +71,7 @@ export function normalizedMutualInfo(
     for (let j = 0; j < table[i].length; j++) {
       const nij = table[i][j];
       if (nij > 0) {
-        mi += (nij / n) * Math.log((n * nij) / (rowSums[i] * colSums[j]));
+        mi += (nij / n) * Math.log((n * nij) / (row_sums[i] * col_sums[j]));
       }
     }
   }
@@ -80,16 +80,16 @@ export function normalizedMutualInfo(
   let normalizer: number;
   switch (average) {
     case 'arithmetic':
-      normalizer = (hTrue + hPred) / 2;
+      normalizer = (h_true + h_pred) / 2;
       break;
     case 'geometric':
-      normalizer = Math.sqrt(hTrue * hPred);
+      normalizer = Math.sqrt(h_true * h_pred);
       break;
     case 'min':
-      normalizer = Math.min(hTrue, hPred);
+      normalizer = Math.min(h_true, h_pred);
       break;
     case 'max':
-      normalizer = Math.max(hTrue, hPred);
+      normalizer = Math.max(h_true, h_pred);
       break;
   }
 

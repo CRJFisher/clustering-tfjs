@@ -3,6 +3,14 @@
   "compilerOptions": {
     "rootDir": "src"
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist", "test"]
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "test_support",
+    "__fixtures__"
+  ]
 }

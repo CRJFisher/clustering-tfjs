@@ -1,5 +1,5 @@
 import { LabelVector } from '../clustering/types';
-import { buildContingencyTable, toLabelArray } from './contingency';
+import { build_contingency_table, to_label_array } from './contingency';
 
 /**
  * Computes the Adjusted Rand Index (ARI) between two clusterings.
@@ -13,40 +13,40 @@ import { buildContingencyTable, toLabelArray } from './contingency';
  * The ARI is symmetric and does not depend on the label values themselves,
  * only on the partitioning structure.
  *
- * @param labelsTrue - Ground truth class labels
- * @param labelsPred - Predicted cluster labels
+ * @param labels_true - Ground truth class labels
+ * @param labels_pred - Predicted cluster labels
  * @returns The Adjusted Rand Index (range: [-1, 1])
  * @throws Error if label vectors have different lengths or are empty
  */
-export function adjustedRandIndex(
-  labelsTrue: LabelVector,
-  labelsPred: LabelVector,
+export function adjusted_rand_index(
+  labels_true: LabelVector,
+  labels_pred: LabelVector,
 ): number {
-  const trueArr = toLabelArray(labelsTrue);
-  const predArr = toLabelArray(labelsPred);
+  const true_arr = to_label_array(labels_true);
+  const pred_arr = to_label_array(labels_pred);
 
-  if (trueArr.length === 0) {
+  if (true_arr.length === 0) {
     throw new Error('Label vectors must not be empty');
   }
 
-  const trueLen = trueArr.length;
-  const predLen = predArr.length;
+  const true_len = true_arr.length;
+  const pred_len = pred_arr.length;
 
-  if (trueLen !== predLen) {
+  if (true_len !== pred_len) {
     throw new Error(
-      `Label vectors must have the same length (got ${trueLen} and ${predLen})`,
+      `Label vectors must have the same length (got ${true_len} and ${pred_len})`,
     );
   }
 
-  const { table, rowSums, colSums, n } = buildContingencyTable(trueArr, predArr);
+  const { table, row_sums, col_sums, n } = build_contingency_table(true_arr, pred_arr);
 
   // C(x, 2) = x * (x - 1) / 2
   const comb2 = (x: number): number => (x * (x - 1)) / 2;
 
-  const nC2 = comb2(n);
+  const n_c2 = comb2(n);
 
   // If only 0 or 1 sample, partitions are trivially identical
-  if (nC2 === 0) {
+  if (n_c2 === 0) {
     return 1.0;
   }
 
@@ -59,27 +59,27 @@ export function adjustedRandIndex(
   }
 
   // sum_i C(a_i, 2) and sum_j C(b_j, 2)
-  let sumA = 0;
-  for (const a of rowSums) {
-    sumA += comb2(a);
+  let sum_a = 0;
+  for (const a of row_sums) {
+    sum_a += comb2(a);
   }
 
-  let sumB = 0;
-  for (const b of colSums) {
-    sumB += comb2(b);
+  let sum_b = 0;
+  for (const b of col_sums) {
+    sum_b += comb2(b);
   }
 
-  const expectedIndex = (sumA * sumB) / nC2;
-  const maxIndex = (sumA + sumB) / 2;
+  const expected_index = (sum_a * sum_b) / n_c2;
+  const max_index = (sum_a + sum_b) / 2;
 
-  const denominator = maxIndex - expectedIndex;
+  const denominator = max_index - expected_index;
 
   // When denominator is 0, check if clusterings are structurally identical.
-  // If index === expectedIndex, all pairs agree (perfect match) -> return 1.0.
+  // If index === expected_index, all pairs agree (perfect match) -> return 1.0.
   // Otherwise return 0.0 (sklearn convention).
   if (denominator === 0) {
-    return index === expectedIndex ? 1.0 : 0.0;
+    return index === expected_index ? 1.0 : 0.0;
   }
 
-  return (index - expectedIndex) / denominator;
+  return (index - expected_index) / denominator;
 }
