@@ -64,9 +64,9 @@ async function demo() {
   await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
   
   // Use algorithms
-  const kmeans = new ClusteringTFJS.KMeans({ nClusters: 3 });
+  const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 3 });
   const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
-  const labels = await kmeans.fitPredict(data);
+  const labels = await kmeans.fit_predict(data);
   console.log(labels); // [0, 0, 1, 1, 0, 2]
 }
 demo();
@@ -82,9 +82,9 @@ import { Clustering } from 'clustering-tfjs';
 await Clustering.init();
 
 // Use algorithms
-const kmeans = new Clustering.KMeans({ nClusters: 3 });
+const kmeans = new Clustering.KMeans({ n_clusters: 3 });
 const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
-const labels = await kmeans.fitPredict(data);
+const labels = await kmeans.fit_predict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
 ```
 
@@ -169,15 +169,15 @@ Ratio of between-cluster to within-cluster dispersion. Range: [0, ∞), higher i
 
 ### Finding Optimal Number of Clusters
 
-The library includes a built-in `findOptimalClusters` function that automatically determines the optimal number of clusters:
+The library includes a built-in `find_optimal_clusters` function that automatically determines the optimal number of clusters:
 
 ```typescript
-import { findOptimalClusters } from 'clustering-tfjs';
+import { find_optimal_clusters } from 'clustering-tfjs';
 
 // Find optimal k between 2 and 10 clusters
-const result = await findOptimalClusters(data, {
-  minClusters: 2,
-  maxClusters: 10,
+const result = await find_optimal_clusters(data, {
+  min_clusters: 2,
+  max_clusters: 10,
   algorithm: 'kmeans'  // or 'spectral', 'agglomerative'
 });
 
@@ -186,12 +186,12 @@ console.log(`Silhouette score: ${result.optimal.silhouette}`);
 console.log(`All evaluations:`, result.evaluations);
 
 // Advanced usage with custom scoring
-const customResult = await findOptimalClusters(data, {
-  maxClusters: 8,
+const customResult = await find_optimal_clusters(data, {
+  max_clusters: 8,
   algorithm: 'spectral',
   algorithmParams: { affinity: 'nearest_neighbors' },
-  metrics: ['silhouette', 'calinskiHarabasz'],  // Skip Davies-Bouldin
-  scoringFunction: (evaluation) => evaluation.silhouette * 2 + evaluation.calinskiHarabasz
+  metrics: ['silhouette', 'calinski_harabasz'],  // Skip Davies-Bouldin
+  scoringFunction: (evaluation) => evaluation.silhouette * 2 + evaluation.calinski_harabasz
 });
 ```
 
@@ -239,7 +239,7 @@ All algorithms implement the same interface:
 ```typescript
 interface ClusteringAlgorithm {
   fit(X: Tensor2D | number[][]): Promise<void>;
-  fitPredict(X: Tensor2D | number[][]): Promise<number[]>;
+  fit_predict(X: Tensor2D | number[][]): Promise<number[]>;
 }
 ```
 
@@ -247,11 +247,11 @@ interface ClusteringAlgorithm {
 
 ```typescript
 new KMeans({
-  nClusters: number;
-  nInit?: number;
-  maxIter?: number;
+  n_clusters: number;
+  n_init?: number;
+  max_iter?: number;
   tol?: number;
-  randomState?: number;
+  random_state?: number;
 })
 ```
 
@@ -259,10 +259,10 @@ new KMeans({
 
 ```typescript
 new SpectralClustering({
-  nClusters: number;
+  n_clusters: number;
   affinity?: 'rbf' | 'nearest_neighbors';
   gamma?: number;
-  nNeighbors?: number;
+  n_neighbors?: number;
 })
 ```
 
@@ -270,7 +270,7 @@ new SpectralClustering({
 
 ```typescript
 new AgglomerativeClustering({
-  nClusters: number;
+  n_clusters: number;
   linkage?: 'ward' | 'complete' | 'average' | 'single';
 })
 ```
@@ -279,16 +279,16 @@ new AgglomerativeClustering({
 
 ```typescript
 new SOM({
-  gridWidth: number;
-  gridHeight: number;
+  grid_width: number;
+  grid_height: number;
   topology?: 'rectangular' | 'hexagonal';
   neighborhood?: 'gaussian' | 'bubble' | 'mexican_hat';
   initialization?: 'random' | 'linear' | 'pca';
-  learningRate?: number | DecayFunction;
+  learning_rate?: number | DecayFunction;
   radius?: number | DecayFunction;
-  numEpochs?: number;
+  num_epochs?: number;
   tol?: number;
-  randomState?: number;
+  random_state?: number;
 })
 ```
 
@@ -298,13 +298,13 @@ Note: SOM additionally provides `predict()` and `partialFit()` methods for label
 
 ```typescript
 // Silhouette Score: [-1, 1], higher is better
-silhouetteScore(X: Tensor2D | number[][], labels: number[]): Promise<number>
+silhouette_score(X: Tensor2D | number[][], labels: number[]): Promise<number>
 
 // Davies-Bouldin Index: [0, ∞), lower is better  
-daviesBouldin(X: Tensor2D | number[][], labels: number[]): Promise<number>
+davies_bouldin(X: Tensor2D | number[][], labels: number[]): Promise<number>
 
 // Calinski-Harabasz Index: [0, ∞), higher is better
-calinskiHarabasz(X: Tensor2D | number[][], labels: number[]): Promise<number>
+calinski_harabasz(X: Tensor2D | number[][], labels: number[]): Promise<number>
 ```
 
 ## Examples
@@ -343,8 +343,8 @@ labels = kmeans.fit_predict(X)
 ```typescript
 // clustering-js
 import { KMeans } from 'clustering-tfjs';
-const kmeans = new KMeans({ nClusters: 3 });
-const labels = await kmeans.fitPredict(X);
+const kmeans = new KMeans({ n_clusters: 3 });
+const labels = await kmeans.fit_predict(X);
 ```
 
 ### Scikit-learn Compatibility

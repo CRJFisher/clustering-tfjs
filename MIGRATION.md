@@ -1,3 +1,47 @@
+# Migration Guide: snake_case API
+
+The public API uses Python-style `snake_case` for all function names, method
+names, and option keys, matching scikit-learn. Class, interface, and type names
+stay `PascalCase`.
+
+## What changed
+
+Rename option keys and methods at every call site:
+
+| Old (camelCase) | New (snake_case) |
+| --- | --- |
+| `nClusters` | `n_clusters` |
+| `randomState` | `random_state` |
+| `nInit` | `n_init` |
+| `maxIter` | `max_iter` |
+| `nNeighbors` | `n_neighbors` |
+| `gridWidth` / `gridHeight` | `grid_width` / `grid_height` |
+| `numEpochs` | `num_epochs` |
+| `learningRate` | `learning_rate` |
+| `miniBatchSize` | `mini_batch_size` |
+| `onlineMode` | `online_mode` |
+| `model.fitPredict(X)` | `model.fit_predict(X)` |
+| `findOptimalClusters(...)` | `find_optimal_clusters(...)` |
+| `computeWss(...)` | `compute_wss(...)` |
+| `silhouetteScore`, `daviesBouldin`, `calinskiHarabasz` | `silhouette_score`, `davies_bouldin`, `calinski_harabasz` |
+| `adjustedRandIndex`, `normalizedMutualInfo` | `adjusted_rand_index`, `normalized_mutual_info` |
+
+```typescript
+// Before
+const km = new KMeans({ nClusters: 3, randomState: 42, nInit: 10 });
+const labels = await km.fitPredict(X);
+
+// After
+const km = new KMeans({ n_clusters: 3, random_state: 42, n_init: 10 });
+const labels = await km.fit_predict(X);
+```
+
+The `clustering-tfjs/utils` subpath export is removed; import its members
+(`pairwise_distance_matrix`, `find_optimal_clusters`, `compute_wss`,
+`find_knee`) from the package root instead.
+
+---
+
 # Migration Guide: Multi-Platform Support
 
 This guide helps you migrate to the new multi-platform version of clustering-tfjs.
@@ -44,7 +88,7 @@ await Clustering.init();
 await Clustering.init({ backend: 'webgl' });
 
 // Now use the algorithms
-const kmeans = new Clustering.KMeans({ nClusters: 3 });
+const kmeans = new Clustering.KMeans({ n_clusters: 3 });
 ```
 
 ### 3. Node.js Usage
@@ -58,8 +102,8 @@ import { Clustering } from 'clustering-tfjs';
 await Clustering.init();
 
 // Use algorithms
-const kmeans = new Clustering.KMeans({ nClusters: 3 });
-const labels = await kmeans.fitPredict(data);
+const kmeans = new Clustering.KMeans({ n_clusters: 3 });
+const labels = await kmeans.fit_predict(data);
 ```
 
 ### 4. Platform Detection
@@ -70,9 +114,9 @@ You can now detect the current platform and available features:
 console.log('Platform:', Clustering.platform); // 'browser' or 'node'
 console.log('Features:', Clustering.features);
 // {
-//   gpuAcceleration: boolean,
-//   wasmSimd: boolean,
-//   nodeBindings: boolean,
+//   gpu_acceleration: boolean,
+//   wasm_simd: boolean,
+//   node_bindings: boolean,
 //   webgl: boolean
 // }
 ```
@@ -142,8 +186,8 @@ npm install clustering-tfjs @tensorflow/tfjs-node-gpu
             const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
             
             // Cluster
-            const kmeans = new ClusteringTFJS.KMeans({ nClusters: 2 });
-            const labels = await kmeans.fitPredict(data);
+            const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 2 });
+            const labels = await kmeans.fit_predict(data);
             
             console.log('Cluster labels:', labels);
         }
@@ -170,17 +214,17 @@ async function main() {
     ];
     
     // K-Means clustering
-    const kmeans = new Clustering.KMeans({ nClusters: 2 });
-    const labels = await kmeans.fitPredict(data);
+    const kmeans = new Clustering.KMeans({ n_clusters: 2 });
+    const labels = await kmeans.fit_predict(data);
     console.log('K-Means labels:', labels);
     
     // Spectral clustering
     const spectral = new Clustering.SpectralClustering({ 
-        nClusters: 2,
+        n_clusters: 2,
         affinity: 'rbf'
     });
-    const spectralLabels = await spectral.fitPredict(data);
-    console.log('Spectral labels:', spectralLabels);
+    const spectral_labels = await spectral.fit_predict(data);
+    console.log('Spectral labels:', spectral_labels);
 }
 
 main();
@@ -194,11 +238,11 @@ Make sure to call `Clustering.init()` before using any algorithms:
 
 ```typescript
 // ❌ Wrong
-const kmeans = new Clustering.KMeans({ nClusters: 3 });
+const kmeans = new Clustering.KMeans({ n_clusters: 3 });
 
 // ✅ Correct
 await Clustering.init();
-const kmeans = new Clustering.KMeans({ nClusters: 3 });
+const kmeans = new Clustering.KMeans({ n_clusters: 3 });
 ```
 
 ### Performance Issues

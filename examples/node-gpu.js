@@ -43,8 +43,8 @@ async function main() {
         
         // Generate larger dataset for GPU testing
         console.log('Generating large dataset...');
-        const nSamples = 10000;
-        const nFeatures = 50;
+        const n_samples = 10000;
+        const n_features = 50;
         const data = [];
         
         // Generate 5 clusters
@@ -52,9 +52,9 @@ async function main() {
             const centerX = cluster * 20;
             const centerY = cluster * 20;
             
-            for (let i = 0; i < nSamples / 5; i++) {
+            for (let i = 0; i < n_samples / 5; i++) {
                 const point = [];
-                for (let j = 0; j < nFeatures; j++) {
+                for (let j = 0; j < n_features; j++) {
                     point.push(
                         (j % 2 === 0 ? centerX : centerY) + 
                         Math.random() * 5 - 2.5
@@ -64,18 +64,18 @@ async function main() {
             }
         }
         
-        console.log(`Dataset: ${data.length} samples, ${nFeatures} features`);
+        console.log(`Dataset: ${data.length} samples, ${n_features} features`);
         console.log();
         
         // Benchmark K-Means
         console.log('Benchmarking K-Means...');
         const kmeansLabels = await benchmark('K-Means (5 clusters)', async () => {
             const kmeans = new Clustering.KMeans({ 
-                nClusters: 5, 
-                nInit: 3,
-                maxIter: 100 
+                n_clusters: 5, 
+                n_init: 3,
+                max_iter: 100 
             });
-            return await kmeans.fitPredict(data);
+            return await kmeans.fit_predict(data);
         });
         
         // Count clusters
@@ -91,10 +91,10 @@ async function main() {
         console.log(`Benchmarking Agglomerative (${smallData.length} samples)...`);
         const aggLabels = await benchmark('Agglomerative (5 clusters)', async () => {
             const agg = new Clustering.AgglomerativeClustering({ 
-                nClusters: 5,
+                n_clusters: 5,
                 linkage: 'ward'
             });
-            return await agg.fitPredict(smallData);
+            return await agg.fit_predict(smallData);
         });
         
         // Count clusters

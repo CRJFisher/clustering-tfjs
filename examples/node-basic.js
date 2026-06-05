@@ -35,8 +35,8 @@ async function main() {
         // 1. K-Means Clustering
         console.log('1. K-Means Clustering');
         console.log('--------------------');
-        const kmeans = new Clustering.KMeans({ nClusters: 3, nInit: 10 });
-        const kmeansLabels = await kmeans.fitPredict(data);
+        const kmeans = new Clustering.KMeans({ n_clusters: 3, n_init: 10 });
+        const kmeansLabels = await kmeans.fit_predict(data);
         console.log('Labels:', kmeansLabels);
         console.log();
         
@@ -44,12 +44,12 @@ async function main() {
         console.log('2. Spectral Clustering');
         console.log('---------------------');
         const spectral = new Clustering.SpectralClustering({ 
-            nClusters: 3,
+            n_clusters: 3,
             affinity: 'rbf',
             gamma: 1.0,
-            randomState: 42
+            random_state: 42
         });
-        const spectralLabels = await spectral.fitPredict(data);
+        const spectralLabels = await spectral.fit_predict(data);
         console.log('Labels:', spectralLabels);
         console.log();
         
@@ -57,10 +57,10 @@ async function main() {
         console.log('3. Agglomerative Clustering');
         console.log('--------------------------');
         const agglomerative = new Clustering.AgglomerativeClustering({ 
-            nClusters: 3,
+            n_clusters: 3,
             linkage: 'ward'
         });
-        const aggLabels = await agglomerative.fitPredict(data);
+        const aggLabels = await agglomerative.fit_predict(data);
         console.log('Labels:', aggLabels);
         console.log();
         
@@ -68,17 +68,17 @@ async function main() {
         console.log('4. Self-Organizing Maps (SOM)');
         console.log('-----------------------------');
         const som = new Clustering.SOM({
-            gridWidth: 3,
-            gridHeight: 3,
-            nClusters: 9,
+            grid_width: 3,
+            grid_height: 3,
+            n_clusters: 9,
             topology: 'hexagonal',
             neighborhood: 'gaussian',
             initialization: 'pca',
-            numEpochs: 50,
-            randomState: 42
+            num_epochs: 50,
+            random_state: 42
         });
         
-        const somLabels = await som.fitPredict(data);
+        const somLabels = await som.fit_predict(data);
         console.log('Labels:', somLabels);
         
         // Get additional SOM information
@@ -92,11 +92,11 @@ async function main() {
         // 5. Find Optimal Clusters
         console.log('5. Finding Optimal Number of Clusters');
         console.log('------------------------------------');
-        const { findOptimalClusters } = require('../dist/index.js');
+        const { find_optimal_clusters } = require('../dist/index.js');
         
-        const result = await findOptimalClusters(data, {
-            minClusters: 2,
-            maxClusters: 5,
+        const result = await find_optimal_clusters(data, {
+            min_clusters: 2,
+            max_clusters: 5,
             algorithm: 'kmeans'
         });
         

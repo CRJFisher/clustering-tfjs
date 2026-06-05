@@ -50,21 +50,21 @@ async function basicSOMExample() {
     
     // Create a 5x5 SOM
     const som = new Clustering.SOM({
-        gridWidth: 5,
-        gridHeight: 5,
+        grid_width: 5,
+        grid_height: 5,
 
         topology: 'rectangular',
         neighborhood: 'gaussian',
         initialization: 'pca',
-        learningRate: 0.5,
+        learning_rate: 0.5,
         radius: 2.5,
-        numEpochs: 100,
-        randomState: 42
+        num_epochs: 100,
+        random_state: 42
     });
     
     // Train the SOM
     console.log('Training SOM...');
-    const labels = await som.fitPredict(data);
+    const labels = await som.fit_predict(data);
     
     // Display results
     console.log('Sample labels (first 10):', labels.slice(0, 10));
@@ -92,13 +92,13 @@ async function compareTopologies() {
     
     // Test rectangular topology
     const rectSom = new Clustering.SOM({
-        gridWidth: 4,
-        gridHeight: 4,
+        grid_width: 4,
+        grid_height: 4,
 
         topology: 'rectangular',
         initialization: 'pca',
-        numEpochs: 100,
-        randomState: 42
+        num_epochs: 100,
+        random_state: 42
     });
     
     await rectSom.fit(data);
@@ -111,13 +111,13 @@ async function compareTopologies() {
     
     // Test hexagonal topology
     const hexSom = new Clustering.SOM({
-        gridWidth: 4,
-        gridHeight: 4,
+        grid_width: 4,
+        grid_height: 4,
 
         topology: 'hexagonal',
         initialization: 'pca',
-        numEpochs: 100,
-        randomState: 42
+        num_epochs: 100,
+        random_state: 42
     });
     
     await hexSom.fit(data);
@@ -144,20 +144,20 @@ async function visualizationExample() {
     
     // Create a smaller SOM for easier visualization
     const som = new Clustering.SOM({
-        gridWidth: 3,
-        gridHeight: 3,
+        grid_width: 3,
+        grid_height: 3,
 
         topology: 'hexagonal',
         neighborhood: 'gaussian',
         initialization: 'pca',
-        numEpochs: 100
+        num_epochs: 100
     });
     
     await som.fit(data);
     
     // Get U-matrix
-    const uMatrix = som.getUMatrix();
-    const uMatrixArray = await uMatrix.array();
+    const u_matrix = som.getUMatrix();
+    const uMatrixArray = await u_matrix.array();
     
     console.log('U-Matrix (distances between neighboring neurons):');
     console.log('Higher values indicate cluster boundaries\n');
@@ -172,7 +172,7 @@ async function visualizationExample() {
     }
     
     // Clean up
-    uMatrix.dispose();
+    u_matrix.dispose();
 }
 
 async function compareInitializations() {
@@ -180,12 +180,12 @@ async function compareInitializations() {
     
     const data = generateSampleData();
     const params = {
-        gridWidth: 4,
-        gridHeight: 4,
+        grid_width: 4,
+        grid_height: 4,
 
         topology: 'rectangular',
-        numEpochs: 50,
-        randomState: 42
+        num_epochs: 50,
+        random_state: 42
     };
     
     // Test random initialization

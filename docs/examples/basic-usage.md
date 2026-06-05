@@ -22,10 +22,10 @@ const data = [
 
 async function basicKMeans() {
   // Create KMeans instance with 3 clusters
-  const kmeans = new KMeans({ nClusters: 3 });
+  const kmeans = new KMeans({ n_clusters: 3 });
   
   // Fit the model and get cluster labels
-  const labels = await kmeans.fitPredict(data);
+  const labels = await kmeans.fit_predict(data);
   
   console.log('Cluster labels:', labels);
   // Output: [0, 0, 1, 1, 0, 2, 2, 2, 2]
@@ -40,7 +40,7 @@ basicKMeans();
 ## Finding Optimal Number of Clusters
 
 ```typescript
-import { findOptimalClusters } from 'clustering-tfjs';
+import { find_optimal_clusters } from 'clustering-tfjs';
 
 async function findBestK() {
   const data = [
@@ -48,16 +48,16 @@ async function findBestK() {
   ];
   
   // Test k from 2 to 8 with K-means
-  const result = await findOptimalClusters(data, {
-    minClusters: 2,
-    maxClusters: 8,
+  const result = await find_optimal_clusters(data, {
+    min_clusters: 2,
+    max_clusters: 8,
     algorithm: 'kmeans'
   });
   
   // Also works with SOM
-  const somResult = await findOptimalClusters(data, {
-    minClusters: 4,
-    maxClusters: 16,
+  const somResult = await find_optimal_clusters(data, {
+    min_clusters: 4,
+    max_clusters: 16,
     algorithm: 'som',
     algorithmParams: {
       topology: 'hexagonal',
@@ -67,7 +67,7 @@ async function findBestK() {
   
   console.log(`Optimal number of clusters: ${result.optimal.k}`);
   console.log(`Silhouette score: ${result.optimal.silhouette.toFixed(3)}`);
-  console.log(`Davies-Bouldin index: ${result.optimal.daviesBouldin.toFixed(3)}`);
+  console.log(`Davies-Bouldin index: ${result.optimal.davies_bouldin.toFixed(3)}`);
   
   // See all tested configurations
   result.evaluations.forEach(eval => {
@@ -89,11 +89,11 @@ async function differentDataFormats() {
   // 2. TensorFlow.js tensor
   const tensorData = tf.tensor2d([[1, 2], [3, 4], [5, 6]]);
   
-  const kmeans = new KMeans({ nClusters: 2 });
+  const kmeans = new KMeans({ n_clusters: 2 });
   
   // Both formats work the same way
-  const labels1 = await kmeans.fitPredict(arrayData);
-  const labels2 = await kmeans.fitPredict(tensorData);
+  const labels1 = await kmeans.fit_predict(arrayData);
+  const labels2 = await kmeans.fit_predict(tensorData);
   
   // Remember to dispose tensors when done
   tensorData.dispose();
@@ -124,12 +124,12 @@ async function spectralExample() {
   
   // Spectral clustering handles non-convex shapes better
   const spectral = new SpectralClustering({
-    nClusters: 2,
+    n_clusters: 2,
     affinity: 'rbf',
     gamma: 10  // Adjust based on data scale
   });
   
-  const labels = await spectral.fitPredict(data);
+  const labels = await spectral.fit_predict(data);
   console.log('Successfully separated two half-moons');
 }
 ```
@@ -171,11 +171,11 @@ async function hierarchicalExample() {
   const normalizedData = normalize(customerData);
   
   const clustering = new AgglomerativeClustering({
-    nClusters: 3,
+    n_clusters: 3,
     linkage: 'ward'  // Minimizes within-cluster variance
   });
   
-  const labels = await clustering.fitPredict(normalizedData);
+  const labels = await clustering.fit_predict(normalizedData);
   console.log('Customer segments:', labels);
 }
 ```
@@ -183,21 +183,21 @@ async function hierarchicalExample() {
 ## Evaluating Clustering Quality
 
 ```typescript
-import { KMeans, silhouetteScore, daviesBouldin, calinskiHarabasz } from 'clustering-tfjs';
+import { KMeans, silhouette_score, davies_bouldin, calinski_harabasz } from 'clustering-tfjs';
 
 async function evaluateClustering() {
   const data = [
     // Your data points
   ];
   
-  const kmeans = new KMeans({ nClusters: 3 });
-  const labels = await kmeans.fitPredict(data);
+  const kmeans = new KMeans({ n_clusters: 3 });
+  const labels = await kmeans.fit_predict(data);
   
   // Calculate all metrics
   const [silhouette, davies, calinski] = await Promise.all([
-    silhouetteScore(data, labels),
-    daviesBouldin(data, labels),
-    calinskiHarabasz(data, labels)
+    silhouette_score(data, labels),
+    davies_bouldin(data, labels),
+    calinski_harabasz(data, labels)
   ]);
   
   console.log('Clustering Quality Metrics:');
@@ -241,8 +241,8 @@ async function largeDatesetClustering() {
   );
   
   const kmeans = new KMeans({ 
-    nClusters: 10,
-    maxIter: 100  // Reduce iterations for speed
+    n_clusters: 10,
+    max_iter: 100  // Reduce iterations for speed
   });
   
   // Fit on sample
@@ -251,7 +251,7 @@ async function largeDatesetClustering() {
   // Predict on batches
   for (let i = 0; i < totalSamples / batchSize; i++) {
     const batch = generateBatch();
-    const labels = await kmeans.fitPredict(batch);
+    const labels = await kmeans.fit_predict(batch);
     // Process labels...
   }
 }
@@ -275,12 +275,12 @@ async function customAffinityExample() {
   
   // Use spectral clustering with custom affinity
   const spectral = new SpectralClustering({
-    nClusters: 3,
+    n_clusters: 3,
     affinity: 'rbf',
     gamma: 0.1  // Adjust for your data scale
   });
   
-  const labels = await spectral.fitPredict(timeSeries);
+  const labels = await spectral.fit_predict(timeSeries);
   console.log('Time series clusters:', labels);
 }
 ```
@@ -295,14 +295,14 @@ async function robustClustering() {
   
   try {
     // This will fail - can't create 3 clusters from 2 points
-    const kmeans = new KMeans({ nClusters: 3 });
-    await kmeans.fitPredict(data);
+    const kmeans = new KMeans({ n_clusters: 3 });
+    await kmeans.fit_predict(data);
   } catch (error) {
     console.error('Clustering failed:', error.message);
     
     // Fall back to fewer clusters
-    const kmeans = new KMeans({ nClusters: 2 });
-    const labels = await kmeans.fitPredict(data);
+    const kmeans = new KMeans({ n_clusters: 2 });
+    const labels = await kmeans.fit_predict(data);
     console.log('Fallback clustering:', labels);
   }
 }
@@ -326,20 +326,20 @@ async function somExample() {
   
   // Create a 4x4 SOM grid
   const som = new SOM({
-    gridWidth: 4,
-    gridHeight: 4,
+    grid_width: 4,
+    grid_height: 4,
     topology: 'rectangular',  // or 'hexagonal'
     neighborhood: 'gaussian',
     initialization: 'pca',    // Use PCA for initialization
-    learningRate: 0.5,
+    learning_rate: 0.5,
     radius: 2,
-    numEpochs: 100,
-    randomState: 42
+    num_epochs: 100,
+    random_state: 42
   });
   
   // Train the SOM
   console.log('Training SOM...');
-  const labels = await som.fitPredict(data);
+  const labels = await som.fit_predict(data);
   console.log('Cluster assignments:', labels);
   
   // Get the weight vectors (codebook) — plain array, no dispose needed
@@ -347,8 +347,8 @@ async function somExample() {
   console.log('SOM weights shape:', [weights.length, weights[0].length, weights[0][0].length]); // [4, 4, 2]
   
   // Calculate U-matrix for visualization
-  const uMatrix = som.getUMatrix();
-  const uMatrixArray = await uMatrix.array();
+  const u_matrix = som.getUMatrix();
+  const uMatrixArray = await u_matrix.array();
   console.log('U-matrix (distances between neurons):');
   console.table(uMatrixArray);
   
@@ -360,7 +360,7 @@ async function somExample() {
   
   // Clean up tensors
   weights.dispose();
-  uMatrix.dispose();
+  u_matrix.dispose();
 }
 
 somExample();
@@ -377,13 +377,13 @@ async function somVisualization() {
   
   // Create a larger SOM for better visualization
   const som = new SOM({
-    gridWidth: 10,
-    gridHeight: 10,
+    grid_width: 10,
+    grid_height: 10,
     topology: 'hexagonal',    // Hexagonal grid for smoother transitions
     neighborhood: 'gaussian',
     initialization: 'pca',
-    numEpochs: 200,           // More epochs for complex data
-    learningRate: 0.7,        // Higher initial learning rate
+    num_epochs: 200,           // More epochs for complex data
+    learning_rate: 0.7,        // Higher initial learning rate
     radius: 5                 // Larger initial radius
   });
   
@@ -395,8 +395,8 @@ async function somVisualization() {
   
   // Convert flat labels to 2D grid positions
   const gridPositions = labels.map(label => {
-    const row = Math.floor(label / som.params.gridWidth);
-    const col = label % som.params.gridWidth;
+    const row = Math.floor(label / som.params.grid_width);
+    const col = label % som.params.grid_width;
     return [row, col];
   });
   
@@ -404,13 +404,13 @@ async function somVisualization() {
   console.log('2D positions for visualization:', gridPositions);
   
   // Create U-matrix for understanding cluster boundaries
-  const uMatrix = som.getUMatrix();
+  const u_matrix = som.getUMatrix();
   
   // U-matrix shows distances between adjacent neurons
   // High values indicate cluster boundaries
   // Low values indicate similar regions
   
-  return { gridPositions, uMatrix };
+  return { gridPositions, u_matrix };
 }
 ```
 
@@ -422,11 +422,11 @@ import { SOM } from 'clustering-tfjs';
 async function onlineLearning() {
   // Create SOM for streaming data
   const som = new SOM({
-    gridWidth: 10,
-    gridHeight: 10,
+    grid_width: 10,
+    grid_height: 10,
     initialization: 'random',
-    learningRate: 0.5,
-    numEpochs: 10  // Few epochs per batch
+    learning_rate: 0.5,
+    num_epochs: 10  // Few epochs per batch
   });
   
   // Process data in batches (simulating streaming)
@@ -464,16 +464,16 @@ async function compareTopologies() {
   
   // Rectangular topology (4 or 8 neighbors)
   const rectSom = new SOM({
-    gridWidth: 5,
-    gridHeight: 5,
+    grid_width: 5,
+    grid_height: 5,
     topology: 'rectangular',
     initialization: 'pca'
   });
   
   // Hexagonal topology (6 neighbors) - better for visualization
   const hexSom = new SOM({
-    gridWidth: 5,
-    gridHeight: 5,
+    grid_width: 5,
+    grid_height: 5,
     topology: 'hexagonal',
     initialization: 'pca'
   });

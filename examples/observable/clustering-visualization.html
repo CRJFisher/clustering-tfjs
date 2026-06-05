@@ -173,8 +173,8 @@
       </div>
       
       <div class="control-group">
-        <label for="nClusters">Number of Clusters: <span id="nClustersValue" class="range-value">3</span></label>
-        <input type="range" id="nClusters" min="2" max="10" value="3">
+        <label for="n_clusters">Number of Clusters: <span id="nClustersValue" class="range-value">3</span></label>
+        <input type="range" id="n_clusters" min="2" max="10" value="3">
       </div>
       
       <div class="control-group" id="gammaControl" style="display: none;">
@@ -248,17 +248,17 @@
     }
     
     // Generate synthetic datasets
-    function generateData(type, nSamples = 200) {
+    function generateData(type, n_samples = 200) {
       data = [];
       
       switch (type) {
         case 'blobs':
           // Generate gaussian blobs
-          const nClusters = parseInt(document.getElementById('nClusters').value);
-          for (let i = 0; i < nClusters; i++) {
+          const n_clusters = parseInt(document.getElementById('n_clusters').value);
+          for (let i = 0; i < n_clusters; i++) {
             const centerX = Math.random() * 8 + 1;
             const centerY = Math.random() * 8 + 1;
-            const samplesPerCluster = Math.floor(nSamples / nClusters);
+            const samplesPerCluster = Math.floor(n_samples / n_clusters);
             
             for (let j = 0; j < samplesPerCluster; j++) {
               data.push([
@@ -272,8 +272,8 @@
         case 'moons':
           // Generate two moons
           const noise = 0.1;
-          for (let i = 0; i < nSamples / 2; i++) {
-            const angle = Math.PI * i / (nSamples / 2);
+          for (let i = 0; i < n_samples / 2; i++) {
+            const angle = Math.PI * i / (n_samples / 2);
             // First moon
             data.push([
               Math.cos(angle) + (Math.random() - 0.5) * noise,
@@ -291,7 +291,7 @@
           // Generate concentric circles
           const innerRadius = 2;
           const outerRadius = 4;
-          for (let i = 0; i < nSamples / 2; i++) {
+          for (let i = 0; i < n_samples / 2; i++) {
             const angle1 = 2 * Math.PI * Math.random();
             const angle2 = 2 * Math.PI * Math.random();
             // Inner circle
@@ -311,7 +311,7 @@
           // Generate anisotropic (elongated) clusters
           for (let i = 0; i < 3; i++) {
             const angle = (i * 2 * Math.PI) / 3;
-            const samplesPerCluster = Math.floor(nSamples / 3);
+            const samplesPerCluster = Math.floor(n_samples / 3);
             
             for (let j = 0; j < samplesPerCluster; j++) {
               const t = (Math.random() - 0.5) * 4;
@@ -342,7 +342,7 @@
       }
       
       const algorithm = document.getElementById('algorithm').value;
-      const nClusters = parseInt(document.getElementById('nClusters').value);
+      const n_clusters = parseInt(document.getElementById('n_clusters').value);
       const runButton = document.getElementById('runButton');
       
       runButton.disabled = true;
@@ -354,8 +354,8 @@
         switch (algorithm) {
           case 'kmeans':
             const kmeans = new clustering.KMeans({ 
-              nClusters: nClusters,
-              nInit: 10
+              n_clusters: n_clusters,
+              n_init: 10
             });
             await kmeans.fit(data);
             labels = await kmeans.predict(data);
@@ -365,21 +365,21 @@
           case 'spectral':
             const gamma = parseFloat(document.getElementById('gamma').value);
             const spectral = new clustering.SpectralClustering({
-              nClusters: nClusters,
+              n_clusters: n_clusters,
               gamma: gamma,
               affinity: 'rbf'
             });
-            labels = await spectral.fitPredict(data);
+            labels = await spectral.fit_predict(data);
             centroids = [];
             break;
             
           case 'agglomerative':
             const linkage = document.getElementById('linkage').value;
             const agglomerative = new clustering.AgglomerativeClustering({
-              nClusters: nClusters,
+              n_clusters: n_clusters,
               linkage: linkage
             });
-            labels = await agglomerative.fitPredict(data);
+            labels = await agglomerative.fit_predict(data);
             centroids = [];
             break;
         }
@@ -392,7 +392,7 @@
           <strong>Results:</strong>
           <ul>
             <li>Algorithm: ${algorithm.charAt(0).toUpperCase() + algorithm.slice(1)}</li>
-            <li>Number of clusters: ${nClusters}</li>
+            <li>Number of clusters: ${n_clusters}</li>
             <li>Data points: ${data.length}</li>
             <li>Time elapsed: ${timeElapsed}ms</li>
           </ul>
@@ -527,7 +527,7 @@
     document.getElementById('algorithm').addEventListener('change', updateAlgorithmControls);
     document.getElementById('dataset').addEventListener('change', generateNewData);
     
-    document.getElementById('nClusters').addEventListener('input', function(e) {
+    document.getElementById('n_clusters').addEventListener('input', function(e) {
       document.getElementById('nClustersValue').textContent = e.target.value;
     });
     

@@ -10,11 +10,11 @@ Complete API documentation for clustering-tfjs.
   - [AgglomerativeClustering](#agglomerativeclustering)
   - [SOM](#som-self-organizing-maps)
 - [Validation Metrics](#validation-metrics)
-  - [silhouetteScore](#silhouettescore)
-  - [daviesBouldin](#daviesbouldin)
-  - [calinskiHarabasz](#calinskiharabasz)
+  - [silhouette_score](#silhouettescore)
+  - [davies_bouldin](#daviesbouldin)
+  - [calinski_harabasz](#calinskiharabasz)
 - [Utility Functions](#utility-functions)
-  - [findOptimalClusters](#findoptimalclusters)
+  - [find_optimal_clusters](#findoptimalclusters)
 - [Types](#types)
 
 ## Clustering Algorithms
@@ -27,7 +27,7 @@ interface BaseClustering<P extends CoreClusteringParams> {
   labels_: number[] | null;
 
   fit(X: DataMatrix): Promise<void>;
-  fitPredict(X: DataMatrix): Promise<number[]>;
+  fit_predict(X: DataMatrix): Promise<number[]>;
 }
 ```
 
@@ -45,11 +45,11 @@ new KMeans(params: KMeansParams)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `nClusters` | `number` | required | Number of clusters to form |
-| `nInit` | `number` | `10` | Number of initializations to run |
-| `maxIter` | `number` | `300` | Maximum iterations per run |
+| `n_clusters` | `number` | required | Number of clusters to form |
+| `n_init` | `number` | `10` | Number of initializations to run |
+| `max_iter` | `number` | `300` | Maximum iterations per run |
 | `tol` | `number` | `1e-4` | Convergence tolerance |
-| `randomState` | `number` | `undefined` | Random seed for reproducibility |
+| `random_state` | `number` | `undefined` | Random seed for reproducibility |
 
 #### Example
 
@@ -57,13 +57,13 @@ new KMeans(params: KMeansParams)
 import { KMeans } from 'clustering-tfjs';
 
 const kmeans = new KMeans({
-  nClusters: 3,
-  nInit: 10,
-  maxIter: 300
+  n_clusters: 3,
+  n_init: 10,
+  max_iter: 300
 });
 
 const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
-const labels = await kmeans.fitPredict(data);
+const labels = await kmeans.fit_predict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
 
 // Access cluster centers
@@ -84,12 +84,12 @@ new SpectralClustering(params: SpectralClusteringParams)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `nClusters` | `number` | required | Number of clusters |
+| `n_clusters` | `number` | required | Number of clusters |
 | `affinity` | `'rbf' \| 'nearest_neighbors'` | `'rbf'` | Affinity matrix construction method |
 | `gamma` | `number` | `1.0` | Kernel coefficient for RBF |
-| `nNeighbors` | `number` | `10` | Number of neighbors for k-NN |
-| `nInit` | `number` | `10` | Number of K-means initializations |
-| `randomState` | `number` | `undefined` | Random seed |
+| `n_neighbors` | `number` | `10` | Number of neighbors for k-NN |
+| `n_init` | `number` | `10` | Number of K-means initializations |
+| `random_state` | `number` | `undefined` | Random seed |
 
 #### Example
 
@@ -97,12 +97,12 @@ new SpectralClustering(params: SpectralClusteringParams)
 import { SpectralClustering } from 'clustering-tfjs';
 
 const spectral = new SpectralClustering({
-  nClusters: 2,
+  n_clusters: 2,
   affinity: 'nearest_neighbors',
-  nNeighbors: 7
+  n_neighbors: 7
 });
 
-const labels = await spectral.fitPredict(data);
+const labels = await spectral.fit_predict(data);
 ```
 
 ### AgglomerativeClustering
@@ -119,7 +119,7 @@ new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `nClusters` | `number` | required | Number of clusters |
+| `n_clusters` | `number` | required | Number of clusters |
 | `linkage` | `'ward' \| 'complete' \| 'average' \| 'single'` | `'ward'` | Linkage criterion |
 
 #### Example
@@ -128,11 +128,11 @@ new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 import { AgglomerativeClustering } from 'clustering-tfjs';
 
 const agglo = new AgglomerativeClustering({
-  nClusters: 3,
+  n_clusters: 3,
   linkage: 'ward'
 });
 
-const labels = await agglo.fitPredict(data);
+const labels = await agglo.fit_predict(data);
 ```
 
 ### SOM (Self-Organizing Maps)
@@ -149,30 +149,30 @@ new SOM(params: SOMParams)
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `gridWidth` | `number` | required | Width of the SOM grid |
-| `gridHeight` | `number` | required | Height of the SOM grid |
+| `grid_width` | `number` | required | Width of the SOM grid |
+| `grid_height` | `number` | required | Height of the SOM grid |
 | `topology` | `'rectangular' \| 'hexagonal'` | `'rectangular'` | Grid topology (4/8 or 6 neighbors) |
 | `neighborhood` | `'gaussian' \| 'bubble' \| 'mexican_hat'` | `'gaussian'` | Neighborhood function for weight updates |
 | `initialization` | `'random' \| 'linear' \| 'pca'` | `'linear'` | Weight initialization method |
-| `learningRate` | `number \| DecayFunction` | `0.5` | Initial learning rate or custom decay function |
-| `radius` | `number \| DecayFunction` | `max(gridWidth, gridHeight) / 2` | Initial neighborhood radius or custom decay |
-| `numEpochs` | `number` | `100` | Number of training epochs |
+| `learning_rate` | `number \| DecayFunction` | `0.5` | Initial learning rate or custom decay function |
+| `radius` | `number \| DecayFunction` | `max(grid_width, grid_height) / 2` | Initial neighborhood radius or custom decay |
+| `num_epochs` | `number` | `100` | Number of training epochs |
 | `tol` | `number` | `1e-4` | Convergence tolerance |
-| `randomState` | `number` | `undefined` | Random seed for reproducibility |
+| `random_state` | `number` | `undefined` | Random seed for reproducibility |
 
 #### Methods
 
-##### fitPredict(X: DataMatrix): Promise<number[]>
+##### fit_predict(X: DataMatrix): Promise<number[]>
 Train the SOM and return cluster assignments.
 
 ##### fit(X: DataMatrix): Promise<void>
 Train the SOM on the provided data. Supports incremental/online learning - can be called multiple times with new data batches to continue training.
 
-##### cluster(nClusters: number, options?: SOMClusterOptions): Promise<number[]>
-Perform 2-phase clustering: agglomerative clustering on SOM weight vectors to produce `nClusters` meaningful clusters. Returns one label per data point from the most recent `fit()` call.
+##### cluster(n_clusters: number, options?: SOMClusterOptions): Promise<number[]>
+Perform 2-phase clustering: agglomerative clustering on SOM weight vectors to produce `n_clusters` meaningful clusters. Returns one label per data point from the most recent `fit()` call.
 
 ##### getWeights(): number[][][]
-Get the trained weight vectors of all neurons as a plain JavaScript array. Shape: [gridHeight][gridWidth][nFeatures]. Returns a snapshot — safe to use after `dispose()`.
+Get the trained weight vectors of all neurons as a plain JavaScript array. Shape: [grid_height][grid_width][n_features]. Returns a snapshot — safe to use after `dispose()`.
 
 ##### getUMatrix(): tf.Tensor2D
 Calculate the U-matrix (unified distance matrix) showing average distances between neurons and their neighbors. Useful for visualization. Caller owns the returned tensor.
@@ -184,7 +184,7 @@ Calculate the average distance between samples and their Best Matching Units (BM
 Calculate the proportion of samples for which the first and second BMUs are not adjacent. Lower values indicate better topology preservation.
 
 ##### partialFit(X: DataMatrix): Promise<void>
-Incremental learning. Requires `onlineMode: true`. Input must have the same number of features as the initial fit.
+Incremental learning. Requires `online_mode: true`. Input must have the same number of features as the initial fit.
 
 ##### dispose(): void
 Release all GPU/WebGL memory. Safe to call multiple times. Previously returned `getWeights()` arrays remain valid. Previously returned tensors from `getUMatrix()` are unaffected (caller-owned).
@@ -196,20 +196,20 @@ import { SOM } from 'clustering-tfjs';
 
 // Create a 5x5 SOM with hexagonal topology
 const som = new SOM({
-  gridWidth: 5,
-  gridHeight: 5,
+  grid_width: 5,
+  grid_height: 5,
   topology: 'hexagonal',
   neighborhood: 'gaussian',
   initialization: 'pca',
-  learningRate: 0.5,
+  learning_rate: 0.5,
   radius: 2.5,
-  numEpochs: 100,
-  randomState: 42
+  num_epochs: 100,
+  random_state: 42
 });
 
 // Train on data
 const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
-const labels = await som.fitPredict(data);
+const labels = await som.fit_predict(data);
 
 // Get meaningful clusters (2-phase: SOM + agglomerative)
 const clusterLabels = await som.cluster(3);
@@ -220,8 +220,8 @@ const weights = som.getWeights();
 console.log('Weight shape:', [weights.length, weights[0].length, weights[0][0].length]); // [5, 5, 2]
 
 // Calculate U-matrix for visualization
-const uMatrix = som.getUMatrix();
-console.log('U-matrix shape:', uMatrix.shape); // [5, 5]
+const u_matrix = som.getUMatrix();
+console.log('U-matrix shape:', u_matrix.shape); // [5, 5]
 
 // Evaluate map quality
 const quantError = som.quantizationError();
@@ -231,18 +231,18 @@ const topoError = await som.topographicError(data);
 console.log('Topographic error:', topoError);
 
 // Clean up — only tensor values need disposing
-uMatrix.dispose();
+u_matrix.dispose();
 som.dispose();
 ```
 
 ## Validation Metrics
 
-### silhouetteScore
+### silhouette_score
 
 Computes the mean Silhouette Coefficient of all samples.
 
 ```typescript
-function silhouetteScore(
+function silhouette_score(
   X: DataMatrix,
   labels: LabelVector
 ): Promise<number>
@@ -260,20 +260,20 @@ Silhouette score (range: [-1, 1], higher is better)
 #### Example
 
 ```typescript
-import { KMeans, silhouetteScore } from 'clustering-tfjs';
+import { KMeans, silhouette_score } from 'clustering-tfjs';
 
-const kmeans = new KMeans({ nClusters: 3 });
-const labels = await kmeans.fitPredict(data);
-const score = await silhouetteScore(data, labels);
+const kmeans = new KMeans({ n_clusters: 3 });
+const labels = await kmeans.fit_predict(data);
+const score = await silhouette_score(data, labels);
 console.log(`Silhouette score: ${score}`);
 ```
 
-### daviesBouldin
+### davies_bouldin
 
 Computes the Davies-Bouldin index.
 
 ```typescript
-function daviesBouldin(
+function davies_bouldin(
   X: DataMatrix,
   labels: LabelVector
 ): Promise<number>
@@ -288,12 +288,12 @@ function daviesBouldin(
 
 Davies-Bouldin index (range: [0, ∞), lower is better)
 
-### calinskiHarabasz
+### calinski_harabasz
 
 Computes the Calinski-Harabasz index.
 
 ```typescript
-function calinskiHarabasz(
+function calinski_harabasz(
   X: DataMatrix,
   labels: LabelVector
 ): Promise<number>
@@ -310,12 +310,12 @@ Calinski-Harabasz index (range: [0, ∞), higher is better)
 
 ## Utility Functions
 
-### findOptimalClusters
+### find_optimal_clusters
 
 Automatically determines the optimal number of clusters for a dataset.
 
 ```typescript
-function findOptimalClusters(
+function find_optimal_clusters(
   X: DataMatrix,
   options?: FindOptimalClustersOptions
 ): Promise<{
@@ -328,11 +328,11 @@ function findOptimalClusters(
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `minClusters` | `number` | `2` | Minimum clusters to test |
-| `maxClusters` | `number` | `10` | Maximum clusters to test |
+| `min_clusters` | `number` | `2` | Minimum clusters to test |
+| `max_clusters` | `number` | `10` | Maximum clusters to test |
 | `algorithm` | `'kmeans' \| 'spectral' \| 'agglomerative'` | `'kmeans'` | Algorithm to use |
 | `algorithmParams` | `object` | `{}` | Algorithm-specific parameters |
-| `metrics` | `string[]` | `['silhouette', 'daviesBouldin', 'calinskiHarabasz']` | Metrics to compute |
+| `metrics` | `string[]` | `['silhouette', 'davies_bouldin', 'calinski_harabasz']` | Metrics to compute |
 | `scoringFunction` | `(eval: ClusterEvaluation) => number` | Combined score | Custom scoring |
 
 #### Returns
@@ -343,11 +343,11 @@ function findOptimalClusters(
 #### Example
 
 ```typescript
-import { findOptimalClusters } from 'clustering-tfjs';
+import { find_optimal_clusters } from 'clustering-tfjs';
 
-const result = await findOptimalClusters(data, {
-  minClusters: 2,
-  maxClusters: 8,
+const result = await find_optimal_clusters(data, {
+  min_clusters: 2,
+  max_clusters: 8,
   algorithm: 'kmeans'
 });
 
@@ -381,8 +381,8 @@ Result from cluster evaluation:
 interface ClusterEvaluation {
   k: number;
   silhouette: number;
-  daviesBouldin: number;
-  calinskiHarabasz: number;
+  davies_bouldin: number;
+  calinski_harabasz: number;
   combinedScore: number;
   labels: number[];
 }
@@ -392,7 +392,7 @@ interface ClusterEvaluation {
 
 All methods may throw errors for:
 
-- Invalid parameters (e.g., `nClusters < 2`)
+- Invalid parameters (e.g., `n_clusters < 2`)
 - Insufficient data (e.g., fewer samples than clusters)
 - Numerical issues (e.g., singular matrices)
 
@@ -400,7 +400,7 @@ Always wrap calls in try-catch when handling user input:
 
 ```typescript
 try {
-  const labels = await kmeans.fitPredict(data);
+  const labels = await kmeans.fit_predict(data);
 } catch (error) {
   console.error('Clustering failed:', error.message);
 }
@@ -417,7 +417,7 @@ When working with tensors directly:
 ```typescript
 const dataTensor = tf.tensor2d(data);
 try {
-  const labels = await kmeans.fitPredict(dataTensor);
+  const labels = await kmeans.fit_predict(dataTensor);
   // Use labels
 } finally {
   dataTensor.dispose();

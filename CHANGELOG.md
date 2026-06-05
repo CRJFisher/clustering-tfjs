@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **BREAKING — Python-style (snake_case) public API.** All function names,
+  method names, and option keys are now `snake_case` to match scikit-learn
+  (classes/interfaces/types stay `PascalCase`). For example
+  `new KMeans({ nClusters: 3, randomState: 42 })` becomes
+  `new KMeans({ n_clusters: 3, random_state: 42 })`, and `model.fitPredict(X)`
+  becomes `model.fit_predict(X)`. See `MIGRATION.md` for the full mapping.
+- **Source reorganized by domain.** The flat `utils/` grab-bag is replaced by
+  action/domain folders (`backend/`, `eigen/`, `graph/`, `distance/`,
+  `model_selection/`, `tensor/`, `random/`, `visualization/`). See
+  `docs/architecture.md`.
+- Tests are colocated with their source (`foo.ts` ↔ `foo.test.ts`); reference
+  fixtures moved to `__fixtures__/`.
+
+### Removed
+
+- **BREAKING** — the `clustering-tfjs/utils` subpath export. Its members
+  (`pairwise_distance_matrix`, `find_optimal_clusters`, `compute_wss`,
+  `find_knee`) are available from the package root.
+
 ## [0.5.0] - 2026-03-20
 
 ### Added

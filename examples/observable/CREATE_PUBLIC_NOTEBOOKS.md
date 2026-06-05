@@ -45,7 +45,7 @@ viewof algorithm = Inputs.select(["kmeans", "spectral", "agglomerative"], {
   value: "kmeans"
 })
 
-viewof nClusters = Inputs.range([2, 10], {
+viewof n_clusters = Inputs.range([2, 10], {
   step: 1, 
   value: 3, 
   label: "Number of clusters"
@@ -62,7 +62,7 @@ viewof dataset = Inputs.select(["blobs", "moons", "circles", "anisotropic"], {
 function generateDataset(type, nPoints = 150) {
   switch(type) {
     case "blobs":
-      return generateBlobs(nClusters, nPoints);
+      return generateBlobs(n_clusters, nPoints);
     case "moons":
       return generateMoons(nPoints);
     case "circles":
@@ -189,21 +189,21 @@ result = {
   let model;
   switch(algorithm) {
     case "kmeans":
-      model = new clustering.KMeans({ nClusters });
+      model = new clustering.KMeans({ n_clusters });
       break;
     case "spectral":
-      model = new clustering.SpectralClustering({ nClusters });
+      model = new clustering.SpectralClustering({ n_clusters });
       break;
     case "agglomerative":
-      model = new clustering.AgglomerativeClustering({ nClusters });
+      model = new clustering.AgglomerativeClustering({ n_clusters });
       break;
   }
   
-  const labels = await model.fitPredict(data);
+  const labels = await model.fit_predict(data);
   const endTime = performance.now();
   
   // Calculate metrics
-  const silhouette = await clustering.metrics.silhouetteScore(data, labels);
+  const silhouette = await clustering.metrics.silhouette_score(data, labels);
   
   return {
     points: data.map((point, i) => ({
@@ -214,7 +214,7 @@ result = {
     time: endTime - startTime,
     silhouette: silhouette,
     algorithm: algorithm,
-    nClusters: nClusters
+    n_clusters: n_clusters
   };
 }
 ```
