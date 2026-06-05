@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { daviesBouldin, daviesBouldinEfficient } from "../../src/validation/davies_bouldin";
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 describe("Davies-Bouldin Score", () => {
   beforeEach(() => {

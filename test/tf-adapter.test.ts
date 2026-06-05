@@ -1,5 +1,5 @@
-import * as tf from '../src/tf-adapter';
-import { resetBackend } from '../src/tf-backend';
+import * as tf from '../src/backend/adapter';
+import { resetBackend } from '../src/backend/backend';
 
 describe('tf-adapter lazy wrappers', () => {
   afterEach(() => {

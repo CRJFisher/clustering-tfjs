@@ -3,9 +3,9 @@ import type {
   DataMatrix,
   KMeansParams,
 } from './types';
-import * as tf from '../tf-adapter';
-import { isTensor } from '../utils/tensor-utils';
-import { make_random_stream } from '../utils/rng';
+import * as tf from '../backend/adapter';
+import { isTensor } from '../tensor/tensor_guards';
+import { make_random_stream } from '../random';
 
 /**
  * K-Means clustering algorithm using Lloyd's iteration with K-means++ initialization.

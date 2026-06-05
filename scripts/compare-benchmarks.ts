@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 import { readFileSync, readdirSync, writeFileSync } from 'fs';
 import { join } from 'path';
-import { BenchmarkResult } from '../src/benchmarks';
-import { analyzeBackendPerformance, generateBackendRecommendations } from '../src/benchmarks/compare';
+import { BenchmarkResult } from '../benchmarks';
+import { analyzeBackendPerformance, generateBackendRecommendations } from '../benchmarks/compare';
 import * as yaml from 'js-yaml';
 
 function loadLatestBenchmark(): BenchmarkResult[] {

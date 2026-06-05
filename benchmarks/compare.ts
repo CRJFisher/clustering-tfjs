@@ -1,4 +1,4 @@
-import { BenchmarkResult } from './index';
+import { BenchmarkResult } from './';
 
 export interface BackendComparison {
   backend: string;

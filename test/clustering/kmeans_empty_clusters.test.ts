@@ -1,5 +1,5 @@
 import { KMeans } from "../../src/clustering/kmeans";
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 describe("KMeans empty cluster handling", () => {
   it("should reassign empty clusters to farthest points like sklearn", async () => {

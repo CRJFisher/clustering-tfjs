@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-import { benchmarkAlgorithm, formatBenchmarkResults, getAvailableBackends } from '../src/benchmarks';
-import { analyzeBackendPerformance, generateBackendRecommendations } from '../src/benchmarks/compare';
+import { benchmarkAlgorithm, formatBenchmarkResults, getAvailableBackends } from '../benchmarks';
+import { analyzeBackendPerformance, generateBackendRecommendations } from '../benchmarks/compare';
 
 // Quick benchmark with smaller datasets
 const QUICK_CONFIGS = [

@@ -1,5 +1,5 @@
 import { KMeans } from "../src";
-import { make_random_stream } from "../src/utils/rng";
+import { make_random_stream } from "../src/random";
 import * as tf from "./tensorflow-helper";
 
 describe("KMeans", () => {

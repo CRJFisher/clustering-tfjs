@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { SOM } from '../../src/clustering/som';
-import { gridDistance } from '../../src/clustering/som_utils';
+import { gridDistance } from '../../src/clustering/som_neighborhood';
 
 describe('SOM Hexagonal Topology', () => {
   beforeEach(() => {

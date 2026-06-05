@@ -1,6 +1,6 @@
 import '../tensorflow-helper';
-import { findOptimalClusters, ClusterEvaluation } from '../../src/utils/findOptimalClusters';
-import { make_random_stream } from '../../src/utils/rng';
+import { findOptimalClusters, ClusterEvaluation } from '../../src/model_selection/find_optimal_clusters';
+import { make_random_stream } from '../../src/random';
 
 function assertClusterEvaluationShape(evaluation: ClusterEvaluation, nSamples: number): void {
   // Required fields exist and have correct runtime type

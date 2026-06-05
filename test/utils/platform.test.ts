@@ -1,4 +1,4 @@
-import { isReactNative, isNode, isBrowser, getPlatform } from '../../src/utils/platform';
+import { isReactNative, isNode, isBrowser, getPlatform } from '../../src/backend/platform';
 
 describe('platform detection', () => {
   // Store original globals for cleanup

@@ -1,6 +1,6 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { reorthogonalizeVector } from './orthogonalize';
-import { make_random_stream } from './rng/index';
+import { make_random_stream } from '../random';
 
 /* -------------------------------------------------------------------------- */
 /*                     Lanczos Iterative Eigensolver                          */

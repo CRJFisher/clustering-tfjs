@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { runBenchmarkSuite, BenchmarkResult } from '../src/benchmarks';
+import { runBenchmarkSuite, BenchmarkResult } from '../benchmarks';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 import * as yaml from 'js-yaml';

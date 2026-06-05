@@ -1,5 +1,5 @@
-import tfDefault from '../tf-adapter';
-import * as tf from '../tf-adapter';
+import tfDefault from '../backend/adapter';
+import * as tf from '../backend/adapter';
 import type { SOM } from '../clustering/som';
 
 /**

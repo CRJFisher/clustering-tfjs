@@ -1,10 +1,10 @@
 import * as tf from '@tensorflow/tfjs';
 import { performance } from 'perf_hooks';
-import { AgglomerativeClustering } from '../clustering/agglomerative';
-import { SpectralClustering } from '../clustering/spectral';
-import { KMeans } from '../clustering/kmeans';
-import { SOM } from '../clustering/som';
-import { makeBlobs } from '../datasets/synthetic';
+import { AgglomerativeClustering } from '../src/clustering/agglomerative';
+import { SpectralClustering } from '../src/clustering/spectral';
+import { KMeans } from '../src/clustering/kmeans';
+import { SOM } from '../src/clustering/som';
+import { makeBlobs } from '../src/datasets/synthetic';
 
 export interface BenchmarkResult {
   algorithm: string;

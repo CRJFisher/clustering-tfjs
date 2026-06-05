@@ -1,4 +1,4 @@
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 describe("RandomStream (MT19937)", () => {
   it("produces deterministic float & int sequences for same seed", () => {

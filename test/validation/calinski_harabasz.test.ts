@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { calinskiHarabasz, calinskiHarabaszEfficient } from "../../src/validation/calinski_harabasz";
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 describe("Calinski-Harabasz Score", () => {
   beforeEach(() => {

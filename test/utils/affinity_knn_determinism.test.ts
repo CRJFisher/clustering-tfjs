@@ -1,6 +1,6 @@
 import * as tf from "../tensorflow-helper";
 
-import { compute_knn_affinity } from "../../src/utils/affinity";
+import { compute_knn_affinity } from "../../src/graph/affinity";
 
 describe("compute_knn_affinity – deterministic tie-breaking", () => {
   it("returns identical matrices across repeated calls when distances have ties", async () => {

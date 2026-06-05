@@ -1,6 +1,6 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 
-import { manhattanDistance, cosineDistance } from './tensor';
+import { manhattanDistance, cosineDistance } from '../tensor/tensor_ops';
 
 /**
  * Optimised Euclidean pairwise distance using the identity

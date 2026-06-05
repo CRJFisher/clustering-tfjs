@@ -1,6 +1,6 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 
-import { pairwiseEuclideanMatrix } from './pairwise_distance';
+import { pairwiseEuclideanMatrix } from '../distance/pairwise_distance';
 
 /**
  * Computes the RBF (Gaussian) kernel affinity matrix for the given points.

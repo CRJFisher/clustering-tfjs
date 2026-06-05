@@ -5,7 +5,7 @@ import {
   normalisedLaplacian,
   jacobiEigenDecomposition,
   smallestEigenvectors,
-} from "../../src/utils/laplacian";
+} from "../../src/graph/laplacian";
 
 describe("Graph Laplacian utilities", () => {
   it("computes correct degree vector", () => {

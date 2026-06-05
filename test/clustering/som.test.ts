@@ -1,5 +1,5 @@
 import { SOM } from '../../src/clustering/som';
-import * as tf from '../../src/tf-adapter';
+import * as tf from '../../src/backend/adapter';
 import {
   initializeWeights,
   findBMU,
@@ -9,7 +9,7 @@ import {
   linearDecay,
   exponentialDecay,
   DecayTracker,
-} from '../../src/clustering/som_utils';
+} from '../../src/clustering/som_neighborhood';
 
 describe('SOM', () => {
   beforeAll(() => {
@@ -652,7 +652,7 @@ describe('SOM', () => {
 
         await som.fit(X);
 
-        const { getDensityMap, getHitMap } = await import('../../src/utils/som_visualization');
+        const { getDensityMap, getHitMap } = await import('../../src/visualization/som_visualization');
 
         const hitMap = await getHitMap(som, X);
         const densityMap = await getDensityMap(som, X, 1.0);

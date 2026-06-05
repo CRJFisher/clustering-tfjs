@@ -2,7 +2,7 @@ import * as tf from "../tensorflow-helper";
 import {
   qr_eigen_decomposition,
   tridiagonal_qr_eigen,
-} from "../../src/utils/eigen_qr";
+} from "../../src/eigen/qr";
 
 function expectOrthonormal(
   vectors: number[][],

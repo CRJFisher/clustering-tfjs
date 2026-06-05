@@ -2,7 +2,7 @@
  * TensorFlow.js adapter module
  *
  * Provides a platform-agnostic, lazy-loaded interface to TensorFlow.js.
- * All function calls are deferred through ensureBackend() in tf-backend.ts,
+ * All function calls are deferred through ensureBackend() in backend.ts,
  * which means:
  *
  * - Clustering.init({ backend: 'wasm' }) controls which backend is used
@@ -13,7 +13,7 @@
  */
 
 import type * as tfTypes from '@tensorflow/tfjs-core';
-import { ensureBackend } from './tf-backend';
+import { ensureBackend } from './backend';
 
 // ---------------------------------------------------------------------------
 // Type re-exports (compile-time only, erased at runtime)

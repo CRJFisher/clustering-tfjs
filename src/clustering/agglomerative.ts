@@ -3,9 +3,9 @@ import type {
   AgglomerativeClusteringParams,
   BaseClustering,
 } from './types';
-import * as tf from '../tf-adapter';
-import { isTensor } from '../utils/tensor-utils';
-import { pairwiseDistanceMatrix } from '../utils/pairwise_distance';
+import * as tf from '../backend/adapter';
+import { isTensor } from '../tensor/tensor_guards';
+import { pairwiseDistanceMatrix } from '../distance/pairwise_distance';
 import { storedNNCluster } from './linkage';
 
 /**

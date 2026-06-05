@@ -1,4 +1,4 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 
 /**
  * Converts a regular (nested) JavaScript array into a TensorFlow.js tensor
@@ -89,4 +89,4 @@ export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  */
 // Re-export to maintain backward compatibility while delegating to the new
 // implementation in `pairwise_distance.ts`.
-export { pairwiseEuclideanMatrix } from './pairwise_distance';
+export { pairwiseEuclideanMatrix } from '../distance/pairwise_distance';

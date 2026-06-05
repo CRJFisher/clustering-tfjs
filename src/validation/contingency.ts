@@ -1,5 +1,5 @@
 import { LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
+import { isTensor } from '../tensor/tensor_guards';
 
 /**
  * Result of building a contingency table from two label vectors.

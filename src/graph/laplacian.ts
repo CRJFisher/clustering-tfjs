@@ -1,5 +1,5 @@
-import * as tf from '../tf-adapter';
-import { smallest_eigenvectors_with_values } from './smallest_eigenvectors_with_values';
+import * as tf from '../backend/adapter';
+import { smallest_eigenvectors_with_values } from '../eigen/smallest_eigenvectors_with_values';
 
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */

@@ -1,4 +1,4 @@
-import { benchmarkAlgorithm, getAvailableBackends, BENCHMARK_CONFIGS } from '../../src/benchmarks';
+import { benchmarkAlgorithm, getAvailableBackends, BENCHMARK_CONFIGS } from '../../benchmarks';
 
 describe('Benchmarking System', () => {
   it('should detect available backends', async () => {

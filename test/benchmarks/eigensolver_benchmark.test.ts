@@ -1,8 +1,8 @@
-import * as tf from '../../src/tf-adapter';
-import { lanczos_smallest_eigenpairs } from '../../src/utils/lanczos';
-import { improved_jacobi_eigen } from '../../src/utils/eigen_improved';
-import { normalisedLaplacian } from '../../src/utils/laplacian';
-import { compute_rbf_affinity } from '../../src/utils/affinity';
+import * as tf from '../../src/backend/adapter';
+import { lanczos_smallest_eigenpairs } from '../../src/eigen/lanczos';
+import { improved_jacobi_eigen } from '../../src/eigen/improved';
+import { normalisedLaplacian } from '../../src/graph/laplacian';
+import { compute_rbf_affinity } from '../../src/graph/affinity';
 
 /**
  * Benchmark: Lanczos vs Jacobi eigensolver.
@@ -10,7 +10,7 @@ import { compute_rbf_affinity } from '../../src/utils/affinity';
  */
 describe('Eigensolver benchmark: Lanczos vs Jacobi', () => {
   function generateSymmetricLaplacian(n: number, seed: number): tf.Tensor2D {
-    const rng = require('../../src/utils/rng/index').make_random_stream(seed);
+    const rng = require('../../src/random').make_random_stream(seed);
     const data: number[][] = [];
     const nClusters = 3;
     const samplesPerCluster = Math.floor(n / nClusters);

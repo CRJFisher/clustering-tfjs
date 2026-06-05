@@ -4,13 +4,13 @@
  * Provides initialization and configuration for multi-platform support.
  */
 
-import { initializeBackend, resetBackend, BackendConfig } from './tf-backend';
-import { KMeans } from './clustering/kmeans';
-import { SpectralClustering } from './clustering/spectral';
-import { AgglomerativeClustering } from './clustering/agglomerative';
-import { SOM } from './clustering/som';
-import type { Platform, PlatformFeatures } from './types/platform';
-import { getPlatform } from './utils/platform';
+import { initializeBackend, resetBackend, BackendConfig } from '../backend/backend';
+import { KMeans } from './kmeans';
+import { SpectralClustering } from './spectral';
+import { AgglomerativeClustering } from './agglomerative';
+import { SOM } from './som';
+import type { Platform, PlatformFeatures } from '../backend/platform_types';
+import { getPlatform } from '../backend/platform';
 
 // ---------------------------------------------------------------------------
 // Idempotency guard state for Clustering.init()

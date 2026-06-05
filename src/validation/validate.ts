@@ -1,6 +1,6 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../utils/tensor-utils';
+import { isTensor } from '../tensor/tensor_guards';
 
 /**
  * Validates that labels length matches the number of data rows.

@@ -3,11 +3,11 @@
 /* ------------------------------------------------------------------------- */
 
 export * from './clustering/types';
-export * from './types/platform';
+export * from './backend/platform_types';
 
 // Export the main Clustering namespace for initialization
-export { Clustering } from './clustering';
-export type { BackendConfig } from './tf-backend';
+export { Clustering } from './clustering/init';
+export type { BackendConfig } from './backend/backend';
 
 // Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
@@ -22,16 +22,16 @@ export { KMeans } from './clustering/kmeans';
 export { SOM } from './clustering/som';
 
 // Utilities
-export { pairwiseDistanceMatrix } from './utils/pairwise_distance';
-export { findOptimalClusters } from './utils/findOptimalClusters';
+export { pairwiseDistanceMatrix } from './distance/pairwise_distance';
+export { findOptimalClusters } from './model_selection/find_optimal_clusters';
 export type {
   ClusterEvaluation,
   FindOptimalClustersOptions,
   OptimalClustersMethod,
-} from './utils/findOptimalClusters';
-export { computeWss } from './utils/computeWss';
-export { findKnee } from './utils/kneedle';
-export type { KneedleOptions, KneedleResult } from './utils/kneedle';
+} from './model_selection/find_optimal_clusters';
+export { computeWss } from './model_selection/compute_wss';
+export { findKnee } from './model_selection/kneedle';
+export type { KneedleOptions, KneedleResult } from './model_selection/kneedle';
 
 // Validation metrics
 export {
@@ -63,4 +63,4 @@ export {
   getDensityMap,
   getNeighborDistanceMatrix,
   exportForVisualization,
-} from './utils/som_visualization';
+} from './visualization/som_visualization';

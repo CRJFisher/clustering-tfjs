@@ -1,11 +1,11 @@
 import * as tf from "../tensorflow-helper";
 
-import { improved_jacobi_eigen } from "../../src/utils/eigen_improved";
+import { improved_jacobi_eigen } from "../../src/eigen/improved";
 import {
   qr_eigen_decomposition,
   tridiagonal_qr_eigen,
-} from "../../src/utils/eigen_qr";
-import { smallest_eigenvectors_with_values } from "../../src/utils/smallest_eigenvectors_with_values";
+} from "../../src/eigen/qr";
+import { smallest_eigenvectors_with_values } from "../../src/eigen/smallest_eigenvectors_with_values";
 
 /* -------------------------------------------------------------------------- */
 /*  Helper: check eigenvector orthonormality                                  */

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "@jest/globals";
-import { findKnee } from "../../src/utils/kneedle";
+import { findKnee } from "../../src/model_selection/kneedle";
 
 describe("findKnee (Kneedle algorithm)", () => {
   it("should detect knee in a typical WSS curve", () => {

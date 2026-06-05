@@ -1,6 +1,6 @@
 import * as tf from "../tensorflow-helper";
 
-import { createComponentIndicators } from "../../src/utils/component_indicators";
+import { createComponentIndicators } from "../../src/graph/component_indicators";
 
 describe("createComponentIndicators", () => {
   const tensors: tf.Tensor[] = [];

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
 import { silhouetteScore, silhouetteScoreSubset, silhouetteSamples } from "../../src/validation/silhouette";
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 describe("Silhouette Score", () => {
   beforeEach(() => {

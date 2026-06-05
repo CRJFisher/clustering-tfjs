@@ -1,4 +1,4 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import type {
   BaseClustering,
   DataMatrix,
@@ -11,8 +11,8 @@ import type {
   DecayFunction,
 } from './types';
 import { AgglomerativeClustering } from './agglomerative';
-import { isTensor } from '../utils/tensor-utils';
-import { make_random_stream, type RandomStream } from '../utils/rng';
+import { isTensor } from '../tensor/tensor_guards';
+import { make_random_stream, type RandomStream } from '../random';
 import {
   initializeWeights,
   findBMUBatch,
@@ -21,7 +21,7 @@ import {
   computeBMUDistances,
   createDecayScheduler,
   validateNeighborhoodParams,
-} from './som_utils';
+} from './som_neighborhood';
 
 /**
  * Self-Organizing Map (SOM) implementation using TensorFlow.js.

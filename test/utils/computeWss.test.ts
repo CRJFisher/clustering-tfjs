@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
-import { computeWss } from "../../src/utils/computeWss";
+import { computeWss } from "../../src/model_selection/compute_wss";
 
 describe("computeWss", () => {
   beforeEach(() => {

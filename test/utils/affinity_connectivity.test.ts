@@ -1,5 +1,5 @@
 import * as tf from "../tensorflow-helper";
-import { compute_knn_affinity } from "../../src/utils/affinity";
+import { compute_knn_affinity } from "../../src/graph/affinity";
 
 describe("k-NN affinity connectivity", () => {
   it("should include self-loops by default", async () => {

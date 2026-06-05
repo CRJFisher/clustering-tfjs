@@ -7,7 +7,7 @@ import {
   manhattanDistance,
   cosineDistance,
   pairwiseEuclideanMatrix,
-} from "../../src/utils/tensor";
+} from "../../src/tensor/tensor_ops";
 
 function closeTo(a: any, b: any, eps = 1e-4): boolean {
   const flat = (x: any): number[] =>

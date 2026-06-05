@@ -1,5 +1,5 @@
-import { Clustering } from '../src/clustering';
-import { isInitialized } from '../src/tf-backend';
+import { Clustering } from '../src/clustering/init';
+import { isInitialized } from '../src/backend/backend';
 
 describe('Clustering.init() idempotency and concurrency', () => {
   afterEach(() => {

@@ -1,4 +1,4 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
 import { validateLabelsLength, convertValidationInputs } from './validate';
 

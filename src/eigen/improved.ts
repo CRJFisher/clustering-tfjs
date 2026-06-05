@@ -1,4 +1,4 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 
 /**
  * Improved Jacobi eigendecomposition for symmetric matrices.

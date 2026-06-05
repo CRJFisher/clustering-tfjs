@@ -1,6 +1,6 @@
-import * as tf from '../../src/tf-adapter';
+import * as tf from '../../src/backend/adapter';
 import { SpectralClustering } from '../../src/clustering/spectral';
-import { make_random_stream } from '../../src/utils/rng/index';
+import { make_random_stream } from '../../src/random';
 
 /**
  * Scale tests for spectral clustering with the Lanczos eigensolver.

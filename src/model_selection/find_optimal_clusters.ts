@@ -1,4 +1,4 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { KMeans } from '../clustering/kmeans';
 import { SpectralClustering } from '../clustering/spectral';
 import { AgglomerativeClustering } from '../clustering/agglomerative';
@@ -6,8 +6,8 @@ import { SOM } from '../clustering/som';
 import { silhouetteScore } from '../validation/silhouette';
 import { daviesBouldinEfficient } from '../validation/davies_bouldin';
 import { calinskiHarabaszEfficient } from '../validation/calinski_harabasz';
-import { isTensor } from './tensor-utils';
-import { computeWss } from './computeWss';
+import { isTensor } from '../tensor/tensor_guards';
+import { computeWss } from './compute_wss';
 import { findKnee } from './kneedle';
 import type { DataMatrix } from '../clustering/types';
 

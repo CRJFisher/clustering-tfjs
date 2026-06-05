@@ -1,4 +1,4 @@
-import { ensureBackend, resetBackend, isInitialized, initializeBackend } from '../src/tf-backend';
+import { ensureBackend, resetBackend, isInitialized, initializeBackend } from '../src/backend/backend';
 
 describe('tf-backend', () => {
   afterEach(() => {

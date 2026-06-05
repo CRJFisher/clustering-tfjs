@@ -10,8 +10,8 @@
  */
 
 import type * as tfType from '@tensorflow/tfjs-core';
-import type { TensorFlowBackend, Platform, ReactNativeConfig } from './types/platform';
-import { isReactNative, isNode } from './utils/platform';
+import type { TensorFlowBackend, Platform, ReactNativeConfig } from './platform_types';
+import { isReactNative, isNode } from './platform';
 
 // Singleton storage
 let tfInstance: typeof tfType | null = null;
@@ -77,7 +77,7 @@ export async function initializeBackend(config: BackendConfig = {}): Promise<typ
 
 /**
  * Get the current TensorFlow instance, or auto-load one synchronously.
- * This is the primary entry point used by tf-adapter.ts wrappers.
+ * This is the primary entry point used by adapter.ts wrappers.
  *
  * In Node.js: synchronously loads the best available backend via require().
  * In browser/RN: throws if Clustering.init() has not been called.
@@ -133,7 +133,7 @@ export function resetBackend(): void {
 
 /**
  * Synchronous backend loading for Node.js (fallback when init() not called).
- * Uses require() with the same fallback chain as tf-loader.node.ts.
+ * Uses require() with the same fallback chain as loader.node.ts.
  */
 function loadBackendSync(): typeof tfType {
   try {
@@ -174,15 +174,15 @@ async function loadBackend(config: BackendConfig): Promise<typeof tfType> {
 
   if (platformIsReactNative) {
     // React Native environment
-    const loader = await import(/* webpackIgnore: true */ './tf-loader.rn');
+    const loader = await import(/* webpackIgnore: true */ './loader.rn');
     tf = await loader.loadTensorFlow();
   } else if (platformIsNode) {
     // Node.js environment
-    const loader = await import(/* webpackIgnore: true */ './tf-loader.node');
+    const loader = await import(/* webpackIgnore: true */ './loader.node');
     tf = await loader.loadTensorFlow();
   } else {
     // Browser environment
-    const loader = await import('./tf-loader.browser');
+    const loader = await import('./loader.browser');
     tf = await loader.loadTensorFlow();
   }
 

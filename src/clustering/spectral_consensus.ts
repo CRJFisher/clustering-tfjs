@@ -1,10 +1,10 @@
-import * as tf from '../tf-adapter';
+import * as tf from '../backend/adapter';
 import { SpectralClustering } from './spectral';
 import {
   DataMatrix,
   SpectralClusteringParams,
 } from './types';
-import { isTensor } from '../utils/tensor-utils';
+import { isTensor } from '../tensor/tensor_guards';
 
 /**
  * SpectralClustering with consensus clustering to improve robustness.
@@ -49,7 +49,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
 
     // Detect connected components
     const { detectConnectedComponents } = await import(
-      '../utils/connected_components'
+      '../graph/connected_components'
     );
     const { numComponents, isFullyConnected, componentLabels } =
       detectConnectedComponents(this.affinityMatrix_! as tf.Tensor2D);
@@ -65,7 +65,7 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     // If graph is disconnected and has enough components, use component indicators
     if (!isFullyConnected && numComponents >= this.params.nClusters) {
       const { createComponentIndicators } = await import(
-        '../utils/component_indicators'
+        '../graph/component_indicators'
       );
       U = createComponentIndicators(
         componentLabels,
@@ -75,13 +75,13 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     } else {
       // Standard approach: compute Laplacian and eigenvectors
       // Must pass returnDiag=true to get sqrtDegrees for normalization
-      const { normalisedLaplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../graph/laplacian');
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
         normalisedLaplacian(this.affinityMatrix_! as tf.Tensor2D, true),
       );
 
       const { smallest_eigenvectors_with_values } = await import(
-        '../utils/smallest_eigenvectors_with_values'
+        '../eigen/smallest_eigenvectors_with_values'
       );
       const numEigenvectors = Math.max(this.params.nClusters, numComponents);
       const { eigenvectors: U_full, eigenvalues } =

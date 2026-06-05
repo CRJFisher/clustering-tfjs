@@ -9,7 +9,7 @@ import {
   getNeighborDistanceMatrix,
   exportForVisualization,
   getDensityMap,
-} from '../../src/utils/som_visualization';
+} from '../../src/visualization/som_visualization';
 
 describe('SOM Visualization Utilities', () => {
   let som: SOM;

@@ -3,7 +3,7 @@ import * as tf from "../tensorflow-helper";
 import {
   compute_rbf_affinity,
   compute_knn_affinity,
-} from "../../src/utils/affinity";
+} from "../../src/graph/affinity";
 
 describe("Affinity matrix utilities", () => {
   afterEach(() => tf.engine().disposeVariables());

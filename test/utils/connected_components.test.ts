@@ -3,7 +3,7 @@ import * as tf from "../tensorflow-helper";
 import {
   detectConnectedComponents,
   checkGraphConnectivity,
-} from "../../src/utils/connected_components";
+} from "../../src/graph/connected_components";
 
 describe("detectConnectedComponents", () => {
   const tensors: tf.Tensor[] = [];

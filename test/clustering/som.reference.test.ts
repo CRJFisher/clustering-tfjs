@@ -1,5 +1,5 @@
 import { SOM } from '../../src/clustering/som';
-import * as tf from '../../src/tf-adapter';
+import * as tf from '../../src/backend/adapter';
 import * as fs from 'fs';
 import * as path from 'path';
 

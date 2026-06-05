@@ -1,7 +1,7 @@
-import * as tf from '../tf-adapter';
-import { deterministicEigenpairProcessing } from './eigen_post';
+import * as tf from '../backend/adapter';
+import { deterministicEigenpairProcessing } from './post';
 import { lanczos_smallest_eigenpairs } from './lanczos';
-import { improved_jacobi_eigen } from './eigen_improved';
+import { improved_jacobi_eigen } from './improved';
 
 /**
  * Size threshold for choosing Lanczos over Jacobi.

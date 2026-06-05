@@ -3,9 +3,9 @@ import type {
   SpectralClusteringParams,
   BaseClustering,
 } from './types';
-import * as tf from '../tf-adapter';
-import { compute_rbf_affinity, compute_knn_affinity } from '../utils/affinity';
-import { isTensor } from '../utils/tensor-utils';
+import * as tf from '../backend/adapter';
+import { compute_rbf_affinity, compute_knn_affinity } from '../graph/affinity';
+import { isTensor } from '../tensor/tensor_guards';
 
 // Types for intermediate step results
 export interface LaplacianResult {
@@ -204,7 +204,7 @@ export class SpectralClustering
     /* ---------------------------- 2) Component Detection ---------------------- */
     // Detect connected components
     const { detectConnectedComponents } = await import(
-      '../utils/connected_components'
+      '../graph/connected_components'
     );
     const { numComponents, isFullyConnected, componentLabels } =
       detectConnectedComponents(this.affinityMatrix_ as tf.Tensor2D);
@@ -222,7 +222,7 @@ export class SpectralClustering
     if (!isFullyConnected && numComponents >= this.params.nClusters) {
       /* ------------------------ Use Component Indicators -------------------- */
       const { createComponentIndicators } = await import(
-        '../utils/component_indicators'
+        '../graph/component_indicators'
       );
 
       // Use all component indicators, not just nClusters
@@ -260,7 +260,7 @@ export class SpectralClustering
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
       // Compute Laplacian and eigenvectors as before
-      const { normalisedLaplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../graph/laplacian');
 
       // Compute normalized Laplacian AND get degree information for recovery
       const { laplacian, sqrtDegrees } = tf.tidy(() =>
@@ -270,7 +270,7 @@ export class SpectralClustering
       // Capture Laplacian spectrum if requested
       if (this.captureDebugInfo) {
         const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
-          '../utils/smallest_eigenvectors_with_values'
+          '../eigen/smallest_eigenvectors_with_values'
         );
         const spectrumK = Math.min(10, laplacian.shape[0]);
         const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
@@ -282,7 +282,7 @@ export class SpectralClustering
 
       // Get eigenvectors AND eigenvalues for D^{1/2} normalization
       const { smallest_eigenvectors_with_values } = await import(
-        '../utils/smallest_eigenvectors_with_values'
+        '../eigen/smallest_eigenvectors_with_values'
       );
 
       // When we have more components than clusters, we need to get more eigenvectors
@@ -525,14 +525,14 @@ export class SpectralClustering
     };
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
-    const { normalisedLaplacian } = await import('../utils/laplacian');
+    const { normalisedLaplacian } = await import('../graph/laplacian');
     const { laplacian, sqrtDegrees } = tf.tidy(() =>
       normalisedLaplacian(affinity, true),
     );
 
     // Capture Laplacian spectrum using same solver routing as the main pipeline
     const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
-      '../utils/smallest_eigenvectors_with_values'
+      '../eigen/smallest_eigenvectors_with_values'
     );
     const spectrumK = Math.min(10, laplacian.shape[0]);
     const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
@@ -543,7 +543,7 @@ export class SpectralClustering
 
     /* ---------------------------- 3) Embedding ----------------------------- */
     const { smallest_eigenvectors_with_values } = await import(
-      '../utils/smallest_eigenvectors_with_values'
+      '../eigen/smallest_eigenvectors_with_values'
     );
 
     const { eigenvectors: U_full, eigenvalues } =
@@ -757,14 +757,14 @@ export class SpectralClustering
     affinityMatrix: tf.Tensor2D,
   ): Promise<tf.Tensor2D> {
     const { detectConnectedComponents } = await import(
-      '../utils/connected_components'
+      '../graph/connected_components'
     );
     const { numComponents, isFullyConnected, componentLabels } =
       detectConnectedComponents(affinityMatrix);
 
     if (!isFullyConnected && numComponents >= this.params.nClusters) {
       const { createComponentIndicators } = await import(
-        '../utils/component_indicators'
+        '../graph/component_indicators'
       );
       return createComponentIndicators(
         componentLabels,
@@ -772,9 +772,9 @@ export class SpectralClustering
         numComponents,
       );
     } else {
-      const { normalisedLaplacian } = await import('../utils/laplacian');
+      const { normalisedLaplacian } = await import('../graph/laplacian');
       const { smallest_eigenvectors_with_values } = await import(
-        '../utils/smallest_eigenvectors_with_values'
+        '../eigen/smallest_eigenvectors_with_values'
       );
 
       const { laplacian, sqrtDegrees } = tf.tidy(() =>

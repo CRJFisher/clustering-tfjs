@@ -1,8 +1,8 @@
-import * as tf from '../../src/tf-adapter';
-import { lanczos_smallest_eigenpairs } from '../../src/utils/lanczos';
-import { improved_jacobi_eigen } from '../../src/utils/eigen_improved';
-import { normalisedLaplacian } from '../../src/utils/laplacian';
-import { make_random_stream } from '../../src/utils/rng/index';
+import * as tf from '../../src/backend/adapter';
+import { lanczos_smallest_eigenpairs } from '../../src/eigen/lanczos';
+import { improved_jacobi_eigen } from '../../src/eigen/improved';
+import { normalisedLaplacian } from '../../src/graph/laplacian';
+import { make_random_stream } from '../../src/random';
 
 describe('Lanczos eigensolver', () => {
 

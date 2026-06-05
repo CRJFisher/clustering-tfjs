@@ -28,13 +28,13 @@ import * as tf from "@tensorflow/tfjs-node";
 import {
   compute_rbf_affinity,
   compute_knn_affinity,
-} from "../src/utils/affinity";
+} from "../src/graph/affinity";
 
 import {
   degree_vector,
   normalised_laplacian,
   smallest_eigenvectors,
-} from "../src/utils/laplacian";
+} from "../src/graph/laplacian";
 
 import { KMeans } from "../src/clustering/kmeans";
 

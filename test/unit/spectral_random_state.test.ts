@@ -1,5 +1,5 @@
 import { SpectralClustering } from "../../src";
-import { make_random_stream } from "../../src/utils/rng";
+import { make_random_stream } from "../../src/random";
 
 /**
  * Unit test verifying that the `randomState` provided to `SpectralClustering`

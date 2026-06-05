@@ -5,7 +5,7 @@
  * browser, Node.js, and React Native environments.
  */
 
-import type { Platform } from '../types/platform';
+import type { Platform } from './platform_types';
 
 /**
  * Safely check if running in Node.js environment

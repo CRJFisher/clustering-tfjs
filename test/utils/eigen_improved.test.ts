@@ -2,7 +2,7 @@ import * as tf from "../tensorflow-helper";
 import {
   improved_jacobi_eigen,
   laplacian_eigen_decomposition,
-} from "../../src/utils/eigen_improved";
+} from "../../src/eigen/improved";
 
 function expectOrthonormal(
   vectors: number[][],

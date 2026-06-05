@@ -1,4 +1,4 @@
-import { findOptimalClusters } from "../../src/utils/findOptimalClusters";
+import { findOptimalClusters } from "../../src/model_selection/find_optimal_clusters";
 import { KMeans } from "../../src/clustering/kmeans";
 import { makeBlobs } from "../../src/datasets/synthetic";
 import * as tf from "../tensorflow-helper";

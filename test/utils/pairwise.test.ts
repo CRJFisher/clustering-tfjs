@@ -1,6 +1,6 @@
 import * as tf from "../tensorflow-helper";
 
-import { pairwiseDistanceMatrix } from "../../src/utils/pairwise_distance";
+import { pairwiseDistanceMatrix } from "../../src/distance/pairwise_distance";
 
 function closeTo(a: number[][], b: number[][], eps = 1e-4): boolean {
   for (let i = 0; i < a.length; i++) {

@@ -3,7 +3,7 @@ import * as tf from "../tensorflow-helper";
 import {
   normalisedLaplacian,
   jacobiEigenDecomposition,
-} from "../../src/utils/laplacian";
+} from "../../src/graph/laplacian";
 
 /**
  * Unit tests covering numerical-stability edge cases for the Jacobi eigen
