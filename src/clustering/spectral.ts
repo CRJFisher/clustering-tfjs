@@ -149,30 +149,30 @@ export class SpectralClustering
     }
 
     /* ---------------------------- 0) Input -------------------------------- */
-    const Xtensor: tf.Tensor2D =
+    const x_tensor: tf.Tensor2D =
       is_tensor(_X)
         ? (tf.cast(_X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(_X as number[][], undefined, 'float32');
 
-    const n_samples = Xtensor.shape[0];
+    const n_samples = x_tensor.shape[0];
     if (this.params.n_clusters > n_samples) {
-      Xtensor.dispose();
-      throw new Error('nClusters cannot exceed number of samples.');
+      x_tensor.dispose();
+      throw new Error('n_clusters cannot exceed number of samples.');
     }
 
     const max_samples = this.params.max_samples ?? 10_000;
     if (n_samples > max_samples) {
-      Xtensor.dispose();
+      x_tensor.dispose();
       throw new Error(
         `Input has ${n_samples} samples, which exceeds the maximum of ${max_samples} ` +
         `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
-        `Set maxSamples in params to override this limit if you have sufficient memory.`,
+        `Set max_samples in params to override this limit if you have sufficient memory.`,
       );
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
     this.affinity_matrix_ = SpectralClustering.compute_affinity_matrix(
-      Xtensor,
+      x_tensor,
       this.params,
     );
 
@@ -230,7 +230,7 @@ export class SpectralClustering
       U = create_component_indicators(
         component_labels,
         num_components,
-        num_components, // Use all components, not this.params.nClusters
+        num_components, // Use all components, not this.params.n_clusters
       );
 
       // Component indicators are already normalized, no scaling needed
@@ -358,7 +358,7 @@ export class SpectralClustering
       );
 
       const result = await intensive_parameter_sweep(
-        Xtensor,
+        x_tensor,
         this.params,
         this.compute_embedding_from_affinity.bind(this),
         SpectralClustering.compute_affinity_matrix,
@@ -440,7 +440,7 @@ export class SpectralClustering
     /* --------------------------- Clean-up --------------------------------- */
     U.dispose();
 
-    Xtensor.dispose();
+    x_tensor.dispose();
   }
 
   /**
@@ -475,29 +475,29 @@ export class SpectralClustering
     this.debug_info_ = {};
 
     /* ---------------------------- 0) Input -------------------------------- */
-    const Xtensor: tf.Tensor2D =
+    const x_tensor: tf.Tensor2D =
       is_tensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32');
 
-    const n_samples_debug = Xtensor.shape[0];
+    const n_samples_debug = x_tensor.shape[0];
     if (this.params.n_clusters > n_samples_debug) {
-      Xtensor.dispose();
-      throw new Error('nClusters cannot exceed number of samples.');
+      x_tensor.dispose();
+      throw new Error('n_clusters cannot exceed number of samples.');
     }
     const max_samples_debug = this.params.max_samples ?? 10_000;
     if (n_samples_debug > max_samples_debug) {
-      Xtensor.dispose();
+      x_tensor.dispose();
       throw new Error(
         `Input has ${n_samples_debug} samples, which exceeds the maximum of ${max_samples_debug} ` +
         `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
-        `Set maxSamples in params to override this limit if you have sufficient memory.`,
+        `Set max_samples in params to override this limit if you have sufficient memory.`,
       );
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
     const affinity = SpectralClustering.compute_affinity_matrix(
-      Xtensor,
+      x_tensor,
       this.params,
     );
 
@@ -632,7 +632,7 @@ export class SpectralClustering
     eigenvalues.dispose();
     embedding.dispose();
 
-    Xtensor.dispose();
+    x_tensor.dispose();
 
     return result;
   }
@@ -646,7 +646,7 @@ export class SpectralClustering
 
     // n_clusters must be a positive integer
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
-      throw new Error('nClusters must be a positive integer (>= 1).');
+      throw new Error('n_clusters must be a positive integer (>= 1).');
     }
 
     // Affinity string or callable
@@ -677,12 +677,12 @@ export class SpectralClustering
         n_neighbors !== undefined &&
         (!Number.isInteger(n_neighbors) || n_neighbors < 1)
       ) {
-        throw new Error('nNeighbors must be a positive integer (>= 1).');
+        throw new Error('n_neighbors must be a positive integer (>= 1).');
       }
       // Default will be computed at fit time based on n_samples
     } else if (n_neighbors !== undefined) {
       throw new Error(
-        "nNeighbors is only applicable when affinity is 'nearest_neighbors'.",
+        "n_neighbors is only applicable when affinity is 'nearest_neighbors'.",
       );
     }
 
@@ -695,7 +695,7 @@ export class SpectralClustering
       }
       if (n_neighbors !== undefined) {
         throw new Error(
-          "nNeighbors is not applicable when affinity is 'precomputed'.",
+          "n_neighbors is not applicable when affinity is 'precomputed'.",
         );
       }
     }

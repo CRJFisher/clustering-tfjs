@@ -1,7 +1,7 @@
 import { SpectralClustering } from "../index";
 
-describe("SpectralClustering – implicit nInit default", () => {
-  it("uses nInit = 10 when the user does not provide one", async () => {
+describe("SpectralClustering – implicit n_init default", () => {
+  it("uses n_init = 10 when the user does not provide one", async () => {
     const X = [
       [0, 0],
       [1, 1],

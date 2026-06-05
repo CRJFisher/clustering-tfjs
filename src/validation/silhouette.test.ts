@@ -72,13 +72,13 @@ describe("Silhouette Score", () => {
       
       const score_array = silhouette_score(X, labels);
       
-      const XTensor = tf.tensor2d(X);
+      const X_tensor = tf.tensor2d(X);
       const labels_tensor = tf.tensor1d(labels);
-      const score_tensor = silhouette_score(XTensor, labels_tensor);
+      const score_tensor = silhouette_score(X_tensor, labels_tensor);
       
       expect(score_tensor).toBeCloseTo(score_array, 5);
       
-      XTensor.dispose();
+      X_tensor.dispose();
       labels_tensor.dispose();
     });
   });
@@ -265,7 +265,7 @@ describe("Silhouette Score", () => {
       expect(isNaN(score)).toBe(false);
     });
 
-    it("should return 0 for identical points using silhouetteScoreSubset", () => {
+    it("should return 0 for identical points using silhouette_score_subset", () => {
       const X = [
         [1, 1], [1, 1], [1, 1],
         [1, 1], [1, 1], [1, 1],
@@ -314,7 +314,7 @@ describe("Silhouette Score", () => {
       labels.dispose();
     });
 
-    it("should throw for silhouetteScoreSubset with mismatched labels", () => {
+    it("should throw for silhouette_score_subset with mismatched labels", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
@@ -336,7 +336,7 @@ describe("Silhouette Score", () => {
       expect(samples).toHaveLength(6);
     });
 
-    it("should have mean equal to silhouetteScore", () => {
+    it("should have mean equal to silhouette_score", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
         [5, 5], [5.1, 5.1], [4.9, 4.9], [5.1, 4.9]
@@ -369,15 +369,15 @@ describe("Silhouette Score", () => {
 
       const samples_array = silhouette_samples(X, labels);
 
-      const XTensor = tf.tensor2d(X);
+      const X_tensor = tf.tensor2d(X);
       const labels_tensor = tf.tensor1d(labels);
-      const samples_tensor = silhouette_samples(XTensor, labels_tensor);
+      const samples_tensor = silhouette_samples(X_tensor, labels_tensor);
 
       for (let i = 0; i < samples_array.length; i++) {
         expect(samples_tensor[i]).toBeCloseTo(samples_array[i], 5);
       }
 
-      XTensor.dispose();
+      X_tensor.dispose();
       labels_tensor.dispose();
     });
 

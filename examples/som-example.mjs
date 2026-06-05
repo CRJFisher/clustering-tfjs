@@ -8,7 +8,7 @@
  * - Quality metrics (quantization and topographic error)
  */
 
-const { Clustering } = require('../dist/index.js');
+import { Clustering } from '../dist/index.js';
 
 // Generate sample data
 function generateSampleData() {
@@ -70,19 +70,16 @@ async function basicSOMExample() {
     console.log('Sample labels (first 10):', labels.slice(0, 10));
     
     // Get the weight vectors
-    const weights = som.getWeights();
+    const weights = som.get_weights();
     console.log(`\nWeight vectors shape: [${weights.length}, ${weights[0].length}, ${weights[0][0].length}]`);
     
     // Calculate quality metrics
-    const quantError = som.quantizationError();
-    const topoError = await som.topographicError(data);
+    const quantError = som.quantization_error();
+    const topoError = await som.topographic_error(data);
     
     console.log(`\nQuality Metrics:`);
     console.log(`  Quantization Error: ${quantError.toFixed(4)}`);
     console.log(`  Topographic Error: ${topoError.toFixed(4)}`);
-    
-    // Clean up
-    weights.dispose();
 }
 
 async function compareTopologies() {
@@ -102,8 +99,8 @@ async function compareTopologies() {
     });
     
     await rectSom.fit(data);
-    const rectQuantError = rectSom.quantizationError();
-    const rectTopoError = await rectSom.topographicError(data);
+    const rectQuantError = rectSom.quantization_error();
+    const rectTopoError = await rectSom.topographic_error(data);
     
     console.log('Rectangular Topology:');
     console.log(`  Quantization Error: ${rectQuantError.toFixed(4)}`);
@@ -121,8 +118,8 @@ async function compareTopologies() {
     });
     
     await hexSom.fit(data);
-    const hexQuantError = hexSom.quantizationError();
-    const hexTopoError = await hexSom.topographicError(data);
+    const hexQuantError = hexSom.quantization_error();
+    const hexTopoError = await hexSom.topographic_error(data);
     
     console.log('\nHexagonal Topology:');
     console.log(`  Quantization Error: ${hexQuantError.toFixed(4)}`);
@@ -156,7 +153,7 @@ async function visualizationExample() {
     await som.fit(data);
     
     // Get U-matrix
-    const u_matrix = som.getUMatrix();
+    const u_matrix = som.get_u_matrix();
     const uMatrixArray = await u_matrix.array();
     
     console.log('U-Matrix (distances between neighboring neurons):');
@@ -194,7 +191,7 @@ async function compareInitializations() {
         initialization: 'random'
     });
     await randomSom.fit(data);
-    const randomError = randomSom.quantizationError();
+    const randomError = randomSom.quantization_error();
     console.log(`Random initialization - Quantization Error: ${randomError.toFixed(4)}`);
     
     // Test linear initialization
@@ -203,7 +200,7 @@ async function compareInitializations() {
         initialization: 'linear'
     });
     await linearSom.fit(data);
-    const linearError = linearSom.quantizationError();
+    const linearError = linearSom.quantization_error();
     console.log(`Linear initialization - Quantization Error: ${linearError.toFixed(4)}`);
     
     // Test PCA initialization
@@ -212,7 +209,7 @@ async function compareInitializations() {
         initialization: 'pca'
     });
     await pcaSom.fit(data);
-    const pcaError = pcaSom.quantizationError();
+    const pcaError = pcaSom.quantization_error();
     console.log(`PCA initialization - Quantization Error: ${pcaError.toFixed(4)}`);
     
     // Find best
@@ -237,7 +234,7 @@ async function main() {
         // Initialize the library
         await Clustering.init();
         console.log(`Platform: ${Clustering.platform}`);
-        console.log(`Backend: ${Clustering.features.backend}\n`);
+        console.log(`Native bindings: ${Clustering.features.node_bindings}\n`);
         
         // Run examples
         await basicSOMExample();

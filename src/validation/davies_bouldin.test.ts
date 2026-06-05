@@ -53,13 +53,13 @@ describe("Davies-Bouldin Score", () => {
       
       const score_array = davies_bouldin(X, labels);
       
-      const XTensor = tf.tensor2d(X);
+      const X_tensor = tf.tensor2d(X);
       const labels_tensor = tf.tensor1d(labels);
-      const score_tensor = davies_bouldin(XTensor, labels_tensor);
+      const score_tensor = davies_bouldin(X_tensor, labels_tensor);
       
       expect(score_tensor).toBeCloseTo(score_array, 5);
       
-      XTensor.dispose();
+      X_tensor.dispose();
       labels_tensor.dispose();
     });
 

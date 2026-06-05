@@ -59,17 +59,24 @@ npm install clustering-tfjs
 <script src="https://unpkg.com/clustering-tfjs/dist/clustering.browser.js"></script>
 
 <script>
-async function demo() {
-  // Initialize the library
-  await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
-  
-  // Use algorithms
-  const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 3 });
-  const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
-  const labels = await kmeans.fit_predict(data);
-  console.log(labels); // [0, 0, 1, 1, 0, 2]
-}
-demo();
+  async function demo() {
+    // Initialize the library
+    await ClusteringTFJS.Clustering.init({ backend: 'webgl' });
+
+    // Use algorithms
+    const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 3 });
+    const data = [
+      [1, 2],
+      [1.5, 1.8],
+      [5, 8],
+      [8, 8],
+      [1, 0.6],
+      [9, 11],
+    ];
+    const labels = await kmeans.fit_predict(data);
+    console.log(labels); // [0, 0, 1, 1, 0, 2]
+  }
+  demo();
 </script>
 ```
 
@@ -83,7 +90,14 @@ await Clustering.init();
 
 // Use algorithms
 const kmeans = new Clustering.KMeans({ n_clusters: 3 });
-const data = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
+const data = [
+  [1, 2],
+  [1.5, 1.8],
+  [5, 8],
+  [8, 8],
+  [1, 0.6],
+  [9, 11],
+];
 const labels = await kmeans.fit_predict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
 ```
@@ -178,7 +192,7 @@ import { find_optimal_clusters } from 'clustering-tfjs';
 const result = await find_optimal_clusters(data, {
   min_clusters: 2,
   max_clusters: 10,
-  algorithm: 'kmeans'  // or 'spectral', 'agglomerative'
+  algorithm: 'kmeans', // or 'spectral', 'agglomerative'
 });
 
 console.log(`Optimal number of clusters: ${result.optimal.k}`);
@@ -186,12 +200,13 @@ console.log(`Silhouette score: ${result.optimal.silhouette}`);
 console.log(`All evaluations:`, result.evaluations);
 
 // Advanced usage with custom scoring
-const customResult = await find_optimal_clusters(data, {
+const custom_result = await find_optimal_clusters(data, {
   max_clusters: 8,
   algorithm: 'spectral',
-  algorithmParams: { affinity: 'nearest_neighbors' },
-  metrics: ['silhouette', 'calinski_harabasz'],  // Skip Davies-Bouldin
-  scoringFunction: (evaluation) => evaluation.silhouette * 2 + evaluation.calinski_harabasz
+  algorithm_params: { affinity: 'nearest_neighbors' },
+  metrics: ['silhouette', 'calinski_harabasz'], // Skip Davies-Bouldin
+  scoring_function: (evaluation) =>
+    evaluation.silhouette * 2 + evaluation.calinski_harabasz,
 });
 ```
 
@@ -208,9 +223,9 @@ console.log('Platform:', Clustering.platform); // 'browser' or 'node'
 // Check available features
 console.log('Features:', Clustering.features);
 // {
-//   gpuAcceleration: true,
-//   wasmSimd: false,
-//   nodeBindings: true,
+//   gpu_acceleration: true,
+//   wasm_simd: false,
+//   node_bindings: true,
 //   webgl: false
 // }
 
@@ -221,12 +236,12 @@ await Clustering.init({ backend: 'tensorflow' }); // Node.js
 
 ### Available Backends
 
-| Backend | Environment | Use Case | Performance |
-|---------|------------|----------|-------------|
-| `cpu` | Both | Pure JS fallback | Baseline |
-| `webgl` | Browser | GPU acceleration | 5-10x faster |
-| `wasm` | Browser | CPU optimization | 2-3x faster |
-| `tensorflow` | Node.js | Native bindings | 10-20x faster |
+| Backend      | Environment | Use Case         | Performance   |
+| ------------ | ----------- | ---------------- | ------------- |
+| `cpu`        | Both        | Pure JS fallback | Baseline      |
+| `webgl`      | Browser     | GPU acceleration | 5-10x faster  |
+| `wasm`       | Browser     | CPU optimization | 2-3x faster   |
+| `tensorflow` | Node.js     | Native bindings  | 10-20x faster |
 
 The library automatically selects the best available backend if not specified.
 
@@ -292,7 +307,7 @@ new SOM({
 })
 ```
 
-Note: SOM additionally provides `predict()` and `partialFit()` methods for labeling new data and online learning.
+Note: SOM additionally provides `predict()` and `partial_fit()` methods for labeling new data and online learning.
 
 ### Validation Metrics
 
@@ -300,7 +315,7 @@ Note: SOM additionally provides `predict()` and `partialFit()` methods for label
 // Silhouette Score: [-1, 1], higher is better
 silhouette_score(X: Tensor2D | number[][], labels: number[]): Promise<number>
 
-// Davies-Bouldin Index: [0, ∞), lower is better  
+// Davies-Bouldin Index: [0, ∞), lower is better
 davies_bouldin(X: Tensor2D | number[][], labels: number[]): Promise<number>
 
 // Calinski-Harabasz Index: [0, ∞), higher is better
@@ -317,6 +332,7 @@ Try these interactive examples directly in your browser:
 - [**Local Examples**](examples/observable/) - Run examples locally with HTML files
 
 Check out the [local examples](examples/observable/) which can be:
+
 - Opened directly in your browser
 - Served locally with `npm run serve:examples`
 - Used as templates for your own visualizations
@@ -355,7 +371,7 @@ This library has been extensively tested for numerical parity with scikit-learn.
 - Identical results for standard datasets
 - Matching behavior for edge cases
 
-See [`tools/sklearn_comparison/`](tools/sklearn_comparison/) for detailed comparison scripts and [`test/`](test/) for parity tests.
+See [`tools/sklearn_comparison/`](tools/sklearn_comparison/) for detailed comparison scripts. Parity tests are colocated with the source they cover (for example `src/clustering/spectral_reference.test.ts`).
 
 ## Contributing
 

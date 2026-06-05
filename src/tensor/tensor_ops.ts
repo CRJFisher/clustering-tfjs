@@ -74,19 +74,3 @@ export function cosine_distance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
     return tf.scalar(1).sub(similarity);
   });
 }
-
-/* ------------------------------------------------------------------------- */
-/*                            Broadcast Utilities                            */
-/* ------------------------------------------------------------------------- */
-
-/**
- * Efficiently computes pairwise Euclidean distance matrix for a set of points
- * represented by a 2-D tensor of shape `(n, d)`.
- *
- * The implementation uses the well-known trick
- * ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy with broadcasting to avoid allocating an
- * `(n, n, d)` intermediate tensor.
- */
-// Re-export to maintain backward compatibility while delegating to the new
-// implementation in `pairwise_distance.ts`.
-export { pairwise_euclidean_matrix } from '../distance/pairwise_distance';

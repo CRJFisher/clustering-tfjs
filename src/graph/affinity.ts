@@ -61,7 +61,7 @@ export function compute_knn_affinity(
   include_self: boolean = true,
 ): tf.Tensor2D {
   if (!Number.isInteger(k) || k < 1) {
-    throw new Error('k (nNeighbors) must be a positive integer.');
+    throw new Error('k (n_neighbors) must be a positive integer.');
   }
 
   const n_samples = points.shape[0];
@@ -72,7 +72,7 @@ export function compute_knn_affinity(
 
   if (k >= n_samples) {
     throw new Error(
-      'k (nNeighbors) must be smaller than the number of samples.',
+      'k (n_neighbors) must be smaller than the number of samples.',
     );
   }
 

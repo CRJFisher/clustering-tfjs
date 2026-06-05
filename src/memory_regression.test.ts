@@ -47,7 +47,7 @@ describe('Memory regression tests', () => {
       X.dispose();
     });
 
-    it('fitPredict() + dispose() should not leak tensors', async () => {
+    it('fit_predict() + dispose() should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
       const km = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
@@ -180,35 +180,35 @@ describe('Memory regression tests', () => {
   });
 
   describe('Validation functions', () => {
-    it('silhouetteScore should not leak tensors', () => {
+    it('silhouette_score should not leak tensors', () => {
       const before = tf.memory().numTensors;
       silhouette_score(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
-    it('daviesBouldin should not leak tensors', () => {
+    it('davies_bouldin should not leak tensors', () => {
       const before = tf.memory().numTensors;
       davies_bouldin(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
-    it('daviesBouldinEfficient should not leak tensors', () => {
+    it('davies_bouldin_efficient should not leak tensors', () => {
       const before = tf.memory().numTensors;
       davies_bouldin_efficient(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
-    it('calinskiHarabasz should not leak tensors', () => {
+    it('calinski_harabasz should not leak tensors', () => {
       const before = tf.memory().numTensors;
       calinski_harabasz(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
-    it('calinskiHarabaszEfficient should not leak tensors', () => {
+    it('calinski_harabasz_efficient should not leak tensors', () => {
       const before = tf.memory().numTensors;
       calinski_harabasz_efficient(data, labels);
       const after = tf.memory().numTensors;

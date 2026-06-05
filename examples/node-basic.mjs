@@ -4,7 +4,7 @@
  * Demonstrates how to use the library in Node.js with automatic backend selection.
  */
 
-const { Clustering } = require('../dist/index.js');
+import { Clustering, find_optimal_clusters } from '../dist/index.js';
 
 async function main() {
     try {
@@ -82,17 +82,16 @@ async function main() {
         console.log('Labels:', somLabels);
         
         // Get additional SOM information
-        const weights = som.getWeights();
+        const weights = som.get_weights();
         console.log('SOM grid shape:', [weights.length, weights[0].length, weights[0][0].length]); // [3, 3, 2]
 
-        const quantError = som.quantizationError();
+        const quantError = som.quantization_error();
         console.log(`Quantization error: ${quantError.toFixed(4)}`);
         console.log();
         
         // 5. Find Optimal Clusters
         console.log('5. Finding Optimal Number of Clusters');
         console.log('------------------------------------');
-        const { find_optimal_clusters } = require('../dist/index.js');
         
         const result = await find_optimal_clusters(data, {
             min_clusters: 2,
@@ -103,8 +102,8 @@ async function main() {
         console.log(`Optimal number of clusters: ${result.optimal.k}`);
         console.log(`Silhouette score: ${result.optimal.silhouette.toFixed(4)}`);
         console.log('\nAll evaluations:');
-        result.evaluations.forEach(eval => {
-            console.log(`  k=${eval.k}: silhouette=${eval.silhouette.toFixed(4)}`);
+        result.evaluations.forEach(evaluation => {
+            console.log(`  k=${evaluation.k}: silhouette=${evaluation.silhouette.toFixed(4)}`);
         });
         
         console.log('\n✅ All examples completed successfully!');

@@ -5,7 +5,7 @@
  * Note: Requires @tensorflow/tfjs-node-gpu to be installed.
  */
 
-const { Clustering } = require('../dist/index.js');
+import { Clustering } from '../dist/index.js';
 
 async function benchmark(name, fn) {
     const start = process.hrtime.bigint();
@@ -22,23 +22,19 @@ async function main() {
         
         // Check if GPU backend is available
         try {
-            require.resolve('@tensorflow/tfjs-node-gpu');
+            await import('@tensorflow/tfjs-node-gpu');
             console.log('✅ GPU backend (@tensorflow/tfjs-node-gpu) is available');
-        } catch (e) {
+        } catch {
             console.log('❌ GPU backend not available. Install with:');
             console.log('   npm install @tensorflow/tfjs-node-gpu');
             console.log('\nFalling back to CPU backend...\n');
         }
-        
+
         // Initialize
         await Clustering.init();
-        
+
         console.log(`Platform: ${Clustering.platform}`);
         console.log(`Features:`, Clustering.features);
-        
-        // Check actual backend being used
-        const tf = require('../dist/tf-adapter.js').default;
-        console.log(`TensorFlow backend: ${tf.getBackend()}`);
         console.log();
         
         // Generate larger dataset for GPU testing

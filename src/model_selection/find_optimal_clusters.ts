@@ -57,7 +57,7 @@ export interface FindOptimalClustersOptions {
   /** Algorithm-specific parameters */
   algorithm_params?: Record<string, unknown>;
   /** Metrics to use for evaluation (default: all). Only used with 'combined' method. */
-  metrics?: Array<'silhouette' | 'daviesBouldin' | 'calinskiHarabasz'>;
+  metrics?: Array<'silhouette' | 'davies_bouldin' | 'calinski_harabasz'>;
   /**
    * Custom scoring function. Receives raw (un-normalized) metric values.
    * Overrides the `method` option when provided.
@@ -73,14 +73,14 @@ export interface FindOptimalClustersOptions {
  */
 function normalize_and_score_evaluations(
   evaluations: ClusterEvaluation[],
-  metrics: Array<'silhouette' | 'daviesBouldin' | 'calinskiHarabasz'>,
+  metrics: Array<'silhouette' | 'davies_bouldin' | 'calinski_harabasz'>,
 ): void {
   if (evaluations.length === 0) return;
 
   // Pre-compute min-max for Calinski-Harabasz (higher is better)
   let ch_min = Infinity;
   let ch_max = -Infinity;
-  if (metrics.includes('calinskiHarabasz')) {
+  if (metrics.includes('calinski_harabasz')) {
     for (const e of evaluations) {
       if (Number.isFinite(e.calinski_harabasz)) {
         ch_min = Math.min(ch_min, e.calinski_harabasz);
@@ -93,7 +93,7 @@ function normalize_and_score_evaluations(
   // Pre-compute min-max for Davies-Bouldin (lower is better)
   let db_min = Infinity;
   let db_max = -Infinity;
-  if (metrics.includes('daviesBouldin')) {
+  if (metrics.includes('davies_bouldin')) {
     for (const e of evaluations) {
       if (Number.isFinite(e.davies_bouldin)) {
         db_min = Math.min(db_min, e.davies_bouldin);
@@ -115,7 +115,7 @@ function normalize_and_score_evaluations(
       num_metrics++;
     }
 
-    if (metrics.includes('calinskiHarabasz')) {
+    if (metrics.includes('calinski_harabasz')) {
       let nch: number;
       if (!Number.isFinite(evaluation.calinski_harabasz)) {
         // CH = Infinity means perfect separation (WSS = 0) -> best score
@@ -129,7 +129,7 @@ function normalize_and_score_evaluations(
       num_metrics++;
     }
 
-    if (metrics.includes('daviesBouldin')) {
+    if (metrics.includes('davies_bouldin')) {
       let ndb: number;
       if (!Number.isFinite(evaluation.davies_bouldin)) {
         ndb = 0;
@@ -179,17 +179,17 @@ export async function find_optimal_clusters(
     max_clusters = 10,
     algorithm = 'kmeans',
     algorithm_params = {},
-    metrics = ['silhouette', 'daviesBouldin', 'calinskiHarabasz'],
+    metrics = ['silhouette', 'davies_bouldin', 'calinski_harabasz'],
     scoring_function,
     method = 'combined',
   } = options;
 
   // Validate inputs
   if (min_clusters < 2) {
-    throw new Error('minClusters must be at least 2');
+    throw new Error('min_clusters must be at least 2');
   }
   if (max_clusters < min_clusters) {
-    throw new Error('maxClusters must be greater than or equal to minClusters');
+    throw new Error('max_clusters must be greater than or equal to min_clusters');
   }
 
   // Convert data to tensor if needed
@@ -216,11 +216,11 @@ export async function find_optimal_clusters(
     (method === 'combined' && metrics.includes('silhouette')) ||
     (!!scoring_function && metrics.includes('silhouette'));
   const compute_db =
-    (method === 'combined' && metrics.includes('daviesBouldin')) ||
-    (!!scoring_function && metrics.includes('daviesBouldin'));
+    (method === 'combined' && metrics.includes('davies_bouldin')) ||
+    (!!scoring_function && metrics.includes('davies_bouldin'));
   const compute_ch =
-    (method === 'combined' && metrics.includes('calinskiHarabasz')) ||
-    (!!scoring_function && metrics.includes('calinskiHarabasz'));
+    (method === 'combined' && metrics.includes('calinski_harabasz')) ||
+    (!!scoring_function && metrics.includes('calinski_harabasz'));
   const should_compute_wss = method === 'elbow';
 
   const evaluations: ClusterEvaluation[] = [];
@@ -254,8 +254,8 @@ export async function find_optimal_clusters(
         const grid_size = Math.ceil(Math.sqrt(k));
         const params = algorithm_params as Record<string, unknown>;
         clusterer = new SOM({
-          grid_width: (params.gridWidth as number) || grid_size,
-          grid_height: (params.gridHeight as number) || Math.ceil(k / grid_size),
+          grid_width: (params.grid_width as number) || grid_size,
+          grid_height: (params.grid_height as number) || Math.ceil(k / grid_size),
           ...algorithm_params,
         });
         break;
@@ -312,8 +312,9 @@ export async function find_optimal_clusters(
     evaluations.push(evaluation);
 
     // Dispose clustering instance to free held tensors
-    if ('dispose' in clusterer && typeof (clusterer as unknown as { dispose?: unknown }).dispose === 'function') {
-      (clusterer as unknown as { dispose(): void }).dispose();
+    const disposable = clusterer as { dispose?: () => void };
+    if (typeof disposable.dispose === 'function') {
+      disposable.dispose();
     }
   }
 

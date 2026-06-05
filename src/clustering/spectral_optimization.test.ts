@@ -79,7 +79,7 @@ describe("validationBasedOptimization", () => {
     }
   });
 
-  it("all labels are valid cluster indices [0, nClusters)", async () => {
+  it("all labels are valid cluster indices [0, n_clusters)", async () => {
     const n_clusters = 2;
     const embedding = make_embedding();
     try {

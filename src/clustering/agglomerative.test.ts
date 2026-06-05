@@ -8,7 +8,7 @@ describe("AgglomerativeClustering class structure & validation", () => {
     expect(model.params.linkage ?? "ward").toBe("ward");
   });
 
-  it("throws for invalid nClusters", () => {
+  it("throws for invalid n_clusters", () => {
     expect(() => new AgglomerativeClustering({ n_clusters: 0 })).toThrow();
     expect(() => new AgglomerativeClustering({ n_clusters: -2 })).toThrow();
   });
@@ -29,7 +29,7 @@ describe("AgglomerativeClustering class structure & validation", () => {
     ).toThrow();
   });
 
-  it("fit and fitPredict run and produce expected labels", async () => {
+  it("fit and fit_predict run and produce expected labels", async () => {
     const X = [
       [0, 0],
       [0, 0.1],

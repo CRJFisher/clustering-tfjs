@@ -89,7 +89,7 @@ export class AgglomerativeClustering
       if (owned_tensor) {
         points.dispose();
       }
-      throw new Error('nClusters cannot exceed number of samples.');
+      throw new Error('n_clusters cannot exceed number of samples.');
     }
 
     // Handle trivial case of single sample separately
@@ -193,7 +193,7 @@ export class AgglomerativeClustering
     const { n_clusters, linkage = 'ward', metric = 'euclidean' } = params;
 
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
-      throw new Error('nClusters must be a positive integer (>= 1).');
+      throw new Error('n_clusters must be a positive integer (>= 1).');
     }
 
     if (!AgglomerativeClustering.VALID_LINKAGES.includes(linkage)) {

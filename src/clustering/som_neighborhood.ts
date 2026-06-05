@@ -168,7 +168,7 @@ export function initialize_weights(
         }
 
         // Center the data
-        const mean = X.mean(0, true); // [1, nFeatures]
+        const mean = X.mean(0, true); // [1, n_features]
         const centered = X.sub(mean);
 
         // Compute covariance matrix
@@ -179,7 +179,7 @@ export function initialize_weights(
         const components = compute_principal_components(cov as tf.Tensor2D, n_comps);
 
         // Project data onto PCs to determine scale (unbiased variance, consistent with covariance)
-        const projections = tf.mat_mul(centered, components, false, true); // [nSamples, nComps]
+        const projections = tf.mat_mul(centered, components, false, true); // [n_samples, n_comps]
         const proj_var = projections.square().sum(0).div(n_samples_lin - 1); // unbiased (centered data has mean 0)
         const proj_std = proj_var.sqrt();
         const proj_std_data = proj_std.dataSync();
@@ -502,8 +502,8 @@ export function find_bmu_batch(
     // Distance matrix will be [n_samples, total_neurons]
     
     // ||x - w||^2 = ||x||^2 + ||w||^2 - 2 * x . w
-    const samples_norm = samples.square().sum(1, true); // [nSamples, 1]
-    const weights_norm = weights_flat.square().sum(1, true).transpose(); // [1, totalNeurons]
+    const samples_norm = samples.square().sum(1, true); // [n_samples, 1]
+    const weights_norm = weights_flat.square().sum(1, true).transpose(); // [1, total_neurons]
     
     // Dot product: [n_samples, n_features] x [n_features, total_neurons]
     const dot_product = tf.mat_mul(samples, weights_flat, false, true);
@@ -512,7 +512,7 @@ export function find_bmu_batch(
     const distances = samples_norm.add(weights_norm).sub(dot_product.mul(2));
     
     // Find BMU indices for each sample
-    const bmu_indices = distances.argMin(1); // [nSamples]
+    const bmu_indices = distances.argMin(1); // [n_samples]
     
     // Convert flat indices to grid coordinates
     const rows = bmu_indices.div(grid_width).floor();

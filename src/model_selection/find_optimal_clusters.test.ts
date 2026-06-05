@@ -150,11 +150,11 @@ describe("findOptimalClusters", () => {
 
     await expect(
       find_optimal_clusters(data, { min_clusters: 1 })
-    ).rejects.toThrow('minClusters must be at least 2');
+    ).rejects.toThrow('min_clusters must be at least 2');
 
     await expect(
       find_optimal_clusters(data, { min_clusters: 3, max_clusters: 2 })
-    ).rejects.toThrow('maxClusters must be greater than or equal to minClusters');
+    ).rejects.toThrow('max_clusters must be greater than or equal to min_clusters');
 
     // Use more samples to avoid the "not enough samples" error
     const more_data = [[1, 2], [2, 3], [10, 11], [11, 12]];

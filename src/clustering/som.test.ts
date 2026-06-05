@@ -42,13 +42,13 @@ describe('SOM', () => {
         grid_width: 0,
         grid_height: 5,
 
-      })).toThrow('gridWidth must be >= 1');
+      })).toThrow('grid_width must be >= 1');
 
       expect(() => new SOM({
         grid_width: 5,
         grid_height: -1,
 
-      })).toThrow('gridHeight must be >= 1');
+      })).toThrow('grid_height must be >= 1');
     });
 
     it('should fit simple 2D data', async () => {
@@ -85,28 +85,28 @@ describe('SOM', () => {
         random_state: 42,
       });
 
-      const XTrain = tf.tensor2d([
+      const X_train = tf.tensor2d([
         [0, 0],
         [0, 1],
         [1, 0],
         [1, 1],
       ]);
 
-      await som.fit(XTrain);
+      await som.fit(X_train);
 
-      const XTest = tf.tensor2d([
+      const X_test = tf.tensor2d([
         [0.1, 0.1],
         [0.9, 0.9],
       ]);
 
-      const labels = await som.predict(XTest);
+      const labels = await som.predict(X_test);
 
       expect(labels).toBeDefined();
       expect(labels).toHaveLength(2);
       expect(Array.isArray(labels)).toBe(true);
 
-      XTrain.dispose();
-      XTest.dispose();
+      X_train.dispose();
+      X_test.dispose();
     });
   });
 
@@ -699,34 +699,34 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should throw if nClusters is not an integer', async () => {
+      it('should throw if n_clusters is not an integer', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 5, random_state: 42,
         });
         const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
         await som.fit(X);
 
-        await expect(som.cluster(2.5)).rejects.toThrow('nClusters must be a positive integer');
+        await expect(som.cluster(2.5)).rejects.toThrow('n_clusters must be a positive integer');
 
         X.dispose();
         som.dispose();
       });
 
-      it('should throw if nClusters < 1', async () => {
+      it('should throw if n_clusters < 1', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 5, random_state: 42,
         });
         const X = tf.tensor2d([[0, 0], [1, 1], [2, 2], [3, 3]]);
         await som.fit(X);
 
-        await expect(som.cluster(0)).rejects.toThrow('nClusters must be a positive integer');
-        await expect(som.cluster(-1)).rejects.toThrow('nClusters must be a positive integer');
+        await expect(som.cluster(0)).rejects.toThrow('n_clusters must be a positive integer');
+        await expect(som.cluster(-1)).rejects.toThrow('n_clusters must be a positive integer');
 
         X.dispose();
         som.dispose();
       });
 
-      it('should throw if nClusters > total neurons', async () => {
+      it('should throw if n_clusters > total neurons', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -757,7 +757,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should return labels with values in range [0, nClusters-1]', async () => {
+      it('should return labels with values in range [0, n_clusters-1]', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -777,7 +777,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should return exactly nClusters distinct label values for well-separated data', async () => {
+      it('should return exactly n_clusters distinct label values for well-separated data', async () => {
         const som = new SOM({
           grid_width: 5, grid_height: 5, num_epochs: 50, random_state: 42,
         });
@@ -852,7 +852,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should work with nClusters === 1 (all points in one cluster)', async () => {
+      it('should work with n_clusters === 1 (all points in one cluster)', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -868,7 +868,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should work with nClusters === totalNeurons', async () => {
+      it('should work with n_clusters === total_neurons', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 10, random_state: 42,
         });
@@ -923,9 +923,9 @@ describe('SOM', () => {
       });
     });
 
-    describe('AC#3: partialFit() dimension validation', () => {
+    describe('AC#3: partial_fit() dimension validation', () => {
 
-      it('should accept first partialFit call with any feature dimension', async () => {
+      it('should accept first partial_fit call with any feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -937,7 +937,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should accept second partialFit call with same feature dimension', async () => {
+      it('should accept second partial_fit call with same feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -953,7 +953,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should throw on second partialFit call with different feature dimension', async () => {
+      it('should throw on second partial_fit call with different feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -1010,7 +1010,7 @@ describe('SOM', () => {
         som.dispose();
       });
 
-      it('should return correct shape [gridHeight][gridWidth][nFeatures]', async () => {
+      it('should return correct shape [grid_height][grid_width][n_features]', async () => {
         const som = new SOM({
           grid_width: 4, grid_height: 3, num_epochs: 5, random_state: 42,
         });
@@ -1018,9 +1018,9 @@ describe('SOM', () => {
         await som.fit(X);
 
         const weights = som.get_weights();
-        expect(weights.length).toBe(3);         // gridHeight
-        expect(weights[0].length).toBe(4);       // gridWidth
-        expect(weights[0][0].length).toBe(2);    // nFeatures
+        expect(weights.length).toBe(3);         // grid_height
+        expect(weights[0].length).toBe(4);       // grid_width
+        expect(weights[0][0].length).toBe(2);    // n_features
 
         X.dispose();
         som.dispose();

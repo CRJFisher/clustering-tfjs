@@ -220,7 +220,7 @@ npm test -- --clearCache
 npm test -- --verbose
 
 # Run specific test file
-npm test -- test/integration/spectral_steps.test.ts
+npm test -- src/clustering/spectral_steps.test.ts
 ```
 
 ## Performance Profiling

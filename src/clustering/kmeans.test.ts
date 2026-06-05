@@ -30,7 +30,7 @@ describe("KMeans", () => {
     expect(km.inertia_).not.toBeNull();
   });
 
-  it("nInit=1 vs nInit=10 gives same inertia on easy data", async () => {
+  it("n_init=1 vs n_init=10 gives same inertia on easy data", async () => {
     const km1 = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
     await km1.fit(X);
     const inertia1 = km1.inertia_!;
@@ -42,7 +42,7 @@ describe("KMeans", () => {
     expect(inertia10).toBeCloseTo(inertia1, 6);
   });
 
-  it("nInit=10 should not yield higher inertia than nInit=1 on random data", async () => {
+  it("n_init=10 should not yield higher inertia than n_init=1 on random data", async () => {
     // create random data with some overlap to make optimisation harder
     const rng = make_random_stream(42);
     const data: number[][] = Array.from({ length: 200 }, () => [rng.rand() * 10, rng.rand() * 10]);

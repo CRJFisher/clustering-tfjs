@@ -21,23 +21,10 @@ export interface EigenPairInput {
 }
 
 export interface EigenPairOutput {
-  /**
-   * Eigen-values sorted in ascending order.  We expose them under two
-   * property names to stay compatible with the acceptance criteria drafted
-   * in task-12.3.1 (values_sorted) *and* with existing internal call-sites
-   * (eigenvalues).
-   */
+  /** Eigen-values sorted in ascending order. */
   eigenvalues: number[];
-  /** Alias – kept for backwards-compatibility with task spec */
-  values_sorted: number[];
-
-  /**
-   * Column-wise eigen-vectors after sign correction.
-   * Same dual naming scheme as for the eigen-values.
-   */
+  /** Column-wise eigen-vectors after sign correction. */
   eigenvectors: number[][]; // shape (n, m)
-  /** Alias matching task spec wording */
-  vectors_sorted: number[][];
 }
 
 /**
@@ -51,9 +38,7 @@ export function deterministic_eigenpair_processing(
   if (eigenvectors.length === 0) {
     return {
       eigenvalues: [],
-      values_sorted: [],
       eigenvectors: [],
-      vectors_sorted: [],
     };
   }
 
@@ -101,8 +86,6 @@ export function deterministic_eigenpair_processing(
 
   return {
     eigenvalues: eigenvalues_sorted,
-    values_sorted: eigenvalues_sorted,
     eigenvectors: eigenvectors_sorted,
-    vectors_sorted: eigenvectors_sorted,
   };
 }

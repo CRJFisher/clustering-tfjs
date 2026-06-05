@@ -7,7 +7,7 @@ describe("SpectralClustering class structure & validation", () => {
     expect(model.params.affinity ?? "rbf").toBe("rbf");
   });
 
-  it("accepts nearest_neighbors with nNeighbors", () => {
+  it("accepts nearest_neighbors with n_neighbors", () => {
     const model = new SpectralClustering({
       n_clusters: 2,
       affinity: "nearest_neighbors",
@@ -17,7 +17,7 @@ describe("SpectralClustering class structure & validation", () => {
     expect(model.params.n_neighbors).toBe(15);
   });
 
-  it("throws for invalid nClusters", () => {
+  it("throws for invalid n_clusters", () => {
     expect(() => new SpectralClustering({ n_clusters: 0 })).toThrow();
   });
 
@@ -38,7 +38,7 @@ describe("SpectralClustering class structure & validation", () => {
     ).toThrow();
   });
 
-  it("throws when nNeighbors provided with rbf affinity", () => {
+  it("throws when n_neighbors provided with rbf affinity", () => {
     expect(() =>
       new SpectralClustering({ n_clusters: 2, n_neighbors: 5 }),
     ).toThrow();

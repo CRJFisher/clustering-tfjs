@@ -65,10 +65,10 @@ export class SOM implements BaseClustering<SOMParams> {
    */
   private validate_and_complete_params(params: SOMParams): SOMParams {
     if (!params.grid_width || params.grid_width < 1) {
-      throw new Error('gridWidth must be >= 1');
+      throw new Error('grid_width must be >= 1');
     }
     if (!params.grid_height || params.grid_height < 1) {
-      throw new Error('gridHeight must be >= 1');
+      throw new Error('grid_height must be >= 1');
     }
     
     return {
@@ -307,21 +307,21 @@ export class SOM implements BaseClustering<SOMParams> {
       // Normalizes by sum of influences to make updates independent of batch size
 
       // Expand samples for broadcasting
-      const samples_expanded = samples.expandDims(1); // [nSamples, 1, nFeatures]
-      const weights_expanded = weights_flat.expandDims(0); // [1, totalNeurons, nFeatures]
+      const samples_expanded = samples.expandDims(1); // [n_samples, 1, n_features]
+      const weights_expanded = weights_flat.expandDims(0); // [1, total_neurons, n_features]
 
       // Compute differences
-      const diff = samples_expanded.sub(weights_expanded); // [nSamples, totalNeurons, nFeatures]
+      const diff = samples_expanded.sub(weights_expanded); // [n_samples, total_neurons, n_features]
 
       // Apply influence
-      const influence_expanded = influence.expandDims(2); // [nSamples, totalNeurons, 1]
+      const influence_expanded = influence.expandDims(2); // [n_samples, total_neurons, 1]
       const weighted_diff = diff.mul(influence_expanded);
 
       // Sum over samples
-      const total_update = weighted_diff.sum(0); // [totalNeurons, nFeatures]
+      const total_update = weighted_diff.sum(0); // [total_neurons, n_features]
 
       // Normalize by sum of influences per neuron (sign-preserving for mexican_hat)
-      const influence_sum = influence.sum(0); // [totalNeurons]
+      const influence_sum = influence.sum(0); // [total_neurons]
       const epsilon = 1e-8;
       const abs_influence_sum = influence_sum.abs();
       const influence_sum_safe = tf.where(
@@ -448,11 +448,11 @@ export class SOM implements BaseClustering<SOMParams> {
     const total_neurons = grid_height * grid_width;
 
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
-      throw new Error('nClusters must be a positive integer (>= 1).');
+      throw new Error('n_clusters must be a positive integer (>= 1).');
     }
     if (n_clusters > total_neurons) {
       throw new Error(
-        `nClusters (${n_clusters}) exceeds total number of neurons (${total_neurons}). Maximum is gridWidth * gridHeight.`
+        `n_clusters (${n_clusters}) exceeds total number of neurons (${total_neurons}). Maximum is grid_width * grid_height.`
       );
     }
 
@@ -494,7 +494,7 @@ export class SOM implements BaseClustering<SOMParams> {
    */
   async partial_fit(X: DataMatrix): Promise<void> {
     if (!this.params.online_mode) {
-      throw new Error('partialFit requires onlineMode to be enabled');
+      throw new Error('partial_fit requires online_mode to be enabled');
     }
     
     const x_tensor = is_tensor(X) ? X as tf.Tensor2D : tf.tensor2d(X);
@@ -863,9 +863,9 @@ export class SOM implements BaseClustering<SOMParams> {
           configurable: true
         });
       }
-      this.total_samples_learned_ = model_data.metadata.totalSamplesLearned || 0;
-      this.current_epoch_ = model_data.metadata.currentEpoch || 0;
-      this.quantization_errors_ = model_data.metadata.quantizationErrors || [];
+      this.total_samples_learned_ = model_data.metadata.total_samples_learned || 0;
+      this.current_epoch_ = model_data.metadata.current_epoch || 0;
+      this.quantization_errors_ = model_data.metadata.quantization_errors || [];
     }
     
     // Reinitialize schedulers and distance matrix
@@ -934,8 +934,8 @@ export class SOM implements BaseClustering<SOMParams> {
         await this.partial_fit(x_tensor);
       } else {
         throw new Error(
-          'processStream with autoTrain=false is not supported. ' +
-          'Use autoTrain=true or call partialFit() directly.',
+          'process_stream with auto_train=false is not supported. ' +
+          'Use auto_train=true or call partial_fit() directly.',
         );
       }
     } finally {

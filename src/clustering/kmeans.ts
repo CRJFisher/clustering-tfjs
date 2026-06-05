@@ -55,18 +55,18 @@ export class KMeans implements BaseClustering<KMeansParams> {
     const { n_clusters, max_iter, tol, n_init } = params;
 
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
-      throw new Error('nClusters must be a positive integer (>= 1).');
+      throw new Error('n_clusters must be a positive integer (>= 1).');
     }
 
     if (max_iter !== undefined && (!Number.isInteger(max_iter) || max_iter < 1)) {
-      throw new Error('maxIter must be a positive integer (>= 1) when given.');
+      throw new Error('max_iter must be a positive integer (>= 1) when given.');
     }
 
     if (tol !== undefined && (typeof tol !== 'number' || tol < 0)) {
       throw new Error('tol must be a non-negative number when given.');
     }
     if (n_init !== undefined && (!Number.isInteger(n_init) || n_init < 1)) {
-      throw new Error('nInit must be a positive integer (>= 1) when given.');
+      throw new Error('n_init must be a positive integer (>= 1) when given.');
     }
   }
 
@@ -108,7 +108,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
     }
     const K = this.params.n_clusters;
     if (K > n_samples) {
-      throw new Error('nClusters cannot exceed number of samples.');
+      throw new Error('n_clusters cannot exceed number of samples.');
     }
 
     // Dispose previous state if the estimator is re-used.
@@ -118,11 +118,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
     // potential multiple initialisations.
     // When X is already a tensor we clone to avoid mutating the caller's data.
     // When X is a plain array, tf.tensor2d already creates a new tensor.
-    const Xtensor: tf.Tensor2D = is_tensor(X)
+    const x_tensor: tf.Tensor2D = is_tensor(X)
       ? (X as tf.Tensor2D).clone()
       : tf.tensor2d(X as number[][], undefined, 'float32');
 
-    const [, n_features] = Xtensor.shape;
+    const [, n_features] = x_tensor.shape;
 
     const n_init = this.params.n_init ?? KMeans.DEFAULT_N_INIT;
 
@@ -132,7 +132,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
     const points_arr: number[][] = Array.isArray(X)
       ? (X as number[][])
-      : ((await Xtensor.array()) as number[][]);
+      : ((await x_tensor.array()) as number[][]);
 
     // Store best solution across runs
     let best_inertia = Number.POSITIVE_INFINITY;
@@ -258,9 +258,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
       for (let iter = 0; iter < max_iter; iter++) {
         const distances = tf.tidy(() => {
-          const x_norm = Xtensor.square().sum(1).reshape([n_samples, 1]);
+          const x_norm = x_tensor.square().sum(1).reshape([n_samples, 1]);
           const c_norm = centroids.square().sum(1).reshape([1, K]);
-          const cross = tf.mat_mul(Xtensor, centroids.transpose());
+          const cross = tf.mat_mul(x_tensor, centroids.transpose());
           const dist_sq = x_norm.add(c_norm).sub(cross.mul(2));
           return tf.maximum(dist_sq, tf.scalar(0, 'float32'));
         });
@@ -373,7 +373,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
     this.labels_ = Array.from(best_labels!);
     this.inertia_ = best_inertia;
 
-    Xtensor.dispose();
+    x_tensor.dispose();
   }
 
   /**
