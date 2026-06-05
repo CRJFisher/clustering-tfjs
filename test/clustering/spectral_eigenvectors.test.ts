@@ -20,26 +20,26 @@ describe("SpectralClustering trivial eigenvector handling", () => {
     ];
     
     const model = new SpectralClustering({
-      nClusters: 3,
+      n_clusters: 3,
       affinity: 'nearest_neighbors',
-      nNeighbors: 2,
-      randomState: 42
+      n_neighbors: 2,
+      random_state: 42
     });
     
-    const labels = await model.fitPredict(X);
+    const labels = await model.fit_predict(X);
     
     // Each component should get its own unique label
-    const comp1Labels = new Set([labels[0], labels[1], labels[2]]);
-    const comp2Labels = new Set([labels[3], labels[4], labels[5]]);
-    const comp3Labels = new Set([labels[6], labels[7], labels[8]]);
+    const comp1_labels = new Set([labels[0], labels[1], labels[2]]);
+    const comp2_labels = new Set([labels[3], labels[4], labels[5]]);
+    const comp3_labels = new Set([labels[6], labels[7], labels[8]]);
     
-    expect(comp1Labels.size).toBe(1);
-    expect(comp2Labels.size).toBe(1);
-    expect(comp3Labels.size).toBe(1);
+    expect(comp1_labels.size).toBe(1);
+    expect(comp2_labels.size).toBe(1);
+    expect(comp3_labels.size).toBe(1);
     
     // All three components should have different labels
-    const allLabels = new Set(labels);
-    expect(allLabels.size).toBe(3);
+    const all_labels = new Set(labels);
+    expect(all_labels.size).toBe(3);
   });
   
   it("should handle insufficient informative eigenvectors gracefully", async () => {
@@ -53,14 +53,14 @@ describe("SpectralClustering trivial eigenvector handling", () => {
     ];
     
     const model = new SpectralClustering({
-      nClusters: 3,  // Want 3 clusters but will only have 1 informative eigenvector
+      n_clusters: 3,  // Want 3 clusters but will only have 1 informative eigenvector
       affinity: 'rbf',
       gamma: 0.0001,  // Very small gamma makes affinity nearly uniform
-      randomState: 42
+      random_state: 42
     });
     
     // Should still return some clustering even if suboptimal
-    const labels = await model.fitPredict(X);
+    const labels = await model.fit_predict(X);
     expect(labels).toHaveLength(4);
     expect(new Set(labels).size).toBeLessThanOrEqual(3);
   });
@@ -75,13 +75,13 @@ describe("SpectralClustering trivial eigenvector handling", () => {
     ];
     
     const model = new SpectralClustering({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: 'nearest_neighbors',
-      nNeighbors: 1,
-      randomState: 42
+      n_neighbors: 1,
+      random_state: 42
     });
     
-    const labels = await model.fitPredict(X);
+    const labels = await model.fit_predict(X);
     
     // Should identify 2 clusters (though assignment might not be perfect with k=1)
     expect(new Set(labels).size).toBe(2);

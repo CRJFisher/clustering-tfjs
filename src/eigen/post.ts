@@ -29,7 +29,7 @@ export interface EigenPairOutput {
    */
   eigenvalues: number[];
   /** Alias – kept for backwards-compatibility with task spec */
-  valuesSorted: number[];
+  values_sorted: number[];
 
   /**
    * Column-wise eigen-vectors after sign correction.
@@ -37,13 +37,13 @@ export interface EigenPairOutput {
    */
   eigenvectors: number[][]; // shape (n, m)
   /** Alias matching task spec wording */
-  vectorsSorted: number[][];
+  vectors_sorted: number[][];
 }
 
 /**
  * Applies deterministic ordering and sign convention to raw eigen-pairs.
  */
-export function deterministicEigenpairProcessing(
+export function deterministic_eigenpair_processing(
   input: EigenPairInput,
 ): EigenPairOutput {
   const { eigenvalues, eigenvectors } = input;
@@ -51,9 +51,9 @@ export function deterministicEigenpairProcessing(
   if (eigenvectors.length === 0) {
     return {
       eigenvalues: [],
-      valuesSorted: [],
+      values_sorted: [],
       eigenvectors: [],
-      vectorsSorted: [],
+      vectors_sorted: [],
     };
   }
 
@@ -71,38 +71,38 @@ export function deterministicEigenpairProcessing(
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
-  const eigenvaluesSorted: number[] = indexed.map((p) => p.val);
-  const eigenvectorsSorted: number[][] = Array.from(
+  const eigenvalues_sorted: number[] = indexed.map((p) => p.val);
+  const eigenvectors_sorted: number[][] = Array.from(
     { length: n },
     () => new Array(m),
   );
 
   // Step 2: for each eigenvector apply sign fix while copying into new matrix
-  for (let newCol = 0; newCol < m; newCol++) {
-    const srcCol = indexed[newCol].idx;
+  for (let new_col = 0; new_col < m; new_col++) {
+    const src_col = indexed[new_col].idx;
 
     // Find entry with maximum absolute magnitude
-    let maxAbs = 0;
-    let maxRow = 0;
+    let max_abs = 0;
+    let max_row = 0;
     for (let row = 0; row < n; row++) {
-      const absVal = Math.abs(eigenvectors[row][srcCol]);
-      if (absVal > maxAbs) {
-        maxAbs = absVal;
-        maxRow = row;
+      const abs_val = Math.abs(eigenvectors[row][src_col]);
+      if (abs_val > max_abs) {
+        max_abs = abs_val;
+        max_row = row;
       }
     }
 
-    const sign = eigenvectors[maxRow][srcCol] < 0 ? -1 : 1;
+    const sign = eigenvectors[max_row][src_col] < 0 ? -1 : 1;
 
     for (let row = 0; row < n; row++) {
-      eigenvectorsSorted[row][newCol] = sign * eigenvectors[row][srcCol];
+      eigenvectors_sorted[row][new_col] = sign * eigenvectors[row][src_col];
     }
   }
 
   return {
-    eigenvalues: eigenvaluesSorted,
-    valuesSorted: eigenvaluesSorted,
-    eigenvectors: eigenvectorsSorted,
-    vectorsSorted: eigenvectorsSorted,
+    eigenvalues: eigenvalues_sorted,
+    values_sorted: eigenvalues_sorted,
+    eigenvectors: eigenvectors_sorted,
+    vectors_sorted: eigenvectors_sorted,
   };
 }

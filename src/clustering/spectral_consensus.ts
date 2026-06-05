@@ -4,18 +4,18 @@ import {
   DataMatrix,
   SpectralClusteringParams,
 } from './types';
-import { isTensor } from '../tensor/tensor_guards';
+import { is_tensor } from '../tensor/tensor_guards';
 
 /**
  * SpectralClustering with consensus clustering to improve robustness.
  * Runs k-means multiple times and takes majority vote for each point.
  */
 export class SpectralClusteringConsensus extends SpectralClustering {
-  private consensusRuns: number;
+  private consensus_runs: number;
 
-  constructor(params: SpectralClusteringParams & { consensusRuns?: number }) {
+  constructor(params: SpectralClusteringParams & { consensus_runs?: number }) {
     super(params);
-    this.consensusRuns = params.consensusRuns ?? 50;
+    this.consensus_runs = params.consensus_runs ?? 50;
   }
 
   async fit(X: DataMatrix): Promise<void> {
@@ -23,38 +23,38 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     // because the parent class doesn't store it
 
     const Xtensor: tf.Tensor2D =
-      isTensor(X)
+      is_tensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32');
 
     // Build affinity matrix (reuse parent logic)
-    const computeAffinityMatrix = (
+    const compute_affinity_matrix = (
       SpectralClustering as unknown as {
-        computeAffinityMatrix: (
+        compute_affinity_matrix: (
           X: tf.Tensor2D,
           params: SpectralClusteringParams,
         ) => tf.Tensor2D;
       }
-    ).computeAffinityMatrix;
-    this.affinityMatrix_ = computeAffinityMatrix(Xtensor, this.params);
+    ).compute_affinity_matrix;
+    this.affinity_matrix_ = compute_affinity_matrix(Xtensor, this.params);
 
-    const sumTensor = this.affinityMatrix_!.sum();
-    const affinitySum = (await sumTensor.data())[0];
-    sumTensor.dispose();
-    if (affinitySum === 0) {
+    const sum_tensor = this.affinity_matrix_!.sum();
+    const affinity_sum = (await sum_tensor.data())[0];
+    sum_tensor.dispose();
+    if (affinity_sum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
     }
 
     // Detect connected components
-    const { detectConnectedComponents } = await import(
+    const { detect_connected_components } = await import(
       '../graph/connected_components'
     );
-    const { numComponents, isFullyConnected, componentLabels } =
-      detectConnectedComponents(this.affinityMatrix_! as tf.Tensor2D);
+    const { num_components, is_fully_connected, component_labels } =
+      detect_connected_components(this.affinity_matrix_! as tf.Tensor2D);
 
-    if (!isFullyConnected) {
+    if (!is_fully_connected) {
       console.warn(
         'Graph is not fully connected, spectral embedding may not work as expected.',
       );
@@ -63,96 +63,96 @@ export class SpectralClusteringConsensus extends SpectralClustering {
     let U: tf.Tensor2D;
 
     // If graph is disconnected and has enough components, use component indicators
-    if (!isFullyConnected && numComponents >= this.params.nClusters) {
-      const { createComponentIndicators } = await import(
+    if (!is_fully_connected && num_components >= this.params.n_clusters) {
+      const { create_component_indicators } = await import(
         '../graph/component_indicators'
       );
-      U = createComponentIndicators(
-        componentLabels,
-        numComponents,
-        numComponents,
+      U = create_component_indicators(
+        component_labels,
+        num_components,
+        num_components,
       );
     } else {
       // Standard approach: compute Laplacian and eigenvectors
       // Must pass returnDiag=true to get sqrtDegrees for normalization
-      const { normalisedLaplacian } = await import('../graph/laplacian');
-      const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalisedLaplacian(this.affinityMatrix_! as tf.Tensor2D, true),
+      const { normalised_laplacian } = await import('../graph/laplacian');
+      const { laplacian, sqrt_degrees } = tf.tidy(() =>
+        normalised_laplacian(this.affinity_matrix_! as tf.Tensor2D, true),
       );
 
       const { smallest_eigenvectors_with_values } = await import(
         '../eigen/smallest_eigenvectors_with_values'
       );
-      const numEigenvectors = Math.max(this.params.nClusters, numComponents);
+      const num_eigenvectors = Math.max(this.params.n_clusters, num_components);
       const { eigenvectors: U_full, eigenvalues } =
-        smallest_eigenvectors_with_values(laplacian, numEigenvectors);
+        smallest_eigenvectors_with_values(laplacian, num_eigenvectors);
 
       // Apply sklearn's normalization: divide by D^{1/2}
       const U_scaled = tf.tidy(() => {
-        const numToUse = this.params.nClusters;
+        const num_to_use = this.params.n_clusters;
         const U_selected = tf.slice(
           U_full,
           [0, 0],
-          [-1, numToUse],
+          [-1, num_to_use],
         ) as tf.Tensor2D;
         // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
-        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
-        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
-        return U_selected.div(sqrtDegCol) as tf.Tensor2D;
+        const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
+        const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
+        return U_selected.div(sqrt_deg_col) as tf.Tensor2D;
       });
 
       U = U_scaled;
       laplacian.dispose();
-      sqrtDegrees.dispose();
+      sqrt_degrees.dispose();
       eigenvalues.dispose();
       U_full.dispose();
     }
 
     // Run k-means multiple times with different random seeds
     const { KMeans } = await import('./kmeans');
-    const allLabels: number[][] = [];
+    const all_labels: number[][] = [];
 
-    for (let run = 0; run < this.consensusRuns; run++) {
+    for (let run = 0; run < this.consensus_runs; run++) {
       const km = new KMeans({
-        nClusters: this.params.nClusters,
-        randomState: (this.params.randomState ?? 42) + run,
-        nInit: 1, // Single init per run, we handle multiple runs here
+        n_clusters: this.params.n_clusters,
+        random_state: (this.params.random_state ?? 42) + run,
+        n_init: 1, // Single init per run, we handle multiple runs here
       });
 
       await km.fit(U);
-      allLabels.push(km.labels_!);
+      all_labels.push(km.labels_!);
       km.dispose();
     }
 
     // Consensus: for each point, take the most common label
-    const n = allLabels[0].length;
-    const consensusLabels: number[] = [];
+    const n = all_labels[0].length;
+    const consensus_labels: number[] = [];
 
     for (let i = 0; i < n; i++) {
       // Get all labels for point i
-      const labelsForPoint = allLabels.map((labels) => labels[i]);
+      const labels_for_point = all_labels.map((labels) => labels[i]);
 
       // Count occurrences
       const counts = new Map<number, number>();
-      for (const label of labelsForPoint) {
+      for (const label of labels_for_point) {
         counts.set(label, (counts.get(label) || 0) + 1);
       }
 
       // Find most common label
-      let maxCount = 0;
-      let consensusLabel = 0;
+      let max_count = 0;
+      let consensus_label = 0;
       for (const [label, count] of counts) {
-        if (count > maxCount) {
-          maxCount = count;
-          consensusLabel = label;
+        if (count > max_count) {
+          max_count = count;
+          consensus_label = label;
         }
       }
 
-      consensusLabels.push(consensusLabel);
+      consensus_labels.push(consensus_label);
     }
 
     // Update labels
-    this.labels_ = consensusLabels;
+    this.labels_ = consensus_labels;
 
     // Cleanup
     U.dispose();

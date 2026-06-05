@@ -1,29 +1,29 @@
 import * as tf from '../backend/adapter';
 
-import { manhattanDistance, cosineDistance } from '../tensor/tensor_ops';
+import { manhattan_distance, cosine_distance } from '../tensor/tensor_ops';
 
 /**
  * Optimised Euclidean pairwise distance using the identity
  * ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy to avoid building an (n,n,d) tensor.
  */
-export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
+export function pairwise_euclidean_matrix(points: tf.Tensor2D): tf.Tensor2D {
   return tf.tidy(() => {
-    const squaredNorms = points.square().sum(1).reshape([-1, 1]); // (n,1)
+    const squared_norms = points.square().sum(1).reshape([-1, 1]); // (n,1)
     const gram = points.matMul(points.transpose()); // (n,n)
 
-    const distancesSquared = squaredNorms
-      .add(squaredNorms.transpose())
+    const distances_squared = squared_norms
+      .add(squared_norms.transpose())
       .sub(gram.mul(2));
 
     const zero = tf.scalar(0, 'float32');
-    const distancesSquaredClamped = tf.maximum(distancesSquared, zero);
+    const distances_squared_clamped = tf.maximum(distances_squared, zero);
 
-    const dist = distancesSquaredClamped.sqrt();
+    const dist = distances_squared_clamped.sqrt();
 
-    const distSym = dist.add(dist.transpose()).div(2);
-    const n = distSym.shape[0];
+    const dist_sym = dist.add(dist.transpose()).div(2);
+    const n = dist_sym.shape[0];
     const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
-    return distSym.mul(mask) as tf.Tensor2D;
+    return dist_sym.mul(mask) as tf.Tensor2D;
   });
 }
 
@@ -42,38 +42,38 @@ export function pairwiseEuclideanMatrix(points: tf.Tensor2D): tf.Tensor2D {
  * For performance and numerical stability the computation is wrapped in
  * `tf.tidy` so that all intermediate tensors are eagerly disposed.
  */
-export function pairwiseDistanceMatrix(
+export function pairwise_distance_matrix(
   points: tf.Tensor2D,
   metric: 'euclidean' | 'manhattan' | 'cosine' = 'euclidean',
 ): tf.Tensor2D {
   switch (metric) {
     case 'euclidean':
-      return pairwiseEuclideanMatrix(points);
+      return pairwise_euclidean_matrix(points);
 
     case 'manhattan':
       return tf.tidy(() => {
         const n = points.shape[0];
-        const expandedA = points.expandDims(1); // (n,1,d)
-        const expandedB = points.expandDims(0); // (1,n,d)
+        const expanded_a = points.expandDims(1); // (n,1,d)
+        const expanded_b = points.expandDims(0); // (1,n,d)
 
-        const dist = manhattanDistance(expandedA, expandedB) as tf.Tensor2D;
+        const dist = manhattan_distance(expanded_a, expanded_b) as tf.Tensor2D;
 
-        const distSym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
+        const dist_sym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
         const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
-        return distSym.mul(mask) as tf.Tensor2D;
+        return dist_sym.mul(mask) as tf.Tensor2D;
       });
 
     case 'cosine':
       return tf.tidy(() => {
         const n = points.shape[0];
-        const expandedA = points.expandDims(1); // (n,1,d)
-        const expandedB = points.expandDims(0); // (1,n,d)
+        const expanded_a = points.expandDims(1); // (n,1,d)
+        const expanded_b = points.expandDims(0); // (1,n,d)
 
-        const dist = cosineDistance(expandedA, expandedB) as tf.Tensor2D;
+        const dist = cosine_distance(expanded_a, expanded_b) as tf.Tensor2D;
 
-        const distSym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
+        const dist_sym = dist.add(dist.transpose()).div(2) as tf.Tensor2D;
         const mask = tf.ones([n, n], 'float32').sub(tf.eye(n));
-        return distSym.mul(mask) as tf.Tensor2D;
+        return dist_sym.mul(mask) as tf.Tensor2D;
       });
 
     default:

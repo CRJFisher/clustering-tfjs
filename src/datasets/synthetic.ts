@@ -1,11 +1,11 @@
 import * as tf from '../backend/adapter';
 
 export interface MakeBlobsOptions {
-  nSamples: number;
-  nFeatures: number;
+  n_samples: number;
+  n_features: number;
   centers: number | tf.Tensor2D;
-  clusterStd?: number;
-  randomState?: number;
+  cluster_std?: number;
+  random_state?: number;
 }
 
 export interface MakeBlobsResult {
@@ -13,52 +13,52 @@ export interface MakeBlobsResult {
   y: number[];
 }
 
-export function makeBlobs(options: MakeBlobsOptions): MakeBlobsResult {
+export function make_blobs(options: MakeBlobsOptions): MakeBlobsResult {
   const {
-    nSamples,
-    nFeatures,
+    n_samples,
+    n_features,
     centers,
-    clusterStd = 1.0,
-    randomState,
+    cluster_std = 1.0,
+    random_state,
   } = options;
 
-  let centersTensor: tf.Tensor2D;
-  let nCenters: number;
+  let centers_tensor: tf.Tensor2D;
+  let n_centers: number;
 
   if (typeof centers === 'number') {
-    nCenters = centers;
+    n_centers = centers;
     // Generate random centers with seed if provided
-    centersTensor = tf.randomUniform(
-      [centers, nFeatures], -10, 10, 'float32',
-      randomState,
+    centers_tensor = tf.random_uniform(
+      [centers, n_features], -10, 10, 'float32',
+      random_state,
     );
   } else {
-    centersTensor = centers;
-    nCenters = centersTensor.shape[0];
+    centers_tensor = centers;
+    n_centers = centers_tensor.shape[0];
   }
 
   // Generate samples
-  const samplesPerCluster = Math.floor(nSamples / nCenters);
-  const extraSamples = nSamples % nCenters;
+  const samples_per_cluster = Math.floor(n_samples / n_centers);
+  const extra_samples = n_samples % n_centers;
 
   const samples: tf.Tensor2D[] = [];
   const labels: number[] = [];
 
-  for (let i = 0; i < nCenters; i++) {
-    const nSamplesCluster = samplesPerCluster + (i < extraSamples ? 1 : 0);
+  for (let i = 0; i < n_centers; i++) {
+    const n_samples_cluster = samples_per_cluster + (i < extra_samples ? 1 : 0);
 
     // Get center for this cluster
-    const center = centersTensor.slice([i, 0], [1, nFeatures]);
+    const center = centers_tensor.slice([i, 0], [1, n_features]);
 
     // Generate samples around this center with a derived seed per cluster
-    const clusterSeed = randomState !== undefined ? randomState + i + 1 : undefined;
-    const noise = tf.randomNormal([nSamplesCluster, nFeatures], 0, clusterStd, 'float32', clusterSeed);
-    const clusterSamples = tf.add(noise, center) as tf.Tensor2D;
+    const cluster_seed = random_state !== undefined ? random_state + i + 1 : undefined;
+    const noise = tf.random_normal([n_samples_cluster, n_features], 0, cluster_std, 'float32', cluster_seed);
+    const cluster_samples = tf.add(noise, center) as tf.Tensor2D;
     noise.dispose();
     center.dispose();
 
-    samples.push(clusterSamples);
-    labels.push(...new Array(nSamplesCluster).fill(i));
+    samples.push(cluster_samples);
+    labels.push(...new Array(n_samples_cluster).fill(i));
   }
 
   // Concatenate all samples
@@ -66,7 +66,7 @@ export function makeBlobs(options: MakeBlobsOptions): MakeBlobsResult {
 
   // Clean up
   if (typeof centers === 'number') {
-    centersTensor.dispose();
+    centers_tensor.dispose();
   }
   samples.forEach((s) => s.dispose());
 

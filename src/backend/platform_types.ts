@@ -29,7 +29,7 @@ export interface ReactNativeConfig {
    * - 'gl-react-native': For bare React Native apps
    * - 'auto': Auto-detect (default)
    */
-  glImplementation?: 'expo-gl' | 'gl-react-native' | 'auto';
+  gl_implementation?: 'expo-gl' | 'gl-react-native' | 'auto';
   
   /**
    * Enable mobile-optimized settings
@@ -37,13 +37,13 @@ export interface ReactNativeConfig {
    * - Enables memory management optimizations
    * - Configures smaller batch sizes
    */
-  mobileOptimized?: boolean;
+  mobile_optimized?: boolean;
   
   /**
    * Warmup iterations for TensorFlow.js graph compilation
    * Higher values may improve performance but increase initialization time
    */
-  warmupIterations?: number;
+  warmup_iterations?: number;
 }
 
 /**
@@ -63,21 +63,21 @@ export interface ExtendedBackendConfig {
   /**
    * React Native specific configuration
    */
-  reactNative?: ReactNativeConfig;
+  react_native?: ReactNativeConfig;
   
   /**
    * Force a specific platform detection (for testing)
    */
-  forcePlatform?: Platform;
+  force_platform?: Platform;
 }
 
 /**
  * Backend-specific features available in different environments
  */
 export interface PlatformFeatures {
-  gpuAcceleration: boolean;
-  wasmSimd: boolean;
-  nodeBindings: boolean;
+  gpu_acceleration: boolean;
+  wasm_simd: boolean;
+  node_bindings: boolean;
   webgl: boolean;
 }
 
@@ -86,7 +86,7 @@ export interface PlatformFeatures {
  */
 export interface PlatformInfo {
   platform: Platform;
-  availableBackends: TensorFlowBackend[];
-  recommendedBackend: TensorFlowBackend;
-  isGPUAvailable: boolean;
+  available_backends: TensorFlowBackend[];
+  recommended_backend: TensorFlowBackend;
+  is_gpu_available: boolean;
 }

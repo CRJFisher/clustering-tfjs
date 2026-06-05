@@ -12,13 +12,13 @@ describe("k-NN affinity connectivity", () => {
     ]);
     
     const affinity = compute_knn_affinity(points, 1, true);
-    const affinityArray = await affinity.array();
+    const affinity_array = await affinity.array();
     
     // Check diagonal has self-loops
-    expect(affinityArray[0][0]).toBe(1);
-    expect(affinityArray[1][1]).toBe(1);
-    expect(affinityArray[2][2]).toBe(1);
-    expect(affinityArray[3][3]).toBe(1);
+    expect(affinity_array[0][0]).toBe(1);
+    expect(affinity_array[1][1]).toBe(1);
+    expect(affinity_array[2][2]).toBe(1);
+    expect(affinity_array[3][3]).toBe(1);
     
     affinity.dispose();
     points.dispose();
@@ -38,19 +38,19 @@ describe("k-NN affinity connectivity", () => {
     ]);
     
     const affinity = compute_knn_affinity(points, 2, true);
-    const affinityArray = await affinity.array();
+    const affinity_array = await affinity.array();
     
     // Each point should connect to itself
     for (let i = 0; i < 6; i++) {
-      expect(affinityArray[i][i]).toBe(1);
+      expect(affinity_array[i][i]).toBe(1);
     }
     
     // Check no connections between clusters
     // Points 0-2 should not connect to points 3-5
     for (let i = 0; i < 3; i++) {
       for (let j = 3; j < 6; j++) {
-        expect(affinityArray[i][j]).toBe(0);
-        expect(affinityArray[j][i]).toBe(0);
+        expect(affinity_array[i][j]).toBe(0);
+        expect(affinity_array[j][i]).toBe(0);
       }
     }
     
@@ -66,16 +66,16 @@ describe("k-NN affinity connectivity", () => {
     ]);
     
     const affinity = compute_knn_affinity(points, 1, false);
-    const affinityArray = await affinity.array();
+    const affinity_array = await affinity.array();
     
     // Check diagonal has no self-loops
-    expect(affinityArray[0][0]).toBe(0);
-    expect(affinityArray[1][1]).toBe(0);
-    expect(affinityArray[2][2]).toBe(0);
+    expect(affinity_array[0][0]).toBe(0);
+    expect(affinity_array[1][1]).toBe(0);
+    expect(affinity_array[2][2]).toBe(0);
     
     // But should still have connections to neighbors
-    expect(affinityArray[0][1]).toBe(1); // 0 -> 1
-    expect(affinityArray[1][0]).toBe(1); // 1 -> 0 (symmetric)
+    expect(affinity_array[0][1]).toBe(1); // 0 -> 1
+    expect(affinity_array[1][0]).toBe(1); // 1 -> 0 (symmetric)
     
     affinity.dispose();
     points.dispose();

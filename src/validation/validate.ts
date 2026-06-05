@@ -1,6 +1,6 @@
 import * as tf from '../backend/adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { isTensor } from '../tensor/tensor_guards';
+import { is_tensor } from '../tensor/tensor_guards';
 
 /**
  * Validates that labels length matches the number of data rows.
@@ -11,16 +11,16 @@ import { isTensor } from '../tensor/tensor_guards';
  * @param labels - Label vector
  * @throws Error if lengths don't match
  */
-export function validateLabelsLength(
+export function validate_labels_length(
   X: DataMatrix,
   labels: LabelVector,
 ): void {
-  const dataRows = isTensor(X) ? X.shape[0] : X.length;
-  const labelsLen = isTensor(labels) ? labels.shape[0] : labels.length;
+  const data_rows = is_tensor(X) ? X.shape[0] : X.length;
+  const labels_len = is_tensor(labels) ? labels.shape[0] : labels.length;
 
-  if (dataRows !== labelsLen) {
+  if (data_rows !== labels_len) {
     throw new Error(
-      `Labels length (${labelsLen}) does not match data rows (${dataRows})`,
+      `Labels length (${labels_len}) does not match data rows (${data_rows})`,
     );
   }
 }
@@ -33,16 +33,16 @@ export function validateLabelsLength(
  * @param labels - Label vector (tensor or array)
  * @returns Object with data tensor, label array, and whether the tensor is owned (and should be disposed by caller)
  */
-export function convertValidationInputs(
+export function convert_validation_inputs(
   X: DataMatrix,
   labels: LabelVector,
-): { data: tf.Tensor2D; labelArray: number[]; ownsTensor: boolean } {
-  const ownsTensor = !isTensor(X);
-  const data = isTensor(X)
+): { data: tf.Tensor2D; label_array: number[]; owns_tensor: boolean } {
+  const owns_tensor = !is_tensor(X);
+  const data = is_tensor(X)
     ? (X as tf.Tensor2D)
     : tf.tensor2d(X as number[][]);
-  const labelArray = isTensor(labels)
+  const label_array = is_tensor(labels)
     ? Array.from(labels.dataSync() as Float32Array).map((l) => Math.round(l))
     : (labels as number[]);
-  return { data, labelArray, ownsTensor };
+  return { data, label_array, owns_tensor };
 }

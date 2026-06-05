@@ -4,18 +4,18 @@ import { AgglomerativeClustering } from '../src/clustering/agglomerative';
 import { SpectralClustering } from '../src/clustering/spectral';
 import { KMeans } from '../src/clustering/kmeans';
 import { SOM } from '../src/clustering/som';
-import { makeBlobs } from '../src/datasets/synthetic';
+import { make_blobs } from '../src/datasets/synthetic';
 
 export interface BenchmarkResult {
   algorithm: string;
   backend: string;
-  datasetSize: number;
+  dataset_size: number;
   features: number;
-  executionTime: number;
-  memoryUsed: number;
-  memoryPeak: number;
-  tensorCount: number;
-  backendInitTime: number;
+  execution_time: number;
+  memory_used: number;
+  memory_peak: number;
+  tensor_count: number;
+  backend_init_time: number;
   accuracy?: number;
 }
 
@@ -32,27 +32,27 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
   { samples: 10000, features: 100, centers: 10, label: 'large' },
 ];
 
-export async function benchmarkAlgorithm(
+export async function benchmark_algorithm(
   algorithm: 'kmeans' | 'spectral' | 'agglomerative' | 'som',
   config: BenchmarkConfig,
   backend: string,
 ): Promise<BenchmarkResult> {
   // Generate dataset
-  const { X } = makeBlobs({
-    nSamples: config.samples,
-    nFeatures: config.features,
+  const { X } = make_blobs({
+    n_samples: config.samples,
+    n_features: config.features,
     centers: config.centers,
-    randomState: 42,
+    random_state: 42,
   });
 
   // Initialize backend
-  const backendInitStart = performance.now();
+  const backend_init_start = performance.now();
   await tf.setBackend(backend);
   await tf.ready();
-  const backendInitTime = performance.now() - backendInitStart;
+  const backend_init_time = performance.now() - backend_init_start;
 
   // Track memory
-  const memBefore = tf.memory();
+  const mem_before = tf.memory();
 
   // Run clustering
   const start = performance.now();
@@ -60,16 +60,16 @@ export async function benchmarkAlgorithm(
 
   switch (algorithm) {
     case 'kmeans': {
-      const kmeans = new KMeans({ nClusters: config.centers, randomState: 42 });
+      const kmeans = new KMeans({ n_clusters: config.centers, random_state: 42 });
       await kmeans.fit(X);
       _labels = kmeans.labels_!;
       break;
     }
     case 'spectral': {
       const spectral = new SpectralClustering({
-        nClusters: config.centers,
+        n_clusters: config.centers,
         affinity: 'rbf',
-        randomState: 42,
+        random_state: 42,
       });
       await spectral.fit(X);
       _labels = spectral.labels_!;
@@ -77,7 +77,7 @@ export async function benchmarkAlgorithm(
     }
     case 'agglomerative': {
       const agglo = new AgglomerativeClustering({
-        nClusters: config.centers,
+        n_clusters: config.centers,
         linkage: 'average',
       });
       await agglo.fit(X);
@@ -86,14 +86,14 @@ export async function benchmarkAlgorithm(
     }
     case 'som': {
       // For SOM, use a square grid approximately matching the number of clusters
-      const gridSize = Math.ceil(Math.sqrt(config.centers));
+      const grid_size = Math.ceil(Math.sqrt(config.centers));
       const som = new SOM({
-        gridWidth: gridSize,
-        gridHeight: gridSize,
+        grid_width: grid_size,
+        grid_height: grid_size,
         topology: 'rectangular',
         initialization: 'pca',
-        numEpochs: 50,  // Reduced for benchmarking
-        randomState: 42,
+        num_epochs: 50,  // Reduced for benchmarking
+        random_state: 42,
       });
       await som.fit(X);
       _labels = som.labels_!;
@@ -101,23 +101,23 @@ export async function benchmarkAlgorithm(
     }
   }
 
-  const executionTime = performance.now() - start;
-  const memAfter = tf.memory();
+  const execution_time = performance.now() - start;
+  const mem_after = tf.memory();
 
   return {
     algorithm,
     backend,
-    datasetSize: config.samples,
+    dataset_size: config.samples,
     features: config.features,
-    executionTime,
-    memoryUsed: memAfter.numBytes - memBefore.numBytes,
-    memoryPeak: memAfter.numBytes,
-    tensorCount: memAfter.numTensors - memBefore.numTensors,
-    backendInitTime,
+    execution_time,
+    memory_used: mem_after.numBytes - mem_before.numBytes,
+    memory_peak: mem_after.numBytes,
+    tensor_count: mem_after.numTensors - mem_before.numTensors,
+    backend_init_time,
   };
 }
 
-export async function getAvailableBackends(): Promise<string[]> {
+export async function get_available_backends(): Promise<string[]> {
   const backends: string[] = ['cpu'];
 
   // TODO: Add WASM backend check when types are available
@@ -147,9 +147,9 @@ export async function getAvailableBackends(): Promise<string[]> {
   return backends;
 }
 
-export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
+export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
-  const backends = await getAvailableBackends();
+  const backends = await get_available_backends();
   const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative' | 'som'> = [
     'kmeans',
     'spectral',
@@ -167,12 +167,12 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
         );
 
         try {
-          const result = await benchmarkAlgorithm(algorithm, config, backend);
+          const result = await benchmark_algorithm(algorithm, config, backend);
           results.push(result);
 
-          console.log(`  Time: ${result.executionTime.toFixed(2)}ms`);
+          console.log(`  Time: ${result.execution_time.toFixed(2)}ms`);
           console.log(
-            `  Memory: ${(result.memoryUsed / 1024 / 1024).toFixed(2)}MB`,
+            `  Memory: ${(result.memory_used / 1024 / 1024).toFixed(2)}MB`,
           );
         } catch (error) {
           console.error(
@@ -186,7 +186,7 @@ export async function runBenchmarkSuite(): Promise<BenchmarkResult[]> {
   return results;
 }
 
-export function formatBenchmarkResults(results: BenchmarkResult[]): string {
+export function format_benchmark_results(results: BenchmarkResult[]): string {
   let output = '# Benchmark Results\n\n';
   output +=
     '| Algorithm | Backend | Dataset | Time (ms) | Memory (MB) | Backend Init (ms) |\n';
@@ -194,10 +194,10 @@ export function formatBenchmarkResults(results: BenchmarkResult[]): string {
     '|-----------|---------|---------|-----------|-------------|-------------------|\n';
 
   for (const result of results) {
-    const dataset = `${result.datasetSize}x${result.features}`;
-    const time = result.executionTime.toFixed(2);
-    const memory = (result.memoryUsed / 1024 / 1024).toFixed(2);
-    const init = result.backendInitTime.toFixed(2);
+    const dataset = `${result.dataset_size}x${result.features}`;
+    const time = result.execution_time.toFixed(2);
+    const memory = (result.memory_used / 1024 / 1024).toFixed(2);
+    const init = result.backend_init_time.toFixed(2);
 
     output += `| ${result.algorithm} | ${result.backend} | ${dataset} | ${time} | ${memory} | ${init} |\n`;
   }

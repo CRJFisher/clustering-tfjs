@@ -2,11 +2,11 @@ import * as tf from '../tensorflow-helper';
 import { KMeans } from '../../src/clustering/kmeans';
 import { SpectralClustering } from '../../src/clustering/spectral';
 import { SOM } from '../../src/clustering/som';
-import { findOptimalClusters } from '../../src/model_selection/find_optimal_clusters';
-import { exportForVisualization } from '../../src/visualization/som_visualization';
-import { silhouetteScore } from '../../src/validation/silhouette';
-import { daviesBouldin, daviesBouldinEfficient } from '../../src/validation/davies_bouldin';
-import { calinskiHarabasz, calinskiHarabaszEfficient } from '../../src/validation/calinski_harabasz';
+import { find_optimal_clusters } from '../../src/model_selection/find_optimal_clusters';
+import { export_for_visualization } from '../../src/visualization/som_visualization';
+import { silhouette_score } from '../../src/validation/silhouette';
+import { davies_bouldin, davies_bouldin_efficient } from '../../src/validation/davies_bouldin';
+import { calinski_harabasz, calinski_harabasz_efficient } from '../../src/validation/calinski_harabasz';
 
 /**
  * Memory regression tests that assert tensor count before/after fit+dispose
@@ -25,7 +25,7 @@ describe('Memory regression tests', () => {
     it('fit() + dispose() should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
-      const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
+      const km = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
       await km.fit(data);
       km.dispose();
 
@@ -37,7 +37,7 @@ describe('Memory regression tests', () => {
       const X = tf.tensor2d(data);
       const before = tf.memory().numTensors;
 
-      const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
+      const km = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
       await km.fit(X);
       km.dispose();
 
@@ -50,8 +50,8 @@ describe('Memory regression tests', () => {
     it('fitPredict() + dispose() should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
-      const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
-      await km.fitPredict(data);
+      const km = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
+      await km.fit_predict(data);
       km.dispose();
 
       const after = tf.memory().numTensors;
@@ -61,7 +61,7 @@ describe('Memory regression tests', () => {
     it('re-fitting should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
-      const km = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
+      const km = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
       await km.fit(data);
       // Re-fit: dispose() is called internally, freeing old centroids
       await km.fit(data);
@@ -76,7 +76,7 @@ describe('Memory regression tests', () => {
     it('fit() + dispose() with array input should not leak tensors', async () => {
       const before = tf.memory().numTensors;
 
-      const sc = new SpectralClustering({ nClusters: 2, randomState: 42 });
+      const sc = new SpectralClustering({ n_clusters: 2, random_state: 42 });
       await sc.fit(data);
       sc.dispose();
 
@@ -88,7 +88,7 @@ describe('Memory regression tests', () => {
       const X = tf.tensor2d(data);
       const before = tf.memory().numTensors;
 
-      const sc = new SpectralClustering({ nClusters: 2, randomState: 42 });
+      const sc = new SpectralClustering({ n_clusters: 2, random_state: 42 });
       await sc.fit(X);
       sc.dispose();
 
@@ -102,18 +102,18 @@ describe('Memory regression tests', () => {
     it('fitWithIntermediateSteps should not leak tensors after cleanup', async () => {
       const before = tf.memory().numTensors;
 
-      const sc = new SpectralClustering({ nClusters: 2, randomState: 42 });
-      const result = await sc.fitWithIntermediateSteps(data);
+      const sc = new SpectralClustering({ n_clusters: 2, random_state: 42 });
+      const result = await sc.fit_with_intermediate_steps(data);
 
       // Dispose all returned intermediate tensors
       result.affinity.dispose();
       result.laplacian.laplacian.dispose();
       result.laplacian.degrees?.dispose();
-      result.laplacian.sqrtDegrees?.dispose();
+      result.laplacian.sqrt_degrees?.dispose();
       result.embedding.embedding.dispose();
       result.embedding.eigenvalues.dispose();
-      result.embedding.rawEigenvectors?.dispose();
-      result.embedding.scalingFactors?.dispose();
+      result.embedding.raw_eigenvectors?.dispose();
+      result.embedding.scaling_factors?.dispose();
 
       sc.dispose();
 
@@ -127,11 +127,11 @@ describe('Memory regression tests', () => {
       const before = tf.memory().numTensors;
 
       const som = new SOM({
-        gridWidth: 2,
-        gridHeight: 2,
+        grid_width: 2,
+        grid_height: 2,
 
-        numEpochs: 3,
-        randomState: 42,
+        num_epochs: 3,
+        random_state: 42,
       });
       await som.fit(data);
       som.dispose();
@@ -144,17 +144,17 @@ describe('Memory regression tests', () => {
 
     it('exportForVisualization should not leak tensors', async () => {
       const som = new SOM({
-        gridWidth: 2,
-        gridHeight: 2,
+        grid_width: 2,
+        grid_height: 2,
 
-        numEpochs: 3,
-        randomState: 42,
+        num_epochs: 3,
+        random_state: 42,
       });
       await som.fit(data);
 
       const before = tf.memory().numTensors;
-      await exportForVisualization(som, 'json');
-      await exportForVisualization(som, 'csv');
+      await export_for_visualization(som, 'json');
+      await export_for_visualization(som, 'csv');
       const after = tf.memory().numTensors;
 
       expect(after).toBe(before);
@@ -167,11 +167,11 @@ describe('Memory regression tests', () => {
     it('should not leak tensors with kmeans algorithm', async () => {
       const before = tf.memory().numTensors;
 
-      await findOptimalClusters(data, {
-        minClusters: 2,
-        maxClusters: 3,
+      await find_optimal_clusters(data, {
+        min_clusters: 2,
+        max_clusters: 3,
         algorithm: 'kmeans',
-        algorithmParams: { randomState: 42, nInit: 1 },
+        algorithm_params: { random_state: 42, n_init: 1 },
       });
 
       const after = tf.memory().numTensors;
@@ -182,35 +182,35 @@ describe('Memory regression tests', () => {
   describe('Validation functions', () => {
     it('silhouetteScore should not leak tensors', () => {
       const before = tf.memory().numTensors;
-      silhouetteScore(data, labels);
+      silhouette_score(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
     it('daviesBouldin should not leak tensors', () => {
       const before = tf.memory().numTensors;
-      daviesBouldin(data, labels);
+      davies_bouldin(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
     it('daviesBouldinEfficient should not leak tensors', () => {
       const before = tf.memory().numTensors;
-      daviesBouldinEfficient(data, labels);
+      davies_bouldin_efficient(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
     it('calinskiHarabasz should not leak tensors', () => {
       const before = tf.memory().numTensors;
-      calinskiHarabasz(data, labels);
+      calinski_harabasz(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
 
     it('calinskiHarabaszEfficient should not leak tensors', () => {
       const before = tf.memory().numTensors;
-      calinskiHarabaszEfficient(data, labels);
+      calinski_harabasz_efficient(data, labels);
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });

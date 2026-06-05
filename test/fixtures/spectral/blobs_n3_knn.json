@@ -242,11 +242,11 @@
     ]
   ],
   "params": {
-    "nClusters": 3,
+    "n_clusters": 3,
     "affinity": "nearest_neighbors",
     "gamma": null,
-    "nNeighbors": 10,
-    "randomState": 42
+    "n_neighbors": 10,
+    "random_state": 42
   },
   "labels": [
     2,

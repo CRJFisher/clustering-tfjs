@@ -12,12 +12,12 @@
  * - gl-react-native (for bare React Native)
  */
 
-export async function loadTensorFlow() {
+export async function load_tensor_flow() {
   try {
     // Dynamic import to avoid build-time dependency
     // The actual module name is passed as a string to bypass TypeScript checking
-    const tfRNModule = '@tensorflow/tfjs-react-native';
-    const tf = await import(/* webpackIgnore: true */ tfRNModule as string) as typeof import('@tensorflow/tfjs');
+    const tf_rn_module = '@tensorflow/tfjs-react-native';
+    const tf = await import(/* webpackIgnore: true */ tf_rn_module as string) as typeof import('@tensorflow/tfjs');
     
     // Wait for TensorFlow.js to initialize
     await tf.ready();

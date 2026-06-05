@@ -1,5 +1,5 @@
 import * as tf from '../backend/adapter';
-import { reorthogonalizeVector } from './orthogonalize';
+import { reorthogonalize_vector } from './orthogonalize';
 import { make_random_stream } from '../random';
 
 /* -------------------------------------------------------------------------- */
@@ -11,15 +11,15 @@ import { make_random_stream } from '../random';
  */
 export interface LanczosOptions {
   /** Maximum Lanczos subspace size before restart. Default: min(max(2k+20, 4k), n, 200) */
-  maxSubspaceSize?: number;
+  max_subspace_size?: number;
   /** Maximum number of thick restarts. Default: 10 */
-  maxRestarts?: number;
+  max_restarts?: number;
   /** Convergence tolerance for Ritz values. Default: 1e-6 */
-  convergenceTol?: number;
+  convergence_tol?: number;
   /** Random seed for deterministic starting vector. Default: 42 */
-  randomSeed?: number;
+  random_seed?: number;
   /** Whether the matrix is PSD (clamp negative eigenvalues to 0). Default: true */
-  isPSD?: boolean;
+  is_psd?: boolean;
 }
 
 /**
@@ -73,11 +73,11 @@ export function lanczos_smallest_eigenpairs(
   }
 
   const {
-    maxSubspaceSize: maxSubspaceSizeOpt,
-    maxRestarts = 10,
-    convergenceTol = CONVERGENCE_TOL_DEFAULT,
-    randomSeed = 42,
-    isPSD = true,
+    max_subspace_size: maxSubspaceSizeOpt,
+    max_restarts = 10,
+    convergence_tol = CONVERGENCE_TOL_DEFAULT,
+    random_seed = 42,
+    is_psd = true,
   } = options ?? {};
 
   // Subspace size: need enough room beyond k for convergence
@@ -92,7 +92,7 @@ export function lanczos_smallest_eigenpairs(
   // Lanczos converges to extreme eigenvalues (both largest and smallest).
   // We extract the k smallest Ritz values from the tridiagonal eigenproblem.
 
-  const rng = make_random_stream(randomSeed);
+  const rng = make_random_stream(random_seed);
 
   // Generate random starting vector of unit norm
   const q = new Float64Array(n);
@@ -105,20 +105,20 @@ export function lanczos_smallest_eigenpairs(
   for (let i = 0; i < n; i++) q[i] /= norm;
 
   // Lanczos basis vectors (columns of Q), stored as array of Float64Array
-  let basisVectors: Float64Array[] = [q];
+  let basis_vectors: Float64Array[] = [q];
 
   // Tridiagonal matrix entries
   let alpha: number[] = []; // diagonal
   let beta: number[] = [];  // sub/super-diagonal
 
-  let convergedEigenvalues: number[] | null = null;
-  let convergedEigenvectors: number[][] | null = null;
+  let converged_eigenvalues: number[] | null = null;
+  let converged_eigenvectors: number[][] | null = null;
 
-  for (let restart = 0; restart <= maxRestarts; restart++) {
-    const startJ = alpha.length; // resumption point after restart
+  for (let restart = 0; restart <= max_restarts; restart++) {
+    const start_j = alpha.length; // resumption point after restart
 
-    for (let j = startJ; j < m_max; j++) {
-      const v_j = basisVectors[j];
+    for (let j = start_j; j < m_max; j++) {
+      const v_j = basis_vectors[j];
 
       // w = A * v_j
       const w = matvec(A, v_j, n);
@@ -126,7 +126,7 @@ export function lanczos_smallest_eigenpairs(
       // w = w - beta_{j-1} * v_{j-1}
       if (j > 0) {
         const beta_prev = beta[j - 1];
-        const v_prev = basisVectors[j - 1];
+        const v_prev = basis_vectors[j - 1];
         for (let i = 0; i < n; i++) w[i] -= beta_prev * v_prev[i];
       }
 
@@ -139,16 +139,16 @@ export function lanczos_smallest_eigenpairs(
       for (let i = 0; i < n; i++) w[i] -= alpha_j * v_j[i];
 
       // Full reorthogonalization against all previous basis vectors
-      const normBefore = vecNorm(w, n);
-      reorthogonalize(w, basisVectors, n);
-      const normAfter = vecNorm(w, n);
+      const norm_before = vec_norm(w, n);
+      reorthogonalize(w, basis_vectors, n);
+      const norm_after = vec_norm(w, n);
 
       // Double Gram-Schmidt if significant cancellation detected
-      if (normAfter < NORM_REDUCTION_TRIGGER * normBefore) {
-        reorthogonalize(w, basisVectors, n);
+      if (norm_after < NORM_REDUCTION_TRIGGER * norm_before) {
+        reorthogonalize(w, basis_vectors, n);
       }
 
-      const beta_j = vecNorm(w, n);
+      const beta_j = vec_norm(w, n);
 
       // Check for lucky breakdown (invariant subspace found)
       if (beta_j < BREAKDOWN_TOL) {
@@ -158,8 +158,8 @@ export function lanczos_smallest_eigenpairs(
           beta.slice(0, alpha.length - 1),
         );
 
-        const result = extractSmallest(
-          values, vectors, basisVectors, k, n, isPSD,
+        const result = extract_smallest(
+          values, vectors, basis_vectors, k, n, is_psd,
         );
 
         if (result.eigenvalues.length >= k) {
@@ -168,13 +168,13 @@ export function lanczos_smallest_eigenpairs(
 
         // Not enough eigenpairs — generate random restart vector
         // orthogonal to current basis
-        const newQ = randomOrthogonalVector(basisVectors, n, rng);
-        if (newQ === null) {
+        const new_q = random_orthogonal_vector(basis_vectors, n, rng);
+        if (new_q === null) {
           // Entire space spanned — return what we have
           return result;
         }
         beta.push(0);
-        basisVectors.push(newQ);
+        basis_vectors.push(new_q);
         continue;
       }
 
@@ -183,23 +183,23 @@ export function lanczos_smallest_eigenpairs(
       // Normalize and append new basis vector
       const q_new = new Float64Array(n);
       for (let i = 0; i < n; i++) q_new[i] = w[i] / beta_j;
-      basisVectors.push(q_new);
+      basis_vectors.push(q_new);
 
       // Check convergence periodically (every 5 iterations after minimum)
-      if (j >= 2 * k && (j - startJ) % 5 === 4) {
+      if (j >= 2 * k && (j - start_j) % 5 === 4) {
         const { values, vectors } = tridiagonal_ql(
           alpha.slice(),
           beta.slice(0, alpha.length - 1),
         );
 
-        const converged = checkConvergence(
+        const converged = check_convergence(
           values, vectors, beta[beta.length - 1],
-          k, convergenceTol,
+          k, convergence_tol,
         );
 
         if (converged) {
-          return extractSmallest(
-            values, vectors, basisVectors, k, n, isPSD,
+          return extract_smallest(
+            values, vectors, basis_vectors, k, n, is_psd,
           );
         }
       }
@@ -213,64 +213,64 @@ export function lanczos_smallest_eigenpairs(
     );
 
     // Check if converged at the boundary
-    const converged = checkConvergence(
+    const converged = check_convergence(
       values, vectors, beta[beta.length - 1],
-      k, convergenceTol,
+      k, convergence_tol,
     );
 
     if (converged) {
-      return extractSmallest(
-        values, vectors, basisVectors, k, n, isPSD,
+      return extract_smallest(
+        values, vectors, basis_vectors, k, n, is_psd,
       );
     }
 
     // Simple restart: use the best Ritz vector as new starting vector
-    const restartResult = extractSmallest(
-      values, vectors, basisVectors, k, n, isPSD,
+    const restart_result = extract_smallest(
+      values, vectors, basis_vectors, k, n, is_psd,
     );
-    convergedEigenvalues = restartResult.eigenvalues;
-    convergedEigenvectors = restartResult.eigenvectors;
+    converged_eigenvalues = restart_result.eigenvalues;
+    converged_eigenvectors = restart_result.eigenvectors;
 
     // Reconstruct the best Ritz vector (smallest eigenvalue)
     const m = alpha.length;
     const indices = values.map((v, i) => ({ v, i }));
     indices.sort((a, b) => a.v - b.v);
 
-    const bestIdx = indices[0].i;
-    const restartVec = new Float64Array(n);
+    const best_idx = indices[0].i;
+    const restart_vec = new Float64Array(n);
     for (let row = 0; row < n; row++) {
       let sum = 0;
       for (let col = 0; col < m; col++) {
-        sum += basisVectors[col][row] * vectors[col][bestIdx];
+        sum += basis_vectors[col][row] * vectors[col][best_idx];
       }
-      restartVec[row] = sum;
+      restart_vec[row] = sum;
     }
     // Normalize
-    const restartNorm = vecNorm(restartVec, n);
-    if (restartNorm > BREAKDOWN_TOL) {
-      for (let i = 0; i < n; i++) restartVec[i] /= restartNorm;
+    const restart_norm = vec_norm(restart_vec, n);
+    if (restart_norm > BREAKDOWN_TOL) {
+      for (let i = 0; i < n; i++) restart_vec[i] /= restart_norm;
     }
 
     // Full reset with best Ritz vector as starting point
-    basisVectors = [restartVec];
+    basis_vectors = [restart_vec];
     alpha = [];
     beta = [];
   }
 
   // Max restarts exhausted — return best result so far
-  if (convergedEigenvalues !== null && convergedEigenvectors !== null) {
+  if (converged_eigenvalues !== null && converged_eigenvectors !== null) {
     console.warn(
-      `[lanczos] Did not fully converge after ${maxRestarts} restarts. Returning best approximation.`,
+      `[lanczos] Did not fully converge after ${max_restarts} restarts. Returning best approximation.`,
     );
     return {
-      eigenvalues: convergedEigenvalues,
-      eigenvectors: convergedEigenvectors,
+      eigenvalues: converged_eigenvalues,
+      eigenvectors: converged_eigenvectors,
     };
   }
 
   // Final attempt: solve whatever tridiagonal we have
   const { values, vectors } = tridiagonal_ql(alpha.slice(), beta.slice(0, alpha.length - 1));
-  return extractSmallest(values, vectors, basisVectors, k, n, isPSD);
+  return extract_smallest(values, vectors, basis_vectors, k, n, is_psd);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -298,7 +298,7 @@ function matvec(
 }
 
 /** Euclidean norm of a vector. */
-function vecNorm(v: Float64Array, n: number): number {
+function vec_norm(v: Float64Array, n: number): number {
   let sum = 0;
   for (let i = 0; i < n; i++) sum += v[i] * v[i];
   return Math.sqrt(sum);
@@ -308,13 +308,13 @@ function vecNorm(v: Float64Array, n: number): number {
  * Full reorthogonalization: projects out components along all basis vectors.
  * Modifies w in place. Delegates to the shared utility.
  */
-const reorthogonalize = reorthogonalizeVector<Float64Array>;
+const reorthogonalize = reorthogonalize_vector<Float64Array>;
 
 /**
  * Generates a random unit vector orthogonal to all basis vectors.
  * Returns null if the basis already spans the full space.
  */
-function randomOrthogonalVector(
+function random_orthogonal_vector(
   basis: Float64Array[],
   n: number,
   rng: ReturnType<typeof make_random_stream>,
@@ -328,7 +328,7 @@ function randomOrthogonalVector(
     reorthogonalize(v, basis, n);
     reorthogonalize(v, basis, n);
 
-    const norm = vecNorm(v, n);
+    const norm = vec_norm(v, n);
     if (norm > BREAKDOWN_TOL) {
       for (let i = 0; i < n; i++) v[i] /= norm;
       return v;
@@ -343,10 +343,10 @@ function randomOrthogonalVector(
  * Check if the k smallest eigenvalues have converged.
  * Uses the residual bound: |beta_m * s_i_last| < tol * max(1, |theta_i|)
  */
-function checkConvergence(
+function check_convergence(
   values: number[],
   vectors: number[][],
-  lastBeta: number,
+  last_beta: number,
   k: number,
   tol: number,
 ): boolean {
@@ -359,8 +359,8 @@ function checkConvergence(
 
   for (let r = 0; r < k; r++) {
     const idx = indices[r].i;
-    const lastComponent = Math.abs(vectors[m - 1][idx]);
-    const residual = Math.abs(lastBeta * lastComponent);
+    const last_component = Math.abs(vectors[m - 1][idx]);
+    const residual = Math.abs(last_beta * last_component);
     const threshold = tol * Math.max(1, Math.abs(values[idx]));
 
     if (residual > threshold) {
@@ -375,31 +375,31 @@ function checkConvergence(
  * Extract the k smallest eigenpairs from the Lanczos decomposition.
  * Reconstructs Ritz vectors from the Lanczos basis and tridiagonal eigenvectors.
  */
-function extractSmallest(
-  ritzValues: number[],
-  ritzVectors: number[][],
-  basisVectors: Float64Array[],
+function extract_smallest(
+  ritz_values: number[],
+  ritz_vectors: number[][],
+  basis_vectors: Float64Array[],
   k: number,
   n: number,
-  isPSD: boolean,
+  is_psd: boolean,
 ): LanczosResult {
-  const m = ritzValues.length;
+  const m = ritz_values.length;
 
   // Sort by ascending eigenvalue to get the k smallest
-  const indices = ritzValues.map((v, i) => ({ v, i }));
+  const indices = ritz_values.map((v, i) => ({ v, i }));
   indices.sort((a, b) => a.v - b.v);
 
-  const useK = Math.min(k, m);
+  const use_k = Math.min(k, m);
   const eigenvalues: number[] = [];
-  const eigenvectors: number[][] = Array.from({ length: n }, () => new Array(useK));
+  const eigenvectors: number[][] = Array.from({ length: n }, () => new Array(use_k));
 
-  for (let r = 0; r < useK; r++) {
+  for (let r = 0; r < use_k; r++) {
     const idx = indices[r].i;
 
-    let lambda = ritzValues[idx];
+    let lambda = ritz_values[idx];
 
     // PSD clamping
-    if (isPSD && lambda < 0) {
+    if (is_psd && lambda < 0) {
       if (lambda < -PSD_CLAMP_TOL) {
         console.warn(
           `[lanczos] Large negative eigenvalue ${lambda} clamped to 0 (exceeds tolerance ${PSD_CLAMP_TOL}).`,
@@ -412,28 +412,28 @@ function extractSmallest(
 
     // Reconstruct Ritz vector: u = Q * s_idx
     // Q is [n, m_basis] where m_basis = basisVectors.length, s is [m, 1]
-    const basisCount = Math.min(basisVectors.length, m);
+    const basis_count = Math.min(basis_vectors.length, m);
     for (let row = 0; row < n; row++) {
       let sum = 0;
-      for (let col = 0; col < basisCount; col++) {
-        sum += basisVectors[col][row] * ritzVectors[col][idx];
+      for (let col = 0; col < basis_count; col++) {
+        sum += basis_vectors[col][row] * ritz_vectors[col][idx];
       }
       eigenvectors[row][r] = sum;
     }
   }
 
   // Apply deterministic sign convention: largest-magnitude component positive
-  for (let col = 0; col < useK; col++) {
-    let maxAbs = 0;
-    let maxRow = 0;
+  for (let col = 0; col < use_k; col++) {
+    let max_abs = 0;
+    let max_row = 0;
     for (let row = 0; row < n; row++) {
-      const absVal = Math.abs(eigenvectors[row][col]);
-      if (absVal > maxAbs) {
-        maxAbs = absVal;
-        maxRow = row;
+      const abs_val = Math.abs(eigenvectors[row][col]);
+      if (abs_val > max_abs) {
+        max_abs = abs_val;
+        max_row = row;
       }
     }
-    if (eigenvectors[maxRow][col] < 0) {
+    if (eigenvectors[max_row][col] < 0) {
       for (let row = 0; row < n; row++) {
         eigenvectors[row][col] = -eigenvectors[row][col];
       }
@@ -444,16 +444,16 @@ function extractSmallest(
   const sorted = eigenvalues.map((v, i) => ({ v, i }));
   sorted.sort((a, b) => a.v - b.v);
 
-  const sortedValues = sorted.map((p) => p.v);
-  const sortedVectors: number[][] = Array.from({ length: n }, () => new Array(useK));
-  for (let r = 0; r < useK; r++) {
-    const srcCol = sorted[r].i;
+  const sorted_values = sorted.map((p) => p.v);
+  const sorted_vectors: number[][] = Array.from({ length: n }, () => new Array(use_k));
+  for (let r = 0; r < use_k; r++) {
+    const src_col = sorted[r].i;
     for (let row = 0; row < n; row++) {
-      sortedVectors[row][r] = eigenvectors[row][srcCol];
+      sorted_vectors[row][r] = eigenvectors[row][src_col];
     }
   }
 
-  return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
+  return { eigenvalues: sorted_values, eigenvectors: sorted_vectors };
 }
 
 /* -------------------------------------------------------------------------- */
@@ -468,12 +468,12 @@ function extractSmallest(
  * QL steps with Wilkinson shift.
  *
  * @param diagonal     Main diagonal entries (length m)
- * @param offDiagonal  Sub-diagonal entries (length m-1)
+ * @param off_diagonal  Sub-diagonal entries (length m-1)
  * @returns            Eigenvalues and column-wise eigenvectors
  */
 function tridiagonal_ql(
   diagonal: number[],
-  offDiagonal: number[],
+  off_diagonal: number[],
 ): { values: number[]; vectors: number[][] } {
   const m = diagonal.length;
 
@@ -488,7 +488,7 @@ function tridiagonal_ql(
   // Clone arrays
   const d = new Float64Array(diagonal);
   const e = new Float64Array(m);
-  for (let i = 0; i < offDiagonal.length; i++) e[i] = offDiagonal[i];
+  for (let i = 0; i < off_diagonal.length; i++) e[i] = off_diagonal[i];
   e[m - 1] = 0;
 
   // Eigenvector accumulator (identity)

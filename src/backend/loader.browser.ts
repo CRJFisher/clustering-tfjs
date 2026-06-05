@@ -5,11 +5,11 @@
  * Users must install @tensorflow/tfjs as a peer dependency.
  */
 
-export async function loadTensorFlow() {
+export async function load_tensor_flow() {
   // In browser environment, TensorFlow.js is expected to be loaded as a global
   if (typeof window !== 'undefined' && (window as Window & { tf?: unknown }).tf) {
-    const globalWindow = window as unknown as { tf: typeof import('@tensorflow/tfjs') };
-    return globalWindow.tf;
+    const global_window = window as unknown as { tf: typeof import('@tensorflow/tfjs') };
+    return global_window.tf;
   }
   
   // If not available as global, try dynamic import

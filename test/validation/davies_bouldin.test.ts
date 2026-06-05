@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
-import { daviesBouldin, daviesBouldinEfficient } from "../../src/validation/davies_bouldin";
+import { davies_bouldin, davies_bouldin_efficient } from "../../src/validation/davies_bouldin";
 import { make_random_stream } from "../../src/random";
 
 describe("Davies-Bouldin Score", () => {
@@ -25,7 +25,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       
       // Well-separated clusters should have low score
       expect(score).toBeLessThan(0.5);
@@ -41,7 +41,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       
       // Overlapping clusters should have higher score
       expect(score).toBeGreaterThan(0.5);
@@ -51,16 +51,16 @@ describe("Davies-Bouldin Score", () => {
       const X = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
       const labels = [0, 0, 1, 1, 0, 1];
       
-      const scoreArray = daviesBouldin(X, labels);
+      const score_array = davies_bouldin(X, labels);
       
       const XTensor = tf.tensor2d(X);
-      const labelsTensor = tf.tensor1d(labels);
-      const scoreTensor = daviesBouldin(XTensor, labelsTensor);
+      const labels_tensor = tf.tensor1d(labels);
+      const score_tensor = davies_bouldin(XTensor, labels_tensor);
       
-      expect(scoreTensor).toBeCloseTo(scoreArray, 5);
+      expect(score_tensor).toBeCloseTo(score_array, 5);
       
       XTensor.dispose();
-      labelsTensor.dispose();
+      labels_tensor.dispose();
     });
 
     it("should return same result for efficient version", () => {
@@ -70,8 +70,8 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
       
-      const score1 = daviesBouldin(X, labels);
-      const score2 = daviesBouldinEfficient(X, labels);
+      const score1 = davies_bouldin(X, labels);
+      const score2 = davies_bouldin_efficient(X, labels);
       
       expect(score1).toBeCloseTo(score2, 10);
     });
@@ -82,7 +82,7 @@ describe("Davies-Bouldin Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 0, 0];
       
-      expect(() => daviesBouldin(X, labels)).toThrow(
+      expect(() => davies_bouldin(X, labels)).toThrow(
         "Davies-Bouldin score requires at least 2 clusters"
       );
     });
@@ -95,7 +95,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 1, 2, 2];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
@@ -111,7 +111,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 0, 1, 1, 2, 2, 2];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
@@ -124,7 +124,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
 
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(score).toBe(Infinity);
     });
 
@@ -135,7 +135,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
 
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(score).toBe(0);
       expect(isFinite(score)).toBe(true);
     });
@@ -147,7 +147,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
 
-      const score = daviesBouldinEfficient(X, labels);
+      const score = davies_bouldin_efficient(X, labels);
       expect(score).toBe(0);
       expect(isFinite(score)).toBe(true);
     });
@@ -160,7 +160,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 1, 1, 2, 2];
 
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThanOrEqual(0);
     });
@@ -171,7 +171,7 @@ describe("Davies-Bouldin Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
-      expect(() => daviesBouldin(X, labels)).toThrow(
+      expect(() => davies_bouldin(X, labels)).toThrow(
         "Labels length (2) does not match data rows (3)"
       );
     });
@@ -180,7 +180,7 @@ describe("Davies-Bouldin Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
-      expect(() => daviesBouldinEfficient(X, labels)).toThrow(
+      expect(() => davies_bouldin_efficient(X, labels)).toThrow(
         "Labels length (2) does not match data rows (3)"
       );
     });
@@ -195,7 +195,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       
       // Manual calculation:
       // Centroid 0: (0.5, 0.5), Centroid 1: (5.5, 5.5)
@@ -214,7 +214,7 @@ describe("Davies-Bouldin Score", () => {
         [3, 3], [4, 3], [3, 4]
       ];
       const labels1 = [0, 0, 0, 1, 1, 1];
-      const score1 = daviesBouldin(X1, labels1);
+      const score1 = davies_bouldin(X1, labels1);
       
       // Test 2: Well separated clusters
       const X2 = [
@@ -222,7 +222,7 @@ describe("Davies-Bouldin Score", () => {
         [10, 10], [11, 10], [10, 11]
       ];
       const labels2 = [0, 0, 0, 1, 1, 1];
-      const score2 = daviesBouldin(X2, labels2);
+      const score2 = davies_bouldin(X2, labels2);
       
       // Better separated clusters should have lower score
       expect(score2).toBeLessThan(score1);
@@ -237,7 +237,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
@@ -249,7 +249,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
       expect(score).toBeLessThan(1); // Should still be low for well-separated clusters
@@ -281,7 +281,7 @@ describe("Davies-Bouldin Score", () => {
       }
       
       const start = Date.now();
-      const score = daviesBouldinEfficient(X, labels);
+      const score = davies_bouldin_efficient(X, labels);
       const elapsed = Date.now() - start;
       
       expect(score).toBeLessThan(0.5); // Well-separated clusters
@@ -299,7 +299,7 @@ describe("Davies-Bouldin Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1, 0];
       
-      const score = daviesBouldin(X, labels);
+      const score = davies_bouldin(X, labels);
       
       // This specific example gives approximately 1.13 in sklearn
       // We'll verify the exact value with sklearn and update if needed

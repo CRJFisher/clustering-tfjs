@@ -1,6 +1,6 @@
 import * as tf from "../tensorflow-helper";
 
-import { deterministicEigenpairProcessing } from "../../src/eigen/post";
+import { deterministic_eigenpair_processing } from "../../src/eigen/post";
 
 describe("deterministicEigenpairProcessing", () => {
   it("sorts eigenpairs ascending and applies sign flip", () => {
@@ -21,11 +21,11 @@ describe("deterministicEigenpairProcessing", () => {
       eigenvectors: number[][];
     } => {
       // tf.linalg.eig is not available; use Jacobi solver from util.
-      const { jacobiEigenDecomposition } = require("../../src/graph/laplacian");
-      return jacobiEigenDecomposition(M as tf.Tensor2D);
+      const { jacobi_eigen_decomposition } = require("../../src/graph/laplacian");
+      return jacobi_eigen_decomposition(M as tf.Tensor2D);
     })();
 
-    const processed = deterministicEigenpairProcessing({
+    const processed = deterministic_eigenpair_processing({
       eigenvalues,
       eigenvectors,
     });
@@ -40,16 +40,16 @@ describe("deterministicEigenpairProcessing", () => {
     // Check sign convention – max-abs component positive for each vector
     const vecs = processed.eigenvectors;
     for (let col = 0; col < 3; col++) {
-      let maxAbs = 0;
-      let maxIdx = 0;
+      let max_abs = 0;
+      let max_idx = 0;
       for (let row = 0; row < 3; row++) {
         const abs = Math.abs(vecs[row][col]);
-        if (abs > maxAbs) {
-          maxAbs = abs;
-          maxIdx = row;
+        if (abs > max_abs) {
+          max_abs = abs;
+          max_idx = row;
         }
       }
-      expect(vecs[maxIdx][col]).toBeGreaterThanOrEqual(0);
+      expect(vecs[max_idx][col]).toBeGreaterThanOrEqual(0);
     }
 
     M.dispose();

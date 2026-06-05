@@ -12,10 +12,10 @@ import * as tf from '../backend/adapter';
 export function improved_jacobi_eigen(
   matrix: tf.Tensor2D,
   {
-    maxIterations = 3000,
+    max_iterations = 3000,
     tolerance = 1e-14,
-    isPSD = false, // Is matrix positive semi-definite?
-  }: { maxIterations?: number; tolerance?: number; isPSD?: boolean } = {},
+    is_psd = false, // Is matrix positive semi-definite?
+  }: { max_iterations?: number; tolerance?: number; is_psd?: boolean } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   if (matrix.shape.length !== 2 || matrix.shape[0] !== matrix.shape[1]) {
     throw new Error('Input tensor must be square (n × n).');
@@ -25,7 +25,7 @@ export function improved_jacobi_eigen(
   const n = A.length;
 
   // Check if already diagonal
-  const isApproximatelyDiagonal = (): boolean => {
+  const is_approximately_diagonal = (): boolean => {
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (i === j) continue;
@@ -35,7 +35,7 @@ export function improved_jacobi_eigen(
     return true;
   };
 
-  if (isApproximatelyDiagonal()) {
+  if (is_approximately_diagonal()) {
     const diag = A.map((row, i) => row[i]);
     const V = A.map((_, i) =>
       Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
@@ -52,7 +52,7 @@ export function improved_jacobi_eigen(
   );
 
   // Compute Frobenius norm of off-diagonal elements
-  const offDiagNorm = (M: number[][]): number => {
+  const off_diag_norm = (M: number[][]): number => {
     let sum = 0;
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
@@ -66,12 +66,12 @@ export function improved_jacobi_eigen(
   let changed = true;
 
   // Adaptive threshold based on matrix norm
-  const matrixNorm = Math.sqrt(
+  const matrix_norm = Math.sqrt(
     A.reduce((sum, row) => sum + row.reduce((s, v) => s + v * v, 0), 0),
   );
-  let threshold = tolerance * matrixNorm;
+  let threshold = tolerance * matrix_norm;
 
-  while (sweep < maxIterations && changed) {
+  while (sweep < max_iterations && changed) {
     changed = false;
 
     // Cyclic Jacobi: sweep through all pairs
@@ -90,15 +90,15 @@ export function improved_jacobi_eigen(
         const diff = a_qq - a_pp;
         let t: number;
 
-        const absDiff = Math.abs(diff);
+        const abs_diff = Math.abs(diff);
         if (
-          absDiff <=
+          abs_diff <=
           Number.EPSILON * Math.max(Math.abs(a_pp), Math.abs(a_qq), 1)
         ) {
           // Equal or nearly-equal diagonal elements: optimal rotation is pi/4
           // t = sign(a_pq) following standard Jacobi (Golub & Van Loan)
           t = a_pq >= 0 ? 1 : -1;
-        } else if (Math.abs(a_pq) < absDiff * 1e-15) {
+        } else if (Math.abs(a_pq) < abs_diff * 1e-15) {
           // Very small angle - use approximation (diff is safely nonzero)
           t = a_pq / diff;
         } else {
@@ -154,17 +154,17 @@ export function improved_jacobi_eigen(
 
     // Adaptive threshold reduction
     if (sweep % 5 === 0) {
-      const currentNorm = offDiagNorm(D);
-      if (currentNorm < threshold * n) {
+      const current_norm = off_diag_norm(D);
+      if (current_norm < threshold * n) {
         threshold *= 0.1;
       }
     }
   }
 
-  if (sweep === maxIterations) {
+  if (sweep === max_iterations) {
     console.warn(
-      `Improved Jacobi solver reached max iterations (${maxIterations}). ` +
-        `Final off-diagonal norm: ${offDiagNorm(D).toExponential(3)}`,
+      `Improved Jacobi solver reached max iterations (${max_iterations}). ` +
+        `Final off-diagonal norm: ${off_diag_norm(D).toExponential(3)}`,
     );
   }
 
@@ -174,13 +174,13 @@ export function improved_jacobi_eigen(
   // Post-processing for PSD matrices: clamp only negative eigenvalues to zero.
   // Small positive eigenvalues (e.g. 1e-9) are legitimate and represent
   // weakly connected components or near-separability in the graph.
-  if (isPSD) {
-    const negativeTolerance = tolerance * 100;
+  if (is_psd) {
+    const negative_tolerance = tolerance * 100;
     eigenvalues = eigenvalues.map((v) => {
       if (v < 0) {
-        if (v < -negativeTolerance) {
+        if (v < -negative_tolerance) {
           console.warn(
-            `[spectral] Large negative eigenvalue ${v} in PSD matrix (exceeds tolerance ${negativeTolerance}). Clamping to 0.`,
+            `[spectral] Large negative eigenvalue ${v} in PSD matrix (exceeds tolerance ${negative_tolerance}). Clamping to 0.`,
           );
         }
         return 0;
@@ -193,43 +193,43 @@ export function improved_jacobi_eigen(
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
-  const sortedValues = indexed.map((p) => p.val);
-  const sortedVectors: number[][] = Array.from(
+  const sorted_values = indexed.map((p) => p.val);
+  const sorted_vectors: number[][] = Array.from(
     { length: n },
     () => new Array(n),
   );
 
-  for (let newIdx = 0; newIdx < n; newIdx++) {
-    const oldIdx = indexed[newIdx].idx;
+  for (let new_idx = 0; new_idx < n; new_idx++) {
+    const old_idx = indexed[new_idx].idx;
     for (let row = 0; row < n; row++) {
-      sortedVectors[row][newIdx] = V[row][oldIdx];
+      sorted_vectors[row][new_idx] = V[row][old_idx];
     }
   }
 
   // Post-condition: validate eigenvector orthonormality
-  let maxOrthError = 0;
-  let maxNormError = 0;
+  let max_orth_error = 0;
+  let max_norm_error = 0;
   for (let i = 0; i < n; i++) {
-    let selfDot = 0;
+    let self_dot = 0;
     for (let k = 0; k < n; k++) {
-      selfDot += sortedVectors[k][i] * sortedVectors[k][i];
+      self_dot += sorted_vectors[k][i] * sorted_vectors[k][i];
     }
-    maxNormError = Math.max(maxNormError, Math.abs(selfDot - 1));
+    max_norm_error = Math.max(max_norm_error, Math.abs(self_dot - 1));
     for (let j = i + 1; j < n; j++) {
       let dot = 0;
       for (let k = 0; k < n; k++) {
-        dot += sortedVectors[k][i] * sortedVectors[k][j];
+        dot += sorted_vectors[k][i] * sorted_vectors[k][j];
       }
-      maxOrthError = Math.max(maxOrthError, Math.abs(dot));
+      max_orth_error = Math.max(max_orth_error, Math.abs(dot));
     }
   }
-  if (maxOrthError > 1e-6 || maxNormError > 1e-6) {
+  if (max_orth_error > 1e-6 || max_norm_error > 1e-6) {
     console.warn(
-      `[spectral] Eigenvector orthonormality check: max |v_i · v_j| = ${maxOrthError.toExponential(3)}, max ||v_i|| - 1| = ${maxNormError.toExponential(3)} (threshold 1e-6)`,
+      `[spectral] Eigenvector orthonormality check: max |v_i · v_j| = ${max_orth_error.toExponential(3)}, max ||v_i|| - 1| = ${max_norm_error.toExponential(3)} (threshold 1e-6)`,
     );
   }
 
-  return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
+  return { eigenvalues: sorted_values, eigenvectors: sorted_vectors };
 }
 
 /**
@@ -246,35 +246,35 @@ export function laplacian_eigen_decomposition(
 ): tf.Tensor2D {
   return tf.tidy(() => {
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(laplacian, {
-      isPSD: true,
-      maxIterations: 3000,
+      is_psd: true,
+      max_iterations: 3000,
       tolerance: 1e-14,
     });
 
     // For Laplacians, we know smallest eigenvalues should be very close to 0
     // Count how many are numerically zero
     const TOL = 1e-7;
-    let numZeros = 0;
+    let num_zeros = 0;
     for (const val of eigenvalues) {
-      if (val <= TOL) numZeros++;
+      if (val <= TOL) num_zeros++;
       else break;
     }
 
     // Return k + numZeros columns
     const n = eigenvectors.length;
-    const numCols = Math.min(k + numZeros, n);
+    const num_cols = Math.min(k + num_zeros, n);
 
     const selected: number[][] = Array.from(
       { length: n },
-      () => new Array(numCols),
+      () => new Array(num_cols),
     );
 
-    for (let col = 0; col < numCols; col++) {
+    for (let col = 0; col < num_cols; col++) {
       for (let row = 0; row < n; row++) {
         selected[row][col] = eigenvectors[row][col];
       }
     }
 
-    return tf.tensor2d(selected, [n, numCols], 'float32');
+    return tf.tensor2d(selected, [n, num_cols], 'float32');
   });
 }

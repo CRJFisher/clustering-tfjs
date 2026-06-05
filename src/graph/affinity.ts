@@ -1,6 +1,6 @@
 import * as tf from '../backend/adapter';
 
-import { pairwiseEuclideanMatrix } from '../distance/pairwise_distance';
+import { pairwise_euclidean_matrix } from '../distance/pairwise_distance';
 
 /**
  * Computes the RBF (Gaussian) kernel affinity matrix for the given points.
@@ -18,21 +18,21 @@ export function compute_rbf_affinity(
   gamma?: number,
 ): tf.Tensor2D {
   return tf.tidy(() => {
-    const nFeatures = points.shape[1];
+    const n_features = points.shape[1];
 
     // Default gamma mirrors scikit-learn behaviour for its RBF kernel used
     // inside SpectralClustering: gamma = 1.0 / n_features when the user does
     // not specify a value.  We align with that default to ensure parity with
     // reference fixtures.
 
-    const gammaVal = gamma ?? 1.0 / nFeatures;
+    const gamma_val = gamma ?? 1.0 / n_features;
 
-    const distances = pairwiseEuclideanMatrix(points); // (n, n)
+    const distances = pairwise_euclidean_matrix(points); // (n, n)
 
     // squared distances
     const sq = distances.square();
 
-    const A = sq.mul(-gammaVal).exp() as tf.Tensor2D;
+    const A = sq.mul(-gamma_val).exp() as tf.Tensor2D;
 
     // Ensure exact symmetry by averaging with its transpose (to mitigate any
     // potential numerical asymmetry) and set the diagonal to 1.
@@ -58,19 +58,19 @@ export function compute_rbf_affinity(
 export function compute_knn_affinity(
   points: tf.Tensor2D,
   k: number,
-  includeSelf: boolean = true,
+  include_self: boolean = true,
 ): tf.Tensor2D {
   if (!Number.isInteger(k) || k < 1) {
     throw new Error('k (nNeighbors) must be a positive integer.');
   }
 
-  const nSamples = points.shape[0];
+  const n_samples = points.shape[0];
 
-  if (nSamples === 0) {
+  if (n_samples === 0) {
     throw new Error('Input points tensor must contain at least one sample.');
   }
 
-  if (k >= nSamples) {
+  if (k >= n_samples) {
     throw new Error(
       'k (nNeighbors) must be smaller than the number of samples.',
     );
@@ -90,8 +90,8 @@ export function compute_knn_affinity(
   // efficiency thanks to matrix operations.
 
   // Keep tensors that are required across blocks to avoid accidental disposal.
-  const pointsKept = tf.keep(points) as tf.Tensor2D;
-  const squaredNormsKept = tf.keep(pointsKept.square().sum(1)) as tf.Tensor1D; // (n)
+  const points_kept = tf.keep(points) as tf.Tensor2D;
+  const squared_norms_kept = tf.keep(points_kept.square().sum(1)) as tf.Tensor1D; // (n)
 
   const coords: number[][] = [];
 
@@ -99,62 +99,62 @@ export function compute_knn_affinity(
   // large enough to utilise BLAS throughput.
   const BLOCK_SIZE = 1024;
 
-  for (let start = 0; start < nSamples; start += BLOCK_SIZE) {
-    const b = Math.min(BLOCK_SIZE, nSamples - start);
+  for (let start = 0; start < n_samples; start += BLOCK_SIZE) {
+    const b = Math.min(BLOCK_SIZE, n_samples - start);
 
     tf.tidy(() => {
       // Slice current block (b,d)
-      const block = pointsKept.slice([start, 0], [b, -1]);
+      const block = points_kept.slice([start, 0], [b, -1]);
 
       // Efficient squared Euclidean distances using the identity
       // ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy
-      const blockNorms = squaredNormsKept.slice([start], [b]).reshape([b, 1]); // (b,1)
-      const allNormsRow = squaredNormsKept.reshape([1, nSamples]); // (1,n)
+      const block_norms = squared_norms_kept.slice([start], [b]).reshape([b, 1]); // (b,1)
+      const all_norms_row = squared_norms_kept.reshape([1, n_samples]); // (1,n)
 
-      const cross = block.matMul(pointsKept.transpose()); // (b,n)
-      const distsSquared = blockNorms.add(allNormsRow).sub(cross.mul(2)); // (b,n)
+      const cross = block.matMul(points_kept.transpose()); // (b,n)
+      const dists_squared = block_norms.add(all_norms_row).sub(cross.mul(2)); // (b,n)
 
       // We can avoid the costly sqrt, distances squared preserve ordering.
-      const negDists = distsSquared.neg(); // Want k smallest ⇒ largest of negative values.
+      const neg_dists = dists_squared.neg(); // Want k smallest ⇒ largest of negative values.
 
       // topk on each row
       // When includeSelf=true, k neighbors include self
       // When includeSelf=false, we need k+1 to later filter out self
-      const topK = includeSelf ? k : k + 1;
-      const { indices } = tf.topk(negDists, topK);
+      const top_k = include_self ? k : k + 1;
+      const { indices } = tf.topk(neg_dists, top_k);
 
       // Collect indices and apply deterministic tie-breaking: sort ascending
       // so that ties are resolved towards the lower index mirroring NumPy.
-      const indArr = indices.arraySync() as number[][];
+      const ind_arr = indices.arraySync() as number[][];
 
       for (let i = 0; i < b; i++) {
-        const rowGlobal = start + i;
+        const row_global = start + i;
 
         // Sort to achieve deterministic order of equal-distance neighbours.
-        indArr[i].sort((a, b) => a - b);
+        ind_arr[i].sort((a, b) => a - b);
 
         let neighbours: number[];
-        if (includeSelf) {
+        if (include_self) {
           // When includeSelf=true, the k neighbors already include self
-          neighbours = indArr[i];
+          neighbours = ind_arr[i];
         } else {
           // Remove self-index to get exactly k neighbors (excluding self)
-          neighbours = indArr[i].filter((idx) => idx !== rowGlobal).slice(0, k);
+          neighbours = ind_arr[i].filter((idx) => idx !== row_global).slice(0, k);
         }
 
         for (const nb of neighbours) {
-          coords.push([rowGlobal, nb]);
+          coords.push([row_global, nb]);
         }
       }
     }); // tidy – dispose temporaries for this block
   }
 
   // Release kept tensors
-  pointsKept.dispose();
-  squaredNormsKept.dispose();
+  points_kept.dispose();
+  squared_norms_kept.dispose();
 
   if (coords.length === 0) {
-    return tf.zeros([nSamples, nSamples]);
+    return tf.zeros([n_samples, n_samples]);
   }
 
   // Scatter ones into a dense zero matrix – TensorFlow.js scatterND expects
@@ -162,9 +162,9 @@ export function compute_knn_affinity(
   // JS arrays is fine, the backend converts them on the fly.
   return tf.tidy(() => {
     const values = tf.ones([coords.length]);
-    const dense = tf.scatterND(coords, values, [
-      nSamples,
-      nSamples,
+    const dense = tf.scatter_nd(coords, values, [
+      n_samples,
+      n_samples,
     ]) as tf.Tensor2D;
     // Symmetrise: A = 0.5 * (A + Aᵀ) to match sklearn
     // This gives 0.5 for edges that only appear in one direction
@@ -180,12 +180,12 @@ export function compute_affinity_matrix(
   points: tf.Tensor2D,
   options:
     | { affinity: 'rbf'; gamma?: number }
-    | { affinity: 'nearest_neighbors'; nNeighbors: number },
+    | { affinity: 'nearest_neighbors'; n_neighbors: number },
 ): tf.Tensor2D {
   if (options.affinity === 'rbf') {
     return compute_rbf_affinity(points, options.gamma);
   }
 
   // nearest neighbours - include self-loops for connectivity
-  return compute_knn_affinity(points, options.nNeighbors, true);
+  return compute_knn_affinity(points, options.n_neighbors, true);
 }

@@ -1202,14 +1202,14 @@
     ]
   ],
   "params": {
-    "gridWidth": 10,
-    "gridHeight": 10,
+    "grid_width": 10,
+    "grid_height": 10,
     "topology": "rectangular",
     "neighborhood": "gaussian",
-    "learningRate": 0.5,
+    "learning_rate": 0.5,
     "radius": 1.5,
-    "numEpochs": 200,
-    "randomState": 42
+    "num_epochs": 200,
+    "random_state": 42
   },
   "weights": [
     [
@@ -2837,7 +2837,7 @@
       3
     ]
   ],
-  "uMatrix": [
+  "u_matrix": [
     [
       0.332318598852509,
       0.5043309836192121,
@@ -2888,7 +2888,7 @@
     ],
     [
       0.6522635684545597,
-      1.0,
+      1,
       0.9814607791298005,
       0.803994908544011,
       0.7970408099041421,

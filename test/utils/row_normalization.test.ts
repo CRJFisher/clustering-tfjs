@@ -14,44 +14,44 @@ describe("Row normalization methods", () => {
     
     // Method 1: Old way (norm + eps)
     const norm1 = vectors.norm("euclidean", 1).expandDims(1);
-    const oldWay = vectors.div(norm1.add(eps));
-    const oldResult = oldWay.arraySync() as number[][];
+    const old_way = vectors.div(norm1.add(eps));
+    const old_result = old_way.arraySync() as number[][];
     
     // Method 2: New way (max(norm, eps))
     const norm2 = vectors.norm("euclidean", 1).expandDims(1);
-    const newWay = vectors.div(tf.maximum(norm2, eps));
-    const newResult = newWay.arraySync() as number[][];
+    const new_way = vectors.div(tf.maximum(norm2, eps));
+    const new_result = new_way.arraySync() as number[][];
     
     // Zero vector should remain zero
-    expect(newResult[1][0]).toBe(0);
-    expect(newResult[1][1]).toBe(0);
+    expect(new_result[1][0]).toBe(0);
+    expect(new_result[1][1]).toBe(0);
     
     // Near-zero vector should have larger magnitude with new method
-    const nearZeroMagOld = Math.sqrt(oldResult[2][0]**2 + oldResult[2][1]**2);
-    const nearZeroMagNew = Math.sqrt(newResult[2][0]**2 + newResult[2][1]**2);
-    expect(nearZeroMagNew).toBeGreaterThan(nearZeroMagOld);
+    const near_zero_mag_old = Math.sqrt(old_result[2][0]**2 + old_result[2][1]**2);
+    const near_zero_mag_new = Math.sqrt(new_result[2][0]**2 + new_result[2][1]**2);
+    expect(near_zero_mag_new).toBeGreaterThan(near_zero_mag_old);
     
     // Normal vectors should be unchanged
-    expect(newResult[0][0]).toBeCloseTo(oldResult[0][0], 10);
-    expect(newResult[3][0]).toBeCloseTo(oldResult[3][0], 10);
+    expect(new_result[0][0]).toBeCloseTo(old_result[0][0], 10);
+    expect(new_result[3][0]).toBeCloseTo(old_result[3][0], 10);
     
     vectors.dispose();
     norm1.dispose();
     norm2.dispose();
-    oldWay.dispose();
-    newWay.dispose();
+    old_way.dispose();
+    new_way.dispose();
   });
   
   it("should handle edge cases correctly", () => {
     // Test edge cases
-    const edgeCases = tf.tensor2d([
+    const edge_cases = tf.tensor2d([
       [eps/2, 0],          // Smaller than eps
       [eps, 0],            // Exactly eps
       [eps*2, 0],          // Slightly larger than eps
     ]);
     
-    const norms = edgeCases.norm("euclidean", 1).expandDims(1);
-    const normalized = edgeCases.div(tf.maximum(norms, eps));
+    const norms = edge_cases.norm("euclidean", 1).expandDims(1);
+    const normalized = edge_cases.div(tf.maximum(norms, eps));
     const result = normalized.arraySync() as number[][];
     
     // Check normalization results
@@ -65,7 +65,7 @@ describe("Row normalization methods", () => {
     expect(mag1).toBeCloseTo(1.0, 5);  // eps / eps = 1.0
     expect(mag2).toBeCloseTo(1.0, 5);  // (eps*2) normalized to unit length
     
-    edgeCases.dispose();
+    edge_cases.dispose();
     norms.dispose();
     normalized.dispose();
   });

@@ -25,17 +25,17 @@ describe("KMeans empty cluster handling", () => {
     ];
 
     const km = new KMeans({
-      nClusters: 5,
-      nInit: 1,
-      randomState: 42,
+      n_clusters: 5,
+      n_init: 1,
+      random_state: 42,
     });
 
     await km.fit(X);
 
     // Check that all clusters have been assigned
     const labels = km.labels_!;
-    const uniqueLabels = new Set(labels);
-    expect(uniqueLabels.size).toBe(5);
+    const unique_labels = new Set(labels);
+    expect(unique_labels.size).toBe(5);
 
     // Check that labels are valid
     expect(labels).toHaveLength(30);

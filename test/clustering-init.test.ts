@@ -1,5 +1,5 @@
 import { Clustering } from '../src/clustering/init';
-import { isInitialized } from '../src/backend/backend';
+import { is_initialized } from '../src/backend/backend';
 
 describe('Clustering.init() idempotency and concurrency', () => {
   afterEach(() => {
@@ -12,7 +12,7 @@ describe('Clustering.init() idempotency and concurrency', () => {
       const p2 = Clustering.init();
       expect(p1).toBe(p2);
       await Promise.all([p1, p2]);
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
 
     it('returns the exact same promise for concurrent calls with identical config', async () => {
@@ -25,22 +25,22 @@ describe('Clustering.init() idempotency and concurrency', () => {
     it('resolves all concurrent callers without error', async () => {
       const promises = Array.from({ length: 10 }, () => Clustering.init());
       await expect(Promise.all(promises)).resolves.not.toThrow();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
   });
 
   describe('sequential calls with same config', () => {
     it('second call with no config after completion is a no-op', async () => {
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
 
     it('second call with identical config after completion is a no-op', async () => {
       await Clustering.init({ backend: 'cpu' });
       await Clustering.init({ backend: 'cpu' });
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
   });
 
@@ -111,7 +111,7 @@ describe('Clustering.init() idempotency and concurrency', () => {
     });
 
     it('treats { reactNative: { glImplementation: undefined } } and {} as equivalent', async () => {
-      const p1 = Clustering.init({ reactNative: { glImplementation: undefined } });
+      const p1 = Clustering.init({ react_native: { gl_implementation: undefined } });
       const p2 = Clustering.init({});
       expect(p1).toBe(p2);
       await p1;
@@ -122,45 +122,45 @@ describe('Clustering.init() idempotency and concurrency', () => {
     it('allows re-initialization with different config after reset', async () => {
       await Clustering.init({ backend: 'cpu' });
       Clustering.reset();
-      expect(isInitialized()).toBe(false);
+      expect(is_initialized()).toBe(false);
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
 
     it('allows re-initialization with same config after reset', async () => {
       await Clustering.init();
       Clustering.reset();
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
   });
 
   describe('error recovery', () => {
     it('allows retry after failed initialization', async () => {
       // Force a failure by using a platform that will fail to load
-      const badInit = Clustering.init({ forcePlatform: 'react-native' });
-      await expect(badInit).rejects.toThrow();
-      expect(isInitialized()).toBe(false);
+      const bad_init = Clustering.init({ force_platform: 'react-native' });
+      await expect(bad_init).rejects.toThrow();
+      expect(is_initialized()).toBe(false);
 
       // Should be able to retry with valid config
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
 
     it('all concurrent callers see rejection when init fails', async () => {
       const promises = Array.from({ length: 5 }, () =>
-        Clustering.init({ forcePlatform: 'react-native' }),
+        Clustering.init({ force_platform: 'react-native' }),
       );
 
       // All 5 should reject
       for (const p of promises) {
         await expect(p).rejects.toThrow();
       }
-      expect(isInitialized()).toBe(false);
+      expect(is_initialized()).toBe(false);
 
       // State is reset — retry with valid config succeeds
       await Clustering.init();
-      expect(isInitialized()).toBe(true);
+      expect(is_initialized()).toBe(true);
     });
   });
 
@@ -168,14 +168,14 @@ describe('Clustering.init() idempotency and concurrency', () => {
     it('calling reset multiple times is harmless', () => {
       Clustering.reset();
       Clustering.reset();
-      expect(isInitialized()).toBe(false);
+      expect(is_initialized()).toBe(false);
     });
 
     it('reset after init, then reset again is harmless', async () => {
       await Clustering.init();
       Clustering.reset();
       Clustering.reset();
-      expect(isInitialized()).toBe(false);
+      expect(is_initialized()).toBe(false);
     });
   });
 });

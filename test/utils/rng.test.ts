@@ -9,8 +9,8 @@ describe("RandomStream (MT19937)", () => {
     const floats2 = Array.from({ length: 5 }, () => rs2.rand());
     expect(floats1).toEqual(floats2);
 
-    const ints1 = Array.from({ length: 5 }, () => rs1.randInt(1000));
-    const ints2 = Array.from({ length: 5 }, () => rs2.randInt(1000));
+    const ints1 = Array.from({ length: 5 }, () => rs1.rand_int(1000));
+    const ints2 = Array.from({ length: 5 }, () => rs2.rand_int(1000));
     expect(ints1).toEqual(ints2);
   });
 

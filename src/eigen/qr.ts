@@ -1,5 +1,5 @@
 import * as tf from '../backend/adapter';
-import { gramSchmidtColumns } from './orthogonalize';
+import { gram_schmidt_columns } from './orthogonalize';
 
 /**
  * QR Algorithm-based eigendecomposition for symmetric matrices.
@@ -19,9 +19,9 @@ import { gramSchmidtColumns } from './orthogonalize';
 export function qr_eigen_decomposition(
   matrix: tf.Tensor2D,
   {
-    maxIterations = 1000,
+    max_iterations = 1000,
     tolerance = 1e-10,
-  }: { maxIterations?: number; tolerance?: number } = {},
+  }: { max_iterations?: number; tolerance?: number } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   return tf.tidy(() => {
     const n = matrix.shape[0];
@@ -31,7 +31,7 @@ export function qr_eigen_decomposition(
     let V = tf.eye(n); // Accumulate eigenvector transformations
 
     // Helper to compute off-diagonal norm
-    const offDiagonalNorm = (M: tf.Tensor2D): number => {
+    const off_diagonal_norm = (M: tf.Tensor2D): number => {
       const data = M.arraySync() as number[][];
       let sum = 0;
       for (let i = 0; i < n; i++) {
@@ -45,10 +45,10 @@ export function qr_eigen_decomposition(
     };
 
     let iter = 0;
-    let offDiag = offDiagonalNorm(A as tf.Tensor2D);
+    let off_diag = off_diagonal_norm(A as tf.Tensor2D);
 
     // Apply Wilkinson shift for better convergence on small eigenvalues
-    const wilkinsonShift = (M: tf.Tensor2D): number => {
+    const wilkinson_shift = (M: tf.Tensor2D): number => {
       if (n < 2) return 0;
 
       const data = M.arraySync() as number[][];
@@ -68,9 +68,9 @@ export function qr_eigen_decomposition(
       );
     };
 
-    while (iter < maxIterations && offDiag > tolerance) {
+    while (iter < max_iterations && off_diag > tolerance) {
       // Apply shift for better convergence
-      const shift = wilkinsonShift(A);
+      const shift = wilkinson_shift(A);
       const I = tf.eye(n);
       const A_shifted: tf.Tensor2D = shift !== 0
         ? A.sub(I.mul(shift)) as tf.Tensor2D
@@ -85,9 +85,9 @@ export function qr_eigen_decomposition(
       // small perturbations invisible, so falling back to unshifted QR
       // (which always works on a valid symmetric matrix) is the safest option.
       const R_data = R.arraySync() as number[][];
-      const qrHasNaN = R_data.some(row => row.some(v => !isFinite(v)));
+      const qr_has_na_n = R_data.some(row => row.some(v => !isFinite(v)));
 
-      if (qrHasNaN) {
+      if (qr_has_na_n) {
         Q.dispose();
         R.dispose();
         if (shift !== 0) {
@@ -105,7 +105,7 @@ export function qr_eigen_decomposition(
         A = A_new;
         V = V_new;
 
-        offDiag = offDiagonalNorm(A);
+        off_diag = off_diagonal_norm(A);
         Q2.dispose();
         R2.dispose();
         iter++;
@@ -127,7 +127,7 @@ export function qr_eigen_decomposition(
       V = V_new;
 
       // Check convergence
-      offDiag = offDiagonalNorm(A);
+      off_diag = off_diagonal_norm(A);
 
       // Cleanup
       Q.dispose();
@@ -138,9 +138,9 @@ export function qr_eigen_decomposition(
       iter++;
     }
 
-    if (iter === maxIterations) {
+    if (iter === max_iterations) {
       console.warn(
-        `QR algorithm did not converge after ${maxIterations} iterations. Final off-diagonal norm: ${offDiag}`,
+        `QR algorithm did not converge after ${max_iterations} iterations. Final off-diagonal norm: ${off_diag}`,
       );
     }
 
@@ -150,26 +150,26 @@ export function qr_eigen_decomposition(
 
     // Extract eigenvectors and fix accumulated float32 orthonormality drift
     const V_data = V.arraySync() as number[][];
-    gramSchmidtColumns(V_data, n);
+    gram_schmidt_columns(V_data, n);
 
     // Sort by eigenvalue (ascending)
     const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
     indexed.sort((a, b) => a.val - b.val);
 
-    const sortedValues = indexed.map((p) => p.val);
-    const sortedVectors: number[][] = Array(n)
+    const sorted_values = indexed.map((p) => p.val);
+    const sorted_vectors: number[][] = Array(n)
       .fill(0)
       .map(() => Array(n).fill(0));
 
     // Rearrange eigenvector columns
-    for (let newIdx = 0; newIdx < n; newIdx++) {
-      const oldIdx = indexed[newIdx].idx;
+    for (let new_idx = 0; new_idx < n; new_idx++) {
+      const old_idx = indexed[new_idx].idx;
       for (let row = 0; row < n; row++) {
-        sortedVectors[row][newIdx] = V_data[row][oldIdx];
+        sorted_vectors[row][new_idx] = V_data[row][old_idx];
       }
     }
 
-    return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
+    return { eigenvalues: sorted_values, eigenvectors: sorted_vectors };
   });
 }
 
@@ -180,17 +180,17 @@ export function qr_eigen_decomposition(
  */
 export function tridiagonal_qr_eigen(
   diagonal: number[],
-  offDiagonal: number[],
-  computeVectors: boolean = true,
+  off_diagonal: number[],
+  compute_vectors: boolean = true,
 ): { eigenvalues: number[]; eigenvectors?: number[][] } {
   const n = diagonal.length;
 
   // Clone arrays to avoid mutation
   const d = [...diagonal];
-  const e = [...offDiagonal, 0]; // Pad with 0 for convenience
+  const e = [...off_diagonal, 0]; // Pad with 0 for convenience
 
   let V: number[][] | undefined;
-  if (computeVectors) {
+  if (compute_vectors) {
     V = Array(n)
       .fill(0)
       .map((_, i) =>
@@ -248,7 +248,7 @@ export function tridiagonal_qr_eigen(
           g = c * r - b;
 
           // Update eigenvectors
-          if (computeVectors && V) {
+          if (compute_vectors && V) {
             for (let k = 0; k < n; k++) {
               const vt = V[k][j + 1];
               V[k][j + 1] = s * V[k][j] + c * vt;
@@ -271,14 +271,14 @@ export function tridiagonal_qr_eigen(
   const eigenvalues = indexed.map((p) => p.val);
 
   let eigenvectors: number[][] | undefined;
-  if (computeVectors && V) {
+  if (compute_vectors && V) {
     eigenvectors = Array(n)
       .fill(0)
       .map(() => Array(n).fill(0));
-    for (let newIdx = 0; newIdx < n; newIdx++) {
-      const oldIdx = indexed[newIdx].idx;
+    for (let new_idx = 0; new_idx < n; new_idx++) {
+      const old_idx = indexed[new_idx].idx;
       for (let row = 0; row < n; row++) {
-        eigenvectors[row][newIdx] = V[row][oldIdx];
+        eigenvectors[row][new_idx] = V[row][old_idx];
       }
     }
   }

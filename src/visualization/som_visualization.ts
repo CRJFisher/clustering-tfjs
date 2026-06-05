@@ -15,13 +15,13 @@ import type { SOM } from '../clustering/som';
  * @param som Trained SOM instance
  * @returns Component planes tensor [nFeatures, gridHeight, gridWidth]
  */
-export function getComponentPlanes(som: SOM): tf.Tensor3D {
-  const weights = som.getWeights();
+export function get_component_planes(som: SOM): tf.Tensor3D {
+  const weights = som.get_weights();
 
   return tf.tidy(() => {
-    const weightsTensor = tf.tensor3d(weights);
+    const weights_tensor = tf.tensor3d(weights);
     // Transpose from [height, width, features] to [features, height, width]
-    return weightsTensor.transpose([2, 0, 1]);
+    return weights_tensor.transpose([2, 0, 1]);
   });
 }
 
@@ -32,27 +32,27 @@ export function getComponentPlanes(som: SOM): tf.Tensor3D {
  * @param X Input data used for training
  * @returns Hit map tensor [gridHeight, gridWidth] with counts
  */
-export async function getHitMap(
+export async function get_hit_map(
   som: SOM,
   X: tf.Tensor2D
 ): Promise<tf.Tensor2D> {
-  const { gridHeight, gridWidth } = som.params;
+  const { grid_height, grid_width } = som.params;
   
   // Get BMUs for all samples
   const labels = await som.predict(X);
   
   // Count hits for each neuron
-  const hitMap = tf.buffer([gridHeight, gridWidth]);
+  const hit_map = tf.buffer([grid_height, grid_width]);
   
   if (Array.isArray(labels)) {
     for (const label of labels) {
-      const row = Math.floor(label / gridWidth);
-      const col = label % gridWidth;
-      hitMap.set(hitMap.get(row, col) + 1, row, col);
+      const row = Math.floor(label / grid_width);
+      const col = label % grid_width;
+      hit_map.set(hit_map.get(row, col) + 1, row, col);
     }
   }
   
-  return hitMap.toTensor() as tf.Tensor2D;
+  return hit_map.toTensor() as tf.Tensor2D;
 }
 
 /**
@@ -63,30 +63,30 @@ export async function getHitMap(
  * @param sample Input sample tensor [nFeatures]
  * @returns Activation map [gridHeight, gridWidth]
  */
-export function getActivationMap(
+export function get_activation_map(
   som: SOM,
   sample: tf.Tensor1D
 ): tf.Tensor2D {
-  const weights = som.getWeights();
-  const { gridHeight, gridWidth } = som.params;
-  const nFeatures = weights[0][0].length;
+  const weights = som.get_weights();
+  const { grid_height, grid_width } = som.params;
+  const n_features = weights[0][0].length;
 
   return tf.tidy(() => {
-    const weightsTensor = tf.tensor3d(weights);
+    const weights_tensor = tf.tensor3d(weights);
 
     // Reshape weights for computation
-    const weightsFlat = weightsTensor.reshape([gridHeight * gridWidth, nFeatures]);
+    const weights_flat = weights_tensor.reshape([grid_height * grid_width, n_features]);
 
     // Compute distances from sample to all neurons
-    const diff = weightsFlat.sub(sample.expandDims(0));
+    const diff = weights_flat.sub(sample.expandDims(0));
     const distances = diff.square().sum(1).sqrt();
 
     // Convert distances to activations (inverse relationship)
-    const maxDist = distances.max();
-    const activations = maxDist.sub(distances).div(maxDist);
+    const max_dist = distances.max();
+    const activations = max_dist.sub(distances).div(max_dist);
 
     // Reshape to grid
-    return activations.reshape([gridHeight, gridWidth]) as tf.Tensor2D;
+    return activations.reshape([grid_height, grid_width]) as tf.Tensor2D;
   });
 }
 
@@ -98,18 +98,18 @@ export function getActivationMap(
  * @param sequence Sequence of samples [nSamples, nFeatures]
  * @returns BMU positions [nSamples, 2] with grid coordinates
  */
-export async function trackBMUTrajectory(
+export async function track_bmu_trajectory(
   som: SOM,
   sequence: tf.Tensor2D
 ): Promise<number[][]> {
-  const { gridWidth } = som.params;
+  const { grid_width } = som.params;
   const labels = await som.predict(sequence);
   
   const trajectory: number[][] = [];
   if (Array.isArray(labels)) {
     for (const label of labels) {
-      const row = Math.floor(label / gridWidth);
-      const col = label % gridWidth;
+      const row = Math.floor(label / grid_width);
+      const col = label % grid_width;
       trajectory.push([row, col]);
     }
   }
@@ -125,40 +125,40 @@ export async function trackBMUTrajectory(
  * @param X Input data
  * @returns Quality map [gridHeight, gridWidth]
  */
-export async function getQuantizationQualityMap(
+export async function get_quantization_quality_map(
   som: SOM,
   X: tf.Tensor2D
 ): Promise<tf.Tensor2D> {
-  const { gridHeight, gridWidth } = som.params;
-  const weightsArray = som.getWeights();
+  const { grid_height, grid_width } = som.params;
+  const weights_array = som.get_weights();
 
   // Get labels and compute distances
   const labels = await som.predict(X);
 
   // Initialize quality map
-  const qualityMap = tf.buffer([gridHeight, gridWidth]);
-  const counts = tf.buffer([gridHeight, gridWidth]);
+  const quality_map = tf.buffer([grid_height, grid_width]);
+  const counts = tf.buffer([grid_height, grid_width]);
 
   // Compute average distance for each neuron
-  const xArray = await X.array();
+  const x_array = await X.array();
   
   if (Array.isArray(labels)) {
     for (let i = 0; i < labels.length; i++) {
       const label = labels[i];
-      const row = Math.floor(label / gridWidth);
-      const col = label % gridWidth;
+      const row = Math.floor(label / grid_width);
+      const col = label % grid_width;
       
       // Compute distance
-      const sample = xArray[i];
-      const weight = weightsArray[row][col];
+      const sample = x_array[i];
+      const weight = weights_array[row][col];
       const distance = Math.sqrt(
         sample.reduce((sum, val, idx) => 
           sum + Math.pow(val - weight[idx], 2), 0
         )
       );
       
-      qualityMap.set(
-        qualityMap.get(row, col) + distance,
+      quality_map.set(
+        quality_map.get(row, col) + distance,
         row,
         col
       );
@@ -167,16 +167,16 @@ export async function getQuantizationQualityMap(
   }
   
   // Average the distances
-  for (let i = 0; i < gridHeight; i++) {
-    for (let j = 0; j < gridWidth; j++) {
+  for (let i = 0; i < grid_height; i++) {
+    for (let j = 0; j < grid_width; j++) {
       const count = counts.get(i, j);
       if (count > 0) {
-        qualityMap.set(qualityMap.get(i, j) / count, i, j);
+        quality_map.set(quality_map.get(i, j) / count, i, j);
       }
     }
   }
   
-  return qualityMap.toTensor() as tf.Tensor2D;
+  return quality_map.toTensor() as tf.Tensor2D;
 }
 
 /**
@@ -185,18 +185,18 @@ export async function getQuantizationQualityMap(
  * @param som Trained SOM instance
  * @returns Neighbor distances [gridHeight, gridWidth]
  */
-export function getNeighborDistanceMatrix(som: SOM): tf.Tensor2D {
-  const weightsArray = som.getWeights();
-  const { gridHeight, gridWidth, topology } = som.params;
+export function get_neighbor_distance_matrix(som: SOM): tf.Tensor2D {
+  const weights_array = som.get_weights();
+  const { grid_height, grid_width, topology } = som.params;
 
   return tf.tidy(() => {
-    const distanceMap = tf.buffer([gridHeight, gridWidth]);
+    const distance_map = tf.buffer([grid_height, grid_width]);
     
-    for (let i = 0; i < gridHeight; i++) {
-      for (let j = 0; j < gridWidth; j++) {
-        const currentWeight = weightsArray[i][j];
-        let totalDistance = 0;
-        let neighborCount = 0;
+    for (let i = 0; i < grid_height; i++) {
+      for (let j = 0; j < grid_width; j++) {
+        const current_weight = weights_array[i][j];
+        let total_distance = 0;
+        let neighbor_count = 0;
         
         // Define neighbors based on topology
         const neighbors: [number, number][] = [];
@@ -210,48 +210,48 @@ export function getNeighborDistanceMatrix(som: SOM): tf.Tensor2D {
           for (const [di, dj] of deltas) {
             const ni = i + di;
             const nj = j + dj;
-            if (ni >= 0 && ni < gridHeight && nj >= 0 && nj < gridWidth) {
+            if (ni >= 0 && ni < grid_height && nj >= 0 && nj < grid_width) {
               neighbors.push([ni, nj]);
             }
           }
         } else {
           // Hexagonal neighbors (6-connected)
-          const evenRow = i % 2 === 0;
+          const even_row = i % 2 === 0;
           if (i > 0) {
             neighbors.push([i - 1, j]);
-            if (evenRow && j > 0) neighbors.push([i - 1, j - 1]);
-            if (!evenRow && j < gridWidth - 1) neighbors.push([i - 1, j + 1]);
+            if (even_row && j > 0) neighbors.push([i - 1, j - 1]);
+            if (!even_row && j < grid_width - 1) neighbors.push([i - 1, j + 1]);
           }
-          if (i < gridHeight - 1) {
+          if (i < grid_height - 1) {
             neighbors.push([i + 1, j]);
-            if (evenRow && j > 0) neighbors.push([i + 1, j - 1]);
-            if (!evenRow && j < gridWidth - 1) neighbors.push([i + 1, j + 1]);
+            if (even_row && j > 0) neighbors.push([i + 1, j - 1]);
+            if (!even_row && j < grid_width - 1) neighbors.push([i + 1, j + 1]);
           }
           if (j > 0) neighbors.push([i, j - 1]);
-          if (j < gridWidth - 1) neighbors.push([i, j + 1]);
+          if (j < grid_width - 1) neighbors.push([i, j + 1]);
         }
         
         // Calculate average distance to neighbors
         for (const [ni, nj] of neighbors) {
-          const neighborWeight = weightsArray[ni][nj];
+          const neighbor_weight = weights_array[ni][nj];
           const distance = Math.sqrt(
-            currentWeight.reduce((sum, val, idx) => 
-              sum + Math.pow(val - neighborWeight[idx], 2), 0
+            current_weight.reduce((sum, val, idx) => 
+              sum + Math.pow(val - neighbor_weight[idx], 2), 0
             )
           );
-          totalDistance += distance;
-          neighborCount++;
+          total_distance += distance;
+          neighbor_count++;
         }
         
-        distanceMap.set(
-          neighborCount > 0 ? totalDistance / neighborCount : 0,
+        distance_map.set(
+          neighbor_count > 0 ? total_distance / neighbor_count : 0,
           i,
           j
         );
       }
     }
     
-    return distanceMap.toTensor() as tf.Tensor2D;
+    return distance_map.toTensor() as tf.Tensor2D;
   });
 }
 
@@ -262,37 +262,37 @@ export function getNeighborDistanceMatrix(som: SOM): tf.Tensor2D {
  * @param format Export format ('json', 'csv')
  * @returns Formatted string for export
  */
-export async function exportForVisualization(
+export async function export_for_visualization(
   som: SOM,
   format: 'json' | 'csv' = 'json'
 ): Promise<string> {
-  const weightsArray = som.getWeights();
-  const uMatrix = som.getUMatrix();
-  const { gridHeight, gridWidth } = som.params;
+  const weights_array = som.get_weights();
+  const u_matrix = som.get_u_matrix();
+  const { grid_height, grid_width } = som.params;
 
   try {
-    const uMatrixArray = await uMatrix.array();
+    const u_matrix_array = await u_matrix.array();
 
     if (format === 'json') {
       return JSON.stringify({
-        gridHeight,
-        gridWidth,
-        weights: weightsArray,
-        uMatrix: uMatrixArray,
+        grid_height,
+        grid_width,
+        weights: weights_array,
+        u_matrix: u_matrix_array,
         params: som.params,
       }, null, 2);
     } else {
       // CSV format
       let csv = 'row,col,u_value';
-      for (let i = 0; i < weightsArray[0][0].length; i++) {
+      for (let i = 0; i < weights_array[0][0].length; i++) {
         csv += `,feature_${i}`;
       }
       csv += '\n';
 
-      for (let i = 0; i < gridHeight; i++) {
-        for (let j = 0; j < gridWidth; j++) {
-          csv += `${i},${j},${uMatrixArray[i][j]}`;
-          for (const feature of weightsArray[i][j]) {
+      for (let i = 0; i < grid_height; i++) {
+        for (let j = 0; j < grid_width; j++) {
+          csv += `${i},${j},${u_matrix_array[i][j]}`;
+          for (const feature of weights_array[i][j]) {
             csv += `,${feature}`;
           }
           csv += '\n';
@@ -302,7 +302,7 @@ export async function exportForVisualization(
       return csv;
     }
   } finally {
-    uMatrix.dispose();
+    u_matrix.dispose();
   }
 }
 
@@ -314,28 +314,28 @@ export async function exportForVisualization(
  * @param sigma Gaussian kernel width for smoothing
  * @returns Density map [gridHeight, gridWidth]
  */
-export async function getDensityMap(
+export async function get_density_map(
   som: SOM,
   X: tf.Tensor2D,
   sigma: number = 1.0
 ): Promise<tf.Tensor2D> {
-  const hitMap = await getHitMap(som, X);
+  const hit_map = await get_hit_map(som, X);
 
   // No smoothing needed for sigma <= 0
   if (sigma <= 0) {
-    return hitMap;
+    return hit_map;
   }
 
   try {
     return tf.tidy(() => {
       // Create Gaussian kernel
-      const kernelSize = Math.ceil(sigma * 3) * 2 + 1;
-      const kernel = tf.buffer([kernelSize, kernelSize]);
-      const center = Math.floor(kernelSize / 2);
+      const kernel_size = Math.ceil(sigma * 3) * 2 + 1;
+      const kernel = tf.buffer([kernel_size, kernel_size]);
+      const center = Math.floor(kernel_size / 2);
 
       let sum = 0;
-      for (let i = 0; i < kernelSize; i++) {
-        for (let j = 0; j < kernelSize; j++) {
+      for (let i = 0; i < kernel_size; i++) {
+        for (let j = 0; j < kernel_size; j++) {
           const distance = Math.sqrt(
             Math.pow(i - center, 2) + Math.pow(j - center, 2)
           );
@@ -346,18 +346,18 @@ export async function getDensityMap(
       }
 
       // Normalize kernel
-      for (let i = 0; i < kernelSize; i++) {
-        for (let j = 0; j < kernelSize; j++) {
+      for (let i = 0; i < kernel_size; i++) {
+        for (let j = 0; j < kernel_size; j++) {
           kernel.set(kernel.get(i, j) / sum, i, j);
         }
       }
 
       // Reshape hitMap [H, W] -> [1, H, W, 1] for conv2d
-      const input = hitMap.expandDims(0).expandDims(-1) as tf.Tensor4D;
+      const input = hit_map.expandDims(0).expandDims(-1) as tf.Tensor4D;
 
       // Reshape kernel [K, K] -> [K, K, 1, 1] for conv2d filter
-      const kernelTensor = kernel.toTensor();
-      const filter = kernelTensor.expandDims(-1).expandDims(-1) as tf.Tensor4D;
+      const kernel_tensor = kernel.toTensor();
+      const filter = kernel_tensor.expandDims(-1).expandDims(-1) as tf.Tensor4D;
 
       // Apply 2D convolution with 'same' padding to preserve dimensions
       const convolved = tfDefault.conv2d(input, filter, 1, 'same');
@@ -366,6 +366,6 @@ export async function getDensityMap(
       return convolved.squeeze([0, 3]) as tf.Tensor2D;
     });
   } finally {
-    hitMap.dispose();
+    hit_map.dispose();
   }
 }

@@ -1,21 +1,21 @@
 import { performance } from 'perf_hooks';
 import { AgglomerativeClustering } from '../../src/clustering/agglomerative';
-import { makeBlobs } from '../../src/datasets/synthetic';
+import { make_blobs } from '../../src/datasets/synthetic';
 
 describe('Agglomerative clustering performance', () => {
   it('1000 samples completes in under 5 seconds', async () => {
-    const { X } = makeBlobs({
-      nSamples: 1000,
-      nFeatures: 2,
+    const { X } = make_blobs({
+      n_samples: 1000,
+      n_features: 2,
       centers: 5,
-      randomState: 42,
+      random_state: 42,
     });
 
     const data = (await X.array()) as number[][];
     X.dispose();
 
     const model = new AgglomerativeClustering({
-      nClusters: 5,
+      n_clusters: 5,
       linkage: 'ward',
     });
 
@@ -31,18 +31,18 @@ describe('Agglomerative clustering performance', () => {
   });
 
   it('5000 samples completes (benchmark)', async () => {
-    const { X } = makeBlobs({
-      nSamples: 5000,
-      nFeatures: 2,
+    const { X } = make_blobs({
+      n_samples: 5000,
+      n_features: 2,
       centers: 5,
-      randomState: 42,
+      random_state: 42,
     });
 
     const data = (await X.array()) as number[][];
     X.dispose();
 
     const model = new AgglomerativeClustering({
-      nClusters: 5,
+      n_clusters: 5,
       linkage: 'ward',
     });
 

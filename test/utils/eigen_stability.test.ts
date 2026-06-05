@@ -10,14 +10,14 @@ import { smallest_eigenvectors_with_values } from "../../src/eigen/smallest_eige
 /* -------------------------------------------------------------------------- */
 /*  Helper: check eigenvector orthonormality                                  */
 /* -------------------------------------------------------------------------- */
-function expectOrthonormal(
+function expect_orthonormal(
   vecs: number[][],
   n: number,
-  numCols: number,
+  num_cols: number,
   tol = 1e-8,
 ) {
-  for (let i = 0; i < numCols; i++) {
-    for (let j = 0; j < numCols; j++) {
+  for (let i = 0; i < num_cols; i++) {
+    for (let j = 0; j < num_cols; j++) {
       let dot = 0;
       for (let k = 0; k < n; k++) {
         dot += vecs[k][i] * vecs[k][j];
@@ -34,7 +34,7 @@ function expectOrthonormal(
 /* -------------------------------------------------------------------------- */
 /*  Helper: reconstruct A = V diag(lambda) V^T and compare                   */
 /* -------------------------------------------------------------------------- */
-function expectReconstruction(
+function expect_reconstruction(
   eigenvalues: number[],
   eigenvectors: number[][],
   original: number[][],
@@ -73,7 +73,7 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
     expect(eigenvalues[0]).toBeCloseTo(2, 10);
     expect(eigenvalues[1]).toBeCloseTo(4, 10);
 
-    expectOrthonormal(eigenvectors, 2, 2);
+    expect_orthonormal(eigenvectors, 2, 2);
     M.dispose();
   });
 
@@ -99,7 +99,7 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
       expect(eigenvalues[i]).toBeCloseTo(expected[i], 8);
     }
 
-    expectOrthonormal(eigenvectors, 4, 4);
+    expect_orthonormal(eigenvectors, 4, 4);
     M.dispose();
   });
 
@@ -114,7 +114,7 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
       [3, 3],
     );
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(L, {
-      isPSD: true,
+      is_psd: true,
     });
 
     eigenvalues.forEach((v) => expect(Number.isFinite(v)).toBe(true));
@@ -122,7 +122,7 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
     expect(eigenvalues[1]).toBeCloseTo(1.5, 5);
     expect(eigenvalues[2]).toBeCloseTo(1.5, 5);
 
-    expectOrthonormal(eigenvectors, 3, 3);
+    expect_orthonormal(eigenvectors, 3, 3);
     L.dispose();
   });
 
@@ -141,8 +141,8 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
     expect(eigenvalues[0]).toBeCloseTo(2, 10);
     expect(eigenvalues[1]).toBeCloseTo(4, 10);
 
-    expectOrthonormal(eigenvectors, 2, 2);
-    expectReconstruction(
+    expect_orthonormal(eigenvectors, 2, 2);
+    expect_reconstruction(
       eigenvalues,
       eigenvectors,
       M.arraySync() as number[][],
@@ -165,7 +165,7 @@ describe("improved_jacobi_eigen – equal diagonal elements", () => {
     expect(eigenvalues[0]).toBeCloseTo(-1, 10);
     expect(eigenvalues[1]).toBeCloseTo(1, 10);
 
-    expectOrthonormal(eigenvectors, 2, 2);
+    expect_orthonormal(eigenvectors, 2, 2);
     M.dispose();
   });
 });
@@ -184,7 +184,7 @@ describe("improved_jacobi_eigen – PSD clamping", () => {
       ],
       [3, 3],
     );
-    const { eigenvalues } = improved_jacobi_eigen(M, { isPSD: true });
+    const { eigenvalues } = improved_jacobi_eigen(M, { is_psd: true });
 
     // 1e-9 should NOT be clamped to 0
     expect(eigenvalues[0]).toBeCloseTo(1e-9, 12);
@@ -204,7 +204,7 @@ describe("improved_jacobi_eigen – PSD clamping", () => {
       ],
       [2, 2],
     );
-    const { eigenvalues } = improved_jacobi_eigen(M, { isPSD: true });
+    const { eigenvalues } = improved_jacobi_eigen(M, { is_psd: true });
 
     eigenvalues.forEach((v) => expect(v).toBeGreaterThanOrEqual(0));
 
@@ -220,7 +220,7 @@ describe("improved_jacobi_eigen – PSD clamping", () => {
       ],
       [2, 2],
     );
-    const { eigenvalues } = improved_jacobi_eigen(M, { isPSD: false });
+    const { eigenvalues } = improved_jacobi_eigen(M, { is_psd: false });
 
     expect(eigenvalues[0]).toBeCloseTo(-1, 10);
     expect(eigenvalues[1]).toBeCloseTo(1, 10);
@@ -245,7 +245,7 @@ describe("tridiagonal_qr_eigen – correctness", () => {
     expect(eigenvalues[1]).toBeCloseTo(2, 8);
     expect(eigenvalues[2]).toBeCloseTo(2 + Math.SQRT2, 8);
 
-    expectOrthonormal(eigenvectors!, 3, 3);
+    expect_orthonormal(eigenvectors!, 3, 3);
   });
 
   it("handles identity matrix (all zeros off-diagonal)", () => {
@@ -279,7 +279,7 @@ describe("tridiagonal_qr_eigen – correctness", () => {
       }
     }
 
-    expectReconstruction(eigenvalues, eigenvectors!, T, 1e-6);
+    expect_reconstruction(eigenvalues, eigenvectors!, T, 1e-6);
   });
 });
 
@@ -363,9 +363,9 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     // sliceCols = min(2 + 1, 4) = 3
     expect(result.eigenvectors.shape[1]).toBe(3);
 
-    const eigenData = result.eigenvalues.arraySync() as number[];
-    expect(eigenData[0]).toBeCloseTo(0, 7);
-    expect(eigenData[1]).toBeCloseTo(0.005, 3);
+    const eigen_data = result.eigenvalues.arraySync() as number[];
+    expect(eigen_data[0]).toBeCloseTo(0, 7);
+    expect(eigen_data[1]).toBeCloseTo(0.005, 3);
 
     result.eigenvectors.dispose();
     result.eigenvalues.dispose();
@@ -389,9 +389,9 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
     // c = 2 (two zero eigenvalues), sliceCols = min(2 + 2, 4) = 4
     expect(result.eigenvectors.shape[1]).toBe(4);
 
-    const eigenData = result.eigenvalues.arraySync() as number[];
-    expect(eigenData[0]).toBeCloseTo(0, 7);
-    expect(eigenData[1]).toBeCloseTo(0, 7);
+    const eigen_data = result.eigenvalues.arraySync() as number[];
+    expect(eigen_data[0]).toBeCloseTo(0, 7);
+    expect(eigen_data[1]).toBeCloseTo(0, 7);
 
     result.eigenvectors.dispose();
     result.eigenvalues.dispose();
@@ -456,8 +456,8 @@ describe("eigenvector orthogonality validation", () => {
     );
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(M);
 
-    expectOrthonormal(eigenvectors, 3, 3);
-    expectReconstruction(eigenvalues, eigenvectors, M.arraySync() as number[][]);
+    expect_orthonormal(eigenvectors, 3, 3);
+    expect_reconstruction(eigenvalues, eigenvectors, M.arraySync() as number[][]);
 
     M.dispose();
   });
@@ -468,6 +468,6 @@ describe("eigenvector orthogonality validation", () => {
       [0.5, 0.7, 0.3],
     );
 
-    expectOrthonormal(eigenvectors!, 4, 4, 1e-6);
+    expect_orthonormal(eigenvectors!, 4, 4, 1e-6);
   });
 });

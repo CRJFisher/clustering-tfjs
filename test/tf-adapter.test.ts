@@ -1,9 +1,9 @@
 import * as tf from '../src/backend/adapter';
-import { resetBackend } from '../src/backend/backend';
+import { reset_backend } from '../src/backend/backend';
 
 describe('tf-adapter lazy wrappers', () => {
   afterEach(() => {
-    resetBackend();
+    reset_backend();
   });
 
   it('provides tensor creation functions', () => {
@@ -25,10 +25,10 @@ describe('tf-adapter lazy wrappers', () => {
     const result = tf.tidy(() => {
       const a = tf.tensor2d([[1, 2], [3, 4]]);
       const [q, r] = tf.linalg.qr(a);
-      return { qShape: q.shape, rShape: r.shape };
+      return { q_shape: q.shape, r_shape: r.shape };
     });
-    expect(result.qShape).toEqual([2, 2]);
-    expect(result.rShape).toEqual([2, 2]);
+    expect(result.q_shape).toEqual([2, 2]);
+    expect(result.r_shape).toEqual([2, 2]);
   });
 
   it('provides math operations', () => {

@@ -1,6 +1,6 @@
 import * as tf from "../tensorflow-helper";
 
-import { createComponentIndicators } from "../../src/graph/component_indicators";
+import { create_component_indicators } from "../../src/graph/component_indicators";
 
 describe("createComponentIndicators", () => {
   const tensors: tf.Tensor[] = [];
@@ -18,7 +18,7 @@ describe("createComponentIndicators", () => {
   it("produces correct values for 2 equal-size components", () => {
     // 4 nodes: [0,0,1,1]
     const labels = new Int32Array([0, 0, 1, 1]);
-    const result = tracked(createComponentIndicators(labels, 2, 2));
+    const result = tracked(create_component_indicators(labels, 2, 2));
     const data = result.arraySync() as number[][];
 
     // Component 0 has size 2 -> value = 1/sqrt(2)
@@ -38,7 +38,7 @@ describe("createComponentIndicators", () => {
   it("normalizes correctly for 3 components of varying sizes", () => {
     // 6 nodes: component 0 has 3, component 1 has 2, component 2 has 1
     const labels = new Int32Array([0, 0, 0, 1, 1, 2]);
-    const result = tracked(createComponentIndicators(labels, 3, 3));
+    const result = tracked(create_component_indicators(labels, 3, 3));
     const data = result.arraySync() as number[][];
 
     const v0 = 1 / Math.sqrt(3);
@@ -65,35 +65,35 @@ describe("createComponentIndicators", () => {
 
   it("produces columns with L2 norm equal to 1.0", () => {
     const labels = new Int32Array([0, 0, 0, 1, 1, 2]);
-    const result = tracked(createComponentIndicators(labels, 3, 3));
+    const result = tracked(create_component_indicators(labels, 3, 3));
     const data = result.arraySync() as number[][];
-    const numCols = data[0].length;
+    const num_cols = data[0].length;
 
-    for (let c = 0; c < numCols; c++) {
-      let sumSq = 0;
+    for (let c = 0; c < num_cols; c++) {
+      let sum_sq = 0;
       for (let r = 0; r < data.length; r++) {
-        sumSq += data[r][c] * data[r][c];
+        sum_sq += data[r][c] * data[r][c];
       }
-      expect(Math.sqrt(sumSq)).toBeCloseTo(1.0);
+      expect(Math.sqrt(sum_sq)).toBeCloseTo(1.0);
     }
   });
 
   it("caps columns with maxIndicators when numComponents > maxIndicators", () => {
     // 4 components but max 2 indicators
     const labels = new Int32Array([0, 1, 2, 3]);
-    const result = tracked(createComponentIndicators(labels, 4, 2));
+    const result = tracked(create_component_indicators(labels, 4, 2));
     expect(result.shape).toEqual([4, 2]);
   });
 
   it("uses all components when maxIndicators >= numComponents", () => {
     const labels = new Int32Array([0, 0, 1, 1]);
-    const result = tracked(createComponentIndicators(labels, 2, 10));
+    const result = tracked(create_component_indicators(labels, 2, 10));
     expect(result.shape).toEqual([4, 2]);
   });
 
   it("handles a single component (all same label)", () => {
     const labels = new Int32Array([0, 0, 0, 0]);
-    const result = tracked(createComponentIndicators(labels, 1, 5));
+    const result = tracked(create_component_indicators(labels, 1, 5));
     const data = result.arraySync() as number[][];
 
     expect(result.shape).toEqual([4, 1]);
@@ -106,7 +106,7 @@ describe("createComponentIndicators", () => {
   it("produces an identity matrix for single-node components", () => {
     // Each node is its own component
     const labels = new Int32Array([0, 1, 2]);
-    const result = tracked(createComponentIndicators(labels, 3, 3));
+    const result = tracked(create_component_indicators(labels, 3, 3));
     const data = result.arraySync() as number[][];
 
     // 1/sqrt(1) = 1 on diagonal, 0 elsewhere -> identity
@@ -119,20 +119,20 @@ describe("createComponentIndicators", () => {
 
   it("returns a float32 tensor", () => {
     const labels = new Int32Array([0, 0, 1]);
-    const result = tracked(createComponentIndicators(labels, 2, 2));
+    const result = tracked(create_component_indicators(labels, 2, 2));
     expect(result.dtype).toBe("float32");
   });
 
   it("returns the correct shape", () => {
     const labels = new Int32Array([0, 0, 1, 1, 2]);
-    const result = tracked(createComponentIndicators(labels, 3, 3));
+    const result = tracked(create_component_indicators(labels, 3, 3));
     expect(result.shape).toEqual([5, 3]);
   });
 
   it("does not leak tensors (tf.tidy)", () => {
     const labels = new Int32Array([0, 0, 1, 1]);
     const before = tf.memory().numTensors;
-    const result = createComponentIndicators(labels, 2, 2);
+    const result = create_component_indicators(labels, 2, 2);
     const after = tf.memory().numTensors;
 
     // Only the returned tensor should be new

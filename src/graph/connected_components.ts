@@ -13,29 +13,29 @@ import * as tf from '../backend/adapter';
  *   - isFullyConnected: Whether the graph has only 1 component
  *   - componentLabels: Array indicating which component each node belongs to
  */
-export function detectConnectedComponents(
+export function detect_connected_components(
   affinity: tf.Tensor2D,
   tolerance: number = 1e-2,
 ): {
-  numComponents: number;
-  isFullyConnected: boolean;
-  componentLabels: Int32Array;
+  num_components: number;
+  is_fully_connected: boolean;
+  component_labels: Int32Array;
 } {
   const n = affinity.shape[0];
-  const componentLabels = new Int32Array(n).fill(-1);
+  const component_labels = new Int32Array(n).fill(-1);
 
   // Get affinity data for graph traversal
-  const affinityData = affinity.arraySync();
+  const affinity_data = affinity.arraySync();
 
   // BFS to find connected components
-  let currentComponent = 0;
+  let current_component = 0;
 
-  for (let startNode = 0; startNode < n; startNode++) {
-    if (componentLabels[startNode] !== -1) continue; // Already assigned
+  for (let start_node = 0; start_node < n; start_node++) {
+    if (component_labels[start_node] !== -1) continue; // Already assigned
 
     // BFS from this node
-    const queue: number[] = [startNode];
-    componentLabels[startNode] = currentComponent;
+    const queue: number[] = [start_node];
+    component_labels[start_node] = current_component;
 
     while (queue.length > 0) {
       const node = queue.shift()!;
@@ -44,24 +44,24 @@ export function detectConnectedComponents(
       for (let neighbor = 0; neighbor < n; neighbor++) {
         if (
           neighbor !== node &&
-          componentLabels[neighbor] === -1 &&
-          affinityData[node][neighbor] > tolerance
+          component_labels[neighbor] === -1 &&
+          affinity_data[node][neighbor] > tolerance
         ) {
-          componentLabels[neighbor] = currentComponent;
+          component_labels[neighbor] = current_component;
           queue.push(neighbor);
         }
       }
     }
 
-    currentComponent++;
+    current_component++;
   }
 
-  const numComponents = currentComponent;
+  const num_components = current_component;
 
   return {
-    numComponents,
-    isFullyConnected: numComponents === 1,
-    componentLabels,
+    num_components,
+    is_fully_connected: num_components === 1,
+    component_labels,
   };
 }
 
@@ -72,17 +72,17 @@ export function detectConnectedComponents(
  * @param tolerance - Tolerance for detecting zero eigenvalues
  * @returns true if graph is fully connected, false otherwise
  */
-export function checkGraphConnectivity(
+export function check_graph_connectivity(
   affinity: tf.Tensor2D,
   tolerance: number = 1e-2,
 ): boolean {
-  const { isFullyConnected } = detectConnectedComponents(affinity, tolerance);
+  const { is_fully_connected } = detect_connected_components(affinity, tolerance);
 
-  if (!isFullyConnected) {
+  if (!is_fully_connected) {
     console.warn(
       'Graph is not fully connected, spectral embedding may not work as expected.',
     );
   }
 
-  return isFullyConnected;
+  return is_fully_connected;
 }

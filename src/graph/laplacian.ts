@@ -15,7 +15,7 @@ import { smallest_eigenvectors_with_values } from '../eigen/smallest_eigenvector
  *
  * The returned tensor is a 1-D vector where `deg[i] = Σ_j A[i,j]`.
  */
-export function degreeVector(A: tf.Tensor2D): tf.Tensor1D {
+export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
   if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
     throw new Error('Affinity matrix must be square (n × n).');
   }
@@ -37,52 +37,52 @@ export function degreeVector(A: tf.Tensor2D): tf.Tensor1D {
  * `D^{-1/2}` as **0** for the corresponding diagonal entry which leaves the
  * row & column of `L` equal to the identity matrix (no connections).
  */
-export function normalisedLaplacian(A: tf.Tensor2D): tf.Tensor2D;
-export function normalisedLaplacian(
+export function normalised_laplacian(A: tf.Tensor2D): tf.Tensor2D;
+export function normalised_laplacian(
   A: tf.Tensor2D,
-  returnDiag: true,
-): { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D };
-export function normalisedLaplacian(
+  return_diag: true,
+): { laplacian: tf.Tensor2D; sqrt_degrees: tf.Tensor1D };
+export function normalised_laplacian(
   A: tf.Tensor2D,
-  returnDiag = false,
-): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrtDegrees: tf.Tensor1D } {
+  return_diag = false,
+): tf.Tensor2D | { laplacian: tf.Tensor2D; sqrt_degrees: tf.Tensor1D } {
   return tf.tidy(() => {
     const n = A.shape[0];
 
     // First, zero out the diagonal of A to match scipy behavior
     // "Diagonal entries of the input adjacency matrix are ignored and
     // replaced with zeros for the purpose of normalization"
-    const diagMask = tf.sub(1, tf.eye(n));
-    const A_no_diag = A.mul(diagMask) as tf.Tensor2D;
+    const diag_mask = tf.sub(1, tf.eye(n));
+    const A_no_diag = A.mul(diag_mask) as tf.Tensor2D;
 
-    const deg = degreeVector(A_no_diag); // (n)
+    const deg = degree_vector(A_no_diag); // (n)
 
     // d^{-1/2} – set entries with deg == 0 to 1 (for isolated nodes)
-    const invSqrt = tf.where(
+    const inv_sqrt = tf.where(
       deg.equal(0),
-      tf.onesLike(deg),
+      tf.ones_like(deg),
       deg.pow(-0.5),
     ) as tf.Tensor1D; // (n)
 
     // Build outer product invSqrt[:,None] * invSqrt[None,:]  (n,n)
-    const diagCol = invSqrt.reshape([n, 1]);
-    const diagRow = invSqrt.reshape([1, n]);
-    const scaling = diagCol.matMul(diagRow) as tf.Tensor2D; // (n,n)
+    const diag_col = inv_sqrt.reshape([n, 1]);
+    const diag_row = inv_sqrt.reshape([1, n]);
+    const scaling = diag_col.matMul(diag_row) as tf.Tensor2D; // (n,n)
 
     // Scale the affinity matrix (with diagonal already zeroed)
-    const scaledAffinity = A_no_diag.mul(scaling) as tf.Tensor2D;
+    const scaled_affinity = A_no_diag.mul(scaling) as tf.Tensor2D;
 
     // L = I - scaledAffinity
     // This ensures diagonal entries are exactly 1 for non-isolated nodes
     const I = tf.eye(n);
-    const laplacian = I.sub(scaledAffinity) as tf.Tensor2D;
+    const laplacian = I.sub(scaled_affinity) as tf.Tensor2D;
 
-    if (returnDiag) {
+    if (return_diag) {
       // Return both Laplacian and sqrt(degrees) for eigenvector recovery
       // Note: we return invSqrt which is D^(-1/2), so for recovery we need to divide by it
       return {
         laplacian: laplacian,
-        sqrtDegrees: invSqrt,
+        sqrt_degrees: inv_sqrt,
       };
     }
 
@@ -107,12 +107,12 @@ export function normalisedLaplacian(
  * optimised for large dense matrices.  It should *only* be used on matrices
  * of moderate size.
  */
-export function jacobiEigenDecomposition(
+export function jacobi_eigen_decomposition(
   matrix: tf.Tensor2D,
   {
-    maxIterations = 2000,
+    max_iterations = 2000,
     tolerance = 1e-12,
-  }: { maxIterations?: number; tolerance?: number } = {},
+  }: { max_iterations?: number; tolerance?: number } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   if (matrix.shape.length !== 2 || matrix.shape[0] !== matrix.shape[1]) {
     throw new Error('Input tensor must be square (n × n).');
@@ -130,18 +130,18 @@ export function jacobiEigenDecomposition(
   //            off-diagonal entries (numerical noise).
   // ---------------------------------------------------------------------
 
-  const isApproximatelyDiagonal = (): boolean => {
-    const nDiagTolerance = tolerance * 10;
+  const is_approximately_diagonal = (): boolean => {
+    const n_diag_tolerance = tolerance * 10;
     for (let i = 0; i < matrix.shape[0]; i++) {
       for (let j = 0; j < matrix.shape[0]; j++) {
         if (i === j) continue;
-        if (Math.abs(A[i][j]) > nDiagTolerance) return false;
+        if (Math.abs(A[i][j]) > n_diag_tolerance) return false;
       }
     }
     return true;
   };
 
-  if (isApproximatelyDiagonal()) {
+  if (is_approximately_diagonal()) {
     warn(
       'Input matrix is (almost) diagonal – skipped iterative Jacobi rotations for efficiency.',
     );
@@ -162,7 +162,7 @@ export function jacobiEigenDecomposition(
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
   );
 
-  const offDiag = (M: number[][]): number => {
+  const off_diag = (M: number[][]): number => {
     let sum = 0;
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
@@ -174,23 +174,23 @@ export function jacobiEigenDecomposition(
   };
 
   let iter = 0;
-  while (iter < maxIterations && offDiag(D) > tolerance) {
+  while (iter < max_iterations && off_diag(D) > tolerance) {
     // Find largest off-diagonal element (by absolute value)
     let p = 0;
     let q = 1;
-    let maxVal = Math.abs(D[p][q]);
+    let max_val = Math.abs(D[p][q]);
     for (let i = 0; i < n; i++) {
       for (let j = i + 1; j < n; j++) {
         const val = Math.abs(D[i][j]);
-        if (val > maxVal) {
-          maxVal = val;
+        if (val > max_val) {
+          max_val = val;
           p = i;
           q = j;
         }
       }
     }
 
-    if (maxVal < tolerance) break;
+    if (max_val < tolerance) break;
 
     const a_pp = D[p][p];
     const a_qq = D[q][q];
@@ -253,9 +253,9 @@ export function jacobiEigenDecomposition(
     iter += 1;
   }
 
-  if (iter === maxIterations) {
+  if (iter === max_iterations) {
     warn(
-      `Jacobi solver did not converge after ${maxIterations} iterations. Final off-diagonal norm: ${offDiag(D)}`,
+      `Jacobi solver did not converge after ${max_iterations} iterations. Final off-diagonal norm: ${off_diag(D)}`,
     );
   }
 
@@ -277,20 +277,20 @@ export function jacobiEigenDecomposition(
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
-  const sortedValues = indexed.map((p) => p.val);
-  const sortedVectors: number[][] = Array.from(
+  const sorted_values = indexed.map((p) => p.val);
+  const sorted_vectors: number[][] = Array.from(
     { length: n },
     () => new Array(n),
   );
 
-  for (let newIdx = 0; newIdx < n; newIdx++) {
-    const oldIdx = indexed[newIdx].idx;
+  for (let new_idx = 0; new_idx < n; new_idx++) {
+    const old_idx = indexed[new_idx].idx;
     for (let row = 0; row < n; row++) {
-      sortedVectors[row][newIdx] = V[row][oldIdx];
+      sorted_vectors[row][new_idx] = V[row][old_idx];
     }
   }
 
-  return { eigenvalues: sortedValues, eigenvectors: sortedVectors };
+  return { eigenvalues: sorted_values, eigenvectors: sorted_vectors };
 
   /* istanbul ignore next */
   function warn(msg: string): void {
@@ -308,7 +308,7 @@ export function jacobiEigenDecomposition(
  * Delegates to `smallest_eigenvectors_with_values` for consistent
  * solver selection (Lanczos for large matrices, Jacobi for small).
  */
-export function smallestEigenvectors(
+export function smallest_eigenvectors(
   matrix: tf.Tensor2D,
   k: number,
 ): tf.Tensor2D {

@@ -13,8 +13,8 @@ describe("KMeans", () => {
   ];
 
   it("should cluster two obvious blobs", async () => {
-    const km = new KMeans({ nClusters: 2, randomState: 42 });
-    const labels = await km.fitPredict(X);
+    const km = new KMeans({ n_clusters: 2, random_state: 42 });
+    const labels = await km.fit_predict(X);
 
     const cluster0 = labels.slice(0, 3);
     const cluster1 = labels.slice(3);
@@ -31,11 +31,11 @@ describe("KMeans", () => {
   });
 
   it("nInit=1 vs nInit=10 gives same inertia on easy data", async () => {
-    const km1 = new KMeans({ nClusters: 2, randomState: 42, nInit: 1 });
+    const km1 = new KMeans({ n_clusters: 2, random_state: 42, n_init: 1 });
     await km1.fit(X);
     const inertia1 = km1.inertia_!;
 
-    const km10 = new KMeans({ nClusters: 2, randomState: 42, nInit: 10 });
+    const km10 = new KMeans({ n_clusters: 2, random_state: 42, n_init: 10 });
     await km10.fit(X);
     const inertia10 = km10.inertia_!;
 
@@ -47,11 +47,11 @@ describe("KMeans", () => {
     const rng = make_random_stream(42);
     const data: number[][] = Array.from({ length: 200 }, () => [rng.rand() * 10, rng.rand() * 10]);
 
-    const km1 = new KMeans({ nClusters: 3, randomState: 123, nInit: 1 });
+    const km1 = new KMeans({ n_clusters: 3, random_state: 123, n_init: 1 });
     await km1.fit(data);
     const inertia1 = km1.inertia_!;
 
-    const km10 = new KMeans({ nClusters: 3, randomState: 123, nInit: 10 });
+    const km10 = new KMeans({ n_clusters: 3, random_state: 123, n_init: 10 });
     await km10.fit(data);
     const inertia10 = km10.inertia_!;
 
@@ -67,8 +67,8 @@ describe("KMeans", () => {
     ];
 
     it("assigns all points to cluster 0", async () => {
-      const km = new KMeans({ nClusters: 1, randomState: 42 });
-      const labels = await km.fitPredict(data);
+      const km = new KMeans({ n_clusters: 1, random_state: 42 });
+      const labels = await km.fit_predict(data);
 
       for (const l of labels) {
         expect(l).toBe(0);
@@ -77,20 +77,20 @@ describe("KMeans", () => {
     });
 
     it("centroid equals data mean", async () => {
-      const km = new KMeans({ nClusters: 1, randomState: 42 });
+      const km = new KMeans({ n_clusters: 1, random_state: 42 });
       await km.fit(data);
 
-      const centroidData = await km.centroids_!.array();
-      const meanX = data.reduce((s, p) => s + p[0], 0) / data.length;
-      const meanY = data.reduce((s, p) => s + p[1], 0) / data.length;
+      const centroid_data = await km.centroids_!.array();
+      const mean_x = data.reduce((s, p) => s + p[0], 0) / data.length;
+      const mean_y = data.reduce((s, p) => s + p[1], 0) / data.length;
 
-      expect(centroidData[0][0]).toBeCloseTo(meanX, 5);
-      expect(centroidData[0][1]).toBeCloseTo(meanY, 5);
+      expect(centroid_data[0][0]).toBeCloseTo(mean_x, 5);
+      expect(centroid_data[0][1]).toBeCloseTo(mean_y, 5);
       km.dispose();
     });
 
     it("has non-negative inertia", async () => {
-      const km = new KMeans({ nClusters: 1, randomState: 42 });
+      const km = new KMeans({ n_clusters: 1, random_state: 42 });
       await km.fit(data);
 
       expect(km.inertia_).not.toBeNull();
@@ -108,15 +108,15 @@ describe("KMeans", () => {
     ];
 
     it("each point gets its own cluster", async () => {
-      const km = new KMeans({ nClusters: 4, randomState: 42 });
-      const labels = await km.fitPredict(data);
+      const km = new KMeans({ n_clusters: 4, random_state: 42 });
+      const labels = await km.fit_predict(data);
 
       expect(new Set(labels).size).toBe(4);
       km.dispose();
     });
 
     it("near-zero inertia", async () => {
-      const km = new KMeans({ nClusters: 4, randomState: 42 });
+      const km = new KMeans({ n_clusters: 4, random_state: 42 });
       await km.fit(data);
 
       expect(km.inertia_!).toBeLessThan(1e-6);
@@ -133,7 +133,7 @@ describe("KMeans", () => {
         [5, 5],
       ];
 
-      const km = new KMeans({ nClusters: 2, randomState: 42 });
+      const km = new KMeans({ n_clusters: 2, random_state: 42 });
       await km.fit(data);
 
       expect(km.labels_).not.toBeNull();
@@ -143,8 +143,8 @@ describe("KMeans", () => {
         expect(l).toBeLessThan(2);
       }
 
-      const centroidData = await km.centroids_!.array();
-      for (const row of centroidData) {
+      const centroid_data = await km.centroids_!.array();
+      for (const row of centroid_data) {
         for (const val of row) {
           expect(isNaN(val)).toBe(false);
         }
@@ -158,8 +158,8 @@ describe("KMeans", () => {
         [10, 10], [10, 10], [10, 10],
       ];
 
-      const km = new KMeans({ nClusters: 2, randomState: 42 });
-      const labels = await km.fitPredict(data);
+      const km = new KMeans({ n_clusters: 2, random_state: 42 });
+      const labels = await km.fit_predict(data);
 
       // First three should share a label
       expect(new Set(labels.slice(0, 3)).size).toBe(1);
@@ -178,8 +178,8 @@ describe("KMeans", () => {
         [10, 10], [10.1, 10.1],
       ]);
 
-      const km = new KMeans({ nClusters: 2, randomState: 42 });
-      const labels = await km.fitPredict(data);
+      const km = new KMeans({ n_clusters: 2, random_state: 42 });
+      const labels = await km.fit_predict(data);
 
       expect(labels.length).toBe(4);
       expect(new Set(labels.slice(0, 2)).size).toBe(1);
@@ -196,7 +196,7 @@ describe("KMeans", () => {
         [10, 10], [11, 11],
       ]);
 
-      const km = new KMeans({ nClusters: 2, randomState: 42 });
+      const km = new KMeans({ n_clusters: 2, random_state: 42 });
       await km.fit(data);
 
       expect(data.isDisposed).toBe(false);
@@ -206,23 +206,23 @@ describe("KMeans", () => {
     });
 
     it("produces equivalent results for array and tensor input", async () => {
-      const arrayData = [
+      const array_data = [
         [0, 0], [0.1, 0.1], [0.2, 0],
         [10, 10], [10.1, 10.1], [10.2, 10],
       ];
-      const tensorData = tf.tensor2d(arrayData);
+      const tensor_data = tf.tensor2d(array_data);
 
-      const km1 = new KMeans({ nClusters: 2, randomState: 42 });
-      const labels1 = await km1.fitPredict(arrayData);
+      const km1 = new KMeans({ n_clusters: 2, random_state: 42 });
+      const labels1 = await km1.fit_predict(array_data);
 
-      const km2 = new KMeans({ nClusters: 2, randomState: 42 });
-      const labels2 = await km2.fitPredict(tensorData);
+      const km2 = new KMeans({ n_clusters: 2, random_state: 42 });
+      const labels2 = await km2.fit_predict(tensor_data);
 
       expect(labels1).toEqual(labels2);
 
       km1.dispose();
       km2.dispose();
-      tensorData.dispose();
+      tensor_data.dispose();
     });
   });
 });

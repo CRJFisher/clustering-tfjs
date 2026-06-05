@@ -5,7 +5,7 @@ import type {
 } from './types';
 import * as tf from '../backend/adapter';
 import { compute_rbf_affinity, compute_knn_affinity } from '../graph/affinity';
-import { isTensor } from '../tensor/tensor_guards';
+import { is_tensor } from '../tensor/tensor_guards';
 
 // Types for intermediate step results
 export interface LaplacianResult {
@@ -13,14 +13,14 @@ export interface LaplacianResult {
   /** D^{1/2} — square root of the degree vector, matching scipy's dd from csgraph_laplacian. */
   degrees?: tf.Tensor1D;
   /** D^{-1/2} — inverse square root of the degree vector, as returned by normalised_laplacian. */
-  sqrtDegrees?: tf.Tensor1D;
+  sqrt_degrees?: tf.Tensor1D;
 }
 
 export interface EmbeddingResult {
   embedding: tf.Tensor2D;
   eigenvalues: tf.Tensor1D;
-  rawEigenvectors?: tf.Tensor2D;
-  scalingFactors?: tf.Tensor1D;
+  raw_eigenvectors?: tf.Tensor2D;
+  scaling_factors?: tf.Tensor1D;
 }
 
 export interface IntermediateSteps {
@@ -31,20 +31,20 @@ export interface IntermediateSteps {
 }
 
 export interface DebugInfo {
-  affinityStats?: {
+  affinity_stats?: {
     shape: number[];
     nnz: number;
     min: number;
     max: number;
     mean: number;
   };
-  laplacianSpectrum?: number[];
-  embeddingStats?: {
+  laplacian_spectrum?: number[];
+  embedding_stats?: {
     shape: number[];
-    uniqueValuesPerDim: number[];
-    scalingFactors?: number[];
+    unique_values_per_dim: number[];
+    scaling_factors?: number[];
   };
-  clusteringMetrics?: {
+  clustering_metrics?: {
     inertia: number;
     iterations: number;
   };
@@ -79,13 +79,13 @@ export class SpectralClustering
   public labels_: number[] | null = null;
 
   /** Cached affinity matrix (shape: nSamples × nSamples). */
-  public affinityMatrix_: tf.Tensor2D | null = null;
+  public affinity_matrix_: tf.Tensor2D | null = null;
 
   /** Debug information (populated when using returnIntermediateSteps) */
-  private debugInfo_: DebugInfo | null = null;
+  private debug_info_: DebugInfo | null = null;
 
   /** Whether to capture debug information (modular compatibility) */
-  private captureDebugInfo: boolean = false;
+  private capture_debug_info: boolean = false;
 
   /* ------------------------------------------------------------------- */
   /*                      Resource / memory management                    */
@@ -98,9 +98,9 @@ export class SpectralClustering
    * invoking `fit` again.
    */
   public dispose(): void {
-    if (this.affinityMatrix_ != null) {
-      this.affinityMatrix_.dispose();
-      this.affinityMatrix_ = null;
+    if (this.affinity_matrix_ != null) {
+      this.affinity_matrix_.dispose();
+      this.affinity_matrix_ = null;
     }
 
     this.labels_ = null;
@@ -117,13 +117,13 @@ export class SpectralClustering
    * @param params - Configuration for spectral clustering.
    */
   constructor(params: SpectralClusteringParams) {
-    const { captureDebugInfo = false, ...clusteringParams } = params;
+    const { capture_debug_info = false, ...clusteringParams } = params;
 
     // Freeze user params to avoid accidental mutation downstream.
     this.params = { ...clusteringParams };
-    this.captureDebugInfo = captureDebugInfo;
+    this.capture_debug_info = capture_debug_info;
 
-    SpectralClustering.validateParams(this.params);
+    SpectralClustering.validate_params(this.params);
   }
 
   /**
@@ -144,73 +144,73 @@ export class SpectralClustering
     this.dispose();
 
     // Reset debug info if capturing
-    if (this.captureDebugInfo) {
-      this.debugInfo_ = {};
+    if (this.capture_debug_info) {
+      this.debug_info_ = {};
     }
 
     /* ---------------------------- 0) Input -------------------------------- */
     const Xtensor: tf.Tensor2D =
-      isTensor(_X)
+      is_tensor(_X)
         ? (tf.cast(_X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(_X as number[][], undefined, 'float32');
 
-    const nSamples = Xtensor.shape[0];
-    if (this.params.nClusters > nSamples) {
+    const n_samples = Xtensor.shape[0];
+    if (this.params.n_clusters > n_samples) {
       Xtensor.dispose();
       throw new Error('nClusters cannot exceed number of samples.');
     }
 
-    const maxSamples = this.params.maxSamples ?? 10_000;
-    if (nSamples > maxSamples) {
+    const max_samples = this.params.max_samples ?? 10_000;
+    if (n_samples > max_samples) {
       Xtensor.dispose();
       throw new Error(
-        `Input has ${nSamples} samples, which exceeds the maximum of ${maxSamples} ` +
+        `Input has ${n_samples} samples, which exceeds the maximum of ${max_samples} ` +
         `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
         `Set maxSamples in params to override this limit if you have sufficient memory.`,
       );
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
-    this.affinityMatrix_ = SpectralClustering.computeAffinityMatrix(
+    this.affinity_matrix_ = SpectralClustering.compute_affinity_matrix(
       Xtensor,
       this.params,
     );
 
-    const sumTensor = this.affinityMatrix_.sum();
-    const affinitySum = (await sumTensor.data())[0];
-    sumTensor.dispose();
-    if (affinitySum === 0) {
+    const sum_tensor = this.affinity_matrix_.sum();
+    const affinity_sum = (await sum_tensor.data())[0];
+    sum_tensor.dispose();
+    if (affinity_sum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
     }
 
     // Capture affinity statistics if requested
-    if (this.captureDebugInfo) {
-      const data = await this.affinityMatrix_.data();
-      const dataArray = Array.from(data);
-      const nnz = dataArray.filter((v: number) => v !== 0).length;
-      this.debugInfo_!.affinityStats = {
-        shape: this.affinityMatrix_.shape,
+    if (this.capture_debug_info) {
+      const data = await this.affinity_matrix_.data();
+      const data_array = Array.from(data);
+      const nnz = data_array.filter((v: number) => v !== 0).length;
+      this.debug_info_!.affinity_stats = {
+        shape: this.affinity_matrix_.shape,
         nnz,
-        min: Math.min(...dataArray),
-        max: Math.max(...dataArray),
+        min: Math.min(...data_array),
+        max: Math.max(...data_array),
         mean:
-          dataArray.reduce((a: number, b: number) => a + b, 0) /
-          dataArray.length,
+          data_array.reduce((a: number, b: number) => a + b, 0) /
+          data_array.length,
       };
     }
 
     /* ---------------------------- 2) Component Detection ---------------------- */
     // Detect connected components
-    const { detectConnectedComponents } = await import(
+    const { detect_connected_components } = await import(
       '../graph/connected_components'
     );
-    const { numComponents, isFullyConnected, componentLabels } =
-      detectConnectedComponents(this.affinityMatrix_ as tf.Tensor2D);
+    const { num_components, is_fully_connected, component_labels } =
+      detect_connected_components(this.affinity_matrix_ as tf.Tensor2D);
 
     // Warn if disconnected
-    if (!isFullyConnected) {
+    if (!is_fully_connected) {
       console.warn(
         'Graph is not fully connected, spectral embedding may not work as expected.',
       );
@@ -219,63 +219,63 @@ export class SpectralClustering
     let U: tf.Tensor2D;
 
     // If graph is disconnected and has enough components, use component indicators
-    if (!isFullyConnected && numComponents >= this.params.nClusters) {
+    if (!is_fully_connected && num_components >= this.params.n_clusters) {
       /* ------------------------ Use Component Indicators -------------------- */
-      const { createComponentIndicators } = await import(
+      const { create_component_indicators } = await import(
         '../graph/component_indicators'
       );
 
       // Use all component indicators, not just nClusters
       // This allows k-means to properly group components into clusters
-      U = createComponentIndicators(
-        componentLabels,
-        numComponents,
-        numComponents, // Use all components, not this.params.nClusters
+      U = create_component_indicators(
+        component_labels,
+        num_components,
+        num_components, // Use all components, not this.params.nClusters
       );
 
       // Component indicators are already normalized, no scaling needed
 
       // Capture debug info for component indicators
-      if (this.captureDebugInfo) {
+      if (this.capture_debug_info) {
         // For disconnected components, we don't have a traditional Laplacian spectrum
         // but we can still provide information about the components
-        this.debugInfo_!.laplacianSpectrum = Array(numComponents).fill(0); // Components have eigenvalue 0
+        this.debug_info_!.laplacian_spectrum = Array(num_components).fill(0); // Components have eigenvalue 0
 
-        const embData = await U.data();
+        const emb_data = await U.data();
         const [n, k] = U.shape;
-        const uniqueValuesPerDim: number[] = [];
+        const unique_values_per_dim: number[] = [];
 
         for (let i = 0; i < k; i++) {
-          const col = embData.slice(i * n, (i + 1) * n);
+          const col = emb_data.slice(i * n, (i + 1) * n);
           const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
-          uniqueValuesPerDim.push(unique.size);
+          unique_values_per_dim.push(unique.size);
         }
 
-        this.debugInfo_!.embeddingStats = {
+        this.debug_info_!.embedding_stats = {
           shape: U.shape,
-          uniqueValuesPerDim,
-          scalingFactors: Array(numComponents).fill(1), // No scaling for component indicators
+          unique_values_per_dim,
+          scaling_factors: Array(num_components).fill(1), // No scaling for component indicators
         };
       }
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
       // Compute Laplacian and eigenvectors as before
-      const { normalisedLaplacian } = await import('../graph/laplacian');
+      const { normalised_laplacian } = await import('../graph/laplacian');
 
       // Compute normalized Laplacian AND get degree information for recovery
-      const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalisedLaplacian(this.affinityMatrix_ as tf.Tensor2D, true),
+      const { laplacian, sqrt_degrees } = tf.tidy(() =>
+        normalised_laplacian(this.affinity_matrix_ as tf.Tensor2D, true),
       );
 
       // Capture Laplacian spectrum if requested
-      if (this.captureDebugInfo) {
+      if (this.capture_debug_info) {
         const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
           '../eigen/smallest_eigenvectors_with_values'
         );
-        const spectrumK = Math.min(10, laplacian.shape[0]);
-        const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
-        const specData = await specEvals.data();
-        this.debugInfo_!.laplacianSpectrum = Array.from(specData);
+        const spectrum_k = Math.min(10, laplacian.shape[0]);
+        const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrum_k);
+        const spec_data = await specEvals.data();
+        this.debug_info_!.laplacian_spectrum = Array.from(spec_data);
         specEvals.dispose();
         specVecs.dispose();
       }
@@ -287,28 +287,28 @@ export class SpectralClustering
 
       // When we have more components than clusters, we need to get more eigenvectors
       // to ensure we capture all component indicators
-      const numEigenvectors = Math.max(this.params.nClusters, numComponents);
+      const num_eigenvectors = Math.max(this.params.n_clusters, num_components);
 
       const { eigenvectors: U_full, eigenvalues } =
-        smallest_eigenvectors_with_values(laplacian, numEigenvectors);
+        smallest_eigenvectors_with_values(laplacian, num_eigenvectors);
 
       // Apply sklearn's normalization: divide by D^{1/2} (dd in sklearn)
       // NO diffusion map scaling for spectral clustering!
       const U_scaled = tf.tidy(() => {
-        const numToUse = this.params.nClusters;
+        const num_to_use = this.params.n_clusters;
 
         const U_selected = tf.slice(
           U_full,
           [0, 0],
-          [-1, numToUse],
+          [-1, num_to_use],
         ) as tf.Tensor2D;
 
         // Recover embedding from normalized Laplacian eigenvectors by dividing by D^{1/2}
         // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
         // This matches sklearn's spectral_embedding: embedding /= dd where dd = D^{1/2}
-        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
-        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
-        const U_normalized = U_selected.div(sqrtDegCol) as tf.Tensor2D;
+        const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
+        const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
+        const U_normalized = U_selected.div(sqrt_deg_col) as tf.Tensor2D;
 
         return U_normalized;
       });
@@ -317,28 +317,28 @@ export class SpectralClustering
       U = U_scaled;
 
       // Capture embedding statistics if requested
-      if (this.captureDebugInfo) {
-        const embData = await U.data();
+      if (this.capture_debug_info) {
+        const emb_data = await U.data();
         const [n, k] = U.shape;
-        const uniqueValuesPerDim: number[] = [];
+        const unique_values_per_dim: number[] = [];
 
         for (let i = 0; i < k; i++) {
-          const col = embData.slice(i * n, (i + 1) * n);
+          const col = emb_data.slice(i * n, (i + 1) * n);
           const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
-          uniqueValuesPerDim.push(unique.size);
+          unique_values_per_dim.push(unique.size);
         }
 
-        const eigenData = await eigenvalues.data();
-        this.debugInfo_!.embeddingStats = {
+        const eigen_data = await eigenvalues.data();
+        this.debug_info_!.embedding_stats = {
           shape: U.shape,
-          uniqueValuesPerDim,
-          scalingFactors: Array.from(eigenData.slice(0, this.params.nClusters)),
+          unique_values_per_dim,
+          scaling_factors: Array.from(eigen_data.slice(0, this.params.n_clusters)),
         };
       }
 
       // Clean up intermediate tensors
       laplacian.dispose();
-      sqrtDegrees.dispose();
+      sqrt_degrees.dispose();
       eigenvalues.dispose();
       U_full.dispose();
     }
@@ -351,17 +351,17 @@ export class SpectralClustering
     const { KMeans } = await import('./kmeans');
 
     // Check if we should use intensive parameter sweep
-    if (this.params.intensiveParameterSweep && this.params.affinity === 'rbf') {
+    if (this.params.intensive_parameter_sweep && this.params.affinity === 'rbf') {
       // Intensive parameter sweep for difficult cases
-      const { intensiveParameterSweep } = await import(
+      const { intensive_parameter_sweep } = await import(
         './spectral_optimization'
       );
 
-      const result = await intensiveParameterSweep(
+      const result = await intensive_parameter_sweep(
         Xtensor,
         this.params,
-        this.computeEmbeddingFromAffinity.bind(this),
-        SpectralClustering.computeAffinityMatrix,
+        this.compute_embedding_from_affinity.bind(this),
+        SpectralClustering.compute_affinity_matrix,
       );
 
       this.labels_ = result.labels;
@@ -375,21 +375,21 @@ export class SpectralClustering
       });
     }
     // Check if we should use validation-based optimization
-    else if (this.params.useValidation && this.params.nClusters >= 3) {
+    else if (this.params.use_validation && this.params.n_clusters >= 3) {
       // Use validation metrics to find best clustering
-      const { validationBasedOptimization } = await import(
+      const { validation_based_optimization } = await import(
         './spectral_optimization'
       );
 
-      const metric = this.params.validationMetric ?? 'calinski-harabasz';
-      const attempts = this.params.validationAttempts ?? 20;
+      const metric = this.params.validation_metric ?? 'calinski-harabasz';
+      const attempts = this.params.validation_attempts ?? 20;
 
-      const result = await validationBasedOptimization(
+      const result = await validation_based_optimization(
         U,
-        this.params.nClusters,
+        this.params.n_clusters,
         metric,
         attempts,
-        this.params.randomState,
+        this.params.random_state,
       );
 
       this.labels_ = result.labels;
@@ -403,20 +403,20 @@ export class SpectralClustering
       });
     } else {
       // Standard k-means without validation
-      const kmParams = {
-        nClusters: this.params.nClusters,
-        randomState: this.params.randomState,
+      const km_params = {
+        n_clusters: this.params.n_clusters,
+        random_state: this.params.random_state,
         // Multiple initialisations significantly increase robustness of the
-        // final clustering outcome.  Follow scikit-learn default (nInit = 10)
+        // final clustering outcome.  Follow scikit-learn default (n_init = 10)
         // unless the caller supplied an explicit override.
-        nInit: this.params.nInit ?? 10,
+        n_init: this.params.n_init ?? 10,
       } as const;
 
-      const km = new KMeans(kmParams);
+      const km = new KMeans(km_params);
 
       // Expose for unit-testing (non-enumerable to avoid polluting logs)
       Object.defineProperty(this, '_debug_last_kmeans_params_', {
-        value: kmParams,
+        value: km_params,
         writable: false,
         configurable: false,
         enumerable: false,
@@ -428,8 +428,8 @@ export class SpectralClustering
       this.labels_ = km.labels_!;
 
       // Capture clustering metrics if requested
-      if (this.captureDebugInfo && km.inertia_ !== null) {
-        this.debugInfo_!.clusteringMetrics = {
+      if (this.capture_debug_info && km.inertia_ !== null) {
+        this.debug_info_!.clustering_metrics = {
           inertia: km.inertia_,
           iterations: 0, // KMeans doesn't expose iteration count currently
         };
@@ -450,7 +450,7 @@ export class SpectralClustering
    * @returns Array of cluster labels for each sample.
    * @throws {Error} If nClusters exceeds nSamples or nSamples exceeds maxSamples.
    */
-  async fitPredict(X: DataMatrix): Promise<number[]> {
+  async fit_predict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
       throw new Error('SpectralClustering failed to compute labels.');
@@ -461,83 +461,83 @@ export class SpectralClustering
   /**
    * Get debug information if available.
    */
-  public getDebugInfo(): DebugInfo | null {
-    return this.debugInfo_;
+  public get_debug_info(): DebugInfo | null {
+    return this.debug_info_;
   }
 
   /**
    * Fits the model and returns intermediate steps for debugging and analysis.
    * This method is useful for comparing with reference implementations.
    */
-  async fitWithIntermediateSteps(X: DataMatrix): Promise<IntermediateSteps> {
+  async fit_with_intermediate_steps(X: DataMatrix): Promise<IntermediateSteps> {
     // Dispose previous state if the estimator is re-used.
     this.dispose();
-    this.debugInfo_ = {};
+    this.debug_info_ = {};
 
     /* ---------------------------- 0) Input -------------------------------- */
     const Xtensor: tf.Tensor2D =
-      isTensor(X)
+      is_tensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
         : tf.tensor2d(X as number[][], undefined, 'float32');
 
-    const nSamplesDebug = Xtensor.shape[0];
-    if (this.params.nClusters > nSamplesDebug) {
+    const n_samples_debug = Xtensor.shape[0];
+    if (this.params.n_clusters > n_samples_debug) {
       Xtensor.dispose();
       throw new Error('nClusters cannot exceed number of samples.');
     }
-    const maxSamplesDebug = this.params.maxSamples ?? 10_000;
-    if (nSamplesDebug > maxSamplesDebug) {
+    const max_samples_debug = this.params.max_samples ?? 10_000;
+    if (n_samples_debug > max_samples_debug) {
       Xtensor.dispose();
       throw new Error(
-        `Input has ${nSamplesDebug} samples, which exceeds the maximum of ${maxSamplesDebug} ` +
+        `Input has ${n_samples_debug} samples, which exceeds the maximum of ${max_samples_debug} ` +
         `for spectral clustering. The algorithm requires O(n^2) memory for the affinity matrix. ` +
         `Set maxSamples in params to override this limit if you have sufficient memory.`,
       );
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
-    const affinity = SpectralClustering.computeAffinityMatrix(
+    const affinity = SpectralClustering.compute_affinity_matrix(
       Xtensor,
       this.params,
     );
 
-    const affinitySumTensor = affinity.sum();
-    const affinitySum = (await affinitySumTensor.data())[0];
-    affinitySumTensor.dispose();
-    if (affinitySum === 0) {
+    const affinity_sum_tensor = affinity.sum();
+    const affinity_sum = (await affinity_sum_tensor.data())[0];
+    affinity_sum_tensor.dispose();
+    if (affinity_sum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
     }
 
     // Capture affinity statistics
-    const affinityData = await affinity.data();
-    const affinityArray = Array.from(affinityData);
-    const nnz = affinityArray.filter((v: number) => v !== 0).length;
-    this.debugInfo_.affinityStats = {
+    const affinity_data = await affinity.data();
+    const affinity_array = Array.from(affinity_data);
+    const nnz = affinity_array.filter((v: number) => v !== 0).length;
+    this.debug_info_.affinity_stats = {
       shape: affinity.shape,
       nnz,
-      min: Math.min(...affinityArray),
-      max: Math.max(...affinityArray),
+      min: Math.min(...affinity_array),
+      max: Math.max(...affinity_array),
       mean:
-        affinityArray.reduce((a: number, b: number) => a + b, 0) /
-        affinityArray.length,
+        affinity_array.reduce((a: number, b: number) => a + b, 0) /
+        affinity_array.length,
     };
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
-    const { normalisedLaplacian } = await import('../graph/laplacian');
-    const { laplacian, sqrtDegrees } = tf.tidy(() =>
-      normalisedLaplacian(affinity, true),
+    const { normalised_laplacian } = await import('../graph/laplacian');
+    const { laplacian, sqrt_degrees } = tf.tidy(() =>
+      normalised_laplacian(affinity, true),
     );
 
     // Capture Laplacian spectrum using same solver routing as the main pipeline
     const { smallest_eigenvectors_with_values: spectrumHelper } = await import(
       '../eigen/smallest_eigenvectors_with_values'
     );
-    const spectrumK = Math.min(10, laplacian.shape[0]);
-    const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrumK);
-    const specData = await specEvals.data();
-    this.debugInfo_.laplacianSpectrum = Array.from(specData);
+    const spectrum_k = Math.min(10, laplacian.shape[0]);
+    const { eigenvalues: specEvals, eigenvectors: specVecs } = spectrumHelper(laplacian, spectrum_k);
+    const spec_data = await specEvals.data();
+    this.debug_info_.laplacian_spectrum = Array.from(spec_data);
     specEvals.dispose();
     specVecs.dispose();
 
@@ -547,54 +547,54 @@ export class SpectralClustering
     );
 
     const { eigenvectors: U_full, eigenvalues } =
-      smallest_eigenvectors_with_values(laplacian, this.params.nClusters);
+      smallest_eigenvectors_with_values(laplacian, this.params.n_clusters);
 
     // Apply sklearn's normalization: divide by D^{1/2}
     const embedding = tf.tidy(() => {
       const U_selected = tf.slice(
         U_full,
         [0, 0],
-        [-1, this.params.nClusters],
+        [-1, this.params.n_clusters],
       ) as tf.Tensor2D;
       // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
-      const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
-      const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
-      return U_selected.div(sqrtDegCol) as tf.Tensor2D;
+      const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
+      const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
+      return U_selected.div(sqrt_deg_col) as tf.Tensor2D;
     });
 
     // Capture embedding statistics
-    const embData = await embedding.data();
+    const emb_data = await embedding.data();
     const [n, k] = embedding.shape;
-    const uniqueValuesPerDim: number[] = [];
+    const unique_values_per_dim: number[] = [];
 
     for (let i = 0; i < k; i++) {
-      const col = embData.slice(i * n, (i + 1) * n);
+      const col = emb_data.slice(i * n, (i + 1) * n);
       const unique = new Set(col.map((v) => Math.round(v * 1e10) / 1e10));
-      uniqueValuesPerDim.push(unique.size);
+      unique_values_per_dim.push(unique.size);
     }
 
-    const eigenData = await eigenvalues.data();
-    this.debugInfo_.embeddingStats = {
+    const eigen_data = await eigenvalues.data();
+    this.debug_info_.embedding_stats = {
       shape: embedding.shape,
-      uniqueValuesPerDim,
-      scalingFactors: Array.from(eigenData.slice(0, this.params.nClusters)),
+      unique_values_per_dim,
+      scaling_factors: Array.from(eigen_data.slice(0, this.params.n_clusters)),
     };
 
     /* ---------------------------- 4) Clustering ----------------------------- */
     const { KMeans } = await import('./kmeans');
-    const kmParams = {
-      nClusters: this.params.nClusters,
-      randomState: this.params.randomState,
-      nInit: this.params.nInit ?? 10,
+    const km_params = {
+      n_clusters: this.params.n_clusters,
+      random_state: this.params.random_state,
+      n_init: this.params.n_init ?? 10,
     } as const;
 
-    const km = new KMeans(kmParams);
+    const km = new KMeans(km_params);
     await km.fit(embedding);
     const labels = km.labels_!;
 
     // Capture clustering metrics
     if (km.inertia_ !== null) {
-      this.debugInfo_.clusteringMetrics = {
+      this.debug_info_.clustering_metrics = {
         inertia: km.inertia_,
         iterations: 0, // KMeans doesn't expose iteration count currently
       };
@@ -603,31 +603,31 @@ export class SpectralClustering
 
     /* ---------------------------- Prepare Result ----------------------------- */
     // Compute D^{1/2} for the result (sqrtDegrees is D^{-1/2}, so pow(-1) gives D^{1/2})
-    const degreesIntermediate = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
+    const degrees_intermediate = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
     const result: IntermediateSteps = {
       affinity: tf.clone(affinity),
       laplacian: {
         laplacian: tf.clone(laplacian),
-        degrees: tf.clone(degreesIntermediate),
-        sqrtDegrees: tf.clone(sqrtDegrees),
+        degrees: tf.clone(degrees_intermediate),
+        sqrt_degrees: tf.clone(sqrt_degrees),
       },
       embedding: {
         embedding: tf.clone(embedding),
         eigenvalues: tf.clone(eigenvalues),
-        rawEigenvectors: tf.clone(U_full),
+        raw_eigenvectors: tf.clone(U_full),
       },
       labels: [...labels],
     };
-    degreesIntermediate.dispose();
+    degrees_intermediate.dispose();
 
     // Store labels for consistency
     this.labels_ = labels;
-    this.affinityMatrix_ = tf.clone(affinity);
+    this.affinity_matrix_ = tf.clone(affinity);
 
     /* --------------------------- Clean-up --------------------------------- */
     affinity.dispose();
     laplacian.dispose();
-    sqrtDegrees.dispose();
+    sqrt_degrees.dispose();
     U_full.dispose();
     eigenvalues.dispose();
     embedding.dispose();
@@ -641,18 +641,18 @@ export class SpectralClustering
   /*                     Static parameter validation                       */
   /* ------------------------------------------------------------------- */
 
-  private static validateParams(params: SpectralClusteringParams): void {
-    const { nClusters, affinity = 'rbf', gamma, nNeighbors } = params;
+  private static validate_params(params: SpectralClusteringParams): void {
+    const { n_clusters, affinity = 'rbf', gamma, n_neighbors } = params;
 
     // nClusters must be a positive integer
-    if (!Number.isInteger(nClusters) || nClusters < 1) {
+    if (!Number.isInteger(n_clusters) || n_clusters < 1) {
       throw new Error('nClusters must be a positive integer (>= 1).');
     }
 
     // Affinity string or callable
-    const isCallable = typeof affinity === 'function';
+    const is_callable = typeof affinity === 'function';
     if (
-      !isCallable &&
+      !is_callable &&
       !SpectralClustering.VALID_AFFINITIES.includes(affinity)
     ) {
       throw new Error(
@@ -661,7 +661,7 @@ export class SpectralClustering
     }
 
     // gamma checks (only relevant for RBF affinity when provided as string)
-    if (!isCallable && affinity === 'rbf') {
+    if (!is_callable && affinity === 'rbf') {
       if (gamma !== undefined && (typeof gamma !== 'number' || gamma <= 0)) {
         throw new Error('gamma must be a positive number if specified.');
       }
@@ -671,29 +671,29 @@ export class SpectralClustering
     }
 
     // nNeighbors checks for nearest_neighbors affinity
-    if (!isCallable && affinity === 'nearest_neighbors') {
+    if (!is_callable && affinity === 'nearest_neighbors') {
       // If nNeighbors is provided, validate it
       if (
-        nNeighbors !== undefined &&
-        (!Number.isInteger(nNeighbors) || nNeighbors < 1)
+        n_neighbors !== undefined &&
+        (!Number.isInteger(n_neighbors) || n_neighbors < 1)
       ) {
         throw new Error('nNeighbors must be a positive integer (>= 1).');
       }
       // Default will be computed at fit time based on n_samples
-    } else if (nNeighbors !== undefined) {
+    } else if (n_neighbors !== undefined) {
       throw new Error(
         "nNeighbors is only applicable when affinity is 'nearest_neighbors'.",
       );
     }
 
     // precomputed: gamma / nNeighbors not allowed
-    if (!isCallable && affinity === 'precomputed') {
+    if (!is_callable && affinity === 'precomputed') {
       if (gamma !== undefined) {
         throw new Error(
           "gamma is not applicable when affinity is 'precomputed'.",
         );
       }
-      if (nNeighbors !== undefined) {
+      if (n_neighbors !== undefined) {
         throw new Error(
           "nNeighbors is not applicable when affinity is 'precomputed'.",
         );
@@ -705,7 +705,7 @@ export class SpectralClustering
   /*                       Affinity matrix utilities                       */
   /* ------------------------------------------------------------------- */
 
-  static computeAffinityMatrix(
+  static compute_affinity_matrix(
     X: tf.Tensor2D,
     params: SpectralClusteringParams,
   ): tf.Tensor2D {
@@ -714,13 +714,13 @@ export class SpectralClustering
     // -------------------------- Callable affinity ------------------------ //
     if (typeof affinity === 'function') {
       const A = affinity(X);
-      SpectralClustering.validateAffinityMatrix(A);
+      SpectralClustering.validate_affinity_matrix(A);
       return A;
     }
 
     // ---------------------------- Precomputed ---------------------------- //
     if (affinity === 'precomputed') {
-      SpectralClustering.validateAffinityMatrix(X);
+      SpectralClustering.validate_affinity_matrix(X);
       return X;
     }
 
@@ -729,78 +729,78 @@ export class SpectralClustering
     }
 
     // nearest_neighbors - include self-loops for connectivity
-    const nSamples = X.shape[0];
-    const k = SpectralClustering.defaultNeighbors(params, nSamples);
+    const n_samples = X.shape[0];
+    const k = SpectralClustering.default_neighbors(params, n_samples);
     return compute_knn_affinity(X, k, true);
   }
 
   /** Returns defaulted k when undefined */
-  static defaultNeighbors(
+  static default_neighbors(
     params: SpectralClusteringParams,
-    nSamples: number,
+    n_samples: number,
   ): number {
-    if (params.nNeighbors !== undefined) {
-      return params.nNeighbors;
+    if (params.n_neighbors !== undefined) {
+      return params.n_neighbors;
     }
 
     // Match sklearn's default: round(log2(n_samples))
     // Handle edge case: ensure at least 1 neighbor
-    const defaultK = Math.round(Math.log2(nSamples));
-    return Math.max(1, defaultK);
+    const default_k = Math.round(Math.log2(n_samples));
+    return Math.max(1, default_k);
   }
 
   /**
    * Compute spectral embedding from affinity matrix.
    * Extracted to support parameter sweep.
    */
-  private async computeEmbeddingFromAffinity(
-    affinityMatrix: tf.Tensor2D,
+  private async compute_embedding_from_affinity(
+    affinity_matrix: tf.Tensor2D,
   ): Promise<tf.Tensor2D> {
-    const { detectConnectedComponents } = await import(
+    const { detect_connected_components } = await import(
       '../graph/connected_components'
     );
-    const { numComponents, isFullyConnected, componentLabels } =
-      detectConnectedComponents(affinityMatrix);
+    const { num_components, is_fully_connected, component_labels } =
+      detect_connected_components(affinity_matrix);
 
-    if (!isFullyConnected && numComponents >= this.params.nClusters) {
-      const { createComponentIndicators } = await import(
+    if (!is_fully_connected && num_components >= this.params.n_clusters) {
+      const { create_component_indicators } = await import(
         '../graph/component_indicators'
       );
-      return createComponentIndicators(
-        componentLabels,
-        numComponents,
-        numComponents,
+      return create_component_indicators(
+        component_labels,
+        num_components,
+        num_components,
       );
     } else {
-      const { normalisedLaplacian } = await import('../graph/laplacian');
+      const { normalised_laplacian } = await import('../graph/laplacian');
       const { smallest_eigenvectors_with_values } = await import(
         '../eigen/smallest_eigenvectors_with_values'
       );
 
-      const { laplacian, sqrtDegrees } = tf.tidy(() =>
-        normalisedLaplacian(affinityMatrix, true),
+      const { laplacian, sqrt_degrees } = tf.tidy(() =>
+        normalised_laplacian(affinity_matrix, true),
       );
 
-      const numEigenvectors = Math.max(this.params.nClusters, numComponents);
+      const num_eigenvectors = Math.max(this.params.n_clusters, num_components);
       const { eigenvectors: U_full, eigenvalues } =
-        smallest_eigenvectors_with_values(laplacian, numEigenvectors);
+        smallest_eigenvectors_with_values(laplacian, num_eigenvectors);
 
       const U_scaled = tf.tidy(() => {
-        const numToUse = this.params.nClusters;
+        const num_to_use = this.params.n_clusters;
         const U_selected = tf.slice(
           U_full,
           [0, 0],
-          [-1, numToUse],
+          [-1, num_to_use],
         ) as tf.Tensor2D;
         // sqrtDegrees is D^{-1/2}, so D^{1/2} = pow(sqrtDegrees, -1)
-        const sqrtDeg = tf.pow(sqrtDegrees, -1) as tf.Tensor1D;
-        const sqrtDegCol = sqrtDeg.reshape([-1, 1]) as tf.Tensor2D;
-        const U_normalized = U_selected.div(sqrtDegCol) as tf.Tensor2D;
+        const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
+        const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
+        const U_normalized = U_selected.div(sqrt_deg_col) as tf.Tensor2D;
         return U_normalized;
       });
 
       laplacian.dispose();
-      sqrtDegrees.dispose();
+      sqrt_degrees.dispose();
       eigenvalues.dispose();
       U_full.dispose();
 
@@ -815,7 +815,7 @@ export class SpectralClustering
    *   • Must be **symmetric** (within tolerance)
    *   • Must be **non-negative** (entries ≥ 0)
    */
-  static validateAffinityMatrix(A: tf.Tensor2D): void {
+  static validate_affinity_matrix(A: tf.Tensor2D): void {
     if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
       throw new Error('Affinity matrix must be square (n × n).');
     }
@@ -824,13 +824,13 @@ export class SpectralClustering
     tf.tidy(() => {
       const tol = 1e-6;
       const diff = A.sub(A.transpose()).abs();
-      const maxDiff = diff.max().dataSync()[0];
-      if (maxDiff > tol) {
+      const max_diff = diff.max().dataSync()[0];
+      if (max_diff > tol) {
         throw new Error('Affinity matrix must be symmetric.');
       }
 
-      const minVal = A.min().dataSync()[0];
-      if (minVal < -tol) {
+      const min_val = A.min().dataSync()[0];
+      if (min_val < -tol) {
         throw new Error('Affinity matrix must be non-negative.');
       }
     });

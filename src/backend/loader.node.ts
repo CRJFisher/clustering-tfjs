@@ -5,28 +5,28 @@
  * for Node.js environments, with automatic fallback.
  */
 
-export async function loadTensorFlow() {
+export async function load_tensor_flow() {
   // Try GPU backend first
   try {
     // Use require.resolve to check if module exists before importing
     require.resolve('@tensorflow/tfjs-node-gpu');
-    const tfGpu = await import('@tensorflow/tfjs-node-gpu' as string);
+    const tf_gpu = await import('@tensorflow/tfjs-node-gpu' as string);
     console.log('Using TensorFlow.js GPU backend');
-    return tfGpu as typeof import('@tensorflow/tfjs');
+    return tf_gpu as typeof import('@tensorflow/tfjs');
   } catch {
     // GPU backend not available, try CPU backend
     try {
       require.resolve('@tensorflow/tfjs-node');
-      const tfNode = await import('@tensorflow/tfjs-node');
+      const tf_node = await import('@tensorflow/tfjs-node');
       console.log('Using TensorFlow.js Node.js CPU backend');
-      return tfNode as typeof import('@tensorflow/tfjs');
+      return tf_node as typeof import('@tensorflow/tfjs');
     } catch {
       // Neither Node backend available, fall back to pure JS
       try {
         require.resolve('@tensorflow/tfjs');
-        const tfJs = await import('@tensorflow/tfjs');
+        const tf_js = await import('@tensorflow/tfjs');
         console.log('Using TensorFlow.js pure JavaScript backend (slower performance)');
-        return tfJs as typeof import('@tensorflow/tfjs');
+        return tf_js as typeof import('@tensorflow/tfjs');
       } catch {
         throw new Error(
           'No TensorFlow.js backend available. Please install one of:\n' +

@@ -1,8 +1,8 @@
 import * as tf from "../tensorflow-helper";
 
-import { pairwiseDistanceMatrix } from "../../src/distance/pairwise_distance";
+import { pairwise_distance_matrix } from "../../src/distance/pairwise_distance";
 
-function closeTo(a: number[][], b: number[][], eps = 1e-4): boolean {
+function close_to(a: number[][], b: number[][], eps = 1e-4): boolean {
   for (let i = 0; i < a.length; i++) {
     for (let j = 0; j < a[0].length; j++) {
       if (Math.abs(a[i][j] - b[i][j]) > eps) return false;
@@ -24,7 +24,7 @@ describe("pairwiseDistanceMatrix", () => {
   afterEach(() => tf.engine().disposeVariables());
 
   it("euclidean metric matches pairwiseEuclideanMatrix", () => {
-    const distMat = pairwiseDistanceMatrix(points, "euclidean").arraySync() as number[][];
+    const dist_mat = pairwise_distance_matrix(points, "euclidean").arraySync() as number[][];
 
     const expected: number[][] = [];
     const data = points.arraySync();
@@ -35,12 +35,12 @@ describe("pairwiseDistanceMatrix", () => {
       }
     }
 
-    expect(closeTo(distMat, expected)).toBe(true);
+    expect(close_to(dist_mat, expected)).toBe(true);
   });
 
   it("euclidean matrix is symmetric with zero diagonal", () => {
     const pts = tf.randomUniform([5, 4]);
-    const dist = pairwiseDistanceMatrix(pts as tf.Tensor2D, "euclidean").arraySync() as number[][];
+    const dist = pairwise_distance_matrix(pts as tf.Tensor2D, "euclidean").arraySync() as number[][];
     const eps = 1e-3;
     for (let i = 0; i < 5; i++) {
       expect(Math.abs(dist[i][i]) < eps).toBe(true);
@@ -53,7 +53,7 @@ describe("pairwiseDistanceMatrix", () => {
   it("computes matrix for 100x50 without crashing (performance smoke)", () => {
     const big = tf.randomUniform([100, 50]);
     const start = Date.now();
-    const dist = pairwiseDistanceMatrix(big as tf.Tensor2D, "euclidean");
+    const dist = pairwise_distance_matrix(big as tf.Tensor2D, "euclidean");
     expect(dist.shape).toEqual([100, 100]);
     const duration = Date.now() - start;
     // Ensure runtime is within a reasonable bound (smoke check < 2s)
@@ -61,7 +61,7 @@ describe("pairwiseDistanceMatrix", () => {
   });
 
   it("manhattan metric produces ℓ1 distances", () => {
-    const distMat = pairwiseDistanceMatrix(points, "manhattan").arraySync() as number[][];
+    const dist_mat = pairwise_distance_matrix(points, "manhattan").arraySync() as number[][];
     const data = points.arraySync();
     const expected: number[][] = [];
     for (let i = 0; i < data.length; i++) {
@@ -70,16 +70,16 @@ describe("pairwiseDistanceMatrix", () => {
         expected[i][j] = Math.abs(data[i][0] - data[j][0]) + Math.abs(data[i][1] - data[j][1]);
       }
     }
-    expect(closeTo(distMat, expected)).toBe(true);
+    expect(close_to(dist_mat, expected)).toBe(true);
   });
 
   it("cosine metric: identical points have 0 distance, others positive", () => {
-    const distMat = pairwiseDistanceMatrix(points, "cosine").arraySync() as number[][];
+    const dist_mat = pairwise_distance_matrix(points, "cosine").arraySync() as number[][];
     for (let i = 0; i < points.shape[0]; i++) {
-      expect(Math.abs(distMat[i][i]) < 1e-4).toBe(true);
+      expect(Math.abs(dist_mat[i][i]) < 1e-4).toBe(true);
       for (let j = 0; j < points.shape[0]; j++) {
-        expect(distMat[i][j]).toBeGreaterThanOrEqual(0);
-        expect(distMat[i][j]).toBeLessThanOrEqual(2); // cosine distance between 0 and 2
+        expect(dist_mat[i][j]).toBeGreaterThanOrEqual(0);
+        expect(dist_mat[i][j]).toBeLessThanOrEqual(2); // cosine distance between 0 and 2
       }
     }
   });

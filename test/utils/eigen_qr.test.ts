@@ -4,15 +4,15 @@ import {
   tridiagonal_qr_eigen,
 } from "../../src/eigen/qr";
 
-function expectOrthonormal(
+function expect_orthonormal(
   vectors: number[][],
   n: number,
   tol = 1e-6,
 ): void {
   for (let i = 0; i < n; i++) {
-    let selfDot = 0;
-    for (let k = 0; k < n; k++) selfDot += vectors[k][i] * vectors[k][i];
-    expect(Math.abs(selfDot - 1)).toBeLessThan(tol);
+    let self_dot = 0;
+    for (let k = 0; k < n; k++) self_dot += vectors[k][i] * vectors[k][i];
+    expect(Math.abs(self_dot - 1)).toBeLessThan(tol);
     for (let j = i + 1; j < n; j++) {
       let dot = 0;
       for (let k = 0; k < n; k++) dot += vectors[k][i] * vectors[k][j];
@@ -21,7 +21,7 @@ function expectOrthonormal(
   }
 }
 
-function expectReconstruction(
+function expect_reconstruction(
   A: number[][],
   eigenvalues: number[],
   eigenvectors: number[][],
@@ -61,8 +61,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     for (const ev of eigenvalues) {
       expect(ev).toBeCloseTo(5, 5);
     }
-    expectOrthonormal(eigenvectors, 4);
-    expectReconstruction(data, eigenvalues, eigenvectors);
+    expect_orthonormal(eigenvectors, 4);
+    expect_reconstruction(data, eigenvalues, eigenvectors);
   });
 
   it("handles double degeneracy (diag(1,1,3,3))", () => {
@@ -81,8 +81,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     expect(eigenvalues[1]).toBeCloseTo(1, 5);
     expect(eigenvalues[2]).toBeCloseTo(3, 5);
     expect(eigenvalues[3]).toBeCloseTo(3, 5);
-    expectOrthonormal(eigenvectors, 4);
-    expectReconstruction(data, eigenvalues, eigenvectors);
+    expect_orthonormal(eigenvectors, 4);
+    expect_reconstruction(data, eigenvalues, eigenvectors);
   });
 
   it("handles triple degeneracy (diag(2,2,2,5))", () => {
@@ -101,8 +101,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     expect(eigenvalues[1]).toBeCloseTo(2, 5);
     expect(eigenvalues[2]).toBeCloseTo(2, 5);
     expect(eigenvalues[3]).toBeCloseTo(5, 5);
-    expectOrthonormal(eigenvectors, 4);
-    expectReconstruction(data, eigenvalues, eigenvectors);
+    expect_orthonormal(eigenvectors, 4);
+    expect_reconstruction(data, eigenvalues, eigenvectors);
   });
 
   it("handles zero eigenvalue with multiplicity (diag(0,0,1,2))", () => {
@@ -121,7 +121,7 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     expect(eigenvalues[1]).toBeCloseTo(0, 5);
     expect(eigenvalues[2]).toBeCloseTo(1, 5);
     expect(eigenvalues[3]).toBeCloseTo(2, 5);
-    expectOrthonormal(eigenvectors, 4);
+    expect_orthonormal(eigenvectors, 4);
   });
 
   // Known bug: Wilkinson-shifted QR produces NaN for non-diagonal matrices
@@ -144,8 +144,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     expect(sorted[0]).toBeCloseTo(2, 4);
     expect(sorted[1]).toBeCloseTo(2, 4);
     expect(sorted[2]).toBeCloseTo(5, 4);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
   it("reconstructs a general symmetric matrix correctly", () => {
@@ -160,8 +160,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     const { eigenvalues, eigenvectors } = qr_eigen_decomposition(mat);
 
     expect(eigenvalues).toHaveLength(3);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
   it("solves known 2x2 case ([[2,1],[1,2]] has eigenvalues [1,3])", () => {
@@ -177,8 +177,8 @@ describe("qr_eigen_decomposition – degenerate eigenvalue cases", () => {
     const sorted = [...eigenvalues].sort((a, b) => a - b);
     expect(sorted[0]).toBeCloseTo(1, 5);
     expect(sorted[1]).toBeCloseTo(3, 5);
-    expectOrthonormal(eigenvectors, 2);
-    expectReconstruction(A, eigenvalues, eigenvectors, 1e-5);
+    expect_orthonormal(eigenvectors, 2);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-5);
   });
 });
 
@@ -194,7 +194,7 @@ describe("tridiagonal_qr_eigen", () => {
       expect(ev).toBeCloseTo(4, 6);
     }
     expect(eigenvectors).toBeDefined();
-    expectOrthonormal(eigenvectors!, 4);
+    expect_orthonormal(eigenvectors!, 4);
   });
 
   it("handles single element (d=[5], e=[])", () => {
@@ -234,6 +234,6 @@ describe("tridiagonal_qr_eigen", () => {
     expect(sorted[1]).toBeCloseTo(2, 5);
     expect(sorted[2]).toBeCloseTo(2 + Math.SQRT2, 5);
     expect(eigenvectors).toBeDefined();
-    expectOrthonormal(eigenvectors!, 3);
+    expect_orthonormal(eigenvectors!, 3);
   });
 });

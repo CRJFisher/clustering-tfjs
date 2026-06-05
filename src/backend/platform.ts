@@ -10,7 +10,7 @@ import type { Platform } from './platform_types';
 /**
  * Safely check if running in Node.js environment
  */
-export function isNode(): boolean {
+export function is_node(): boolean {
   return typeof process !== 'undefined' &&
          process.versions !== undefined &&
          process.versions.node !== undefined &&
@@ -21,7 +21,7 @@ export function isNode(): boolean {
  * Safely check if running in React Native environment.
  * Uses multiple signals for robust detection across Hermes, JSC, and V8 engines.
  */
-export function isReactNative(): boolean {
+export function is_react_native(): boolean {
   if (typeof globalThis === 'undefined') return false;
 
   const g: Record<string, unknown> = globalThis as Record<string, unknown>;
@@ -41,40 +41,40 @@ export function isReactNative(): boolean {
 /**
  * Safely check if running in browser environment
  */
-export function isBrowser(): boolean {
+export function is_browser(): boolean {
   return typeof window !== 'undefined' &&
-         !isReactNative() &&
-         !isNode();
+         !is_react_native() &&
+         !is_node();
 }
 
 /**
  * Get current platform
  */
-export function getPlatform(): Platform {
-  if (isReactNative()) return 'react-native';
-  if (isNode()) return 'node';
+export function get_platform(): Platform {
+  if (is_react_native()) return 'react-native';
+  if (is_node()) return 'node';
   return 'browser';
 }
 
 /**
  * Safely check if running on Windows (Node.js only)
  */
-export function isWindows(): boolean {
-  return isNode() && process.platform === 'win32';
+export function is_windows(): boolean {
+  return is_node() && process.platform === 'win32';
 }
 
 /**
  * Safely check if running in CI environment
  */
-export function isCI(): boolean {
-  if (!isNode()) return false;
+export function is_ci(): boolean {
+  if (!is_node()) return false;
   return process.env.CI === 'true' ||
          process.env.CI === '1' ||
          process.env.CONTINUOUS_INTEGRATION === 'true';
 }
 
 /** In-memory storage for Node.js and React Native fallback */
-const memoryStorage = new Map<string, string>();
+const memory_storage = new Map<string, string>();
 
 /**
  * Platform-safe data persistence
@@ -86,29 +86,29 @@ export class PlatformStorage {
   private platform: Platform;
 
   constructor() {
-    this.platform = getPlatform();
+    this.platform = get_platform();
   }
 
-  async setItem(key: string, value: string): Promise<void> {
+  async set_item(key: string, value: string): Promise<void> {
     if (this.platform === 'browser') {
       localStorage.setItem(key, value);
     } else {
-      memoryStorage.set(key, value);
+      memory_storage.set(key, value);
     }
   }
 
-  async getItem(key: string): Promise<string | null> {
+  async get_item(key: string): Promise<string | null> {
     if (this.platform === 'browser') {
       return localStorage.getItem(key);
     }
-    return memoryStorage.get(key) ?? null;
+    return memory_storage.get(key) ?? null;
   }
 
-  async removeItem(key: string): Promise<void> {
+  async remove_item(key: string): Promise<void> {
     if (this.platform === 'browser') {
       localStorage.removeItem(key);
     } else {
-      memoryStorage.delete(key);
+      memory_storage.delete(key);
     }
   }
 }
@@ -116,7 +116,7 @@ export class PlatformStorage {
 /**
  * Platform-safe data fetching
  */
-export async function platformFetch(url: string, options?: RequestInit): Promise<Response> {
+export async function platform_fetch(url: string, options?: RequestInit): Promise<Response> {
   if (typeof fetch !== 'undefined') {
     return fetch(url, options);
   }

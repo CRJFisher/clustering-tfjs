@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
-import { computeWss } from "../../src/model_selection/compute_wss";
+import { compute_wss } from "../../src/model_selection/compute_wss";
 
 describe("computeWss", () => {
   beforeEach(() => {
@@ -16,7 +16,7 @@ describe("computeWss", () => {
     const labels = [0, 1];
 
     // Each cluster has one point, so WSS = 0
-    expect(computeWss(X, labels)).toBeCloseTo(0, 10);
+    expect(compute_wss(X, labels)).toBeCloseTo(0, 10);
   });
 
   it("should compute correct WSS for known data", () => {
@@ -27,7 +27,7 @@ describe("computeWss", () => {
     const X = [[0, 0], [2, 0], [10, 0], [12, 0]];
     const labels = [0, 0, 1, 1];
 
-    expect(computeWss(X, labels)).toBeCloseTo(4, 5);
+    expect(compute_wss(X, labels)).toBeCloseTo(4, 5);
   });
 
   it("should decrease as k increases for well-separated data", () => {
@@ -39,9 +39,9 @@ describe("computeWss", () => {
     ];
 
     // All in one cluster
-    const wss1 = computeWss(X, [0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    const wss1 = compute_wss(X, [0, 0, 0, 0, 0, 0, 0, 0, 0]);
     // Three clusters
-    const wss3 = computeWss(X, [0, 0, 0, 1, 1, 1, 2, 2, 2]);
+    const wss3 = compute_wss(X, [0, 0, 0, 1, 1, 1, 2, 2, 2]);
 
     expect(wss3).toBeLessThan(wss1);
   });
@@ -50,12 +50,12 @@ describe("computeWss", () => {
     const X = [[0, 0], [2, 0], [10, 0], [12, 0]];
     const labels = [0, 0, 1, 1];
 
-    const arrayWss = computeWss(X, labels);
+    const array_wss = compute_wss(X, labels);
 
     const tensor = tf.tensor2d(X);
-    const tensorWss = computeWss(tensor, labels);
+    const tensor_wss = compute_wss(tensor, labels);
 
-    expect(tensorWss).toBeCloseTo(arrayWss, 5);
+    expect(tensor_wss).toBeCloseTo(array_wss, 5);
 
     tensor.dispose();
   });

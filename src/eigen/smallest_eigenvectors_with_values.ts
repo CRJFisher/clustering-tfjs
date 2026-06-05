@@ -1,5 +1,5 @@
 import * as tf from '../backend/adapter';
-import { deterministicEigenpairProcessing } from './post';
+import { deterministic_eigenpair_processing } from './post';
 import { lanczos_smallest_eigenpairs } from './lanczos';
 import { improved_jacobi_eigen } from './improved';
 
@@ -45,12 +45,12 @@ function lanczos_path(
   n: number,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   // Request extra eigenpairs to capture near-zero eigenvalues for component detection
-  const kRequest = Math.min(k + 5, n);
+  const k_request = Math.min(k + 5, n);
 
   try {
-    const result = lanczos_smallest_eigenpairs(matrix, kRequest, {
-      isPSD: true,
-      randomSeed: 42,
+    const result = lanczos_smallest_eigenpairs(matrix, k_request, {
+      is_psd: true,
+      random_seed: 42,
     });
 
     // Determine number of numerically-zero eigenvalues
@@ -61,25 +61,25 @@ function lanczos_path(
       else break;
     }
 
-    const sliceCols = Math.min(k + c, result.eigenvalues.length);
+    const slice_cols = Math.min(k + c, result.eigenvalues.length);
 
     // Extract selected eigenpairs
-    const selectedVecs: number[][] = Array.from(
+    const selected_vecs: number[][] = Array.from(
       { length: n },
-      () => new Array(sliceCols),
+      () => new Array(slice_cols),
     );
-    const selectedVals: number[] = new Array(sliceCols);
+    const selected_vals: number[] = new Array(slice_cols);
 
-    for (let col = 0; col < sliceCols; col++) {
-      selectedVals[col] = result.eigenvalues[col];
+    for (let col = 0; col < slice_cols; col++) {
+      selected_vals[col] = result.eigenvalues[col];
       for (let row = 0; row < n; row++) {
-        selectedVecs[row][col] = result.eigenvectors[row][col];
+        selected_vecs[row][col] = result.eigenvectors[row][col];
       }
     }
 
     return {
-      eigenvectors: tf.tensor2d(selectedVecs, [n, sliceCols], 'float32'),
-      eigenvalues: tf.tensor1d(selectedVals, 'float32'),
+      eigenvectors: tf.tensor2d(selected_vecs, [n, slice_cols], 'float32'),
+      eigenvalues: tf.tensor1d(selected_vals, 'float32'),
     };
   } catch (err) {
     console.warn(
@@ -100,13 +100,13 @@ function jacobi_path(
 
     // Full eigendecomposition
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {
-      isPSD: true,
-      maxIterations: 3000,
+      is_psd: true,
+      max_iterations: 3000,
       tolerance: 1e-14,
     });
 
     // Deterministic ordering & sign fixing
-    const processed = deterministicEigenpairProcessing({
+    const processed = deterministic_eigenpair_processing({
       eigenvalues,
       eigenvectors,
     });
@@ -120,25 +120,25 @@ function jacobi_path(
     }
 
     const n = processed.eigenvectors.length;
-    const sliceCols = Math.min(k + c, n);
+    const slice_cols = Math.min(k + c, n);
 
     // Extract selected eigenvectors
-    const selectedVecs: number[][] = Array.from(
+    const selected_vecs: number[][] = Array.from(
       { length: n },
-      () => new Array(sliceCols),
+      () => new Array(slice_cols),
     );
-    const selectedVals: number[] = new Array(sliceCols);
+    const selected_vals: number[] = new Array(slice_cols);
 
-    for (let col = 0; col < sliceCols; col++) {
-      selectedVals[col] = processed.eigenvalues[col];
+    for (let col = 0; col < slice_cols; col++) {
+      selected_vals[col] = processed.eigenvalues[col];
       for (let row = 0; row < n; row++) {
-        selectedVecs[row][col] = processed.eigenvectors[row][col];
+        selected_vecs[row][col] = processed.eigenvectors[row][col];
       }
     }
 
     return {
-      eigenvectors: tf.tensor2d(selectedVecs, [n, sliceCols], 'float32'),
-      eigenvalues: tf.tensor1d(selectedVals, 'float32'),
+      eigenvectors: tf.tensor2d(selected_vecs, [n, slice_cols], 'float32'),
+      eigenvalues: tf.tensor1d(selected_vals, 'float32'),
     };
   });
 }

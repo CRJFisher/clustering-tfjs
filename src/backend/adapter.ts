@@ -13,7 +13,7 @@
  */
 
 import type * as tfTypes from '@tensorflow/tfjs-core';
-import { ensureBackend } from './backend';
+import { ensure_backend } from './backend';
 
 // ---------------------------------------------------------------------------
 // Type re-exports (compile-time only, erased at runtime)
@@ -38,70 +38,70 @@ export type {
 // ---------------------------------------------------------------------------
 
 // Tensor creation
-export const tensor: typeof tfTypes.tensor = (...args) => ensureBackend().tensor(...args);
-export const tensor1d: typeof tfTypes.tensor1d = (...args) => ensureBackend().tensor1d(...args);
-export const tensor2d: typeof tfTypes.tensor2d = (...args) => ensureBackend().tensor2d(...args);
-export const tensor3d: typeof tfTypes.tensor3d = (...args) => ensureBackend().tensor3d(...args);
-export const scalar: typeof tfTypes.scalar = (...args) => ensureBackend().scalar(...args);
-export const zeros: typeof tfTypes.zeros = (...args) => ensureBackend().zeros(...args);
-export const ones: typeof tfTypes.ones = (...args) => ensureBackend().ones(...args);
-export const onesLike: typeof tfTypes.onesLike = (...args) => ensureBackend().onesLike(...args);
-export const fill: typeof tfTypes.fill = (...args) => ensureBackend().fill(...args);
-export const eye: typeof tfTypes.eye = (...args) => ensureBackend().eye(...args);
-export const linspace: typeof tfTypes.linspace = (...args) => ensureBackend().linspace(...args);
-export const buffer: typeof tfTypes.buffer = (...args) => ensureBackend().buffer(...args);
-export const oneHot: typeof tfTypes.oneHot = (...args) => ensureBackend().oneHot(...args);
+export const tensor: typeof tfTypes.tensor = (...args) => ensure_backend().tensor(...args);
+export const tensor1d: typeof tfTypes.tensor1d = (...args) => ensure_backend().tensor1d(...args);
+export const tensor2d: typeof tfTypes.tensor2d = (...args) => ensure_backend().tensor2d(...args);
+export const tensor3d: typeof tfTypes.tensor3d = (...args) => ensure_backend().tensor3d(...args);
+export const scalar: typeof tfTypes.scalar = (...args) => ensure_backend().scalar(...args);
+export const zeros: typeof tfTypes.zeros = (...args) => ensure_backend().zeros(...args);
+export const ones: typeof tfTypes.ones = (...args) => ensure_backend().ones(...args);
+export const ones_like: typeof tfTypes.onesLike = (...args) => ensure_backend().onesLike(...args);
+export const fill: typeof tfTypes.fill = (...args) => ensure_backend().fill(...args);
+export const eye: typeof tfTypes.eye = (...args) => ensure_backend().eye(...args);
+export const linspace: typeof tfTypes.linspace = (...args) => ensure_backend().linspace(...args);
+export const buffer: typeof tfTypes.buffer = (...args) => ensure_backend().buffer(...args);
+export const one_hot: typeof tfTypes.oneHot = (...args) => ensure_backend().oneHot(...args);
 
 // Math operations
-export const add: typeof tfTypes.add = (...args) => ensureBackend().add(...args);
-export const sub: typeof tfTypes.sub = (...args) => ensureBackend().sub(...args);
-export const pow: typeof tfTypes.pow = (...args) => ensureBackend().pow(...args);
-export const sqrt: typeof tfTypes.sqrt = (...args) => ensureBackend().sqrt(...args);
-export const square: typeof tfTypes.square = (...args) => ensureBackend().square(...args);
-export const maximum: typeof tfTypes.maximum = (...args) => ensureBackend().maximum(...args);
-export const matMul: typeof tfTypes.matMul = (...args) => ensureBackend().matMul(...args);
+export const add: typeof tfTypes.add = (...args) => ensure_backend().add(...args);
+export const sub: typeof tfTypes.sub = (...args) => ensure_backend().sub(...args);
+export const pow: typeof tfTypes.pow = (...args) => ensure_backend().pow(...args);
+export const sqrt: typeof tfTypes.sqrt = (...args) => ensure_backend().sqrt(...args);
+export const square: typeof tfTypes.square = (...args) => ensure_backend().square(...args);
+export const maximum: typeof tfTypes.maximum = (...args) => ensure_backend().maximum(...args);
+export const mat_mul: typeof tfTypes.matMul = (...args) => ensure_backend().matMul(...args);
 
 // Reduction / selection
-export const sum: typeof tfTypes.sum = (...args) => ensureBackend().sum(...args);
-export const argMin: typeof tfTypes.argMin = (...args) => ensureBackend().argMin(...args);
-export const gather: typeof tfTypes.gather = (...args) => ensureBackend().gather(...args);
-export const topk: typeof tfTypes.topk = (...args) => ensureBackend().topk(...args);
-export const scatterND: typeof tfTypes.scatterND = (...args) => ensureBackend().scatterND(...args);
+export const sum: typeof tfTypes.sum = (...args) => ensure_backend().sum(...args);
+export const arg_min: typeof tfTypes.argMin = (...args) => ensure_backend().argMin(...args);
+export const gather: typeof tfTypes.gather = (...args) => ensure_backend().gather(...args);
+export const topk: typeof tfTypes.topk = (...args) => ensure_backend().topk(...args);
+export const scatter_nd: typeof tfTypes.scatterND = (...args) => ensure_backend().scatterND(...args);
 
 // Tensor manipulation
-export const slice: typeof tfTypes.slice = (...args) => ensureBackend().slice(...args);
-export const concat: typeof tfTypes.concat = (...args) => ensureBackend().concat(...args);
-export const stack: typeof tfTypes.stack = (...args) => ensureBackend().stack(...args);
-export const cast: typeof tfTypes.cast = (...args) => ensureBackend().cast(...args);
-export const expandDims: typeof tfTypes.expandDims = (...args) => ensureBackend().expandDims(...args);
+export const slice: typeof tfTypes.slice = (...args) => ensure_backend().slice(...args);
+export const concat: typeof tfTypes.concat = (...args) => ensure_backend().concat(...args);
+export const stack: typeof tfTypes.stack = (...args) => ensure_backend().stack(...args);
+export const cast: typeof tfTypes.cast = (...args) => ensure_backend().cast(...args);
+export const expand_dims: typeof tfTypes.expandDims = (...args) => ensure_backend().expandDims(...args);
 
 // Comparison / logical
-export const where: typeof tfTypes.where = (...args) => ensureBackend().where(...args);
+export const where: typeof tfTypes.where = (...args) => ensure_backend().where(...args);
 
 // Memory management
-export const tidy: typeof tfTypes.tidy = (...args) => ensureBackend().tidy(...args);
-export const keep: typeof tfTypes.keep = (...args) => ensureBackend().keep(...args);
-export const clone: typeof tfTypes.clone = (...args) => ensureBackend().clone(...args);
-export const dispose: typeof tfTypes.dispose = (...args) => ensureBackend().dispose(...args);
+export const tidy: typeof tfTypes.tidy = (...args) => ensure_backend().tidy(...args);
+export const keep: typeof tfTypes.keep = (...args) => ensure_backend().keep(...args);
+export const clone: typeof tfTypes.clone = (...args) => ensure_backend().clone(...args);
+export const dispose: typeof tfTypes.dispose = (...args) => ensure_backend().dispose(...args);
 
 // Random
-export const randomUniform: typeof tfTypes.randomUniform = (...args) => ensureBackend().randomUniform(...args);
-export const randomNormal: typeof tfTypes.randomNormal = (...args) => ensureBackend().randomNormal(...args);
+export const random_uniform: typeof tfTypes.randomUniform = (...args) => ensure_backend().randomUniform(...args);
+export const random_normal: typeof tfTypes.randomNormal = (...args) => ensure_backend().randomNormal(...args);
 
 // Backend utilities (used by benchmarks, init, and tests)
-export const setBackend: typeof tfTypes.setBackend = (...args) => ensureBackend().setBackend(...args);
-export const ready: typeof tfTypes.ready = () => ensureBackend().ready();
-export const memory: typeof tfTypes.memory = () => ensureBackend().memory();
-export const getBackend: typeof tfTypes.getBackend = () => ensureBackend().getBackend();
-export const env: typeof tfTypes.env = () => ensureBackend().env();
-export const engine: typeof tfTypes.engine = () => ensureBackend().engine();
-export const disposeVariables: typeof tfTypes.disposeVariables = () => ensureBackend().disposeVariables();
+export const set_backend: typeof tfTypes.setBackend = (...args) => ensure_backend().setBackend(...args);
+export const ready: typeof tfTypes.ready = () => ensure_backend().ready();
+export const memory: typeof tfTypes.memory = () => ensure_backend().memory();
+export const get_backend: typeof tfTypes.getBackend = () => ensure_backend().getBackend();
+export const env: typeof tfTypes.env = () => ensure_backend().env();
+export const engine: typeof tfTypes.engine = () => ensure_backend().engine();
+export const dispose_variables: typeof tfTypes.disposeVariables = () => ensure_backend().disposeVariables();
 
 // Namespace — linalg.qr() is used by eigen_qr.ts
 export const linalg: typeof tfTypes.linalg = new Proxy({} as typeof tfTypes.linalg, {
   get(_target, prop: string | symbol) {
-    const linalgNs = ensureBackend().linalg;
-    return (linalgNs as Record<string | symbol, unknown>)[prop];
+    const linalg_ns = ensure_backend().linalg;
+    return (linalg_ns as Record<string | symbol, unknown>)[prop];
   }
 });
 
@@ -115,24 +115,24 @@ const tf: typeof tfTypes = new Proxy({} as typeof tfTypes, {
 
     // For known named exports, return them directly to maintain identity.
     // Keep in sync with the named exports above.
-    const namedExports: Record<string, unknown> = {
-      tensor, tensor1d, tensor2d, tensor3d, scalar, zeros, ones, onesLike,
-      fill, eye, linspace, buffer, oneHot, add, sub, pow, sqrt, square,
-      maximum, matMul, sum, argMin, gather, topk, scatterND, slice, concat,
-      stack, cast, expandDims, where, tidy, keep, clone, dispose,
-      randomUniform, randomNormal, setBackend, ready, memory, getBackend,
-      env, engine, disposeVariables, linalg,
+    const named_exports: Record<string, unknown> = {
+      tensor, tensor1d, tensor2d, tensor3d, scalar, zeros, ones, ones_like,
+      fill, eye, linspace, buffer, one_hot, add, sub, pow, sqrt, square,
+      maximum, mat_mul, sum, arg_min, gather, topk, scatter_nd, slice, concat,
+      stack, cast, expand_dims, where, tidy, keep, clone, dispose,
+      random_uniform, random_normal, set_backend, ready, memory, get_backend,
+      env, engine, dispose_variables, linalg,
     };
 
-    if (typeof prop === 'string' && prop in namedExports) {
-      return namedExports[prop];
+    if (typeof prop === 'string' && prop in named_exports) {
+      return named_exports[prop];
     }
 
     // Fallback: delegate to the actual tf instance for anything else
-    const instance = ensureBackend();
+    const instance = ensure_backend();
     const value = (instance as Record<string | symbol, unknown>)[prop];
     if (typeof value === 'function') {
-      return (value as (...fnArgs: unknown[]) => unknown).bind(instance);
+      return (value as (...fn_args: unknown[]) => unknown).bind(instance);
     }
     return value;
   }

@@ -3,12 +3,12 @@ import { KMeans } from '../clustering/kmeans';
 import { SpectralClustering } from '../clustering/spectral';
 import { AgglomerativeClustering } from '../clustering/agglomerative';
 import { SOM } from '../clustering/som';
-import { silhouetteScore } from '../validation/silhouette';
-import { daviesBouldinEfficient } from '../validation/davies_bouldin';
-import { calinskiHarabaszEfficient } from '../validation/calinski_harabasz';
-import { isTensor } from '../tensor/tensor_guards';
-import { computeWss } from './compute_wss';
-import { findKnee } from './kneedle';
+import { silhouette_score } from '../validation/silhouette';
+import { davies_bouldin_efficient } from '../validation/davies_bouldin';
+import { calinski_harabasz_efficient } from '../validation/calinski_harabasz';
+import { is_tensor } from '../tensor/tensor_guards';
+import { compute_wss } from './compute_wss';
+import { find_knee } from './kneedle';
 import type { DataMatrix } from '../clustering/types';
 
 /**
@@ -20,16 +20,16 @@ export interface ClusterEvaluation {
   /** Silhouette score (range: [-1, 1], higher is better) */
   silhouette: number;
   /** Davies-Bouldin index (range: [0, ∞), lower is better) */
-  daviesBouldin: number;
+  davies_bouldin: number;
   /** Calinski-Harabasz index (range: [0, ∞), higher is better) */
-  calinskiHarabasz: number;
+  calinski_harabasz: number;
   /**
    * Combined score used for selection.
    * When using the default 'combined' method, this is the mean of normalized
    * metrics in [0, 1]. When using 'silhouette', this is the raw silhouette.
    * When using 'elbow', the knee point gets score 1.0.
    */
-  combinedScore: number;
+  combined_score: number;
   /** Cluster labels for this k */
   labels: number[];
   /** Within-cluster sum of squares (inertia). Present when method is 'elbow'. */
@@ -49,20 +49,20 @@ export type OptimalClustersMethod = 'combined' | 'elbow' | 'silhouette';
  */
 export interface FindOptimalClustersOptions {
   /** Minimum number of clusters to test (default: 2) */
-  minClusters?: number;
+  min_clusters?: number;
   /** Maximum number of clusters to test (default: 10) */
-  maxClusters?: number;
+  max_clusters?: number;
   /** Algorithm to use (default: 'kmeans') */
   algorithm?: 'kmeans' | 'spectral' | 'agglomerative' | 'som';
   /** Algorithm-specific parameters */
-  algorithmParams?: Record<string, unknown>;
+  algorithm_params?: Record<string, unknown>;
   /** Metrics to use for evaluation (default: all). Only used with 'combined' method. */
   metrics?: Array<'silhouette' | 'daviesBouldin' | 'calinskiHarabasz'>;
   /**
    * Custom scoring function. Receives raw (un-normalized) metric values.
    * Overrides the `method` option when provided.
    */
-  scoringFunction?: (evaluation: ClusterEvaluation) => number;
+  scoring_function?: (evaluation: ClusterEvaluation) => number;
   /** Method for selecting optimal k (default: 'combined') */
   method?: OptimalClustersMethod;
 }
@@ -71,78 +71,78 @@ export interface FindOptimalClustersOptions {
  * Normalizes metrics across all evaluations and computes combined scores.
  * Each metric is normalized to [0, 1] and averaged for equal contribution.
  */
-function normalizeAndScoreEvaluations(
+function normalize_and_score_evaluations(
   evaluations: ClusterEvaluation[],
   metrics: Array<'silhouette' | 'daviesBouldin' | 'calinskiHarabasz'>,
 ): void {
   if (evaluations.length === 0) return;
 
   // Pre-compute min-max for Calinski-Harabasz (higher is better)
-  let chMin = Infinity;
-  let chMax = -Infinity;
+  let ch_min = Infinity;
+  let ch_max = -Infinity;
   if (metrics.includes('calinskiHarabasz')) {
     for (const e of evaluations) {
-      if (Number.isFinite(e.calinskiHarabasz)) {
-        chMin = Math.min(chMin, e.calinskiHarabasz);
-        chMax = Math.max(chMax, e.calinskiHarabasz);
+      if (Number.isFinite(e.calinski_harabasz)) {
+        ch_min = Math.min(ch_min, e.calinski_harabasz);
+        ch_max = Math.max(ch_max, e.calinski_harabasz);
       }
     }
   }
-  const chRange = chMax - chMin;
+  const ch_range = ch_max - ch_min;
 
   // Pre-compute min-max for Davies-Bouldin (lower is better)
-  let dbMin = Infinity;
-  let dbMax = -Infinity;
+  let db_min = Infinity;
+  let db_max = -Infinity;
   if (metrics.includes('daviesBouldin')) {
     for (const e of evaluations) {
-      if (Number.isFinite(e.daviesBouldin)) {
-        dbMin = Math.min(dbMin, e.daviesBouldin);
-        dbMax = Math.max(dbMax, e.daviesBouldin);
+      if (Number.isFinite(e.davies_bouldin)) {
+        db_min = Math.min(db_min, e.davies_bouldin);
+        db_max = Math.max(db_max, e.davies_bouldin);
       }
     }
   }
-  const dbRange = dbMax - dbMin;
+  const db_range = db_max - db_min;
 
   // Score each evaluation with normalized metrics
   for (const evaluation of evaluations) {
     let score = 0;
-    let numMetrics = 0;
+    let num_metrics = 0;
 
     if (metrics.includes('silhouette')) {
       // Fixed range normalization: [-1, 1] -> [0, 1]
       const ns = (evaluation.silhouette + 1) / 2;
       score += Number.isFinite(ns) ? ns : 0;
-      numMetrics++;
+      num_metrics++;
     }
 
     if (metrics.includes('calinskiHarabasz')) {
       let nch: number;
-      if (!Number.isFinite(evaluation.calinskiHarabasz)) {
+      if (!Number.isFinite(evaluation.calinski_harabasz)) {
         // CH = Infinity means perfect separation (WSS = 0) -> best score
         nch = 1;
-      } else if (chRange === 0 || !Number.isFinite(chRange)) {
+      } else if (ch_range === 0 || !Number.isFinite(ch_range)) {
         nch = 0.5;
       } else {
-        nch = (evaluation.calinskiHarabasz - chMin) / chRange;
+        nch = (evaluation.calinski_harabasz - ch_min) / ch_range;
       }
       score += nch;
-      numMetrics++;
+      num_metrics++;
     }
 
     if (metrics.includes('daviesBouldin')) {
       let ndb: number;
-      if (!Number.isFinite(evaluation.daviesBouldin)) {
+      if (!Number.isFinite(evaluation.davies_bouldin)) {
         ndb = 0;
-      } else if (dbRange === 0 || !Number.isFinite(dbRange)) {
+      } else if (db_range === 0 || !Number.isFinite(db_range)) {
         ndb = 0.5;
       } else {
-        ndb = 1 - (evaluation.daviesBouldin - dbMin) / dbRange;
+        ndb = 1 - (evaluation.davies_bouldin - db_min) / db_range;
       }
       score += ndb;
-      numMetrics++;
+      num_metrics++;
     }
 
-    evaluation.combinedScore = numMetrics > 0 ? score / numMetrics : 0;
+    evaluation.combined_score = num_metrics > 0 ? score / num_metrics : 0;
   }
 }
 
@@ -165,7 +165,7 @@ function normalizeAndScoreEvaluations(
  * console.log(`Best silhouette score: ${result.optimal.silhouette}`);
  * ```
  */
-export async function findOptimalClusters(
+export async function find_optimal_clusters(
   X: DataMatrix,
   options: FindOptimalClustersOptions = {},
 ): Promise<{
@@ -175,88 +175,88 @@ export async function findOptimalClusters(
   evaluations: ClusterEvaluation[];
 }> {
   const {
-    minClusters = 2,
-    maxClusters = 10,
+    min_clusters = 2,
+    max_clusters = 10,
     algorithm = 'kmeans',
-    algorithmParams = {},
+    algorithm_params = {},
     metrics = ['silhouette', 'daviesBouldin', 'calinskiHarabasz'],
-    scoringFunction,
+    scoring_function,
     method = 'combined',
   } = options;
 
   // Validate inputs
-  if (minClusters < 2) {
+  if (min_clusters < 2) {
     throw new Error('minClusters must be at least 2');
   }
-  if (maxClusters < minClusters) {
+  if (max_clusters < min_clusters) {
     throw new Error('maxClusters must be greater than or equal to minClusters');
   }
 
   // Convert data to tensor if needed
-  const isInputTensor = isTensor(X);
-  const dataTensor = isInputTensor ? X : tf.tensor2d(X as number[][]);
-  const nSamples = dataTensor.shape[0];
+  const is_input_tensor = is_tensor(X);
+  const data_tensor = is_input_tensor ? X : tf.tensor2d(X as number[][]);
+  const n_samples = data_tensor.shape[0];
 
   // Adjust maxClusters if it exceeds number of samples
-  const effectiveMaxClusters = Math.min(maxClusters, nSamples - 1);
+  const effective_max_clusters = Math.min(max_clusters, n_samples - 1);
 
-  if (effectiveMaxClusters < minClusters) {
+  if (effective_max_clusters < min_clusters) {
     // Clean up tensor if we created it
-    if (!isInputTensor) {
-      dataTensor.dispose();
+    if (!is_input_tensor) {
+      data_tensor.dispose();
     }
     throw new Error(
-      `Not enough samples (${nSamples}) for minimum clusters (${minClusters})`,
+      `Not enough samples (${n_samples}) for minimum clusters (${min_clusters})`,
     );
   }
 
   // Determine which metrics to compute based on method
-  const computeSilhouette =
+  const compute_silhouette =
     method === 'silhouette' ||
     (method === 'combined' && metrics.includes('silhouette')) ||
-    (!!scoringFunction && metrics.includes('silhouette'));
-  const computeDB =
+    (!!scoring_function && metrics.includes('silhouette'));
+  const compute_db =
     (method === 'combined' && metrics.includes('daviesBouldin')) ||
-    (!!scoringFunction && metrics.includes('daviesBouldin'));
-  const computeCH =
+    (!!scoring_function && metrics.includes('daviesBouldin'));
+  const compute_ch =
     (method === 'combined' && metrics.includes('calinskiHarabasz')) ||
-    (!!scoringFunction && metrics.includes('calinskiHarabasz'));
-  const computeWSS = method === 'elbow';
+    (!!scoring_function && metrics.includes('calinskiHarabasz'));
+  const should_compute_wss = method === 'elbow';
 
   const evaluations: ClusterEvaluation[] = [];
 
   // Test each k value
-  for (let k = minClusters; k <= effectiveMaxClusters; k++) {
+  for (let k = min_clusters; k <= effective_max_clusters; k++) {
     // Create clustering instance
     let clusterer;
-    let kmeansInstance: KMeans | null = null;
+    let kmeans_instance: KMeans | null = null;
 
     switch (algorithm) {
       case 'kmeans':
-        kmeansInstance = new KMeans({ nClusters: k, ...algorithmParams });
-        clusterer = kmeansInstance;
+        kmeans_instance = new KMeans({ n_clusters: k, ...algorithm_params });
+        clusterer = kmeans_instance;
         break;
       case 'spectral':
         clusterer = new SpectralClustering({
-          nClusters: k,
-          ...algorithmParams,
+          n_clusters: k,
+          ...algorithm_params,
         });
         break;
       case 'agglomerative':
         clusterer = new AgglomerativeClustering({
-          nClusters: k,
-          ...algorithmParams,
+          n_clusters: k,
+          ...algorithm_params,
         });
         break;
       case 'som': {
         // For SOM, we need to determine grid dimensions
         // Use square grid as default, can be overridden via algorithmParams
-        const gridSize = Math.ceil(Math.sqrt(k));
-        const params = algorithmParams as Record<string, unknown>;
+        const grid_size = Math.ceil(Math.sqrt(k));
+        const params = algorithm_params as Record<string, unknown>;
         clusterer = new SOM({
-          gridWidth: (params.gridWidth as number) || gridSize,
-          gridHeight: (params.gridHeight as number) || Math.ceil(k / gridSize),
-          ...algorithmParams,
+          grid_width: (params.gridWidth as number) || grid_size,
+          grid_height: (params.gridHeight as number) || Math.ceil(k / grid_size),
+          ...algorithm_params,
         });
         break;
       }
@@ -265,29 +265,29 @@ export async function findOptimalClusters(
     }
 
     // Fit and predict
-    const labels = await clusterer.fitPredict(dataTensor);
+    const labels = await clusterer.fit_predict(data_tensor);
 
     // Calculate metrics
     let silhouette = 0;
-    let daviesBouldin = Infinity;
-    let calinskiHarabasz = 0;
+    let davies_bouldin = Infinity;
+    let calinski_harabasz = 0;
     let wss: number | undefined;
 
-    if (computeSilhouette) {
-      silhouette = silhouetteScore(dataTensor, labels);
+    if (compute_silhouette) {
+      silhouette = silhouette_score(data_tensor, labels);
     }
-    if (computeDB) {
-      daviesBouldin = daviesBouldinEfficient(dataTensor, labels);
+    if (compute_db) {
+      davies_bouldin = davies_bouldin_efficient(data_tensor, labels);
     }
-    if (computeCH) {
-      calinskiHarabasz = calinskiHarabaszEfficient(dataTensor, labels);
+    if (compute_ch) {
+      calinski_harabasz = calinski_harabasz_efficient(data_tensor, labels);
     }
-    if (computeWSS) {
+    if (should_compute_wss) {
       // Optimize: read inertia directly from KMeans instead of recomputing
-      if (kmeansInstance && kmeansInstance.inertia_ !== null) {
-        wss = kmeansInstance.inertia_;
+      if (kmeans_instance && kmeans_instance.inertia_ !== null) {
+        wss = kmeans_instance.inertia_;
       } else {
-        wss = computeWss(dataTensor, labels);
+        wss = compute_wss(data_tensor, labels);
       }
     }
 
@@ -295,9 +295,9 @@ export async function findOptimalClusters(
     const evaluation: ClusterEvaluation = {
       k,
       silhouette,
-      daviesBouldin,
-      calinskiHarabasz,
-      combinedScore: 0,
+      davies_bouldin,
+      calinski_harabasz,
+      combined_score: 0,
       labels: Array.from(labels),
     };
     if (wss !== undefined) {
@@ -305,8 +305,8 @@ export async function findOptimalClusters(
     }
 
     // Apply custom scoring function immediately (gets raw values)
-    if (scoringFunction) {
-      evaluation.combinedScore = scoringFunction(evaluation);
+    if (scoring_function) {
+      evaluation.combined_score = scoring_function(evaluation);
     }
 
     evaluations.push(evaluation);
@@ -318,46 +318,46 @@ export async function findOptimalClusters(
   }
 
   // Post-loop scoring based on method (only when no custom scorer)
-  if (!scoringFunction) {
+  if (!scoring_function) {
     if (method === 'combined') {
-      normalizeAndScoreEvaluations(evaluations, metrics);
+      normalize_and_score_evaluations(evaluations, metrics);
     } else if (method === 'silhouette') {
       for (const evaluation of evaluations) {
-        evaluation.combinedScore = evaluation.silhouette;
+        evaluation.combined_score = evaluation.silhouette;
       }
     } else if (method === 'elbow') {
-      const kValues = evaluations.map((e) => e.k);
-      const wssValues = evaluations.map((e) => e.wss!);
-      const result = findKnee(kValues, wssValues, { direction: 'concave' });
+      const k_values = evaluations.map((e) => e.k);
+      const wss_values = evaluations.map((e) => e.wss!);
+      const result = find_knee(k_values, wss_values, { direction: 'concave' });
 
-      if (result.kneeX !== null) {
+      if (result.knee_x !== null) {
         // For concave curves, differences are negative (curve below diagonal).
         // Negate so the knee (most negative diff) gets the highest score.
         for (let i = 0; i < evaluations.length; i++) {
-          evaluations[i].combinedScore = -result.differences[i];
+          evaluations[i].combined_score = -result.differences[i];
         }
       } else {
         // Fallback: prefer smallest k (parsimony)
         for (const evaluation of evaluations) {
-          evaluation.combinedScore = -evaluation.k;
+          evaluation.combined_score = -evaluation.k;
         }
       }
     }
   }
 
   // Sort by combined score (descending)
-  evaluations.sort((a, b) => b.combinedScore - a.combinedScore);
+  evaluations.sort((a, b) => b.combined_score - a.combined_score);
 
   // Store result before cleanup
-  const finalResult = {
+  const final_result = {
     optimal: evaluations[0],
     evaluations,
   };
 
   // Clean up tensor if we created it
-  if (!isInputTensor) {
-    dataTensor.dispose();
+  if (!is_input_tensor) {
+    data_tensor.dispose();
   }
 
-  return finalResult;
+  return final_result;
 }

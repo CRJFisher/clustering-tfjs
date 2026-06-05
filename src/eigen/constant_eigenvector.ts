@@ -14,15 +14,15 @@ import * as tf from '../backend/adapter';
  * @param affinity The affinity matrix
  * @returns The constant eigenvector as a column vector (n x 1)
  */
-export function createConstantEigenvector(affinity: tf.Tensor2D): tf.Tensor2D {
+export function create_constant_eigenvector(affinity: tf.Tensor2D): tf.Tensor2D {
   return tf.tidy(() => {
     const n = affinity.shape[0];
 
     // Create simple constant vector: all entries are 1/sqrt(n)
     // This gives a unit-norm vector with all equal entries
     const value = 1.0 / Math.sqrt(n);
-    const constantVec = tf.fill([n, 1], value) as tf.Tensor2D;
+    const constant_vec = tf.fill([n, 1], value) as tf.Tensor2D;
 
-    return constantVec;
+    return constant_vec;
   });
 }

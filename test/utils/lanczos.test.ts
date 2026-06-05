@@ -1,7 +1,7 @@
 import * as tf from '../../src/backend/adapter';
 import { lanczos_smallest_eigenpairs } from '../../src/eigen/lanczos';
 import { improved_jacobi_eigen } from '../../src/eigen/improved';
-import { normalisedLaplacian } from '../../src/graph/laplacian';
+import { normalised_laplacian } from '../../src/graph/laplacian';
 import { make_random_stream } from '../../src/random';
 
 describe('Lanczos eigensolver', () => {
@@ -16,7 +16,7 @@ describe('Lanczos eigensolver', () => {
         ),
       );
 
-      const result = lanczos_smallest_eigenpairs(matrix, 3, { randomSeed: 42 });
+      const result = lanczos_smallest_eigenpairs(matrix, 3, { random_seed: 42 });
       matrix.dispose();
 
       // Expect the 3 smallest: [1, 2, 3] (no degenerate eigenvalues)
@@ -31,7 +31,7 @@ describe('Lanczos eigensolver', () => {
       // Eigenvalues: 1 and 3
       const matrix = tf.tensor2d([[2, 1], [1, 2]]);
 
-      const result = lanczos_smallest_eigenpairs(matrix, 1, { randomSeed: 42, isPSD: false });
+      const result = lanczos_smallest_eigenpairs(matrix, 1, { random_seed: 42, is_psd: false });
       matrix.dispose();
 
       expect(result.eigenvalues).toHaveLength(1);
@@ -45,17 +45,17 @@ describe('Lanczos eigensolver', () => {
         [0, 1, 2],
       ]);
 
-      const result = lanczos_smallest_eigenpairs(matrix, 3, { randomSeed: 42, isPSD: false });
+      const result = lanczos_smallest_eigenpairs(matrix, 3, { random_seed: 42, is_psd: false });
       matrix.dispose();
 
       // Compare with Jacobi
-      const matrixAgain = tf.tensor2d([
+      const matrix_again = tf.tensor2d([
         [4, 1, 0],
         [1, 3, 1],
         [0, 1, 2],
       ]);
-      const jacobi = improved_jacobi_eigen(matrixAgain);
-      matrixAgain.dispose();
+      const jacobi = improved_jacobi_eigen(matrix_again);
+      matrix_again.dispose();
 
       expect(result.eigenvalues).toHaveLength(3);
       for (let i = 0; i < 3; i++) {
@@ -75,12 +75,12 @@ describe('Lanczos eigensolver', () => {
         [0, 1, 1, 0],
       ]);
 
-      const L = normalisedLaplacian(A) as tf.Tensor2D;
+      const L = normalised_laplacian(A) as tf.Tensor2D;
       A.dispose();
 
       const result = lanczos_smallest_eigenpairs(L, 2, {
-        randomSeed: 42,
-        isPSD: true,
+        random_seed: 42,
+        is_psd: true,
       });
       L.dispose();
 
@@ -99,12 +99,12 @@ describe('Lanczos eigensolver', () => {
         [0, 0, 1, 0],
       ]);
 
-      const L = normalisedLaplacian(A) as tf.Tensor2D;
+      const L = normalised_laplacian(A) as tf.Tensor2D;
       A.dispose();
 
       const result = lanczos_smallest_eigenpairs(L, 3, {
-        randomSeed: 42,
-        isPSD: true,
+        random_seed: 42,
+        is_psd: true,
       });
       L.dispose();
 
@@ -138,22 +138,22 @@ describe('Lanczos eigensolver', () => {
 
       const matrix = tf.tensor2d(raw);
 
-      const lanczosResult = lanczos_smallest_eigenpairs(matrix, k, {
-        randomSeed: 42,
-        isPSD: true,
+      const lanczos_result = lanczos_smallest_eigenpairs(matrix, k, {
+        random_seed: 42,
+        is_psd: true,
       });
 
-      const jacobiResult = improved_jacobi_eigen(matrix, {
-        isPSD: true,
-        maxIterations: 3000,
+      const jacobi_result = improved_jacobi_eigen(matrix, {
+        is_psd: true,
+        max_iterations: 3000,
         tolerance: 1e-14,
       });
       matrix.dispose();
 
       // Compare eigenvalues (Jacobi returns all n, sorted ascending)
       for (let i = 0; i < k; i++) {
-        expect(lanczosResult.eigenvalues[i]).toBeCloseTo(
-          jacobiResult.eigenvalues[i],
+        expect(lanczos_result.eigenvalues[i]).toBeCloseTo(
+          jacobi_result.eigenvalues[i],
           2,
         );
       }
@@ -163,8 +163,8 @@ describe('Lanczos eigensolver', () => {
         let dot = 0;
         for (let row = 0; row < n; row++) {
           dot +=
-            lanczosResult.eigenvectors[row][col] *
-            jacobiResult.eigenvectors[row][col];
+            lanczos_result.eigenvectors[row][col] *
+            jacobi_result.eigenvectors[row][col];
         }
         // Allow for sign flip
         expect(Math.abs(dot)).toBeGreaterThan(0.9);
@@ -188,7 +188,7 @@ describe('Lanczos eigensolver', () => {
     it('handles identity matrix', () => {
       const n = 10;
       const matrix = tf.eye(n) as tf.Tensor2D;
-      const result = lanczos_smallest_eigenpairs(matrix, 3, { randomSeed: 42 });
+      const result = lanczos_smallest_eigenpairs(matrix, 3, { random_seed: 42 });
       matrix.dispose();
 
       // All eigenvalues should be 1
@@ -205,8 +205,8 @@ describe('Lanczos eigensolver', () => {
         [0, 0, 1, 1],
       ]);
 
-      const r1 = lanczos_smallest_eigenpairs(matrix, 2, { randomSeed: 42, isPSD: false });
-      const r2 = lanczos_smallest_eigenpairs(matrix, 2, { randomSeed: 42, isPSD: false });
+      const r1 = lanczos_smallest_eigenpairs(matrix, 2, { random_seed: 42, is_psd: false });
+      const r2 = lanczos_smallest_eigenpairs(matrix, 2, { random_seed: 42, is_psd: false });
       matrix.dispose();
 
       for (let i = 0; i < 2; i++) {
@@ -222,7 +222,7 @@ describe('Lanczos eigensolver', () => {
         [1, 3, 1],
         [0, 1, 2],
       ]);
-      const result = lanczos_smallest_eigenpairs(matrix, 2, { randomSeed: 42, isPSD: false });
+      const result = lanczos_smallest_eigenpairs(matrix, 2, { random_seed: 42, is_psd: false });
       matrix.dispose();
 
       const after = tf.memory().numTensors;

@@ -1,8 +1,8 @@
 import * as tf from "../tensorflow-helper";
 
 import {
-  detectConnectedComponents,
-  checkGraphConnectivity,
+  detect_connected_components,
+  check_graph_connectivity,
 } from "../../src/graph/connected_components";
 
 describe("detectConnectedComponents", () => {
@@ -26,10 +26,10 @@ describe("detectConnectedComponents", () => {
         [0.3, 0.4, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(1);
-    expect(result.isFullyConnected).toBe(true);
-    expect(result.componentLabels).toEqual(new Int32Array([0, 0, 0]));
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(1);
+    expect(result.is_fully_connected).toBe(true);
+    expect(result.component_labels).toEqual(new Int32Array([0, 0, 0]));
   });
 
   it("finds two components in a block-diagonal graph", () => {
@@ -41,13 +41,13 @@ describe("detectConnectedComponents", () => {
         [0, 0, 0.8, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(2);
-    expect(result.isFullyConnected).toBe(false);
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(2);
+    expect(result.is_fully_connected).toBe(false);
     // Nodes 0,1 share one label; nodes 2,3 share another
-    expect(result.componentLabels[0]).toBe(result.componentLabels[1]);
-    expect(result.componentLabels[2]).toBe(result.componentLabels[3]);
-    expect(result.componentLabels[0]).not.toBe(result.componentLabels[2]);
+    expect(result.component_labels[0]).toBe(result.component_labels[1]);
+    expect(result.component_labels[2]).toBe(result.component_labels[3]);
+    expect(result.component_labels[0]).not.toBe(result.component_labels[2]);
   });
 
   it("finds three disconnected components", () => {
@@ -60,9 +60,9 @@ describe("detectConnectedComponents", () => {
         [0, 0, 0, 0.7, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(3);
-    expect(result.isFullyConnected).toBe(false);
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(3);
+    expect(result.is_fully_connected).toBe(false);
   });
 
   it("treats each isolated node as its own component", () => {
@@ -74,20 +74,20 @@ describe("detectConnectedComponents", () => {
         [0, 0, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(3);
-    expect(result.isFullyConnected).toBe(false);
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(3);
+    expect(result.is_fully_connected).toBe(false);
     // Each node has a unique label
-    const unique = new Set(result.componentLabels);
+    const unique = new Set(result.component_labels);
     expect(unique.size).toBe(3);
   });
 
   it("handles a single-node graph", () => {
     const affinity = tracked(tf.tensor2d([[1]]));
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(1);
-    expect(result.isFullyConnected).toBe(true);
-    expect(result.componentLabels).toEqual(new Int32Array([0]));
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(1);
+    expect(result.is_fully_connected).toBe(true);
+    expect(result.component_labels).toEqual(new Int32Array([0]));
   });
 
   it("respects custom tolerance (edges below tolerance ignored)", () => {
@@ -99,9 +99,9 @@ describe("detectConnectedComponents", () => {
         [0.05, 0.05, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity, 0.1);
-    expect(result.numComponents).toBe(3);
-    expect(result.isFullyConnected).toBe(false);
+    const result = detect_connected_components(affinity, 0.1);
+    expect(result.num_components).toBe(3);
+    expect(result.is_fully_connected).toBe(false);
   });
 
   it("uses default tolerance of 1e-2 (boundary: 0.01 is NOT > 0.01)", () => {
@@ -113,9 +113,9 @@ describe("detectConnectedComponents", () => {
         [0.01, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.numComponents).toBe(2);
-    expect(result.isFullyConnected).toBe(false);
+    const result = detect_connected_components(affinity);
+    expect(result.num_components).toBe(2);
+    expect(result.is_fully_connected).toBe(false);
   });
 
   it("returns Int32Array for componentLabels", () => {
@@ -125,8 +125,8 @@ describe("detectConnectedComponents", () => {
         [0.5, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    expect(result.componentLabels).toBeInstanceOf(Int32Array);
+    const result = detect_connected_components(affinity);
+    expect(result.component_labels).toBeInstanceOf(Int32Array);
   });
 
   it("assigns sequential labels starting from 0", () => {
@@ -138,8 +138,8 @@ describe("detectConnectedComponents", () => {
         [0, 0, 0.5, 1],
       ]),
     );
-    const result = detectConnectedComponents(affinity);
-    const labels = Array.from(result.componentLabels);
+    const result = detect_connected_components(affinity);
+    const labels = Array.from(result.component_labels);
     const unique = [...new Set(labels)].sort((a, b) => a - b);
     expect(unique[0]).toBe(0);
     for (let i = 1; i < unique.length; i++) {
@@ -162,21 +162,21 @@ describe("checkGraphConnectivity", () => {
   });
 
   it("returns true for a connected graph without emitting a warning", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
     const affinity = tracked(
       tf.tensor2d([
         [1, 0.5],
         [0.5, 1],
       ]),
     );
-    const result = checkGraphConnectivity(affinity);
+    const result = check_graph_connectivity(affinity);
     expect(result).toBe(true);
-    expect(warnSpy).not.toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(warn_spy).not.toHaveBeenCalled();
+    warn_spy.mockRestore();
   });
 
   it("returns false for a disconnected graph and emits a warning", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
     const affinity = tracked(
       tf.tensor2d([
         [1, 0, 0],
@@ -184,14 +184,14 @@ describe("checkGraphConnectivity", () => {
         [0, 0, 1],
       ]),
     );
-    const result = checkGraphConnectivity(affinity);
+    const result = check_graph_connectivity(affinity);
     expect(result).toBe(false);
-    expect(warnSpy).toHaveBeenCalled();
-    warnSpy.mockRestore();
+    expect(warn_spy).toHaveBeenCalled();
+    warn_spy.mockRestore();
   });
 
   it("forwards custom tolerance to detection", () => {
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
     // Off-diagonal 0.05 — connected with default tolerance but not with 0.1
     const affinity = tracked(
       tf.tensor2d([
@@ -199,11 +199,11 @@ describe("checkGraphConnectivity", () => {
         [0.05, 1],
       ]),
     );
-    const connectedDefault = checkGraphConnectivity(affinity);
-    expect(connectedDefault).toBe(true);
+    const connected_default = check_graph_connectivity(affinity);
+    expect(connected_default).toBe(true);
 
-    const connectedStrict = checkGraphConnectivity(affinity, 0.1);
-    expect(connectedStrict).toBe(false);
-    warnSpy.mockRestore();
+    const connected_strict = check_graph_connectivity(affinity, 0.1);
+    expect(connected_strict).toBe(false);
+    warn_spy.mockRestore();
   });
 });

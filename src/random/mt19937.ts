@@ -33,7 +33,7 @@ export class MT19937 {
   /* --------------------------------------------------------------------- */
 
   /** Returns next 32-bit unsigned int in \[0, 2**32). */
-  public nextUint32(): number {
+  public next_uint32(): number {
     if (this.index >= MT19937.N) {
       this.twist();
     }
@@ -53,16 +53,16 @@ export class MT19937 {
    * Returns a 53-bit precision float in the interval \[0, 1) identical to
    * NumPy's `random_sample` implementation.
    */
-  public nextFloat(): number {
-    const a = this.nextUint32() >>> 5; // Upper 27 bits
-    const b = this.nextUint32() >>> 6; // Upper 26 bits
+  public next_float(): number {
+    const a = this.next_uint32() >>> 5; // Upper 27 bits
+    const b = this.next_uint32() >>> 6; // Upper 26 bits
     return (a * 67108864 + b) * 1.1102230246251565e-16; // 1 / 2**53
   }
 
   /** Uniform integer in \[0, max). Mirrors NumPy's rejection sampling to
    *  eliminate modulo bias so that sequences match exactly.
    */
-  public nextInt(max: number): number {
+  public next_int(max: number): number {
     if (!Number.isInteger(max) || max <= 0 || max > 0xffffffff) {
       throw new Error('max must be a 32-bit positive integer');
     }
@@ -71,7 +71,7 @@ export class MT19937 {
     const threshold = (0x100000000 - bound) % bound; // 2**32 == 0x100000000
 
     while (true) {
-      const r = this.nextUint32();
+      const r = this.next_uint32();
       if (r >= threshold) {
         return r % bound;
       }

@@ -1,6 +1,6 @@
 import * as tf from '../backend/adapter';
 import { DataMatrix, LabelVector } from '../clustering/types';
-import { validateLabelsLength, convertValidationInputs } from './validate';
+import { validate_labels_length, convert_validation_inputs } from './validate';
 
 /**
  * Computes per-sample silhouette coefficients.
@@ -19,16 +19,16 @@ import { validateLabelsLength, convertValidationInputs } from './validate';
  * @returns Array of per-sample silhouette scores
  * @throws Error if k <= 1 or labels length doesn't match data rows
  */
-export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] {
-  validateLabelsLength(X, labels);
+export function silhouette_samples(X: DataMatrix, labels: LabelVector): number[] {
+  validate_labels_length(X, labels);
   return tf.tidy(() => {
-    const { data, labelArray } = convertValidationInputs(X, labels);
+    const { data, label_array } = convert_validation_inputs(X, labels);
 
     const n = data.shape[0];
 
     // Get unique labels
-    const uniqueLabels = Array.from(new Set(labelArray));
-    const k = uniqueLabels.length;
+    const unique_labels = Array.from(new Set(label_array));
+    const k = unique_labels.length;
 
     // Validate inputs
     if (k <= 1) {
@@ -37,76 +37,76 @@ export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] 
 
     // Compute pairwise distances
     // D[i,j] = ||x_i - x_j||^2
-    const xNorm = data.square().sum(1).reshape([n, 1]);
-    const xNormT = xNorm.reshape([1, n]);
-    const cross = tf.matMul(data, data.transpose());
+    const x_norm = data.square().sum(1).reshape([n, 1]);
+    const x_norm_t = x_norm.reshape([1, n]);
+    const cross = tf.mat_mul(data, data.transpose());
     const distances = tf.sqrt(
-      tf.maximum(tf.scalar(0), xNorm.add(xNormT).sub(cross.mul(2))),
+      tf.maximum(tf.scalar(0), x_norm.add(x_norm_t).sub(cross.mul(2))),
     ) as tf.Tensor2D;
 
     // Compute silhouette for each sample
-    const silhouetteValues: number[] = [];
-    const distancesFlat = distances.dataSync() as Float32Array;
+    const silhouette_values: number[] = [];
+    const distances_flat = distances.dataSync() as Float32Array;
 
     for (let i = 0; i < n; i++) {
-      const sampleLabel = labelArray[i];
+      const sample_label = label_array[i];
 
       // Find indices of samples in same cluster and other clusters
-      const sameClusterIndices: number[] = [];
-      const otherClusterIndices: Map<number, number[]> = new Map();
+      const same_cluster_indices: number[] = [];
+      const other_cluster_indices: Map<number, number[]> = new Map();
 
       for (let j = 0; j < n; j++) {
         if (i === j) continue;
 
-        if (labelArray[j] === sampleLabel) {
-          sameClusterIndices.push(j);
+        if (label_array[j] === sample_label) {
+          same_cluster_indices.push(j);
         } else {
-          const label = labelArray[j];
-          if (!otherClusterIndices.has(label)) {
-            otherClusterIndices.set(label, []);
+          const label = label_array[j];
+          if (!other_cluster_indices.has(label)) {
+            other_cluster_indices.set(label, []);
           }
-          otherClusterIndices.get(label)!.push(j);
+          other_cluster_indices.get(label)!.push(j);
         }
       }
 
       // Compute a(i): mean intra-cluster distance
       let a = 0;
-      if (sameClusterIndices.length > 0) {
-        for (const j of sameClusterIndices) {
-          a += distancesFlat[i * n + j];
+      if (same_cluster_indices.length > 0) {
+        for (const j of same_cluster_indices) {
+          a += distances_flat[i * n + j];
         }
-        a /= sameClusterIndices.length;
+        a /= same_cluster_indices.length;
       }
 
       // Compute b(i): mean distance to nearest cluster
       let b = Infinity;
-      for (const [_label, indices] of otherClusterIndices) {
-        let meanDist = 0;
+      for (const [_label, indices] of other_cluster_indices) {
+        let mean_dist = 0;
         for (const j of indices) {
-          meanDist += distancesFlat[i * n + j];
+          mean_dist += distances_flat[i * n + j];
         }
-        meanDist /= indices.length;
+        mean_dist /= indices.length;
 
-        if (meanDist < b) {
-          b = meanDist;
+        if (mean_dist < b) {
+          b = mean_dist;
         }
       }
 
       // Compute silhouette coefficient
-      if (sameClusterIndices.length === 0) {
+      if (same_cluster_indices.length === 0) {
         // Single point in cluster
-        silhouetteValues.push(0);
+        silhouette_values.push(0);
       } else if (a === 0 && b === 0) {
         // All intra- and inter-cluster distances are zero (identical points);
         // sklearn convention: silhouette = 0
-        silhouetteValues.push(0);
+        silhouette_values.push(0);
       } else {
         const s = (b - a) / Math.max(a, b);
-        silhouetteValues.push(s);
+        silhouette_values.push(s);
       }
     }
 
-    return silhouetteValues;
+    return silhouette_values;
   });
 }
 
@@ -118,8 +118,8 @@ export function silhouetteSamples(X: DataMatrix, labels: LabelVector): number[] 
  * @returns The mean silhouette score across all samples
  * @throws Error if k <= 1 or labels length doesn't match data rows
  */
-export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
-  const samples = silhouetteSamples(X, labels);
+export function silhouette_score(X: DataMatrix, labels: LabelVector): number {
+  const samples = silhouette_samples(X, labels);
   return samples.reduce((sum, val) => sum + val, 0) / samples.length;
 }
 
@@ -129,115 +129,115 @@ export function silhouetteScore(X: DataMatrix, labels: LabelVector): number {
  *
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
- * @param sampleIndices - Indices of samples to compute silhouette for
+ * @param sample_indices - Indices of samples to compute silhouette for
  * @returns The mean silhouette score for the specified samples
  */
-export function silhouetteScoreSubset(
+export function silhouette_score_subset(
   X: DataMatrix,
   labels: LabelVector,
-  sampleIndices: number[],
+  sample_indices: number[],
 ): number {
-  validateLabelsLength(X, labels);
-  const { data, labelArray, ownsTensor } = convertValidationInputs(X, labels);
+  validate_labels_length(X, labels);
+  const { data, label_array, owns_tensor } = convert_validation_inputs(X, labels);
 
   const n = data.shape[0];
 
   // Get unique labels
-  const uniqueLabels = Array.from(new Set(labelArray));
-  const k = uniqueLabels.length;
+  const unique_labels = Array.from(new Set(label_array));
+  const k = unique_labels.length;
 
   // Validate
   if (k <= 1) {
-    if (ownsTensor) {
+    if (owns_tensor) {
       data.dispose();
     }
     throw new Error('Silhouette score requires at least 2 clusters');
   }
 
-  const silhouetteValues: number[] = [];
+  const silhouette_values: number[] = [];
 
   // Process each sample in the subset
-  for (const i of sampleIndices) {
-    const sampleLabel = labelArray[i];
+  for (const i of sample_indices) {
+    const sample_label = label_array[i];
 
     // Get the sample point
-    const samplePoint = tf.tidy(() => data.gather([i]));
+    const sample_point = tf.tidy(() => data.gather([i]));
 
     // Compute distances to all other points
     const distances = tf.tidy(() => {
-      const diff = data.sub(samplePoint);
+      const diff = data.sub(sample_point);
       return tf.sqrt(diff.square().sum(1)) as tf.Tensor1D;
     });
 
-    const distArray = distances.dataSync() as Float32Array;
+    const dist_array = distances.dataSync() as Float32Array;
 
     // Compute a(i) and b(i)
     let a = 0;
-    let aCount = 0;
-    const clusterDistances: Map<number, { sum: number; count: number }> =
+    let a_count = 0;
+    const cluster_distances: Map<number, { sum: number; count: number }> =
       new Map();
 
     for (let j = 0; j < n; j++) {
       if (i === j) continue;
 
-      const dist = distArray[j];
-      const label = labelArray[j];
+      const dist = dist_array[j];
+      const label = label_array[j];
 
-      if (label === sampleLabel) {
+      if (label === sample_label) {
         // Same cluster
         a += dist;
-        aCount++;
+        a_count++;
       } else {
         // Other cluster
-        if (!clusterDistances.has(label)) {
-          clusterDistances.set(label, { sum: 0, count: 0 });
+        if (!cluster_distances.has(label)) {
+          cluster_distances.set(label, { sum: 0, count: 0 });
         }
-        const cluster = clusterDistances.get(label)!;
+        const cluster = cluster_distances.get(label)!;
         cluster.sum += dist;
         cluster.count++;
       }
     }
 
     // Mean intra-cluster distance
-    if (aCount > 0) {
-      a /= aCount;
+    if (a_count > 0) {
+      a /= a_count;
     }
 
     // Find nearest cluster
     let b = Infinity;
-    for (const [_label, { sum, count }] of clusterDistances) {
-      const meanDist = sum / count;
-      if (meanDist < b) {
-        b = meanDist;
+    for (const [_label, { sum, count }] of cluster_distances) {
+      const mean_dist = sum / count;
+      if (mean_dist < b) {
+        b = mean_dist;
       }
     }
 
     // Compute silhouette coefficient
-    if (aCount === 0) {
+    if (a_count === 0) {
       // Single point in cluster
-      silhouetteValues.push(0);
+      silhouette_values.push(0);
     } else if (a === 0 && b === 0) {
       // All intra- and inter-cluster distances are zero (identical points);
       // sklearn convention: silhouette = 0
-      silhouetteValues.push(0);
+      silhouette_values.push(0);
     } else {
       const s = (b - a) / Math.max(a, b);
-      silhouetteValues.push(s);
+      silhouette_values.push(s);
     }
 
     // Clean up
-    samplePoint.dispose();
+    sample_point.dispose();
     distances.dispose();
   }
 
   // Clean up data tensor if we created it
-  if (ownsTensor) {
+  if (owns_tensor) {
     data.dispose();
   }
 
   // Return mean silhouette score
   return (
-    silhouetteValues.reduce((sum, val) => sum + val, 0) /
-    silhouetteValues.length
+    silhouette_values.reduce((sum, val) => sum + val, 0) /
+    silhouette_values.length
   );
 }

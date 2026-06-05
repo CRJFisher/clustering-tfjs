@@ -11,11 +11,11 @@
 
 import type * as tfType from '@tensorflow/tfjs-core';
 import type { TensorFlowBackend, Platform, ReactNativeConfig } from './platform_types';
-import { isReactNative, isNode } from './platform';
+import { is_react_native, is_node } from './platform';
 
 // Singleton storage
-let tfInstance: typeof tfType | null = null;
-let initializationPromise: Promise<typeof tfType> | null = null;
+let tf_instance: typeof tfType | null = null;
+let initialization_promise: Promise<typeof tfType> | null = null;
 
 /**
  * Backend configuration options
@@ -35,12 +35,12 @@ export interface BackendConfig {
   /**
    * React Native specific configuration
    */
-  reactNative?: ReactNativeConfig;
+  react_native?: ReactNativeConfig;
 
   /**
    * Force a specific platform detection (for testing)
    */
-  forcePlatform?: Platform;
+  force_platform?: Platform;
 }
 
 /**
@@ -51,26 +51,26 @@ export interface BackendConfig {
  * in-flight promise if initialization is in progress. Config comparison and
  * conflict detection are handled by `Clustering.init()`.
  */
-export async function initializeBackend(config: BackendConfig = {}): Promise<typeof tfType> {
+export async function initialize_backend(config: BackendConfig = {}): Promise<typeof tfType> {
   // Return existing instance if already initialized
-  if (tfInstance) {
-    return tfInstance;
+  if (tf_instance) {
+    return tf_instance;
   }
 
   // Return existing initialization promise if in progress
-  if (initializationPromise) {
-    return initializationPromise;
+  if (initialization_promise) {
+    return initialization_promise;
   }
 
   // Start initialization
-  initializationPromise = loadBackend(config);
+  initialization_promise = load_backend(config);
 
   try {
-    tfInstance = await initializationPromise;
-    return tfInstance;
+    tf_instance = await initialization_promise;
+    return tf_instance;
   } catch (error) {
     // Reset on error to allow retry
-    initializationPromise = null;
+    initialization_promise = null;
     throw error;
   }
 }
@@ -82,11 +82,11 @@ export async function initializeBackend(config: BackendConfig = {}): Promise<typ
  * In Node.js: synchronously loads the best available backend via require().
  * In browser/RN: throws if Clustering.init() has not been called.
  */
-export function ensureBackend(): typeof tfType {
-  if (tfInstance) return tfInstance;
+export function ensure_backend(): typeof tfType {
+  if (tf_instance) return tf_instance;
 
   // If async init is in progress, don't race it with a sync load
-  if (initializationPromise) {
+  if (initialization_promise) {
     throw new Error(
       'TensorFlow.js is being initialized asynchronously via Clustering.init(). ' +
       'Await the init() call before using clustering algorithms.'
@@ -94,19 +94,19 @@ export function ensureBackend(): typeof tfType {
   }
 
   // Auto-load synchronously in Node.js
-  if (isNode()) {
-    tfInstance = loadBackendSync();
-    return tfInstance;
+  if (is_node()) {
+    tf_instance = load_backend_sync();
+    return tf_instance;
   }
 
   // In browser/RN, check if a TF.js backend was loaded via <script> tag
   // by probing for a globally available tf object with a registered backend.
   const g = globalThis as Record<string, unknown>;
   if (g['tf'] && typeof (g['tf'] as Record<string, unknown>)['getBackend'] === 'function') {
-    const globalTf = g['tf'] as typeof tfType;
-    if (globalTf.getBackend()) {
-      tfInstance = globalTf;
-      return tfInstance;
+    const global_tf = g['tf'] as typeof tfType;
+    if (global_tf.getBackend()) {
+      tf_instance = global_tf;
+      return tf_instance;
     }
   }
 
@@ -119,23 +119,23 @@ export function ensureBackend(): typeof tfType {
 /**
  * Check if TensorFlow is initialized
  */
-export function isInitialized(): boolean {
-  return tfInstance !== null;
+export function is_initialized(): boolean {
+  return tf_instance !== null;
 }
 
 /**
  * Reset the backend (mainly for testing)
  */
-export function resetBackend(): void {
-  tfInstance = null;
-  initializationPromise = null;
+export function reset_backend(): void {
+  tf_instance = null;
+  initialization_promise = null;
 }
 
 /**
  * Synchronous backend loading for Node.js (fallback when init() not called).
  * Uses require() with the same fallback chain as loader.node.ts.
  */
-function loadBackendSync(): typeof tfType {
+function load_backend_sync(): typeof tfType {
   try {
     require.resolve('@tensorflow/tfjs-node');
     // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -165,25 +165,25 @@ function loadBackendSync(): typeof tfType {
 /**
  * Load the appropriate backend based on environment and config (async path)
  */
-async function loadBackend(config: BackendConfig): Promise<typeof tfType> {
+async function load_backend(config: BackendConfig): Promise<typeof tfType> {
   // Use platform utilities for consistent detection
-  const platformIsReactNative = config.forcePlatform === 'react-native' || isReactNative();
-  const platformIsNode = config.forcePlatform === 'node' || (!platformIsReactNative && isNode());
+  const platform_is_react_native = config.force_platform === 'react-native' || is_react_native();
+  const platform_is_node = config.force_platform === 'node' || (!platform_is_react_native && is_node());
 
   let tf: typeof tfType;
 
-  if (platformIsReactNative) {
+  if (platform_is_react_native) {
     // React Native environment
     const loader = await import(/* webpackIgnore: true */ './loader.rn');
-    tf = await loader.loadTensorFlow();
-  } else if (platformIsNode) {
+    tf = await loader.load_tensor_flow();
+  } else if (platform_is_node) {
     // Node.js environment
     const loader = await import(/* webpackIgnore: true */ './loader.node');
-    tf = await loader.loadTensorFlow();
+    tf = await loader.load_tensor_flow();
   } else {
     // Browser environment
     const loader = await import('./loader.browser');
-    tf = await loader.loadTensorFlow();
+    tf = await loader.load_tensor_flow();
   }
 
   // Set custom flags if provided

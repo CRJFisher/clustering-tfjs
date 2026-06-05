@@ -8,7 +8,7 @@ import * as tf from '../backend/adapter';
  * Check if a value is a TensorFlow.js tensor
  * Works across different environments where tf.Tensor might not be directly available
  */
-export function isTensor(value: unknown): value is tf.Tensor {
+export function is_tensor(value: unknown): value is tf.Tensor {
   if (!value || typeof value !== 'object') {
     return false;
   }
@@ -28,7 +28,7 @@ export function isTensor(value: unknown): value is tf.Tensor {
 /**
  * Check if a value is a 2D tensor
  */
-export function isTensor2D(value: unknown): value is tf.Tensor2D {
-  return isTensor(value) && (value as tf.Tensor).rank === 2;
+export function is_tensor_2d(value: unknown): value is tf.Tensor2D {
+  return is_tensor(value) && (value as tf.Tensor).rank === 2;
 }
 

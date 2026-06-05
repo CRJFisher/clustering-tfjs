@@ -4,7 +4,7 @@ import type {
   KMeansParams,
 } from './types';
 import * as tf from '../backend/adapter';
-import { isTensor } from '../tensor/tensor_guards';
+import { is_tensor } from '../tensor/tensor_guards';
 import { make_random_stream } from '../random';
 
 /**
@@ -39,7 +39,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
    */
   constructor(params: KMeansParams) {
     this.params = { ...params };
-    KMeans.validateParams(this.params);
+    KMeans.validate_params(this.params);
   }
 
   /* --------------------------------------------------------------------- */
@@ -47,25 +47,25 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /* --------------------------------------------------------------------- */
 
   /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
-  private static makeRandomStream(seed?: number) {
+  private static make_random_stream(seed?: number) {
     return make_random_stream(seed);
   }
 
-  private static validateParams(params: KMeansParams): void {
-    const { nClusters, maxIter, tol, nInit } = params;
+  private static validate_params(params: KMeansParams): void {
+    const { n_clusters, max_iter, tol, n_init } = params;
 
-    if (!Number.isInteger(nClusters) || nClusters < 1) {
+    if (!Number.isInteger(n_clusters) || n_clusters < 1) {
       throw new Error('nClusters must be a positive integer (>= 1).');
     }
 
-    if (maxIter !== undefined && (!Number.isInteger(maxIter) || maxIter < 1)) {
+    if (max_iter !== undefined && (!Number.isInteger(max_iter) || max_iter < 1)) {
       throw new Error('maxIter must be a positive integer (>= 1) when given.');
     }
 
     if (tol !== undefined && (typeof tol !== 'number' || tol < 0)) {
       throw new Error('tol must be a non-negative number when given.');
     }
-    if (nInit !== undefined && (!Number.isInteger(nInit) || nInit < 1)) {
+    if (n_init !== undefined && (!Number.isInteger(n_init) || n_init < 1)) {
       throw new Error('nInit must be a positive integer (>= 1) when given.');
     }
   }
@@ -102,12 +102,12 @@ export class KMeans implements BaseClustering<KMeansParams> {
    */
   async fit(X: DataMatrix): Promise<void> {
     // Validate input dimensions before creating tensors to avoid leaks on throw.
-    const nSamples = isTensor(X) ? (X as tf.Tensor2D).shape[0] : (X as number[][]).length;
-    if (nSamples === 0) {
+    const n_samples = is_tensor(X) ? (X as tf.Tensor2D).shape[0] : (X as number[][]).length;
+    if (n_samples === 0) {
       throw new Error('Input data must contain at least one sample.');
     }
-    const K = this.params.nClusters;
-    if (K > nSamples) {
+    const K = this.params.n_clusters;
+    if (K > n_samples) {
       throw new Error('nClusters cannot exceed number of samples.');
     }
 
@@ -118,76 +118,76 @@ export class KMeans implements BaseClustering<KMeansParams> {
     // potential multiple initialisations.
     // When X is already a tensor we clone to avoid mutating the caller's data.
     // When X is a plain array, tf.tensor2d already creates a new tensor.
-    const Xtensor: tf.Tensor2D = isTensor(X)
+    const Xtensor: tf.Tensor2D = is_tensor(X)
       ? (X as tf.Tensor2D).clone()
       : tf.tensor2d(X as number[][], undefined, 'float32');
 
     const [, nFeatures] = Xtensor.shape;
 
-    const nInit = this.params.nInit ?? KMeans.DEFAULT_N_INIT;
+    const n_init = this.params.n_init ?? KMeans.DEFAULT_N_INIT;
 
     // Pre-compute helper structures reused across inits (use full precision
     // original data when available to avoid float32 rounding affecting
     // k-means++ probabilities).
 
-    const pointsArr: number[][] = Array.isArray(X)
+    const points_arr: number[][] = Array.isArray(X)
       ? (X as number[][])
       : ((await Xtensor.array()) as number[][]);
 
     // Store best solution across runs
-    let bestInertia = Number.POSITIVE_INFINITY;
-    let bestLabels: Int32Array | null = null;
-    let bestCentroids: tf.Tensor2D | null = null;
+    let best_inertia = Number.POSITIVE_INFINITY;
+    let best_labels: Int32Array | null = null;
+    let best_centroids: tf.Tensor2D | null = null;
 
-    const maxIter = this.params.maxIter ?? KMeans.DEFAULT_MAX_ITER;
+    const max_iter = this.params.max_iter ?? KMeans.DEFAULT_MAX_ITER;
     const tol = this.params.tol ?? KMeans.DEFAULT_TOL;
 
-    const baseSeed = this.params.randomState;
+    const base_seed = this.params.random_state;
 
-    const runOnce = async (
-      seedOffset: number,
+    const run_once = async (
+      seed_offset: number,
     ): Promise<{
       inertia: number;
       labels: Int32Array;
       centroids: tf.Tensor2D;
     }> => {
-      const randStream = KMeans.makeRandomStream(
-        baseSeed !== undefined ? baseSeed + seedOffset : undefined,
+      const rand_stream = KMeans.make_random_stream(
+        base_seed !== undefined ? base_seed + seed_offset : undefined,
       );
 
-      const rand = randStream.rand;
+      const rand = rand_stream.rand;
 
       // ----------------------- k-means++ seeding ----------------------- //
-      const centroidIdxs: number[] = [];
-      const centroidSet = new Set<number>();
-      const firstIdx = randStream.randInt(nSamples);
-      centroidIdxs.push(firstIdx);
-      centroidSet.add(firstIdx);
+      const centroid_idxs: number[] = [];
+      const centroid_set = new Set<number>();
+      const first_idx = rand_stream.rand_int(n_samples);
+      centroid_idxs.push(first_idx);
+      centroid_set.add(first_idx);
 
-      while (centroidIdxs.length < K) {
+      while (centroid_idxs.length < K) {
         // 1) Compute squared distance to nearest existing centroid for each point
-        const distances: number[] = pointsArr.map((p, idx) => {
-          if (centroidSet.has(idx)) return 0;
-          let minD2 = Number.POSITIVE_INFINITY;
-          for (const cIdx of centroidIdxs) {
-            const c = pointsArr[cIdx];
+        const distances: number[] = points_arr.map((p, idx) => {
+          if (centroid_set.has(idx)) return 0;
+          let min_d2 = Number.POSITIVE_INFINITY;
+          for (const c_idx of centroid_idxs) {
+            const c = points_arr[c_idx];
             let d2 = 0;
             for (let j = 0; j < nFeatures; j++) {
               const diff = p[j] - c[j];
               d2 += diff * diff;
             }
-            if (d2 < minD2) minD2 = d2;
+            if (d2 < min_d2) min_d2 = d2;
           }
-          return minD2;
+          return min_d2;
         });
 
-        const currentPot = distances.reduce((a, b) => a + b, 0);
-        if (currentPot === 0) {
+        const current_pot = distances.reduce((a, b) => a + b, 0);
+        if (current_pot === 0) {
           // All remaining points identical to existing centroids – pick first unused index deterministically
-          for (let i = 0; i < nSamples; i++) {
-            if (!centroidSet.has(i)) {
-              centroidIdxs.push(i);
-              centroidSet.add(i);
+          for (let i = 0; i < n_samples; i++) {
+            if (!centroid_set.has(i)) {
+              centroid_idxs.push(i);
+              centroid_set.add(i);
               break;
             }
           }
@@ -195,23 +195,23 @@ export class KMeans implements BaseClustering<KMeansParams> {
         }
 
         // 2) Sample candidate indices according to probability proportional to distance^2
-        const localTrials = 2 + Math.floor(Math.log(K));
-        const cumulativeDistances: number[] = [];
-        let cumSum = 0;
+        const local_trials = 2 + Math.floor(Math.log(K));
+        const cumulative_distances: number[] = [];
+        let cum_sum = 0;
         for (const d of distances) {
-          cumSum += d;
-          cumulativeDistances.push(cumSum);
+          cum_sum += d;
+          cumulative_distances.push(cum_sum);
         }
 
         const candidates: number[] = [];
-        for (let t = 0; t < localTrials; t++) {
-          const r = rand() * currentPot;
+        for (let t = 0; t < local_trials; t++) {
+          const r = rand() * current_pot;
           // binary search
           let lo = 0;
-          let hi = nSamples - 1;
+          let hi = n_samples - 1;
           while (lo < hi) {
             const mid = Math.floor((lo + hi) / 2);
-            if (r <= cumulativeDistances[mid]) {
+            if (r <= cumulative_distances[mid]) {
               hi = mid;
             } else {
               lo = mid + 1;
@@ -221,147 +221,147 @@ export class KMeans implements BaseClustering<KMeansParams> {
         }
 
         // 3) Compute potential for each candidate and choose best
-        let bestCandidate = candidates[0];
-        let bestPotential = Number.POSITIVE_INFINITY;
+        let best_candidate = candidates[0];
+        let best_potential = Number.POSITIVE_INFINITY;
 
         for (const cand of candidates) {
           let pot = 0;
-          const candPoint = pointsArr[cand];
-          for (let i = 0; i < nSamples; i++) {
-            const p = pointsArr[i];
+          const cand_point = points_arr[cand];
+          for (let i = 0; i < n_samples; i++) {
+            const p = points_arr[i];
             let d2 = 0;
             for (let j = 0; j < nFeatures; j++) {
-              const diff = p[j] - candPoint[j];
+              const diff = p[j] - cand_point[j];
               d2 += diff * diff;
             }
-            const minD2 = Math.min(distances[i], d2);
-            pot += minD2;
+            const min_d2 = Math.min(distances[i], d2);
+            pot += min_d2;
           }
-          if (pot < bestPotential) {
-            bestPotential = pot;
-            bestCandidate = cand;
+          if (pot < best_potential) {
+            best_potential = pot;
+            best_candidate = cand;
           }
         }
 
-        centroidIdxs.push(bestCandidate);
-        centroidSet.add(bestCandidate);
+        centroid_idxs.push(best_candidate);
+        centroid_set.add(best_candidate);
       }
 
       let centroids = tf.tensor2d(
-        centroidIdxs.map((i) => pointsArr[i]),
+        centroid_idxs.map((i) => points_arr[i]),
         [K, nFeatures],
         'float32',
       );
 
-      let prevInertia = Number.POSITIVE_INFINITY;
-      let labels: Int32Array = new Int32Array(nSamples);
+      let prev_inertia = Number.POSITIVE_INFINITY;
+      let labels: Int32Array = new Int32Array(n_samples);
 
-      for (let iter = 0; iter < maxIter; iter++) {
+      for (let iter = 0; iter < max_iter; iter++) {
         const distances = tf.tidy(() => {
-          const xNorm = Xtensor.square().sum(1).reshape([nSamples, 1]);
-          const cNorm = centroids.square().sum(1).reshape([1, K]);
-          const cross = tf.matMul(Xtensor, centroids.transpose());
-          const distSq = xNorm.add(cNorm).sub(cross.mul(2));
-          return tf.maximum(distSq, tf.scalar(0, 'float32'));
+          const x_norm = Xtensor.square().sum(1).reshape([n_samples, 1]);
+          const c_norm = centroids.square().sum(1).reshape([1, K]);
+          const cross = tf.mat_mul(Xtensor, centroids.transpose());
+          const dist_sq = x_norm.add(c_norm).sub(cross.mul(2));
+          return tf.maximum(dist_sq, tf.scalar(0, 'float32'));
         });
 
-        const argMinTensor = distances.argMin(1);
-        labels = (await argMinTensor.data()) as Int32Array;
-        argMinTensor.dispose();
+        const arg_min_tensor = distances.argMin(1);
+        labels = (await arg_min_tensor.data()) as Int32Array;
+        arg_min_tensor.dispose();
 
-        const minTensor = distances.min(1);
-        const minDistSq = await minTensor.data();
-        minTensor.dispose();
-        const inertia = Array.from(minDistSq as Float32Array).reduce(
+        const min_tensor = distances.min(1);
+        const min_dist_sq = await min_tensor.data();
+        min_tensor.dispose();
+        const inertia = Array.from(min_dist_sq as Float32Array).reduce(
           (a, b) => a + b,
           0,
         );
         distances.dispose();
 
-        const newCentroidsArr: number[][] = Array.from({ length: K }, () =>
+        const new_centroids_arr: number[][] = Array.from({ length: K }, () =>
           Array(nFeatures).fill(0),
         );
         const counts: number[] = Array(K).fill(0);
 
-        for (let i = 0; i < nSamples; i++) {
+        for (let i = 0; i < n_samples; i++) {
           const label = labels[i];
           counts[label]++;
-          const row = pointsArr[i];
+          const row = points_arr[i];
           for (let j = 0; j < nFeatures; j++) {
-            newCentroidsArr[label][j] += row[j];
+            new_centroids_arr[label][j] += row[j];
           }
         }
 
         // Handle empty clusters using sklearn's strategy
-        const emptyClusters: number[] = [];
-        for (let kIdx = 0; kIdx < K; kIdx++) {
-          if (counts[kIdx] === 0) {
-            emptyClusters.push(kIdx);
+        const empty_clusters: number[] = [];
+        for (let k_idx = 0; k_idx < K; k_idx++) {
+          if (counts[k_idx] === 0) {
+            empty_clusters.push(k_idx);
             // Keep old centroid temporarily
-            const sliceTensor = centroids.slice([kIdx, 0], [1, nFeatures]);
-            newCentroidsArr[kIdx] = Array.from(
-              await sliceTensor.array(),
+            const slice_tensor = centroids.slice([k_idx, 0], [1, nFeatures]);
+            new_centroids_arr[k_idx] = Array.from(
+              await slice_tensor.array(),
             )[0] as number[];
-            sliceTensor.dispose();
+            slice_tensor.dispose();
           } else {
             for (let j = 0; j < nFeatures; j++) {
-              newCentroidsArr[kIdx][j] /= counts[kIdx];
+              new_centroids_arr[k_idx][j] /= counts[k_idx];
             }
           }
         }
 
         // If there are empty clusters, reassign them to points farthest from their nearest center
-        if (emptyClusters.length > 0) {
+        if (empty_clusters.length > 0) {
           // Compute distances from all points to their nearest center
-          const distToNearest = new Float32Array(nSamples);
-          for (let i = 0; i < nSamples; i++) {
-            distToNearest[i] = minDistSq[i];
+          const dist_to_nearest = new Float32Array(n_samples);
+          for (let i = 0; i < n_samples; i++) {
+            dist_to_nearest[i] = min_dist_sq[i];
           }
 
           // Find indices of points with largest distances
-          const indices = Array.from({ length: nSamples }, (_, i) => i);
-          indices.sort((a, b) => distToNearest[b] - distToNearest[a]);
+          const indices = Array.from({ length: n_samples }, (_, i) => i);
+          indices.sort((a, b) => dist_to_nearest[b] - dist_to_nearest[a]);
 
           // Assign farthest points as new centers for empty clusters
-          for (let i = 0; i < emptyClusters.length && i < nSamples; i++) {
-            const farthestIdx = indices[i];
-            const emptyClusterIdx = emptyClusters[i];
-            newCentroidsArr[emptyClusterIdx] = [...pointsArr[farthestIdx]];
+          for (let i = 0; i < empty_clusters.length && i < n_samples; i++) {
+            const farthest_idx = indices[i];
+            const empty_cluster_idx = empty_clusters[i];
+            new_centroids_arr[empty_cluster_idx] = [...points_arr[farthest_idx]];
           }
         }
 
-        const newCentroids = tf.tensor2d(
-          newCentroidsArr,
+        const new_centroids = tf.tensor2d(
+          new_centroids_arr,
           [K, nFeatures],
           'float32',
         );
 
-        const shiftTensor = tf.tidy(() => centroids.sub(newCentroids).abs().max());
-        const centroidShift = (await shiftTensor.data())[0];
-        shiftTensor.dispose();
+        const shift_tensor = tf.tidy(() => centroids.sub(new_centroids).abs().max());
+        const centroid_shift = (await shift_tensor.data())[0];
+        shift_tensor.dispose();
 
         centroids.dispose();
-        centroids = newCentroids;
+        centroids = new_centroids;
 
-        const relativeDiff =
-          Math.abs(prevInertia - inertia) / (prevInertia || 1);
-        if (relativeDiff <= tol || centroidShift <= tol) {
-          prevInertia = inertia;
+        const relative_diff =
+          Math.abs(prev_inertia - inertia) / (prev_inertia || 1);
+        if (relative_diff <= tol || centroid_shift <= tol) {
+          prev_inertia = inertia;
           break;
         }
-        prevInertia = inertia;
+        prev_inertia = inertia;
       }
 
-      return { inertia: prevInertia, labels, centroids };
+      return { inertia: prev_inertia, labels, centroids };
     };
 
-    for (let run = 0; run < nInit; run++) {
-      const { inertia, labels, centroids } = await runOnce(run);
-      if (inertia < bestInertia) {
-        if (bestCentroids) bestCentroids.dispose();
-        bestInertia = inertia;
-        bestLabels = labels;
-        bestCentroids = centroids;
+    for (let run = 0; run < n_init; run++) {
+      const { inertia, labels, centroids } = await run_once(run);
+      if (inertia < best_inertia) {
+        if (best_centroids) best_centroids.dispose();
+        best_inertia = inertia;
+        best_labels = labels;
+        best_centroids = centroids;
       } else {
         // dispose unused centroids to avoid leaks
         centroids.dispose();
@@ -369,9 +369,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
     }
 
     // Save best solution to instance
-    this.centroids_ = bestCentroids!;
-    this.labels_ = Array.from(bestLabels!);
-    this.inertia_ = bestInertia;
+    this.centroids_ = best_centroids!;
+    this.labels_ = Array.from(best_labels!);
+    this.inertia_ = best_inertia;
 
     Xtensor.dispose();
   }
@@ -383,7 +383,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
    * @returns Array of cluster labels for each sample.
    * @throws {Error} If input data is empty or nClusters exceeds nSamples.
    */
-  async fitPredict(X: DataMatrix): Promise<number[]> {
+  async fit_predict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     if (this.labels_ == null) {
       throw new Error('KMeans.fit did not compute labels.');

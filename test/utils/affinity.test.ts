@@ -39,18 +39,18 @@ describe("Affinity matrix utilities", () => {
     // Expect symmetric matrix with values 0, 0.5, or 1
     // When includeSelf=true (default), diagonal has 1s
     // When symmetrized, edges that appear in only one direction get 0.5
-    let edgeCount = 0;
+    let edge_count = 0;
     for (let i = 0; i < 4; i++) {
       expect(arr[i][i]).toBe(1); // Self-loops included by default
       for (let j = 0; j < 4; j++) {
         expect(arr[i][j]).toBe(arr[j][i]);
-        if (arr[i][j] > 0) edgeCount++;
+        if (arr[i][j] > 0) edge_count++;
       }
     }
     // With k=1 and includeSelf=true (default), sklearn behavior means k=1 includes self
     // So each node only connects to its 1 nearest neighbor (which is itself)
     // Result: diagonal matrix with 4 edges
-    expect(edgeCount).toBe(4);
+    expect(edge_count).toBe(4);
   });
 });
 

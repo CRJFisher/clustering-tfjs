@@ -8,7 +8,7 @@ import * as tf from '../backend/adapter';
  * tensors that may be created by TensorFlow.js during conversion are
  * automatically disposed of.
  */
-export function arrayToTensor(
+export function array_to_tensor(
   arr: tf.TensorLike,
   dtype: tf.DataType = 'float32',
 ): tf.Tensor {
@@ -21,7 +21,7 @@ export function arrayToTensor(
  * The returned value is a *copy* of the underlying data, so further
  * manipulations will not affect the original tensor.
  */
-export function tensorToArray(
+export function tensor_to_array(
   tensor: tf.Tensor,
 ): number[] | number[][] | number[][][] {
   // Using .arraySync() is safe here because callers explicitly request the
@@ -47,7 +47,7 @@ export function tensorToArray(
  * euclideanDistance(a, b)  // => Tensor([1, 1])
  * ```
  */
-export function euclideanDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
+export function euclidean_distance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
   return tf.tidy(() => tf.sub(a, b).square().sum(-1).sqrt());
 }
 
@@ -55,7 +55,7 @@ export function euclideanDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  * Computes the Manhattan (ℓ1) distance between two tensors along their last
  * dimension.
  */
-export function manhattanDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
+export function manhattan_distance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
   return tf.tidy(() => a.sub(b).abs().sum(-1));
 }
 
@@ -63,13 +63,13 @@ export function manhattanDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  * Computes the cosine distance (1 ‑ cosine similarity) between two tensors
  * along their last dimension.
  */
-export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
+export function cosine_distance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
   return tf.tidy(() => {
-    const aNorm = a.norm('euclidean', -1);
-    const bNorm = b.norm('euclidean', -1);
+    const a_norm = a.norm('euclidean', -1);
+    const b_norm = b.norm('euclidean', -1);
     const dot = a.mul(b).sum(-1);
     const eps = tf.scalar(1e-8);
-    const denom = aNorm.mul(bNorm).add(eps);
+    const denom = a_norm.mul(b_norm).add(eps);
     const similarity = dot.div(denom);
     return tf.scalar(1).sub(similarity);
   });
@@ -89,4 +89,4 @@ export function cosineDistance(a: tf.Tensor, b: tf.Tensor): tf.Tensor {
  */
 // Re-export to maintain backward compatibility while delegating to the new
 // implementation in `pairwise_distance.ts`.
-export { pairwiseEuclideanMatrix } from '../distance/pairwise_distance';
+export { pairwise_euclidean_matrix } from '../distance/pairwise_distance';

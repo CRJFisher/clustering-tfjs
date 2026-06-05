@@ -1,20 +1,20 @@
 import '../tensorflow-helper';
-import { findOptimalClusters, ClusterEvaluation } from '../../src/model_selection/find_optimal_clusters';
+import { find_optimal_clusters, ClusterEvaluation } from '../../src/model_selection/find_optimal_clusters';
 import { make_random_stream } from '../../src/random';
 
-function assertClusterEvaluationShape(evaluation: ClusterEvaluation, nSamples: number): void {
+function assert_cluster_evaluation_shape(evaluation: ClusterEvaluation, n_samples: number): void {
   // Required fields exist and have correct runtime type
   expect(typeof evaluation.k).toBe('number');
   expect(Number.isInteger(evaluation.k)).toBe(true);
   expect(evaluation.k).toBeGreaterThanOrEqual(2);
 
   expect(typeof evaluation.silhouette).toBe('number');
-  expect(typeof evaluation.daviesBouldin).toBe('number');
-  expect(typeof evaluation.calinskiHarabasz).toBe('number');
-  expect(typeof evaluation.combinedScore).toBe('number');
+  expect(typeof evaluation.davies_bouldin).toBe('number');
+  expect(typeof evaluation.calinski_harabasz).toBe('number');
+  expect(typeof evaluation.combined_score).toBe('number');
 
   expect(Array.isArray(evaluation.labels)).toBe(true);
-  expect(evaluation.labels).toHaveLength(nSamples);
+  expect(evaluation.labels).toHaveLength(n_samples);
   for (const label of evaluation.labels) {
     expect(typeof label).toBe('number');
     expect(Number.isInteger(label)).toBe(true);
@@ -30,17 +30,17 @@ describe('findOptimalClusters return shape', () => {
   ];
 
   it('default method (combined) returns correct shape', async () => {
-    const result = await findOptimalClusters(data);
+    const result = await find_optimal_clusters(data);
 
     expect(result).toHaveProperty('optimal');
     expect(result).toHaveProperty('evaluations');
     expect(Array.isArray(result.evaluations)).toBe(true);
     expect(result.evaluations.length).toBeGreaterThan(0);
 
-    assertClusterEvaluationShape(result.optimal, data.length);
+    assert_cluster_evaluation_shape(result.optimal, data.length);
 
     for (const evaluation of result.evaluations) {
-      assertClusterEvaluationShape(evaluation, data.length);
+      assert_cluster_evaluation_shape(evaluation, data.length);
     }
 
     // wss is undefined for non-elbow method
@@ -50,39 +50,39 @@ describe('findOptimalClusters return shape', () => {
   }, 30000);
 
   it('elbow method returns shape with wss field', async () => {
-    const result = await findOptimalClusters(data, { method: 'elbow' });
+    const result = await find_optimal_clusters(data, { method: 'elbow' });
 
-    assertClusterEvaluationShape(result.optimal, data.length);
+    assert_cluster_evaluation_shape(result.optimal, data.length);
 
     for (const evaluation of result.evaluations) {
-      assertClusterEvaluationShape(evaluation, data.length);
+      assert_cluster_evaluation_shape(evaluation, data.length);
       expect(typeof evaluation.wss).toBe('number');
       expect(evaluation.wss!).toBeGreaterThanOrEqual(0);
     }
   }, 30000);
 
   it('silhouette method returns correct shape', async () => {
-    const result = await findOptimalClusters(data, { method: 'silhouette' });
+    const result = await find_optimal_clusters(data, { method: 'silhouette' });
 
-    assertClusterEvaluationShape(result.optimal, data.length);
+    assert_cluster_evaluation_shape(result.optimal, data.length);
 
     for (const evaluation of result.evaluations) {
-      assertClusterEvaluationShape(evaluation, data.length);
-      expect(evaluation.combinedScore).toBe(evaluation.silhouette);
+      assert_cluster_evaluation_shape(evaluation, data.length);
+      expect(evaluation.combined_score).toBe(evaluation.silhouette);
     }
   }, 30000);
 
   it('evaluations are sorted by combinedScore descending', async () => {
-    const result = await findOptimalClusters(data, {
-      minClusters: 2,
-      maxClusters: 4,
+    const result = await find_optimal_clusters(data, {
+      min_clusters: 2,
+      max_clusters: 4,
     });
 
     expect(result.evaluations.length).toBeGreaterThan(1);
 
     for (let i = 1; i < result.evaluations.length; i++) {
-      expect(result.evaluations[i - 1].combinedScore)
-        .toBeGreaterThanOrEqual(result.evaluations[i].combinedScore);
+      expect(result.evaluations[i - 1].combined_score)
+        .toBeGreaterThanOrEqual(result.evaluations[i].combined_score);
     }
   }, 30000);
 
@@ -91,43 +91,43 @@ describe('findOptimalClusters return shape', () => {
 
     for (const size of sizes) {
       const rng = make_random_stream(42);
-      const testData: number[][] = [];
+      const test_data: number[][] = [];
       for (let i = 0; i < size; i++) {
-        testData.push([rng.rand() * 10, rng.rand() * 10]);
+        test_data.push([rng.rand() * 10, rng.rand() * 10]);
       }
 
-      const result = await findOptimalClusters(testData, {
-        minClusters: 2,
-        maxClusters: 3,
+      const result = await find_optimal_clusters(test_data, {
+        min_clusters: 2,
+        max_clusters: 3,
       });
 
-      assertClusterEvaluationShape(result.optimal, size);
+      assert_cluster_evaluation_shape(result.optimal, size);
 
       for (const evaluation of result.evaluations) {
-        assertClusterEvaluationShape(evaluation, size);
+        assert_cluster_evaluation_shape(evaluation, size);
       }
     }
   }, 30000);
 
   it('evaluations length matches number of k values tested', async () => {
     const rng = make_random_stream(42);
-    const largerData: number[][] = [];
+    const larger_data: number[][] = [];
     for (let i = 0; i < 15; i++) {
-      largerData.push([rng.rand() * 10, rng.rand() * 10]);
+      larger_data.push([rng.rand() * 10, rng.rand() * 10]);
     }
 
-    const result = await findOptimalClusters(largerData, {
-      minClusters: 2,
-      maxClusters: 6,
+    const result = await find_optimal_clusters(larger_data, {
+      min_clusters: 2,
+      max_clusters: 6,
     });
 
     expect(result.evaluations).toHaveLength(5);
 
-    const kValues = new Set(result.evaluations.map(e => e.k));
-    expect(kValues).toEqual(new Set([2, 3, 4, 5, 6]));
+    const k_values = new Set(result.evaluations.map(e => e.k));
+    expect(k_values).toEqual(new Set([2, 3, 4, 5, 6]));
 
     for (const evaluation of result.evaluations) {
-      assertClusterEvaluationShape(evaluation, largerData.length);
+      assert_cluster_evaluation_shape(evaluation, larger_data.length);
     }
   }, 30000);
 });

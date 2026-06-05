@@ -4,21 +4,21 @@
  * Provides initialization and configuration for multi-platform support.
  */
 
-import { initializeBackend, resetBackend, BackendConfig } from '../backend/backend';
+import { initialize_backend, reset_backend, BackendConfig } from '../backend/backend';
 import { KMeans } from './kmeans';
 import { SpectralClustering } from './spectral';
 import { AgglomerativeClustering } from './agglomerative';
 import { SOM } from './som';
 import type { Platform, PlatformFeatures } from '../backend/platform_types';
-import { getPlatform } from '../backend/platform';
+import { get_platform } from '../backend/platform';
 
 // ---------------------------------------------------------------------------
 // Idempotency guard state for Clustering.init()
 // ---------------------------------------------------------------------------
-let initPromise: Promise<void> | null = null;
-let initConfigKey: string | null = null;
+let init_promise: Promise<void> | null = null;
+let init_config_key: string | null = null;
 
-function isPlainObject(v: unknown): v is Record<string, unknown> {
+function is_plain_object(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
@@ -26,20 +26,20 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
  * Deterministic JSON serialization with sorted keys at every nesting level.
  * Used to produce a stable string for config comparison.
  */
-function sortedStringify(value: unknown): string {
+function sorted_stringify(value: unknown): string {
   if (value === null || value === undefined) return String(value);
   if (typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return '[' + value.map(sortedStringify).join(',') + ']';
-  if (!isPlainObject(value)) return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(sorted_stringify).join(',') + ']';
+  if (!is_plain_object(value)) return JSON.stringify(value);
   const keys = Object.keys(value).sort();
   const pairs = keys
     .filter(k => value[k] !== undefined)
-    .map(k => `${JSON.stringify(k)}:${sortedStringify(value[k])}`);
+    .map(k => `${JSON.stringify(k)}:${sorted_stringify(value[k])}`);
   return `{${pairs.join(',')}}`;
 }
 
 /** Return the number of defined (non-undefined) values in an object. */
-function definedKeyCount(obj: object): number {
+function defined_key_count(obj: object): number {
   return Object.entries(obj).filter(([, v]) => v !== undefined).length;
 }
 
@@ -48,58 +48,58 @@ function definedKeyCount(obj: object): number {
  * `{ flags: {} }`, and `{ flags: { X: undefined } }` all normalize
  * identically.
  */
-function stripEmpty(config: BackendConfig): BackendConfig {
+function strip_empty(config: BackendConfig): BackendConfig {
   const result: BackendConfig = {};
   if (config.backend !== undefined) result.backend = config.backend;
-  if (config.forcePlatform !== undefined) result.forcePlatform = config.forcePlatform;
-  if (config.flags !== undefined && definedKeyCount(config.flags) > 0) {
+  if (config.force_platform !== undefined) result.force_platform = config.force_platform;
+  if (config.flags !== undefined && defined_key_count(config.flags) > 0) {
     result.flags = config.flags;
   }
-  if (config.reactNative !== undefined && definedKeyCount(config.reactNative) > 0) {
-    result.reactNative = config.reactNative;
+  if (config.react_native !== undefined && defined_key_count(config.react_native) > 0) {
+    result.react_native = config.react_native;
   }
   return result;
 }
 
 /** Produce a stable config key for comparison. */
-function configKey(config: BackendConfig): string {
-  return sortedStringify(stripEmpty(config));
+function config_key(config: BackendConfig): string {
+  return sorted_stringify(strip_empty(config));
 }
 
 // Detect platform at runtime using utility function
-const detectPlatform = (): Platform => {
-  return getPlatform();
+const detect_platform = (): Platform => {
+  return get_platform();
 };
 
 // Get platform features based on detected platform
-const getPlatformFeatures = (platform: Platform): PlatformFeatures => {
+const get_platform_features = (platform: Platform): PlatformFeatures => {
   switch (platform) {
     case 'browser':
       return {
-        gpuAcceleration: typeof WebGLRenderingContext !== 'undefined',
-        wasmSimd: typeof WebAssembly !== 'undefined' && 'validate' in WebAssembly,
-        nodeBindings: false,
+        gpu_acceleration: typeof WebGLRenderingContext !== 'undefined',
+        wasm_simd: typeof WebAssembly !== 'undefined' && 'validate' in WebAssembly,
+        node_bindings: false,
         webgl: typeof WebGLRenderingContext !== 'undefined',
       };
     case 'node':
       return {
-        gpuAcceleration: false, // Will be updated after backend init
-        wasmSimd: false,
-        nodeBindings: true,
+        gpu_acceleration: false, // Will be updated after backend init
+        wasm_simd: false,
+        node_bindings: true,
         webgl: false,
       };
     case 'react-native':
       return {
-        gpuAcceleration: true, // rn-webgl provides GPU acceleration
-        wasmSimd: false,
-        nodeBindings: false,
+        gpu_acceleration: true, // rn-webgl provides GPU acceleration
+        wasm_simd: false,
+        node_bindings: false,
         webgl: false, // Uses rn-webgl instead
       };
     default:
       return {
-        gpuAcceleration: false,
-        wasmSimd: false,
-        nodeBindings: false,
+        gpu_acceleration: false,
+        wasm_simd: false,
+        node_bindings: false,
         webgl: false,
       };
   }
@@ -112,12 +112,12 @@ export const Clustering = {
   /**
    * Current platform (detected at runtime)
    */
-  platform: detectPlatform(),
+  platform: detect_platform(),
   
   /**
    * Platform features
    */
-  features: getPlatformFeatures(detectPlatform()),
+  features: get_platform_features(detect_platform()),
   
   /**
    * Initialize the clustering library with the specified backend.
@@ -153,30 +153,30 @@ export const Clustering = {
    * ```
    */
   init(config: BackendConfig = {}): Promise<void> {
-    const key = configKey(config);
+    const key = config_key(config);
 
-    if (initPromise) {
-      if (initConfigKey !== key) {
+    if (init_promise) {
+      if (init_config_key !== key) {
         throw new Error(
           'Clustering.init() has already been called with a different configuration. ' +
           'Call Clustering.reset() before re-initializing with new options.'
         );
       }
-      return initPromise;
+      return init_promise;
     }
 
-    initConfigKey = key;
-    initPromise = initializeBackend(config).then(
+    init_config_key = key;
+    init_promise = initialize_backend(config).then(
       () => {},
       (err: unknown) => {
         // Reset on failure to allow retry
-        initPromise = null;
-        initConfigKey = null;
+        init_promise = null;
+        init_config_key = null;
         throw err;
       },
     );
 
-    return initPromise;
+    return init_promise;
   },
 
   /**
@@ -185,9 +185,9 @@ export const Clustering = {
    * called again before using clustering algorithms.
    */
   reset(): void {
-    resetBackend();
-    initPromise = null;
-    initConfigKey = null;
+    reset_backend();
+    init_promise = null;
+    init_config_key = null;
   },
 
   // Re-export algorithms as properties for convenient access

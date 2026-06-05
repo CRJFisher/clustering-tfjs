@@ -3,8 +3,8 @@ import * as tf from "../tensorflow-helper";
 import { SpectralClustering } from "../../src";
 
 describe("SpectralClustering – affinity validation", () => {
-  const buildModel = () =>
-    new SpectralClustering({ nClusters: 2, affinity: "precomputed" });
+  const build_model = () =>
+    new SpectralClustering({ n_clusters: 2, affinity: "precomputed" });
 
   it("accepts a valid precomputed symmetric affinity matrix", async () => {
     // Simple 3×3 identity-like affinity (self-similarity 1, others 0.5)
@@ -17,7 +17,7 @@ describe("SpectralClustering – affinity validation", () => {
       [3, 3],
     );
 
-    const model = buildModel();
+    const model = build_model();
     await expect(model.fit(A)).resolves.not.toThrow();
   });
 
@@ -30,7 +30,7 @@ describe("SpectralClustering – affinity validation", () => {
       [2, 3],
     );
 
-    const model = buildModel();
+    const model = build_model();
     await expect(model.fit(A)).rejects.toThrow();
   });
 
@@ -43,7 +43,7 @@ describe("SpectralClustering – affinity validation", () => {
       [2, 2],
     );
 
-    const model = buildModel();
+    const model = build_model();
     await expect(model.fit(A)).rejects.toThrow();
   });
 
@@ -56,7 +56,7 @@ describe("SpectralClustering – affinity validation", () => {
       [2, 2],
     );
 
-    const model = buildModel();
+    const model = build_model();
     await expect(model.fit(A)).rejects.toThrow();
   });
 });

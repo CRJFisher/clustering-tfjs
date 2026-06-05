@@ -1,8 +1,8 @@
 import * as tf from "../tensorflow-helper";
 
 import {
-  normalisedLaplacian,
-  jacobiEigenDecomposition,
+  normalised_laplacian,
+  jacobi_eigen_decomposition,
 } from "../../src/graph/laplacian";
 
 /**
@@ -30,8 +30,8 @@ describe("jacobiEigenDecomposition – numerical edge cases", () => {
       [4, 4],
     );
 
-    const L = normalisedLaplacian(A);
-    const { eigenvalues } = jacobiEigenDecomposition(L);
+    const L = normalised_laplacian(A);
+    const { eigenvalues } = jacobi_eigen_decomposition(L);
 
     // Sort ascending just in case
     const sorted = [...eigenvalues].sort((a, b) => a - b);
@@ -55,8 +55,8 @@ describe("jacobiEigenDecomposition – numerical edge cases", () => {
       [2, 2],
     );
 
-    const L = normalisedLaplacian(A);
-    const { eigenvalues, eigenvectors } = jacobiEigenDecomposition(L);
+    const L = normalised_laplacian(A);
+    const { eigenvalues, eigenvectors } = jacobi_eigen_decomposition(L);
 
     // All eigenvalues must be finite numbers (no NaN, Inf)
     eigenvalues.forEach((v) => {

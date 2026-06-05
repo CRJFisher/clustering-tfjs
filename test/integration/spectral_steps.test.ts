@@ -8,13 +8,13 @@ describe("SpectralClustering step-by-step verification", () => {
   const FIXTURE_DIR = path.join(process.cwd(), "test", "fixtures", "spectral");
   
   // Helper to load fixture data
-  function loadFixture(filename: string) {
+  function load_fixture(filename: string) {
     const filepath = path.join(FIXTURE_DIR, filename);
     return JSON.parse(fs.readFileSync(filepath, "utf8"));
   }
 
   // Helper to compare matrix statistics
-  function getMatrixStats(tensor: tf.Tensor2D) {
+  function get_matrix_stats(tensor: tf.Tensor2D) {
     return tf.tidy(() => {
       const data = tensor.dataSync();
       const nnz = Array.from(data).filter(v => Math.abs(v) > 1e-10).length;
@@ -28,18 +28,18 @@ describe("SpectralClustering step-by-step verification", () => {
 
   describe("Affinity matrix computation", () => {
     test("RBF affinity matrix properties", async () => {
-      const fixture = loadFixture("blobs_n2_rbf.json");
+      const fixture = load_fixture("blobs_n2_rbf.json");
       const spectral = new SpectralClustering({
-        nClusters: 2,
+        n_clusters: 2,
         affinity: "rbf",
         gamma: fixture.params.gamma,
-        captureDebugInfo: true,
+        capture_debug_info: true,
       });
 
       const X = tf.tensor2d(fixture.X);
-      const result = await spectral.fitWithIntermediateSteps(X);
+      const result = await spectral.fit_with_intermediate_steps(X);
       const affinity = result.affinity;
-      const stats = getMatrixStats(affinity);
+      const stats = get_matrix_stats(affinity);
 
       // RBF affinity should be:
       // - Square matrix
@@ -51,16 +51,16 @@ describe("SpectralClustering step-by-step verification", () => {
       expect(stats.max).toBeLessThanOrEqual(1);
       
       // - Diagonal should be 1 (self-similarity)
-      const affinityArray = await affinity.array() as number[][];
-      for (let i = 0; i < affinityArray.length; i++) {
-        expect(affinityArray[i][i]).toBeCloseTo(1, 5);
+      const affinity_array = await affinity.array() as number[][];
+      for (let i = 0; i < affinity_array.length; i++) {
+        expect(affinity_array[i][i]).toBeCloseTo(1, 5);
       }
 
       // - Symmetric
       const transpose = tf.transpose(affinity);
       const diff = tf.sub(affinity, transpose);
-      const maxDiff = await tf.max(tf.abs(diff)).data();
-      expect(maxDiff[0]).toBeLessThan(1e-10);
+      const max_diff = await tf.max(tf.abs(diff)).data();
+      expect(max_diff[0]).toBeLessThan(1e-10);
 
       X.dispose();
       affinity.dispose();
@@ -68,25 +68,25 @@ describe("SpectralClustering step-by-step verification", () => {
       diff.dispose();
       result.laplacian.laplacian.dispose();
       result.laplacian.degrees?.dispose();
-      result.laplacian.sqrtDegrees?.dispose();
+      result.laplacian.sqrt_degrees?.dispose();
       result.embedding.embedding.dispose();
       result.embedding.eigenvalues.dispose();
-      result.embedding.rawEigenvectors?.dispose();
+      result.embedding.raw_eigenvectors?.dispose();
     });
 
     test("k-NN affinity matrix properties", async () => {
-      const fixture = loadFixture("blobs_n2_knn.json");
+      const fixture = load_fixture("blobs_n2_knn.json");
       const spectral = new SpectralClustering({
-        nClusters: 2,
+        n_clusters: 2,
         affinity: "nearest_neighbors",
-        nNeighbors: fixture.params.nNeighbors,
-        captureDebugInfo: true,
+        n_neighbors: fixture.params.n_neighbors,
+        capture_debug_info: true,
       });
 
       const X = tf.tensor2d(fixture.X);
-      const result = await spectral.fitWithIntermediateSteps(X);
+      const result = await spectral.fit_with_intermediate_steps(X);
       const affinity = result.affinity;
-      const stats = getMatrixStats(affinity);
+      const stats = get_matrix_stats(affinity);
 
       // k-NN affinity should be:
       // - Square matrix
@@ -106,46 +106,46 @@ describe("SpectralClustering step-by-step verification", () => {
       affinity.dispose();
       result.laplacian.laplacian.dispose();
       result.laplacian.degrees?.dispose();
-      result.laplacian.sqrtDegrees?.dispose();
+      result.laplacian.sqrt_degrees?.dispose();
       result.embedding.embedding.dispose();
       result.embedding.eigenvalues.dispose();
-      result.embedding.rawEigenvectors?.dispose();
+      result.embedding.raw_eigenvectors?.dispose();
     });
   });
 
   describe("Laplacian computation", () => {
     test("Normalized Laplacian properties", async () => {
-      const fixture = loadFixture("circles_n2_rbf.json");
+      const fixture = load_fixture("circles_n2_rbf.json");
       const spectral = new SpectralClustering({
-        nClusters: 2,
+        n_clusters: 2,
         affinity: "rbf",
         gamma: fixture.params.gamma,
-        captureDebugInfo: true,
+        capture_debug_info: true,
       });
 
       const X = tf.tensor2d(fixture.X);
-      const result = await spectral.fitWithIntermediateSteps(X);
+      const result = await spectral.fit_with_intermediate_steps(X);
       const laplacian = result.laplacian.laplacian;
 
       // Normalized Laplacian should:
       // - Have diagonal close to 1
-      const laplacianArray = await laplacian.array() as number[][];
-      for (let i = 0; i < laplacianArray.length; i++) {
-        expect(Math.abs(laplacianArray[i][i] - 1)).toBeLessThan(1e-10);
+      const laplacian_array = await laplacian.array() as number[][];
+      for (let i = 0; i < laplacian_array.length; i++) {
+        expect(Math.abs(laplacian_array[i][i] - 1)).toBeLessThan(1e-10);
       }
 
       // - Be symmetric
       const transpose = tf.transpose(laplacian);
       const diff = tf.sub(laplacian, transpose);
-      const maxDiff = await tf.max(tf.abs(diff)).data();
-      expect(maxDiff[0]).toBeLessThan(1e-10);
+      const max_diff = await tf.max(tf.abs(diff)).data();
+      expect(max_diff[0]).toBeLessThan(1e-10);
 
       // Get debug info with spectrum
-      const debugInfo = spectral.getDebugInfo();
-      expect(debugInfo?.laplacianSpectrum).toBeDefined();
+      const debug_info = spectral.get_debug_info();
+      expect(debug_info?.laplacian_spectrum).toBeDefined();
       
       // First eigenvalue should be close to 0 for connected graph
-      const spectrum = debugInfo!.laplacianSpectrum!;
+      const spectrum = debug_info!.laplacian_spectrum!;
       expect(Math.abs(spectrum[0])).toBeLessThan(1e-7);
 
       X.dispose();
@@ -154,25 +154,25 @@ describe("SpectralClustering step-by-step verification", () => {
       transpose.dispose();
       diff.dispose();
       result.laplacian.degrees?.dispose();
-      result.laplacian.sqrtDegrees?.dispose();
+      result.laplacian.sqrt_degrees?.dispose();
       result.embedding.embedding.dispose();
       result.embedding.eigenvalues.dispose();
-      result.embedding.rawEigenvectors?.dispose();
+      result.embedding.raw_eigenvectors?.dispose();
     });
   });
 
   describe("Spectral embedding", () => {
     test("Embedding dimensions and scaling", async () => {
-      const fixture = loadFixture("moons_n2_knn.json");
+      const fixture = load_fixture("moons_n2_knn.json");
       const spectral = new SpectralClustering({
-        nClusters: 2,
+        n_clusters: 2,
         affinity: "nearest_neighbors",
-        nNeighbors: fixture.params.nNeighbors,
-        captureDebugInfo: true,
+        n_neighbors: fixture.params.n_neighbors,
+        capture_debug_info: true,
       });
 
       const X = tf.tensor2d(fixture.X);
-      const result = await spectral.fitWithIntermediateSteps(X);
+      const result = await spectral.fit_with_intermediate_steps(X);
       const embedding = result.embedding.embedding;
       const eigenvalues = result.embedding.eigenvalues;
 
@@ -180,65 +180,65 @@ describe("SpectralClustering step-by-step verification", () => {
       expect(embedding.shape).toEqual([fixture.X.length, 2]);
 
       // Check scaling factors
-      const eigenData = await eigenvalues.data();
-      eigenData.forEach(eigenval => {
+      const eigen_data = await eigenvalues.data();
+      eigen_data.forEach(eigenval => {
         // Eigenvalues should be between 0 and 2 for normalized Laplacian
         expect(eigenval).toBeGreaterThanOrEqual(-0.5); // Allow some numerical error
         expect(eigenval).toBeLessThanOrEqual(2.1);
       });
 
       // Check debug info
-      const debugInfo = spectral.getDebugInfo();
-      expect(debugInfo?.embeddingStats).toBeDefined();
-      expect(debugInfo!.embeddingStats!.uniqueValuesPerDim).toHaveLength(2);
+      const debug_info = spectral.get_debug_info();
+      expect(debug_info?.embedding_stats).toBeDefined();
+      expect(debug_info!.embedding_stats!.unique_values_per_dim).toHaveLength(2);
 
       X.dispose();
       result.affinity.dispose();
       result.laplacian.laplacian.dispose();
       result.laplacian.degrees?.dispose();
-      result.laplacian.sqrtDegrees?.dispose();
+      result.laplacian.sqrt_degrees?.dispose();
       embedding.dispose();
       eigenvalues.dispose();
-      result.embedding.rawEigenvectors?.dispose();
+      result.embedding.raw_eigenvectors?.dispose();
     });
   });
 
   describe("Full pipeline with debug info", () => {
     test("Debug info captures all intermediate statistics", async () => {
-      const fixture = loadFixture("blobs_n3_knn.json");
+      const fixture = load_fixture("blobs_n3_knn.json");
       const spectral = new SpectralClustering({
-        nClusters: 3,
+        n_clusters: 3,
         affinity: "nearest_neighbors",
-        nNeighbors: fixture.params.nNeighbors,
-        captureDebugInfo: true,
-        randomState: 42,
+        n_neighbors: fixture.params.n_neighbors,
+        capture_debug_info: true,
+        random_state: 42,
       });
 
       await spectral.fit(fixture.X);
       const labels = spectral.labels_;
-      const debugInfo = spectral.getDebugInfo();
+      const debug_info = spectral.get_debug_info();
 
       // Should have captured all debug info
-      expect(debugInfo).not.toBeNull();
-      expect(debugInfo!.affinityStats).toBeDefined();
-      expect(debugInfo!.laplacianSpectrum).toBeDefined();
-      expect(debugInfo!.embeddingStats).toBeDefined();
-      expect(debugInfo!.clusteringMetrics).toBeDefined();
+      expect(debug_info).not.toBeNull();
+      expect(debug_info!.affinity_stats).toBeDefined();
+      expect(debug_info!.laplacian_spectrum).toBeDefined();
+      expect(debug_info!.embedding_stats).toBeDefined();
+      expect(debug_info!.clustering_metrics).toBeDefined();
 
       // Affinity stats
-      expect(debugInfo!.affinityStats!.shape).toEqual([60, 60]);
-      expect(debugInfo!.affinityStats!.nnz).toBeGreaterThan(0);
+      expect(debug_info!.affinity_stats!.shape).toEqual([60, 60]);
+      expect(debug_info!.affinity_stats!.nnz).toBeGreaterThan(0);
 
       // Laplacian spectrum (first few eigenvalues)
-      expect(debugInfo!.laplacianSpectrum!.length).toBeGreaterThan(0);
+      expect(debug_info!.laplacian_spectrum!.length).toBeGreaterThan(0);
 
       // Embedding stats
-      expect(debugInfo!.embeddingStats!.shape).toEqual([60, 3]);
-      expect(debugInfo!.embeddingStats!.uniqueValuesPerDim).toHaveLength(3);
+      expect(debug_info!.embedding_stats!.shape).toEqual([60, 3]);
+      expect(debug_info!.embedding_stats!.unique_values_per_dim).toHaveLength(3);
 
       // Clustering metrics
-      expect(debugInfo!.clusteringMetrics!.inertia).toBeGreaterThanOrEqual(0);
-      expect(debugInfo!.clusteringMetrics!.iterations).toBeGreaterThanOrEqual(0);
+      expect(debug_info!.clustering_metrics!.inertia).toBeGreaterThanOrEqual(0);
+      expect(debug_info!.clustering_metrics!.iterations).toBeGreaterThanOrEqual(0);
       
       // Check labels
       expect(labels).toHaveLength(60);

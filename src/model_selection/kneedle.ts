@@ -22,9 +22,9 @@ export interface KneedleOptions {
  */
 export interface KneedleResult {
   /** The x-value at the detected knee, or null if no knee found */
-  kneeX: number | null;
+  knee_x: number | null;
   /** Index into the input arrays, or null if no knee found */
-  kneeIndex: number | null;
+  knee_index: number | null;
   /** Normalized difference values for each point (for scoring) */
   differences: number[];
 }
@@ -39,60 +39,60 @@ export interface KneedleResult {
  *    connecting the first and last points
  * 3. Finds the point of maximum deviation as the knee
  *
- * @param xValues - Monotonically increasing x-values (e.g., k values)
- * @param yValues - Corresponding y-values (e.g., WSS values)
+ * @param x_values - Monotonically increasing x-values (e.g., k values)
+ * @param y_values - Corresponding y-values (e.g., WSS values)
  * @param options - Configuration options
  * @returns KneedleResult with knee location and difference values
  */
-export function findKnee(
-  xValues: number[],
-  yValues: number[],
+export function find_knee(
+  x_values: number[],
+  y_values: number[],
   options: KneedleOptions = {},
 ): KneedleResult {
   const { direction = 'concave', sensitivity = 1.0 } = options;
 
-  const n = xValues.length;
+  const n = x_values.length;
 
   if (n < 3) {
-    return { kneeX: null, kneeIndex: null, differences: [] };
+    return { knee_x: null, knee_index: null, differences: [] };
   }
 
   // Normalize x and y to [0, 1]
-  const xMin = xValues[0];
-  const xMax = xValues[n - 1];
-  const xRange = xMax - xMin;
+  const x_min = x_values[0];
+  const x_max = x_values[n - 1];
+  const x_range = x_max - x_min;
 
-  if (xRange === 0) {
-    return { kneeX: null, kneeIndex: null, differences: new Array(n).fill(0) };
+  if (x_range === 0) {
+    return { knee_x: null, knee_index: null, differences: new Array(n).fill(0) };
   }
 
-  let yMin = yValues[0];
-  let yMax = yValues[0];
+  let y_min = y_values[0];
+  let y_max = y_values[0];
   for (let i = 1; i < n; i++) {
-    if (yValues[i] < yMin) yMin = yValues[i];
-    if (yValues[i] > yMax) yMax = yValues[i];
+    if (y_values[i] < y_min) y_min = y_values[i];
+    if (y_values[i] > y_max) y_max = y_values[i];
   }
-  const yRange = yMax - yMin;
+  const y_range = y_max - y_min;
 
-  if (yRange === 0) {
-    return { kneeX: null, kneeIndex: null, differences: new Array(n).fill(0) };
+  if (y_range === 0) {
+    return { knee_x: null, knee_index: null, differences: new Array(n).fill(0) };
   }
 
-  const xNorm = xValues.map((x) => (x - xMin) / xRange);
-  const yNorm = yValues.map((y) => (y - yMin) / yRange);
+  const x_norm = x_values.map((x) => (x - x_min) / x_range);
+  const y_norm = y_values.map((y) => (y - y_min) / y_range);
 
   // Compute difference from the diagonal line connecting first and last points
-  const yFirst = yNorm[0];
-  const yLast = yNorm[n - 1];
-  const xFirst = xNorm[0];
-  const xLast = xNorm[n - 1];
+  const y_first = y_norm[0];
+  const y_last = y_norm[n - 1];
+  const x_first = x_norm[0];
+  const x_last = x_norm[n - 1];
 
   const differences: number[] = [];
   for (let i = 0; i < n; i++) {
     // Point on the straight line at this x
-    const yLine =
-      yFirst + ((yLast - yFirst) * (xNorm[i] - xFirst)) / (xLast - xFirst);
-    differences.push(yNorm[i] - yLine);
+    const y_line =
+      y_first + ((y_last - y_first) * (x_norm[i] - x_first)) / (x_last - x_first);
+    differences.push(y_norm[i] - y_line);
   }
 
   // For a concave/decreasing curve (WSS), the curve drops below the
@@ -103,27 +103,27 @@ export function findKnee(
   // Threshold: sensitivity * average step size
   const threshold = sensitivity / (n - 1);
 
-  let bestIndex = -1;
-  let bestDeviation = -Infinity;
+  let best_index = -1;
+  let best_deviation = -Infinity;
 
   for (let i = 1; i < n - 1; i++) {
     // Absolute deviation from the diagonal
     const deviation =
       direction === 'concave' ? -differences[i] : differences[i];
-    if (deviation > bestDeviation) {
-      bestDeviation = deviation;
-      bestIndex = i;
+    if (deviation > best_deviation) {
+      best_deviation = deviation;
+      best_index = i;
     }
   }
 
   // Check if the knee is significant enough
-  if (bestIndex === -1 || bestDeviation < threshold) {
-    return { kneeX: null, kneeIndex: null, differences };
+  if (best_index === -1 || best_deviation < threshold) {
+    return { knee_x: null, knee_index: null, differences };
   }
 
   return {
-    kneeX: xValues[bestIndex],
-    kneeIndex: bestIndex,
+    knee_x: x_values[best_index],
+    knee_index: best_index,
     differences,
   };
 }

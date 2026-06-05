@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../tensorflow-helper";
-import { calinskiHarabasz, calinskiHarabaszEfficient } from "../../src/validation/calinski_harabasz";
+import { calinski_harabasz, calinski_harabasz_efficient } from "../../src/validation/calinski_harabasz";
 import { make_random_stream } from "../../src/random";
 
 describe("Calinski-Harabasz Score", () => {
@@ -25,7 +25,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       
       // Well-separated clusters should have high score
       expect(score).toBeGreaterThan(100);
@@ -35,16 +35,16 @@ describe("Calinski-Harabasz Score", () => {
       const X = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
       const labels = [0, 0, 1, 1, 0, 1];
       
-      const scoreArray = calinskiHarabasz(X, labels);
+      const score_array = calinski_harabasz(X, labels);
       
       const XTensor = tf.tensor2d(X);
-      const labelsTensor = tf.tensor1d(labels);
-      const scoreTensor = calinskiHarabasz(XTensor, labelsTensor);
+      const labels_tensor = tf.tensor1d(labels);
+      const score_tensor = calinski_harabasz(XTensor, labels_tensor);
       
-      expect(scoreTensor).toBeCloseTo(scoreArray, 5);
+      expect(score_tensor).toBeCloseTo(score_array, 5);
       
       XTensor.dispose();
-      labelsTensor.dispose();
+      labels_tensor.dispose();
     });
 
     it("should return same result for efficient version", () => {
@@ -54,8 +54,8 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
       
-      const score1 = calinskiHarabasz(X, labels);
-      const score2 = calinskiHarabaszEfficient(X, labels);
+      const score1 = calinski_harabasz(X, labels);
+      const score2 = calinski_harabasz_efficient(X, labels);
       
       expect(score1).toBeCloseTo(score2, 10);
     });
@@ -66,7 +66,7 @@ describe("Calinski-Harabasz Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 0, 0];
       
-      expect(() => calinskiHarabasz(X, labels)).toThrow(
+      expect(() => calinski_harabasz(X, labels)).toThrow(
         "Calinski-Harabasz score requires at least 2 clusters"
       );
     });
@@ -75,7 +75,7 @@ describe("Calinski-Harabasz Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1, 2];
       
-      expect(() => calinskiHarabasz(X, labels)).toThrow(
+      expect(() => calinski_harabasz(X, labels)).toThrow(
         "Number of clusters must be less than number of samples"
       );
     });
@@ -91,7 +91,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 0, 0, 1, 1, 2, 2, 2];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       expect(score).toBeGreaterThan(0);
       expect(isFinite(score)).toBe(true);
     });
@@ -106,7 +106,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       
       // sklearn gives 3.375 for this example
       expect(score).toBeCloseTo(3.375, 3);
@@ -124,7 +124,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       
       // Should have reasonably high score for well-separated clusters
       expect(score).toBeGreaterThan(20);
@@ -139,7 +139,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
@@ -151,7 +151,7 @@ describe("Calinski-Harabasz Score", () => {
       ];
       const labels = [0, 0, 0, 1, 1, 1];
       
-      const score = calinskiHarabasz(X, labels);
+      const score = calinski_harabasz(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
@@ -182,7 +182,7 @@ describe("Calinski-Harabasz Score", () => {
       }
       
       const start = Date.now();
-      const score = calinskiHarabaszEfficient(X, labels);
+      const score = calinski_harabasz_efficient(X, labels);
       const elapsed = Date.now() - start;
       
       expect(score).toBeGreaterThan(100); // Well-separated clusters
@@ -195,7 +195,7 @@ describe("Calinski-Harabasz Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
-      expect(() => calinskiHarabasz(X, labels)).toThrow(
+      expect(() => calinski_harabasz(X, labels)).toThrow(
         "Labels length (2) does not match data rows (3)"
       );
     });
@@ -204,7 +204,7 @@ describe("Calinski-Harabasz Score", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
-      expect(() => calinskiHarabaszEfficient(X, labels)).toThrow(
+      expect(() => calinski_harabasz_efficient(X, labels)).toThrow(
         "Labels length (2) does not match data rows (3)"
       );
     });

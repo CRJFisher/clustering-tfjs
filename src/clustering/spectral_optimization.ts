@@ -12,7 +12,7 @@ interface OptimizationConfig {
   gamma: number;
   metric: 'calinski-harabasz' | 'davies-bouldin' | 'silhouette';
   attempts: number;
-  useValidation: boolean;
+  use_validation: boolean;
 }
 
 /**
@@ -28,28 +28,28 @@ interface OptimizationResult {
  * Performs validation-based optimization for spectral clustering.
  * Tries multiple k-means initializations and selects the best based on validation score.
  */
-export async function validationBasedOptimization(
+export async function validation_based_optimization(
   embedding: tf.Tensor2D,
-  nClusters: number,
+  n_clusters: number,
   metric: 'calinski-harabasz' | 'davies-bouldin' | 'silhouette',
   attempts: number,
-  randomState?: number,
+  random_state?: number,
 ): Promise<OptimizationResult> {
-  const validationModule = await import('../validation');
+  const validation_module = await import('../validation');
 
-  let bestLabels: number[] | null = null;
-  let bestScore = metric === 'davies-bouldin' ? Infinity : -Infinity;
+  let best_labels: number[] | null = null;
+  let best_score = metric === 'davies-bouldin' ? Infinity : -Infinity;
 
   // Try multiple random seeds
   for (let attempt = 0; attempt < attempts; attempt++) {
-    const kmParams = {
-      nClusters,
-      randomState:
-        randomState !== undefined ? randomState + attempt : undefined,
-      nInit: 1, // Single run per seed when using validation
+    const km_params = {
+      n_clusters,
+      random_state:
+        random_state !== undefined ? random_state + attempt : undefined,
+      n_init: 1, // Single run per seed when using validation
     };
 
-    const km = new KMeans(kmParams);
+    const km = new KMeans(km_params);
     await km.fit(embedding);
     const labels = km.labels_!;
     km.dispose();
@@ -58,35 +58,35 @@ export async function validationBasedOptimization(
     let score: number;
     switch (metric) {
       case 'calinski-harabasz':
-        score = validationModule.calinskiHarabasz(embedding, labels);
+        score = validation_module.calinski_harabasz(embedding, labels);
         break;
       case 'davies-bouldin':
-        score = validationModule.daviesBouldin(embedding, labels);
+        score = validation_module.davies_bouldin(embedding, labels);
         break;
       case 'silhouette':
-        score = validationModule.silhouetteScore(embedding, labels);
+        score = validation_module.silhouette_score(embedding, labels);
         break;
     }
 
     // Update best score (lower is better for Davies-Bouldin)
-    const isBetter =
-      metric === 'davies-bouldin' ? score < bestScore : score > bestScore;
+    const is_better =
+      metric === 'davies-bouldin' ? score < best_score : score > best_score;
 
-    if (isBetter) {
-      bestScore = score;
-      bestLabels = labels;
+    if (is_better) {
+      best_score = score;
+      best_labels = labels;
     }
   }
 
   return {
-    labels: bestLabels!,
+    labels: best_labels!,
     config: {
       gamma: 0, // Will be set by caller
       metric,
       attempts,
-      useValidation: true,
+      use_validation: true,
     },
-    score: bestScore,
+    score: best_score,
   };
 }
 
@@ -98,53 +98,53 @@ export async function validationBasedOptimization(
  * gamma value, then reuses it across all metric/attempt combinations.
  * This reduces eigendecompositions from 9×(1+3×3)=90 to just 9.
  */
-export async function intensiveParameterSweep(
+export async function intensive_parameter_sweep(
   X: tf.Tensor2D,
   params: SpectralClusteringParams,
-  computeEmbeddingFromAffinity: (
-    affinityMatrix: tf.Tensor2D,
+  compute_embedding_from_affinity: (
+    affinity_matrix: tf.Tensor2D,
   ) => Promise<tf.Tensor2D>,
-  computeAffinityMatrix: (
+  compute_affinity_matrix: (
     X: tf.Tensor2D,
     params: SpectralClusteringParams,
   ) => tf.Tensor2D,
 ): Promise<OptimizationResult> {
-  const validationModule = await import('../validation');
-  const gammaRange = params.gammaRange ?? [
+  const validation_module = await import('../validation');
+  const gamma_range = params.gamma_range ?? [
     0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0,
   ];
   const metrics: Array<'calinski-harabasz' | 'davies-bouldin' | 'silhouette'> =
     ['calinski-harabasz', 'davies-bouldin', 'silhouette'];
-  const attemptsRange = [10, 20, 30];
+  const attempts_range = [10, 20, 30];
 
-  let bestResult: OptimizationResult = {
+  let best_result: OptimizationResult = {
     labels: [],
     config: {
       gamma: params.gamma ?? 1.0,
       metric: 'calinski-harabasz',
       attempts: 20,
-      useValidation: false,
+      use_validation: false,
     },
   };
-  let bestScore = -Infinity;
+  let best_score = -Infinity;
 
   // Process each gamma value: compute affinity + embedding ONCE,
   // then run all k-means variations against the cached embedding.
-  for (const gamma of gammaRange) {
-    const affinityMatrix = computeAffinityMatrix(X, {
+  for (const gamma of gamma_range) {
+    const affinity_matrix = compute_affinity_matrix(X, {
       ...params,
       gamma,
     });
 
-    const embedding = await computeEmbeddingFromAffinity(affinityMatrix);
-    affinityMatrix.dispose(); // No longer needed after embedding is computed
+    const embedding = await compute_embedding_from_affinity(affinity_matrix);
+    affinity_matrix.dispose(); // No longer needed after embedding is computed
 
     try {
       // Phase A: non-validation k-means with nInit=10
       const km = new KMeans({
-        nClusters: params.nClusters,
-        randomState: params.randomState,
-        nInit: 10,
+        n_clusters: params.n_clusters,
+        random_state: params.random_state,
+        n_init: 10,
       });
 
       await km.fit(embedding);
@@ -152,63 +152,63 @@ export async function intensiveParameterSweep(
       km.dispose();
 
       // Evaluate with all metrics
-      let avgScore = 0;
+      let avg_score = 0;
       for (const metric of metrics) {
         let score: number;
         switch (metric) {
           case 'calinski-harabasz':
-            score = validationModule.calinskiHarabasz(embedding, labels);
+            score = validation_module.calinski_harabasz(embedding, labels);
             break;
           case 'davies-bouldin':
-            score = -validationModule.daviesBouldin(embedding, labels);
+            score = -validation_module.davies_bouldin(embedding, labels);
             break;
           case 'silhouette':
-            score = validationModule.silhouetteScore(embedding, labels);
+            score = validation_module.silhouette_score(embedding, labels);
             break;
         }
-        avgScore += score;
+        avg_score += score;
       }
-      avgScore /= metrics.length;
+      avg_score /= metrics.length;
 
-      if (avgScore > bestScore) {
-        bestScore = avgScore;
-        bestResult = {
+      if (avg_score > best_score) {
+        best_score = avg_score;
+        best_result = {
           labels,
           config: {
             gamma,
             metric: 'calinski-harabasz',
             attempts: 0,
-            useValidation: false,
+            use_validation: false,
           },
         };
       }
 
       // Phase B: validation-based optimization (reusing the same embedding)
-      for (const attempts of attemptsRange) {
+      for (const attempts of attempts_range) {
         for (const metric of metrics) {
           try {
-            const result = await validationBasedOptimization(
+            const result = await validation_based_optimization(
               embedding,
-              params.nClusters,
+              params.n_clusters,
               metric,
               attempts,
-              params.randomState,
+              params.random_state,
             );
 
-            const normalizedScore =
+            const normalized_score =
               metric === 'davies-bouldin'
                 ? -(result.score ?? 0)
                 : (result.score ?? 0);
 
-            if (normalizedScore > bestScore) {
-              bestScore = normalizedScore;
-              bestResult = {
+            if (normalized_score > best_score) {
+              best_score = normalized_score;
+              best_result = {
                 labels: result.labels,
                 config: {
                   gamma,
                   metric,
                   attempts,
-                  useValidation: true,
+                  use_validation: true,
                 },
               };
             }
@@ -222,5 +222,5 @@ export async function intensiveParameterSweep(
     }
   }
 
-  return bestResult;
+  return best_result;
 }

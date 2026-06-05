@@ -8,22 +8,22 @@ import { make_random_stream } from '../../src/random';
  */
 describe('Spectral clustering at scale', () => {
   // Generate well-separated blobs for easy clustering
-  function generateBlobs(
-    nSamples: number,
-    nClusters: number,
+  function generate_blobs(
+    n_samples: number,
+    n_clusters: number,
     seed: number,
   ): { data: number[][]; labels: number[] } {
     const rng = make_random_stream(seed);
     const data: number[][] = [];
     const labels: number[] = [];
-    const samplesPerCluster = Math.floor(nSamples / nClusters);
+    const samples_per_cluster = Math.floor(n_samples / n_clusters);
 
-    for (let c = 0; c < nClusters; c++) {
+    for (let c = 0; c < n_clusters; c++) {
       // Place cluster centers far apart
       const cx = c * 10;
       const cy = c * 10;
 
-      for (let i = 0; i < samplesPerCluster; i++) {
+      for (let i = 0; i < samples_per_cluster; i++) {
         // Box-Muller for Gaussian noise
         const u1 = rng.rand();
         const u2 = rng.rand();
@@ -38,15 +38,15 @@ describe('Spectral clustering at scale', () => {
   }
 
   it('handles 1000 samples efficiently', async () => {
-    const { data } = generateBlobs(1000, 3, 42);
+    const { data } = generate_blobs(1000, 3, 42);
 
-    const tensorsBefore = tf.memory().numTensors;
+    const tensors_before = tf.memory().numTensors;
     const start = performance.now();
 
     const sc = new SpectralClustering({
-      nClusters: 3,
+      n_clusters: 3,
       affinity: 'rbf',
-      randomState: 42,
+      random_state: 42,
     });
 
     await sc.fit(data);
@@ -59,19 +59,19 @@ describe('Spectral clustering at scale', () => {
     sc.dispose();
 
     // Verify no significant tensor leaks
-    const tensorsAfter = tf.memory().numTensors;
-    expect(tensorsAfter - tensorsBefore).toBeLessThan(100);
+    const tensors_after = tf.memory().numTensors;
+    expect(tensors_after - tensors_before).toBeLessThan(100);
   }, 60000);
 
   it('handles 5000+ samples without timeout (AC2)', async () => {
-    const { data } = generateBlobs(5000, 3, 42);
+    const { data } = generate_blobs(5000, 3, 42);
 
     const start = performance.now();
 
     const sc = new SpectralClustering({
-      nClusters: 3,
+      n_clusters: 3,
       affinity: 'rbf',
-      randomState: 42,
+      random_state: 42,
     });
 
     await sc.fit(data);

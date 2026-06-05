@@ -9,7 +9,7 @@
  * Projects out components of `w` along all `basis` vectors.
  * Modifies `w` in place. Works with any numeric array type.
  */
-export function reorthogonalizeVector<T extends { [i: number]: number; length: number }>(
+export function reorthogonalize_vector<T extends { [i: number]: number; length: number }>(
   w: T,
   basis: T[],
   n: number,
@@ -30,7 +30,7 @@ export function reorthogonalizeVector<T extends { [i: number]: number; length: n
  * @param rows - Row-major matrix (rows[i][j] = element at row i, col j)
  * @param n - Number of rows (and columns)
  */
-export function gramSchmidtColumns(rows: number[][], n: number): void {
+export function gram_schmidt_columns(rows: number[][], n: number): void {
   for (let col = 0; col < n; col++) {
     // Normalize column `col`
     let norm = 0;

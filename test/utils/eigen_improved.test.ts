@@ -4,15 +4,15 @@ import {
   laplacian_eigen_decomposition,
 } from "../../src/eigen/improved";
 
-function expectOrthonormal(
+function expect_orthonormal(
   vectors: number[][],
   n: number,
   tol = 1e-6,
 ): void {
   for (let i = 0; i < n; i++) {
-    let selfDot = 0;
-    for (let k = 0; k < n; k++) selfDot += vectors[k][i] * vectors[k][i];
-    expect(Math.abs(selfDot - 1)).toBeLessThan(tol);
+    let self_dot = 0;
+    for (let k = 0; k < n; k++) self_dot += vectors[k][i] * vectors[k][i];
+    expect(Math.abs(self_dot - 1)).toBeLessThan(tol);
     for (let j = i + 1; j < n; j++) {
       let dot = 0;
       for (let k = 0; k < n; k++) dot += vectors[k][i] * vectors[k][j];
@@ -21,7 +21,7 @@ function expectOrthonormal(
   }
 }
 
-function expectReconstruction(
+function expect_reconstruction(
   A: number[][],
   eigenvalues: number[],
   eigenvectors: number[][],
@@ -61,8 +61,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[0]).toBeCloseTo(1, 6);
     expect(eigenvalues[1]).toBeCloseTo(2, 6);
     expect(eigenvalues[2]).toBeCloseTo(2, 6);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(
       [[1, 0, 0], [0, 2, 0], [0, 0, 2]],
       eigenvalues,
       eigenvectors,
@@ -82,8 +82,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     for (const ev of eigenvalues) {
       expect(ev).toBeCloseTo(3, 6);
     }
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(
       [[3, 0, 0], [0, 3, 0], [0, 0, 3]],
       eigenvalues,
       eigenvectors,
@@ -103,7 +103,7 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     const mat = tf.tensor2d(A);
 
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(mat, {
-      isPSD: true,
+      is_psd: true,
     });
 
     expect(eigenvalues).toHaveLength(3);
@@ -111,8 +111,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[0]).toBeCloseTo(0, 5);
     expect(eigenvalues[1]).toBeCloseTo(0, 5);
     expect(eigenvalues[2]).toBeCloseTo(14, 5);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
   it("handles multiple zero eigenvalues (diag(0,0,3,5)) with isPSD: true", () => {
@@ -124,7 +124,7 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     ]);
 
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(mat, {
-      isPSD: true,
+      is_psd: true,
     });
 
     expect(eigenvalues).toHaveLength(4);
@@ -132,7 +132,7 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[1]).toBeCloseTo(0, 6);
     expect(eigenvalues[2]).toBeCloseTo(3, 6);
     expect(eigenvalues[3]).toBeCloseTo(5, 6);
-    expectOrthonormal(eigenvectors, 4);
+    expect_orthonormal(eigenvectors, 4);
   });
 
   it("handles near-degenerate eigenvalues (1, 1+1e-8, 2)", () => {
@@ -164,8 +164,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[0]).toBeCloseTo(1, 5);
     expect(eigenvalues[1]).toBeCloseTo(1, 5);
     expect(eigenvalues[2]).toBeCloseTo(2, 5);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(A, eigenvalues, eigenvectors, 1e-4);
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-4);
   });
 
   it("handles large matrix with degenerate eigenvalues (6x6 block diagonal)", () => {
@@ -189,8 +189,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[3]).toBeCloseTo(3, 6);
     expect(eigenvalues[4]).toBeCloseTo(5, 6);
     expect(eigenvalues[5]).toBeCloseTo(5, 6);
-    expectOrthonormal(eigenvectors, 6);
-    expectReconstruction(data, eigenvalues, eigenvectors);
+    expect_orthonormal(eigenvectors, 6);
+    expect_reconstruction(data, eigenvalues, eigenvectors);
   });
 
   it("throws error for non-square matrix", () => {
@@ -222,8 +222,8 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect(eigenvalues[0]).toBeCloseTo(2, 6);
     expect(eigenvalues[1]).toBeCloseTo(5, 6);
     expect(eigenvalues[2]).toBeCloseTo(9, 6);
-    expectOrthonormal(eigenvectors, 3);
-    expectReconstruction(
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(
       [[2, 0, 0], [0, 5, 0], [0, 0, 9]],
       eigenvalues,
       eigenvectors,

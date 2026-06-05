@@ -122,10 +122,10 @@
     ]
   ],
   "params": {
-    "nClusters": 2,
+    "n_clusters": 2,
     "affinity": "rbf",
-    "gamma": 5.0,
-    "randomState": 42
+    "gamma": 5,
+    "random_state": 42
   },
   "labels": [
     0,

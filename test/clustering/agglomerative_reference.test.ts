@@ -6,24 +6,24 @@ import { AgglomerativeClustering, DataMatrix } from "../../src";
 // Use path relative to project root for fixtures
 const FIXTURE_DIR = path.join(process.cwd(), "test", "fixtures", "agglomerative");
 
-function areLabelingsEquivalent(a: number[], b: number[]): boolean {
+function are_labelings_equivalent(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;
-  const forwardMapping = new Map<number, number>();
-  const reverseMapping = new Map<number, number>();
+  const forward_mapping = new Map<number, number>();
+  const reverse_mapping = new Map<number, number>();
   for (let i = 0; i < a.length; i++) {
     const ai = a[i];
     const bi = b[i];
     // Check forward mapping: a -> b
-    if (forwardMapping.has(ai)) {
-      if (forwardMapping.get(ai) !== bi) return false;
+    if (forward_mapping.has(ai)) {
+      if (forward_mapping.get(ai) !== bi) return false;
     } else {
-      forwardMapping.set(ai, bi);
+      forward_mapping.set(ai, bi);
     }
     // Check reverse mapping: b -> a
-    if (reverseMapping.has(bi)) {
-      if (reverseMapping.get(bi) !== ai) return false;
+    if (reverse_mapping.has(bi)) {
+      if (reverse_mapping.get(bi) !== ai) return false;
     } else {
-      reverseMapping.set(bi, ai);
+      reverse_mapping.set(bi, ai);
     }
   }
   return true;
@@ -44,20 +44,20 @@ describe("AgglomerativeClustering – reference parity with scikit-learn", () =>
       fs.readFileSync(path.join(FIXTURE_DIR, file), "utf-8"),
     ) as {
       X: DataMatrix;
-      params: { nClusters: number; linkage: string; metric: string };
+      params: { n_clusters: number; linkage: string; metric: string };
       labels: number[];
     };
 
     it(`matches sklearn labels for ${file}`, async () => {
       const model = new AgglomerativeClustering({
-        nClusters: fixture.params.nClusters,
+        n_clusters: fixture.params.n_clusters,
         linkage: fixture.params.linkage as any,
         metric: fixture.params.metric as any,
       });
 
-      const ours = await model.fitPredict(fixture.X);
+      const ours = await model.fit_predict(fixture.X);
 
-      expect(areLabelingsEquivalent(ours, fixture.labels)).toBe(true);
+      expect(are_labelings_equivalent(ours, fixture.labels)).toBe(true);
     });
   }
 });

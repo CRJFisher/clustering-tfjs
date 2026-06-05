@@ -11,11 +11,11 @@ describe("SpectralClusteringConsensus – normalization parity", () => {
 
   it("produces valid labels using degree normalization", async () => {
     const model = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 42,
-      consensusRuns: 5,
+      random_state: 42,
+      consensus_runs: 5,
     });
 
     await model.fit(X);
@@ -51,11 +51,11 @@ describe("SpectralClusteringConsensus – normalization parity", () => {
 
   it("produces no NaN labels", async () => {
     const model = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 42,
-      consensusRuns: 3,
+      random_state: 42,
+      consensus_runs: 3,
     });
 
     await model.fit(X);
@@ -77,22 +77,22 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     ];
 
     const model1 = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 77,
-      consensusRuns: 5,
+      random_state: 77,
+      consensus_runs: 5,
     });
     await model1.fit(X);
     const labels1 = [...model1.labels_!];
     model1.dispose();
 
     const model2 = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 77,
-      consensusRuns: 5,
+      random_state: 77,
+      consensus_runs: 5,
     });
     await model2.fit(X);
     const labels2 = [...model2.labels_!];
@@ -112,11 +112,11 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     ];
 
     const model = new SpectralClusteringConsensus({
-      nClusters: 3,
+      n_clusters: 3,
       affinity: "rbf",
       gamma: 0.01,
-      randomState: 42,
-      consensusRuns: 5,
+      random_state: 42,
+      consensus_runs: 5,
     });
     await model.fit(X);
 
@@ -124,21 +124,21 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     expect(new Set(model.labels_!).size).toBe(3);
 
     // Points within each blob should share the same label
-    const labelA = model.labels_![0];
+    const label_a = model.labels_![0];
     for (let i = 1; i < 5; i++) {
-      expect(model.labels_![i]).toBe(labelA);
+      expect(model.labels_![i]).toBe(label_a);
     }
-    const labelB = model.labels_![5];
+    const label_b = model.labels_![5];
     for (let i = 6; i < 10; i++) {
-      expect(model.labels_![i]).toBe(labelB);
+      expect(model.labels_![i]).toBe(label_b);
     }
-    const labelC = model.labels_![10];
+    const label_c = model.labels_![10];
     for (let i = 11; i < 15; i++) {
-      expect(model.labels_![i]).toBe(labelC);
+      expect(model.labels_![i]).toBe(label_c);
     }
 
     // All three labels should be distinct
-    expect(new Set([labelA, labelB, labelC]).size).toBe(3);
+    expect(new Set([label_a, label_b, label_c]).size).toBe(3);
 
     model.dispose();
   }, 30000);
@@ -150,11 +150,11 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     ];
 
     const model = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 42,
-      consensusRuns: 3,
+      random_state: 42,
+      consensus_runs: 3,
     });
     await model.fit(X);
 
@@ -176,11 +176,11 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     ];
 
     const model = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 42,
-      consensusRuns: 3,
+      random_state: 42,
+      consensus_runs: 3,
     });
     await model.fit(X);
 
@@ -196,11 +196,11 @@ describe("SpectralClusteringConsensus – additional behavior", () => {
     ];
 
     const model = new SpectralClusteringConsensus({
-      nClusters: 2,
+      n_clusters: 2,
       affinity: "rbf",
       gamma: 1.0,
-      randomState: 42,
-      consensusRuns: 3,
+      random_state: 42,
+      consensus_runs: 3,
     });
     await model.fit(X);
 
