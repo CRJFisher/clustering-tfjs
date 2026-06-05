@@ -1,0 +1,57 @@
+import { KMeans } from "./kmeans";
+import { make_random_stream } from "../random";
+
+describe("KMeans empty cluster handling", () => {
+  it("should reassign empty clusters to farthest points like sklearn", async () => {
+    // Create a dataset that will likely produce empty clusters
+    // 3 tight groups, but asking for 5 clusters
+    const rng = make_random_stream(42);
+    const X = [
+      // Group 1: 20 points near origin
+      ...Array.from({ length: 20 }, () => [
+        rng.rand() * 0.5,
+        rng.rand() * 0.5,
+      ]),
+      // Group 2: 5 points at (5, 5)
+      ...Array.from({ length: 5 }, () => [
+        5 + rng.rand() * 0.5,
+        5 + rng.rand() * 0.5,
+      ]),
+      // Group 3: 5 points at (5, -5)
+      ...Array.from({ length: 5 }, () => [
+        5 + rng.rand() * 0.5,
+        -5 + rng.rand() * 0.5,
+      ]),
+    ];
+
+    const km = new KMeans({
+      n_clusters: 5,
+      n_init: 1,
+      random_state: 42,
+    });
+
+    await km.fit(X);
+
+    // Check that all clusters have been assigned
+    const labels = km.labels_!;
+    const unique_labels = new Set(labels);
+    expect(unique_labels.size).toBe(5);
+
+    // Check that labels are valid
+    expect(labels).toHaveLength(30);
+    labels.forEach((label) => {
+      expect(label).toBeGreaterThanOrEqual(0);
+      expect(label).toBeLessThan(5);
+    });
+
+    // Verify centroids are reasonable (no NaN or infinity)
+    const centroids = await km.centroids_!.array();
+    centroids.forEach((centroid) => {
+      centroid.forEach((value) => {
+        expect(value).not.toBeNaN();
+        expect(Math.abs(value)).toBeLessThan(Infinity);
+      });
+    });
+  });
+
+});
