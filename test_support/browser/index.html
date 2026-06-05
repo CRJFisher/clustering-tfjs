@@ -98,8 +98,8 @@
             // Test 4: K-Means works
             await test('K-Means clustering works', async () => {
                 const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
-                const kmeans = new ClusteringTFJS.KMeans({ nClusters: 2 });
-                const labels = await kmeans.fitPredict(data);
+                const kmeans = new ClusteringTFJS.KMeans({ n_clusters: 2 });
+                const labels = await kmeans.fit_predict(data);
                 
                 if (!Array.isArray(labels) || labels.length !== 4) {
                     throw new Error('Invalid labels returned');
@@ -116,10 +116,10 @@
             await test('Spectral clustering works', async () => {
                 const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
                 const spectral = new ClusteringTFJS.SpectralClustering({ 
-                    nClusters: 2,
+                    n_clusters: 2,
                     affinity: 'rbf'
                 });
-                const labels = await spectral.fitPredict(data);
+                const labels = await spectral.fit_predict(data);
                 
                 if (!Array.isArray(labels) || labels.length !== 4) {
                     throw new Error('Invalid labels returned');
@@ -130,10 +130,10 @@
             await test('Agglomerative clustering works', async () => {
                 const data = [[0, 0], [0, 1], [5, 5], [5, 6]];
                 const agg = new ClusteringTFJS.AgglomerativeClustering({ 
-                    nClusters: 2,
+                    n_clusters: 2,
                     linkage: 'single'
                 });
-                const labels = await agg.fitPredict(data);
+                const labels = await agg.fit_predict(data);
                 
                 if (!Array.isArray(labels) || labels.length !== 4) {
                     throw new Error('Invalid labels returned');
@@ -146,7 +146,7 @@
                 if (typeof features.webgl !== 'boolean') {
                     throw new Error('WebGL feature not detected');
                 }
-                if (features.nodeBindings !== false) {
+                if (features.node_bindings !== false) {
                     throw new Error('Should not have node bindings in browser');
                 }
             });
