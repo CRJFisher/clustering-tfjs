@@ -196,9 +196,9 @@ async function main() {
   // Save YAML results
   const yaml_content = yaml.dump(results, {
     indent: 2,
-    line_width: -1,
-    no_refs: true,
-    sort_keys: false
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false
   });
   writeFileSync(output_path, yaml_content);
   console.log(`\nResults saved to: ${output_path}`);
