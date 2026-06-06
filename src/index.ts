@@ -19,7 +19,15 @@ export {
   type DebugInfo,
 } from './clustering/spectral';
 export { KMeans } from './clustering/kmeans';
+export { HDBSCAN } from './clustering/hdbscan';
 export { SOM } from './clustering/som';
+
+// Cluster representation accessors
+export type { ClusterRepresentations } from './clustering/representations';
+export {
+  select_medoids,
+  type MedoidResult,
+} from './clustering/medoid_selection';
 
 // Utilities
 export { pairwise_distance_matrix } from './distance/pairwise_distance';
@@ -38,6 +46,7 @@ export {
   silhouette_samples,
   silhouette_score,
   silhouette_score_subset,
+  type ValidationMetric,
 } from './validation/silhouette';
 export {
   davies_bouldin,

@@ -226,3 +226,123 @@ describe("KMeans", () => {
     });
   });
 });
+
+describe("KMeans – centroids & predict parity with scikit-learn", () => {
+  const fs = require("fs");
+  const path = require("path");
+  const FIXTURE_DIR = path.join(process.cwd(), "__fixtures__", "kmeans");
+
+  function labelings_equivalent(a: number[], b: number[]): boolean {
+    if (a.length !== b.length) return false;
+    const fwd = new Map<number, number>();
+    const rev = new Map<number, number>();
+    for (let i = 0; i < a.length; i++) {
+      if (fwd.has(a[i])) {
+        if (fwd.get(a[i]) !== b[i]) return false;
+      } else fwd.set(a[i], b[i]);
+      if (rev.has(b[i])) {
+        if (rev.get(b[i]) !== a[i]) return false;
+      } else rev.set(b[i], a[i]);
+    }
+    return true;
+  }
+
+  /** Match each sklearn centroid to a distinct nearest predicted centroid. */
+  function centroids_match(
+    ours: number[][],
+    ref: number[][],
+    tol: number,
+  ): boolean {
+    if (ours.length !== ref.length) return false;
+    const used = new Set<number>();
+    for (const r of ref) {
+      let best = -1;
+      let best_d = Infinity;
+      for (let j = 0; j < ours.length; j++) {
+        if (used.has(j)) continue;
+        let d = 0;
+        for (let f = 0; f < r.length; f++) {
+          const diff = r[f] - ours[j][f];
+          d += diff * diff;
+        }
+        if (d < best_d) {
+          best_d = d;
+          best = j;
+        }
+      }
+      if (best === -1 || Math.sqrt(best_d) > tol) return false;
+      used.add(best);
+    }
+    return true;
+  }
+
+  const files = fs.readdirSync(FIXTURE_DIR).filter((f: string) => f.endsWith(".json"));
+
+  for (const file of files) {
+    const fixture = JSON.parse(
+      fs.readFileSync(path.join(FIXTURE_DIR, file), "utf-8"),
+    ) as {
+      params: { n_clusters: number; random_state: number };
+      X: number[][];
+      labels: number[];
+      cluster_centers_: number[][];
+      X_test: number[][];
+      predict_labels: number[];
+    };
+
+    it(`matches centroids and predict labels for ${file}`, async () => {
+      const model = new KMeans({
+        n_clusters: fixture.params.n_clusters,
+        random_state: fixture.params.random_state,
+        n_init: 10,
+      });
+      await model.fit(fixture.X);
+
+      const centroids = model.get_centroids();
+      expect(centroids.length).toBe(fixture.cluster_centers_.length);
+      expect(centroids_match(centroids, fixture.cluster_centers_, 1e-2)).toBe(true);
+
+      const predicted = await model.predict(fixture.X_test);
+      expect(labelings_equivalent(predicted, fixture.predict_labels)).toBe(true);
+
+      model.dispose();
+    });
+  }
+
+  it("predict throws before fit", async () => {
+    const model = new KMeans({ n_clusters: 2 });
+    await expect(model.predict([[0, 0]])).rejects.toThrow();
+  });
+
+  it("get_centroids throws before fit", () => {
+    const model = new KMeans({ n_clusters: 2 });
+    expect(() => model.get_centroids()).toThrow();
+  });
+});
+
+describe("KMeans – cosine (spherical) metric", () => {
+  it("clusters direction-dominated data on the unit sphere", async () => {
+    // Two groups pointing in opposite directions, varied magnitudes.
+    const X = [
+      [1, 0],
+      [2, 0.1],
+      [3, -0.1],
+      [-1, 0],
+      [-2, 0.1],
+      [-3, -0.1],
+    ];
+    const model = new KMeans({ n_clusters: 2, metric: "cosine", random_state: 0 });
+    const labels = await model.fit_predict(X);
+    // First three share a label, last three share the other.
+    expect(labels[0]).toBe(labels[1]);
+    expect(labels[1]).toBe(labels[2]);
+    expect(labels[3]).toBe(labels[4]);
+    expect(labels[4]).toBe(labels[5]);
+    expect(labels[0]).not.toBe(labels[3]);
+
+    // predict reproduces fitted labels for the same data.
+    const predicted = await model.predict(X);
+    expect(predicted).toEqual(labels);
+    model.dispose();
+  });
+});

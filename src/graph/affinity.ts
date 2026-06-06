@@ -1,6 +1,9 @@
 import * as tf from '../backend/adapter';
 
-import { pairwise_euclidean_matrix } from '../distance/pairwise_distance';
+import {
+  pairwise_euclidean_matrix,
+  pairwise_distance_matrix,
+} from '../distance/pairwise_distance';
 
 /**
  * Computes the RBF (Gaussian) kernel affinity matrix for the given points.
@@ -43,23 +46,51 @@ export function compute_rbf_affinity(
 }
 
 /**
- * Builds a (k-)nearest-neighbour adjacency / affinity matrix.
+ * Result of a single k-nearest-neighbour scan.
+ *
+ * The scan computes, in one pass, the symmetrised affinity matrix together
+ * with the per-point neighbour indices and distances that the scan already
+ * produces. Surfacing the indices and distances lets density primitives
+ * (k-distance, mutual reachability) consume them directly rather than
+ * recomputing pairwise distances.
+ */
+export interface KnnAffinityResult {
+  /** Symmetrised (k-)NN affinity matrix, shape `(n, n)`. */
+  affinity: tf.Tensor2D;
+  /**
+   * Per-point neighbour indices in nearest-first order. When `include_self`
+   * is true the point itself appears first (distance 0). Row `i` has length
+   * equal to the number of neighbours retained for point `i`.
+   */
+  neighbor_indices: number[][];
+  /**
+   * Per-point neighbour Euclidean distances aligned with `neighbor_indices`,
+   * in nearest-first order.
+   */
+  neighbor_distances: number[][];
+}
+
+/**
+ * Builds a (k-)nearest-neighbour adjacency / affinity matrix and surfaces the
+ * neighbour indices and distances from the same scan.
  *
  * For each sample the `k` closest neighbours are connected with affinity
  * value **1**. Self-loops are included to ensure connectivity, matching
  * sklearn's behavior. The final matrix is **symmetrised** via `0.5 * (A + Aᵀ)`.
  * Mutual edges get weight 1.0 while asymmetric edges get weight 0.5.
  *
- * The result is returned as a dense `tf.Tensor2D` containing zeros for
+ * The affinity is returned as a dense `tf.Tensor2D` containing zeros for
  * non-connected pairs.  While a sparse representation would be more memory
  * efficient, downstream TensorFlow.js ops (e.g. eigen-decomposition) currently
- * expect dense tensors.
+ * expect dense tensors. Alongside it the function returns, for every point,
+ * its neighbour indices and Euclidean distances in nearest-first order — the
+ * exact quantities the single k-NN scan already computes.
  */
 export function compute_knn_affinity(
   points: tf.Tensor2D,
   k: number,
   include_self: boolean = true,
-): tf.Tensor2D {
+): KnnAffinityResult {
   if (!Number.isInteger(k) || k < 1) {
     throw new Error('k (n_neighbors) must be a positive integer.');
   }
@@ -95,6 +126,11 @@ export function compute_knn_affinity(
 
   const coords: number[][] = [];
 
+  // Per-point neighbour indices / distances captured from the same scan, in
+  // nearest-first order. Preallocated so block ordering does not matter.
+  const neighbor_indices: number[][] = new Array<number[]>(n_samples);
+  const neighbor_distances: number[][] = new Array<number[]>(n_samples);
+
   // Empirically chosen – small enough to fit typical accelerator memory while
   // large enough to utilise BLAS throughput.
   const BLOCK_SIZE = 1024;
@@ -121,30 +157,45 @@ export function compute_knn_affinity(
       // When include_self=true, k neighbors include self
       // When include_self=false, we need k+1 to later filter out self
       const top_k = include_self ? k : k + 1;
-      const { indices } = tf.topk(neg_dists, top_k);
+      const { values, indices } = tf.topk(neg_dists, top_k);
 
-      // Collect indices and apply deterministic tie-breaking: sort ascending
-      // so that ties are resolved towards the lower index mirroring NumPy.
-      const ind_arr = indices.arraySync() as number[][];
+      // Nearest-first indices and (negated squared) distances from the scan.
+      const ind_nf = indices.arraySync() as number[][];
+      const val_nf = values.arraySync() as number[][];
 
       for (let i = 0; i < b; i++) {
         const row_global = start + i;
 
+        // ----- Affinity edge set (unchanged behaviour) ----- //
         // Sort to achieve deterministic order of equal-distance neighbours.
-        ind_arr[i].sort((a, b) => a - b);
+        const sorted_idx = [...ind_nf[i]].sort((a, b) => a - b);
 
         let neighbours: number[];
         if (include_self) {
           // When include_self=true, the k neighbors already include self
-          neighbours = ind_arr[i];
+          neighbours = sorted_idx;
         } else {
           // Remove self-index to get exactly k neighbors (excluding self)
-          neighbours = ind_arr[i].filter((idx) => idx !== row_global).slice(0, k);
+          neighbours = sorted_idx.filter((idx) => idx !== row_global).slice(0, k);
         }
 
         for (const nb of neighbours) {
           coords.push([row_global, nb]);
         }
+
+        // ----- Neighbour indices / distances (nearest-first) ----- //
+        // Convert negated squared distances back to Euclidean distances.
+        const idx_keep: number[] = [];
+        const dist_keep: number[] = [];
+        for (let t = 0; t < ind_nf[i].length; t++) {
+          const idx = ind_nf[i][t];
+          if (!include_self && idx === row_global) continue;
+          idx_keep.push(idx);
+          dist_keep.push(Math.sqrt(Math.max(0, -val_nf[i][t])));
+          if (!include_self && idx_keep.length === k) break;
+        }
+        neighbor_indices[row_global] = idx_keep;
+        neighbor_distances[row_global] = dist_keep;
       }
     }); // tidy – dispose temporaries for this block
   }
@@ -154,13 +205,17 @@ export function compute_knn_affinity(
   squared_norms_kept.dispose();
 
   if (coords.length === 0) {
-    return tf.zeros([n_samples, n_samples]);
+    return {
+      affinity: tf.zeros([n_samples, n_samples]),
+      neighbor_indices,
+      neighbor_distances,
+    };
   }
 
   // Scatter ones into a dense zero matrix – TensorFlow.js scatterND expects
   // typed arrays / tensors for the indices as well as values.  Passing plain
   // JS arrays is fine, the backend converts them on the fly.
-  return tf.tidy(() => {
+  const affinity = tf.tidy(() => {
     const values = tf.ones([coords.length]);
     const dense = tf.scatter_nd(coords, values, [
       n_samples,
@@ -169,6 +224,34 @@ export function compute_knn_affinity(
     // Symmetrise: A = 0.5 * (A + Aᵀ) to match sklearn
     // This gives 0.5 for edges that only appear in one direction
     return dense.add(dense.transpose()).mul(0.5) as tf.Tensor2D;
+  });
+
+  return { affinity, neighbor_indices, neighbor_distances };
+}
+
+/**
+ * Computes the cosine affinity matrix for the given points.
+ *
+ *   A[i, j] = 1 - cosine_distance(x_i, x_j)  (i.e. cosine similarity)
+ *
+ *  • The result is symmetric by construction.
+ *  • The diagonal is forced to exactly 1.
+ *
+ * Cosine affinity is the natural similarity for direction-dominated,
+ * magnitude-noisy data (text embeddings, TF-IDF vectors). The computation
+ * reuses `pairwise_distance_matrix(points, 'cosine')` as the single source of
+ * truth for the cosine metric.
+ */
+export function compute_cosine_affinity(points: tf.Tensor2D): tf.Tensor2D {
+  return tf.tidy(() => {
+    const distances = pairwise_distance_matrix(points, 'cosine'); // (n, n), diag 0
+    const ones = tf.ones_like(distances);
+    const sim = ones.sub(distances); // 1 - cosine_distance
+
+    // Ensure exact symmetry and force the diagonal to 1.
+    const sym = sim.add(sim.transpose()).div(2);
+    const eye = tf.eye(sym.shape[0]);
+    return sym.mul(tf.scalar(1).sub(eye)).add(eye) as tf.Tensor2D;
   });
 }
 
@@ -180,12 +263,17 @@ export function compute_affinity_matrix(
   points: tf.Tensor2D,
   options:
     | { affinity: 'rbf'; gamma?: number }
+    | { affinity: 'cosine' }
     | { affinity: 'nearest_neighbors'; n_neighbors: number },
 ): tf.Tensor2D {
   if (options.affinity === 'rbf') {
     return compute_rbf_affinity(points, options.gamma);
   }
 
+  if (options.affinity === 'cosine') {
+    return compute_cosine_affinity(points);
+  }
+
   // nearest neighbours - include self-loops for connectivity
-  return compute_knn_affinity(points, options.n_neighbors, true);
+  return compute_knn_affinity(points, options.n_neighbors, true).affinity;
 }
