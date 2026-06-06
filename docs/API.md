@@ -8,8 +8,16 @@ Complete API documentation for clustering-tfjs.
   - [KMeans](#kmeans)
   - [SpectralClustering](#spectralclustering)
   - [AgglomerativeClustering](#agglomerativeclustering)
+  - [HDBSCAN](#hdbscan)
   - [SOM](#som-self-organizing-maps)
+- [Cluster Representations](#cluster-representations)
+  - [select_medoids](#select_medoids)
+- [Cluster Tracking](#cluster-tracking)
+  - [track_clusters](#track_clusters)
+- [Decomposition](#decomposition)
+  - [PCA](#pca)
 - [Validation Metrics](#validation-metrics)
+  - [Noise (-1) handling](#noise--1-handling)
   - [silhouette_score](#silhouettescore)
   - [davies_bouldin](#daviesbouldin)
   - [calinski_harabasz](#calinskiharabasz)
@@ -85,8 +93,11 @@ const data = [
 const labels = await kmeans.fit_predict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
 
-// Access cluster centers
-const centers = kmeans.centroids_;
+// Access cluster centers as a plain number[][]
+const centers = kmeans.get_centroids();
+
+// Assign new, unseen points to the fitted clusters
+const newLabels = await kmeans.predict([[2, 3]]);
 ```
 
 ### SpectralClustering
@@ -163,6 +174,54 @@ unseen point. They therefore expose **no `predict`** and **no
 `to_json`/`from_json`**. KMeans is parametric — its centroids fully determine
 assignment — so it supports both `predict` and JSON serialization. This
 asymmetry is intentional, not a gap.
+
+### HDBSCAN
+
+Hierarchical density-based clustering. Discovers clusters of varying density
+without a preset cluster count and flags samples in sparse regions as **noise**
+(`-1`). Fit-only — like AgglomerativeClustering there is no `predict`.
+
+#### Constructor
+
+```typescript
+new HDBSCAN(params?: Partial<HDBSCANParams>)
+```
+
+#### Parameters
+
+| Parameter                   | Type     | Default       | Description                                       |
+| --------------------------- | -------- | ------------- | ------------------------------------------------- |
+| `min_cluster_size`          | `number` | `5`           | Smallest admissible cluster; smaller groups become noise (min 2) |
+| `min_samples`               | `number` | `min_cluster_size` | Core-distance neighbourhood size (the point counts as its own first neighbour) |
+| `metric`                    | `string` | `euclidean`   | `euclidean`, `manhattan`, or `precomputed` (an `(n,n)` distance matrix; the cosine path supplies a cosine distance matrix) |
+| `cluster_selection_epsilon` | `number` | `0`           | Merge clusters born below the `1/epsilon` density level |
+| `cluster_selection_method`  | `string` | `eom`         | `eom` (Excess of Mass) or `leaf`                  |
+| `store_exemplars`           | `boolean`| `false`       | Populate `exemplar_indices_` (most-persistent point per cluster) |
+
+#### Fitted attributes
+
+- `labels_: number[] | null` — cluster ids `>= 0`, `-1` for noise.
+- `probabilities_: number[] | null` — per-sample membership strength in `[0, 1]`.
+- `exemplar_indices_: Map<number, number> | null` — exemplar sample index per cluster label (when `store_exemplars`).
+
+#### Example
+
+```typescript
+import { HDBSCAN } from 'clustering-tfjs';
+
+const hdbscan = new HDBSCAN({ min_cluster_size: 5 });
+const labels = await hdbscan.fit_predict(data); // e.g. [0, 0, -1, 1, 1, -1]
+console.log(hdbscan.probabilities_);
+```
+
+For cosine geometry, pass a precomputed cosine distance matrix with
+`metric: 'precomputed'` (scikit-learn parity uses the same route).
+
+> **Parity note.** HDBSCAN labels and probabilities match scikit-learn closely
+> but not bit-for-bit: mutual-reachability weight ties are ordered differently
+> across implementations (numpy's unstable `argsort`), shifting a few boundary
+> points. The condensed-tree and Excess-of-Mass core is validated for exact
+> parity against scikit-learn's own single-linkage hierarchy.
 
 ### SOM (Self-Organizing Maps)
 
@@ -284,14 +343,136 @@ u_matrix.dispose();
 som.dispose();
 ```
 
+## Cluster Representations
+
+Every estimator can surface a representative vector per cluster through one
+`ClusterRepresentations` shape, so downstream code (summarization, labelling,
+nearest-representative lookups) works the same regardless of algorithm:
+
+- **KMeans** exposes synthetic `centroids_` (and `get_centroids()`).
+- **AgglomerativeClustering** and **SpectralClustering** expose `medoid_indices_`
+  via `compute_medoids(X)` — the real sample closest to each cluster's mean.
+- **HDBSCAN** exposes `exemplar_indices_` (most-persistent point per cluster).
+
+```typescript
+interface ClusterRepresentations {
+  centroids_?: tf.Tensor2D | null;
+  medoid_indices_?: Int32Array | null;
+  exemplar_indices_?: Map<number, number> | null;
+}
+```
+
+### select_medoids
+
+```typescript
+select_medoids(
+  X: DataMatrix,
+  labels: LabelVector,
+  n_clusters: number,
+  metric?: ClusteringMetric, // 'euclidean' | 'manhattan' | 'cosine'
+): Promise<{ indices: Int32Array; distances: Float32Array }>
+```
+
+For each cluster, returns the index of the sample closest to that cluster's mean
+under the requested metric (the medoid), plus its distance. Runs in `O(n*d)`
+without materialising an `n×n` matrix. Noise (`-1`) labels are ignored; a cluster
+with no members yields index `-1`.
+
+```typescript
+const agglo = new AgglomerativeClustering({ n_clusters: 3, metric: 'cosine' });
+await agglo.fit(data);
+const medoids = await agglo.compute_medoids(data); // Int32Array, one index per cluster
+```
+
+## Cluster Tracking
+
+### track_clusters
+
+```typescript
+track_clusters(
+  prev: number[][],          // representative vectors of previous snapshot's clusters
+  curr: number[][],          // representative vectors of current snapshot's clusters
+  options?: { threshold?: number },  // similarity threshold, default 0.5
+  prev_state?: TrackingState,        // thread between frames for stable lifeline ids
+): TrackingResult
+```
+
+Matches clusters across two consecutive snapshots by cosine similarity of their
+representative vectors (e.g. KMeans centroids or HDBSCAN exemplars), via an
+optimal bipartite (Hungarian) assignment with pruning of pairs below
+`threshold`. Each cluster is classified as `PERSIST`, `EMERGE`, `DIE`, `MERGE`,
+or `SPLIT`, with a stable lifeline id carried forward. The function is
+**stateless**: the caller owns and threads the returned `state`.
+
+```typescript
+const r1 = track_clusters(prevCentroids, currCentroids, { threshold: 0.6 });
+console.log(r1.transitions);   // [{ type: 'PERSIST', prev: [0], curr: [1], lifeline_id: 0 }, ...]
+const r2 = track_clusters(currCentroids, nextCentroids, { threshold: 0.6 }, r1.state);
+```
+
+Rectangular cases (differing cluster counts) are handled — extra clusters on
+either side surface as `EMERGE`/`DIE`.
+
+## Decomposition
+
+### PCA
+
+Principal Component Analysis matching `sklearn.decomposition.PCA(svd_solver='full')`
+up to per-component sign. Components are found by power iteration with deflation
+(the TensorFlow.js backend has no eigendecomposition).
+
+```typescript
+new PCA({ n_components: number; random_state?: number })
+```
+
+| Method                       | Description                                                  |
+| ---------------------------- | ------------------------------------------------------------ |
+| `fit(X)`                     | Compute `components_`, `explained_variance_`, `mean_`        |
+| `transform(X)`               | Project into component space (`n × n_components`)            |
+| `fit_transform(X)`           | `fit` then `transform`                                       |
+| `inverse_transform(Z)`       | Reconstruct from component space                             |
+| `to_json()` / `from_json()`  | Round-trip a fitted estimator                               |
+
+`fit` throws if `n_components` exceeds the number of features; `fit_predict`
+throws (PCA is a reducer, not a clusterer).
+
+```typescript
+import { PCA } from 'clustering-tfjs';
+
+const pca = new PCA({ n_components: 2, random_state: 0 });
+const reduced = pca.fit_transform(highDimData);
+// Pre-project before density clustering:
+const labels = await new HDBSCAN({ min_cluster_size: 5 }).fit_predict(reduced);
+```
+
 ## Validation Metrics
+
+### Noise (-1) handling
+
+Cluster labels carry one library-wide meaning (see
+`backlog/decisions/decision-1`): non-density estimators emit dense labels
+`0..n_clusters-1`; density estimators (HDBSCAN) emit `-1` for **noise** — samples
+in no cluster. Internal-validation metrics measure genuine clusters, so
+`silhouette_*`, `davies_bouldin*`, and `calinski_harabasz*` **exclude `-1`
+samples before computing any distance or dispersion**. They stay well-defined at
+the degenerate boundaries this introduces: all-noise input, or one cluster plus
+noise, return a defined `0` with no division by zero. A genuine fewer-than-two-
+clusters input with **no** noise still throws.
+
+`silhouette_score` and `davies_bouldin` also accept a `metric` argument
+(`'euclidean' | 'cosine'`); `calinski_harabasz` is variance-based and
+metric-independent.
 
 ### silhouette_score
 
-Computes the mean Silhouette Coefficient of all samples.
+Computes the mean Silhouette Coefficient of all samples (noise excluded).
 
 ```typescript
-function silhouette_score(X: DataMatrix, labels: LabelVector): Promise<number>;
+function silhouette_score(
+  X: DataMatrix,
+  labels: LabelVector,
+  metric?: 'euclidean' | 'cosine',
+): number;
 ```
 
 #### Parameters

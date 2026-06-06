@@ -19,10 +19,15 @@ import {
  * - k = number of clusters
  * - n = number of samples
  *
+ * Noise (`-1`) samples are excluded before any sum-of-squares is computed. When
+ * excluding noise leaves fewer than two clusters (all-noise, or one cluster plus
+ * noise) the score is a defined `0` rather than an error. The metric is
+ * variance-based and therefore metric-independent (no `metric` parameter).
+ *
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
  * @returns The Calinski-Harabasz score (higher is better)
- * @throws Error if k <= 1 or k >= n_samples
+ * @throws Error if there are fewer than 2 clusters and no noise was present
  */
 export function calinski_harabasz(X: DataMatrix, labels: LabelVector): number {
   validate_labels_length(X, labels);

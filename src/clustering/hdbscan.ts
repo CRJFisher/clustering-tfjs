@@ -26,6 +26,14 @@ import {
  * than reimplemented: k-distance from `distance/kdistance`, mutual reachability
  * and the minimum spanning tree from `graph/`, and the condensed tree from
  * `graph/condensation_tree`.
+ *
+ * Parity: labels and probabilities match scikit-learn closely but not
+ * bit-for-bit. Mutual-reachability weight ties are ordered differently across
+ * implementations (numpy's unstable `argsort` over the MST edges), which shifts
+ * a few boundary points. The condensed-tree + Excess-of-Mass core is itself
+ * exact — it reproduces scikit-learn's labels and probabilities verbatim when
+ * fed scikit-learn's own single-linkage hierarchy (see
+ * `condensation_tree.test.ts`).
  */
 export class HDBSCAN
   implements BaseClustering<HDBSCANParams>, ClusterRepresentations
