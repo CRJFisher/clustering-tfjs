@@ -4,6 +4,7 @@ import { AgglomerativeClustering } from '../src/clustering/agglomerative';
 import { SpectralClustering } from '../src/clustering/spectral';
 import { KMeans } from '../src/clustering/kmeans';
 import { SOM } from '../src/clustering/som';
+import { HDBSCAN } from '../src/clustering/hdbscan';
 import { make_blobs } from '../src/datasets/synthetic';
 
 export interface BenchmarkResult {
@@ -33,7 +34,7 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
 ];
 
 export async function benchmark_algorithm(
-  algorithm: 'kmeans' | 'spectral' | 'agglomerative' | 'som',
+  algorithm: 'kmeans' | 'spectral' | 'agglomerative' | 'som' | 'hdbscan',
   config: BenchmarkConfig,
   backend: string,
 ): Promise<BenchmarkResult> {
@@ -99,6 +100,16 @@ export async function benchmark_algorithm(
       _labels = som.labels_!;
       break;
     }
+    case 'hdbscan': {
+      // Density-based: no preset cluster count; min_cluster_size scales mildly
+      // with the dataset so blobs resolve as clusters rather than noise.
+      const hdbscan = new HDBSCAN({
+        min_cluster_size: Math.max(5, Math.floor(config.samples / 50)),
+      });
+      await hdbscan.fit(X);
+      _labels = hdbscan.labels_!;
+      break;
+    }
   }
 
   const execution_time = performance.now() - start;
@@ -150,12 +161,9 @@ export async function get_available_backends(): Promise<string[]> {
 export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
   const backends = await get_available_backends();
-  const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative' | 'som'> = [
-    'kmeans',
-    'spectral',
-    'agglomerative',
-    'som',
-  ];
+  const algorithms: Array<
+    'kmeans' | 'spectral' | 'agglomerative' | 'som' | 'hdbscan'
+  > = ['kmeans', 'spectral', 'agglomerative', 'som', 'hdbscan'];
 
   console.log(`Available backends: ${backends.join(', ')}`);
 
