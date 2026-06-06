@@ -8,6 +8,13 @@ import { is_tensor } from '../tensor/tensor_guards';
 import { make_random_stream } from '../random';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 
+/** A serialized fitted KMeans model. */
+export interface KMeansJSON {
+  params: KMeansParams;
+  centroids_: number[][];
+  inertia_: number | null;
+}
+
 /** L2-normalizes each row of a matrix onto the unit sphere (zero rows kept). */
 function l2_normalize_rows(rows: number[][]): number[][] {
   return rows.map((row) => {
@@ -480,6 +487,35 @@ export class KMeans implements BaseClustering<KMeansParams> {
       throw new Error('KMeans.get_centroids called before fit(); centroids_ is null.');
     }
     return this.centroids_.arraySync() as number[][];
+  }
+
+  /**
+   * Serializes the fitted model to a plain JSON-serializable object. The
+   * centroid matrix fully determines cluster assignment; together with the
+   * constructor params and `inertia_` it forms a complete snapshot.
+   *
+   * @throws {Error} If the model is unfitted.
+   */
+  to_json(): KMeansJSON {
+    if (this.centroids_ == null) {
+      throw new Error('KMeans.to_json called before fit(); centroids_ is null.');
+    }
+    return {
+      params: { ...this.params },
+      centroids_: this.centroids_.arraySync() as number[][],
+      inertia_: this.inertia_,
+    };
+  }
+
+  /**
+   * Reconstructs a fitted KMeans from a {@link to_json} snapshot. The restored
+   * model reproduces cluster assignment via {@link predict} without re-fitting.
+   */
+  static from_json(json: KMeansJSON): KMeans {
+    const model = new KMeans(json.params);
+    model.centroids_ = tf.tensor2d(json.centroids_);
+    model.inertia_ = json.inertia_;
+    return model;
   }
 
   /**

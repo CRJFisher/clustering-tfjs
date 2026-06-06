@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { KMeans } from "..";
 import { make_random_stream } from "../random";
 import * as tf from "../../test_support/tensorflow_helper";
@@ -228,8 +230,6 @@ describe("KMeans", () => {
 });
 
 describe("KMeans – centroids & predict parity with scikit-learn", () => {
-  const fs = require("fs");
-  const path = require("path");
   const FIXTURE_DIR = path.join(process.cwd(), "__fixtures__", "kmeans");
 
   function labelings_equivalent(a: number[], b: number[]): boolean {
@@ -286,7 +286,7 @@ describe("KMeans – centroids & predict parity with scikit-learn", () => {
       X: number[][];
       labels: number[];
       cluster_centers_: number[][];
-      X_test: number[][];
+      x_test: number[][];
       predict_labels: number[];
     };
 
@@ -302,7 +302,7 @@ describe("KMeans – centroids & predict parity with scikit-learn", () => {
       expect(centroids.length).toBe(fixture.cluster_centers_.length);
       expect(centroids_match(centroids, fixture.cluster_centers_, 1e-2)).toBe(true);
 
-      const predicted = await model.predict(fixture.X_test);
+      const predicted = await model.predict(fixture.x_test);
       expect(labelings_equivalent(predicted, fixture.predict_labels)).toBe(true);
 
       model.dispose();
@@ -344,5 +344,46 @@ describe("KMeans – cosine (spherical) metric", () => {
     const predicted = await model.predict(X);
     expect(predicted).toEqual(labels);
     model.dispose();
+  });
+});
+
+describe("KMeans – JSON serialization", () => {
+  const X = [
+    [0, 0],
+    [0.1, 0.1],
+    [0.2, 0.0],
+    [10, 10],
+    [10.1, 9.9],
+    [9.9, 10.1],
+  ];
+
+  it("to_json captures centroids, params, and inertia; from_json restores them", async () => {
+    const model = new KMeans({ n_clusters: 2, random_state: 1 });
+    await model.fit(X);
+    const json = model.to_json();
+    expect(json.centroids_).toEqual(model.get_centroids());
+    expect(json.params.n_clusters).toBe(2);
+    expect(json.inertia_).toBe(model.inertia_);
+
+    // Survives a real JSON round-trip.
+    const restored = KMeans.from_json(JSON.parse(JSON.stringify(json)));
+    expect(restored.get_centroids()).toEqual(model.get_centroids());
+    expect(restored.inertia_).toBe(model.inertia_);
+    expect(restored.params.n_clusters).toBe(2);
+  });
+
+  it("predict after from_json reproduces the original assignment exactly", async () => {
+    const model = new KMeans({ n_clusters: 2, random_state: 1 });
+    await model.fit(X);
+    const original = await model.predict(X);
+
+    const restored = KMeans.from_json(JSON.parse(JSON.stringify(model.to_json())));
+    const after = await restored.predict(X);
+    expect(after).toEqual(original);
+  });
+
+  it("to_json throws before fit", () => {
+    const model = new KMeans({ n_clusters: 2 });
+    expect(() => model.to_json()).toThrow();
   });
 });

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import * as tf from "../../test_support/tensorflow_helper";
 
 import { pairwise_distance_matrix } from "./pairwise_distance";
@@ -86,8 +88,6 @@ describe("pairwiseDistanceMatrix", () => {
 });
 
 describe("pairwise_distance_matrix – cosine parity with sklearn", () => {
-  const fs = require("fs");
-  const path = require("path");
   const fixture = JSON.parse(
     fs.readFileSync(
       path.join(process.cwd(), "__fixtures__", "pairwise", "cosine.json"),

@@ -1,5 +1,6 @@
 import * as tf from '../backend/adapter';
 import type { SOMTopology, SOMInitialization, SOMNeighborhood, DecayFunction } from './types';
+import { power_iteration_eig } from '../decomposition/pca';
 
 /**
  * Grid coordinate utilities for SOM topology management.
@@ -176,7 +177,7 @@ export function initialize_weights(
 
         // Get first 2 principal components via power iteration
         const n_comps = Math.min(2, n_features_lin);
-        const components = compute_principal_components(cov as tf.Tensor2D, n_comps);
+        const components = compute_principal_components(cov as tf.Tensor2D, n_comps, random_seed);
 
         // Project data onto PCs to determine scale (unbiased variance, consistent with covariance)
         const projections = tf.mat_mul(centered, components, false, true); // [n_samples, n_comps]
@@ -240,7 +241,7 @@ export function initialize_weights(
         
         // Get principal components
         const n_comps = Math.min(2, n_features);
-        const components = compute_principal_components(cov as tf.Tensor2D, n_comps);
+        const components = compute_principal_components(cov as tf.Tensor2D, n_comps, random_seed);
         
         // Project data onto principal components
         const projections = tf.mat_mul(centered, components, false, true);
@@ -302,66 +303,25 @@ export function initialize_weights(
 }
 
 /**
- * Compute principal components using power iteration.
- * TensorFlow.js doesn't have eigendecomposition, so we use power iteration.
- * 
+ * Compute principal components of a covariance matrix.
+ *
+ * Sources the leading components from the shared power-iteration eigensolver in
+ * `src/decomposition/pca.ts`, so SOM `'linear'`/`'pca'` initialization and the
+ * public `PCA` estimator use one numerically identical computation.
+ *
  * @param cov_matrix Covariance matrix [n_features, n_features]
  * @param n_components Number of components to extract
+ * @param random_state Seed for deterministic power-iteration initialization
  * @returns Principal components [n_components, n_features]
  */
 function compute_principal_components(
   cov_matrix: tf.Tensor2D,
-  n_components: number
+  n_components: number,
+  random_state?: number,
 ): tf.Tensor2D {
-  return tf.tidy(() => {
-    const [n, _m] = cov_matrix.shape;
-    const components: tf.Tensor1D[] = [];
-    let deflated_matrix = cov_matrix.clone();
-    
-    for (let comp = 0; comp < Math.min(n_components, n); comp++) {
-      // Initialize random vector
-      let v = tf.random_normal([n, 1]);
-      v = v.div(v.norm());
-      
-      // Power iteration
-      for (let iter = 0; iter < 100; iter++) {
-        const v_new = tf.mat_mul(deflated_matrix, v);
-        const norm = v_new.norm();
-        
-        if (norm.dataSync()[0] < 1e-10) break;
-        
-        v.dispose();
-        v = v_new.div(norm);
-      }
-      
-      // Store component
-      components.push(v.squeeze());
-      
-      // Deflate matrix (remove component)
-      const eigenvalue = tf.mat_mul(
-        tf.mat_mul(v, deflated_matrix, true, false),
-        v
-      ).squeeze();
-      
-      const outer_product = tf.mat_mul(v, v, false, true);
-      const deflation = outer_product.mul(eigenvalue);
-      
-      const new_deflated = deflated_matrix.sub(deflation) as tf.Tensor2D;
-      deflated_matrix.dispose();
-      deflated_matrix = new_deflated;
-      
-      // Cleanup
-      eigenvalue.dispose();
-      outer_product.dispose();
-      deflation.dispose();
-      v.dispose();
-    }
-    
-    deflated_matrix.dispose();
-    
-    // Stack components into matrix
-    return tf.stack(components) as tf.Tensor2D;
-  });
+  const cov = cov_matrix.arraySync() as number[][];
+  const { components } = power_iteration_eig(cov, n_components, random_state);
+  return tf.tensor2d(components, [components.length, cov.length], 'float32');
 }
 
 /**

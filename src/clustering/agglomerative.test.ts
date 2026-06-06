@@ -44,3 +44,12 @@ describe("AgglomerativeClustering class structure & validation", () => {
     expect(uniq.length).toBe(2);
   });
 });
+
+describe("AgglomerativeClustering – transductive: no predict or JSON serialization", () => {
+  it("exposes neither predict nor to_json/from_json", () => {
+    const model = new AgglomerativeClustering({ n_clusters: 2 });
+    expect("predict" in model).toBe(false);
+    expect("to_json" in model).toBe(false);
+    expect("from_json" in AgglomerativeClustering).toBe(false);
+  });
+});

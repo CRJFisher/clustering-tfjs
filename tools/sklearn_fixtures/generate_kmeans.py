@@ -44,7 +44,7 @@ def make_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
         cluster_std=case["std"],
         random_state=random_state,
     )
-    X_test, _ = make_blobs(
+    x_test, _ = make_blobs(
         n_samples=30,
         centers=case["centers"],
         cluster_std=case["std"],
@@ -57,7 +57,7 @@ def make_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
         random_state=random_state,
     )
     labels = model.fit_predict(X)
-    predict_labels = model.predict(X_test)
+    predict_labels = model.predict(x_test)
 
     return {
         "name": case["name"],
@@ -66,7 +66,7 @@ def make_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
         "labels": labels.astype(int).tolist(),
         "cluster_centers_": model.cluster_centers_.astype(float).tolist(),
         "inertia_": float(model.inertia_),
-        "X_test": X_test.astype(float).tolist(),
+        "x_test": x_test.astype(float).tolist(),
         "predict_labels": predict_labels.astype(int).tolist(),
     }
 

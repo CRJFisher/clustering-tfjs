@@ -45,3 +45,12 @@ describe("SpectralClustering class structure & validation", () => {
   });
 });
 
+
+describe("SpectralClustering – transductive: no predict or JSON serialization", () => {
+  it("exposes neither predict nor to_json/from_json", () => {
+    const model = new SpectralClustering({ n_clusters: 2 });
+    expect("predict" in model).toBe(false);
+    expect("to_json" in model).toBe(false);
+    expect("from_json" in SpectralClustering).toBe(false);
+  });
+});

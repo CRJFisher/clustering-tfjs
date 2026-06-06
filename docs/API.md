@@ -43,13 +43,25 @@ new KMeans(params: KMeansParams)
 
 #### Parameters
 
-| Parameter      | Type     | Default     | Description                      |
-| -------------- | -------- | ----------- | -------------------------------- |
-| `n_clusters`   | `number` | required    | Number of clusters to form       |
-| `n_init`       | `number` | `10`        | Number of initializations to run |
-| `max_iter`     | `number` | `300`       | Maximum iterations per run       |
-| `tol`          | `number` | `1e-4`      | Convergence tolerance            |
-| `random_state` | `number` | `undefined` | Random seed for reproducibility  |
+| Parameter      | Type     | Default     | Description                                     |
+| -------------- | -------- | ----------- | ----------------------------------------------- |
+| `n_clusters`   | `number` | required    | Number of clusters to form                      |
+| `n_init`       | `number` | `10`        | Number of initializations to run                |
+| `max_iter`     | `number` | `300`       | Maximum iterations per run                      |
+| `tol`          | `number` | `1e-4`      | Convergence tolerance                           |
+| `metric`       | `string` | `euclidean` | `euclidean`, or `cosine` for spherical k-means  |
+| `random_state` | `number` | `undefined` | Random seed for reproducibility                 |
+
+With `metric: 'cosine'`, KMeans runs spherical k-means: rows are L2-normalized
+onto the unit sphere and all distances are cosine distances.
+
+#### Methods
+
+KMeans supports inference on unseen data and JSON serialization:
+
+- `predict(X: DataMatrix): Promise<number[]>` — assign each row of `X` to its nearest fitted centroid (cosine models L2-normalize first).
+- `get_centroids(): number[][]` — the learned centroids as a plain array.
+- `to_json(): KMeansJSON` / `static from_json(json): KMeans` — round-trip a fitted model (centroids, params, inertia). A restored model reproduces `predict` exactly without re-fitting.
 
 #### Example
 
@@ -141,6 +153,16 @@ const agglo = new AgglomerativeClustering({
 
 const labels = await agglo.fit_predict(data);
 ```
+
+#### Predict and serialization
+
+SpectralClustering and AgglomerativeClustering are **transductive**: their
+labels come from a graph embedding or a linkage hierarchy built over the
+specific input set, with no centroid or parametric model that can assign an
+unseen point. They therefore expose **no `predict`** and **no
+`to_json`/`from_json`**. KMeans is parametric — its centroids fully determine
+assignment — so it supports both `predict` and JSON serialization. This
+asymmetry is intentional, not a gap.
 
 ### SOM (Self-Organizing Maps)
 
