@@ -187,6 +187,13 @@ function cosine_cost_matrix(prev: number[][], curr: number[][]): number[][] {
  *
  * Rectangular cases (differing cluster counts) are handled: extra clusters on
  * either side simply remain unmatched and surface as `EMERGE`/`DIE`.
+ *
+ * Transitions are emitted *events*, not a mutually-exclusive per-cluster label:
+ * a single cluster may participate in more than one event (e.g. a current
+ * cluster fed by two previous clusters emits a `MERGE`, and each of those
+ * previous clusters may also emit a `SPLIT` if it additionally maps to other
+ * current clusters). Consumers should read the full `transitions` list rather
+ * than assume one event per cluster.
  */
 export function track_clusters(
   prev: number[][],

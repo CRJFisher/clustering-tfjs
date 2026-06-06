@@ -64,6 +64,10 @@ export function pairwise_distance_matrix(
       });
 
     case 'cosine':
+      // Materialises an (n,n,d) intermediate — O(n²·d) memory, the practical
+      // scalability ceiling of every cosine path (cosine k-means seeding,
+      // spectral cosine affinity, HDBSCAN precomputed cosine, tracking). For
+      // very large n, L2-normalize and feed a precomputed matrix instead.
       return tf.tidy(() => {
         const n = points.shape[0];
         const expanded_a = points.expandDims(1); // (n,1,d)

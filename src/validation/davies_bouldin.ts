@@ -94,8 +94,8 @@ export function davies_bouldin(
         }
       }
 
+      // unique_labels is derived from work_labels, so every label has members.
       const cluster_size = cluster_indices.length;
-      if (cluster_size === 0) continue;
 
       // Extract cluster points
       const cluster_data = tf.gather(work_data, cluster_indices) as tf.Tensor2D;
@@ -211,8 +211,6 @@ export function davies_bouldin_efficient(
     const cluster_indices = work_labels
       .map((l, i) => (l === label ? i : -1))
       .filter((i) => i >= 0);
-
-    if (cluster_indices.length === 0) continue;
 
     tf.tidy(() => {
       const cluster_data = tf.gather(work_data, cluster_indices) as tf.Tensor2D;
