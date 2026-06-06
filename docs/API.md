@@ -198,7 +198,7 @@ new HDBSCAN(params?: Partial<HDBSCANParams>)
 | `min_cluster_size`          | `number` | `5`           | Smallest admissible cluster; smaller groups become noise (min 2) |
 | `min_samples`               | `number` | `min_cluster_size` | Core-distance neighbourhood size (the point counts as its own first neighbour) |
 | `metric`                    | `string` | `euclidean`   | `euclidean`, `manhattan`, or `precomputed` (an `(n,n)` distance matrix; the cosine path supplies a cosine distance matrix) |
-| `cluster_selection_epsilon` | `number` | `0`           | Merge clusters born below the `1/epsilon` density level |
+| `cluster_selection_epsilon` | `number` | `0`           | Distance threshold: clusters whose birth distance is below `epsilon` are merged into a coarser ancestor (0 disables) |
 | `cluster_selection_method`  | `string` | `eom`         | `eom` (Excess of Mass) or `leaf`                  |
 | `store_exemplars`           | `boolean`| `false`       | Populate `exemplar_indices_` (most-persistent point per cluster) |
 
@@ -409,13 +409,13 @@ track_clusters(
 ```
 
 Matches clusters across two consecutive snapshots by cosine similarity of their
-representative vectors (e.g. KMeans centroids or HDBSCAN exemplars). An optimal
-bipartite (Hungarian) assignment — pruned of pairs below `threshold` — yields the
-one-to-one `PERSIST` matches and drives lifeline continuity. `MERGE`, `SPLIT`,
-`EMERGE`, and `DIE` are then determined from the above-threshold candidate-edge
-degrees (how many previous clusters map to a current one and vice versa). Each
-cluster carries a stable lifeline id forward. The function is **stateless**: the
-caller owns and threads the returned `state`.
+representative vectors (e.g. KMeans centroids or HDBSCAN exemplars). All
+transition types — `PERSIST`, `MERGE`, `SPLIT`, `EMERGE`, `DIE` — are determined
+from the above-threshold candidate-edge degrees (how many previous clusters map
+to a current one and vice versa); a clean one-to-one candidate match is a
+`PERSIST`. An optimal bipartite (Hungarian) assignment, pruned of pairs below
+`threshold`, is used only to carry stable lifeline ids forward across frames.
+The function is **stateless**: the caller owns and threads the returned `state`.
 
 ```typescript
 const r1 = track_clusters(prev_centroids, curr_centroids, { threshold: 0.6 });

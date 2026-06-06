@@ -325,7 +325,8 @@ function traverse_upwards(
   }
   const parent_lambda = births.get(parent) ?? Number.POSITIVE_INFINITY;
   const parent_eps = parent_lambda > 0 ? 1 / parent_lambda : Number.POSITIVE_INFINITY;
-  if (parent_eps > epsilon) {
+  // sklearn stops at the first ancestor born at distance >= epsilon.
+  if (parent_eps >= epsilon) {
     return parent;
   }
   return traverse_upwards(
@@ -382,8 +383,8 @@ function epsilon_search(
  *
  * `'eom'` (Excess of Mass) keeps a cluster when its own stability exceeds the
  * summed stability of its selected descendants; `'leaf'` keeps every leaf
- * cluster. `cluster_selection_epsilon` then merges clusters that are born below
- * the `1/epsilon` density level into a coarser ancestor.
+ * cluster. `cluster_selection_epsilon` then merges clusters whose birth distance
+ * (`1 / birth_lambda`) is below `epsilon` into a coarser ancestor.
  *
  * @returns The set of selected cluster ids.
  */

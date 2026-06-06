@@ -206,8 +206,9 @@ export interface HDBSCANParams extends CoreClusteringParams {
   metric?: 'euclidean' | 'manhattan' | 'precomputed';
 
   /**
-   * Flat-cut epsilon merging clusters born below the `1/epsilon` density
-   * level. Default 0 (disabled).
+   * Flat-cut distance threshold: clusters whose birth distance
+   * (`1 / birth_lambda`) is below `epsilon` are merged into a coarser ancestor.
+   * Default 0 (disabled).
    */
   cluster_selection_epsilon?: number;
 
