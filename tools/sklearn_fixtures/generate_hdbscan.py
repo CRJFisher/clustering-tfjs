@@ -57,8 +57,10 @@ def fit_dump(
     *,
     X: np.ndarray | None = None,
     distance_matrix: np.ndarray | None = None,
+    metric: str | None = None,
 ) -> Dict[str, Any]:
-    metric = "precomputed" if distance_matrix is not None else "euclidean"
+    if metric is None:
+        metric = "precomputed" if distance_matrix is not None else "euclidean"
     model = HDBSCAN(
         min_cluster_size=combo["min_cluster_size"],
         min_samples=combo["min_samples"],
@@ -135,6 +137,19 @@ def main() -> None:
     (OUT_DIR / "blobs_cosine_precomputed_mcs5.json").write_text(
         json.dumps(fixture, indent=2)
     )
+
+    # Manhattan (L1) native metric case on blobs.
+    X_man, _ = datasets.make_blobs(
+        n_samples=80, centers=3, cluster_std=0.55, random_state=42
+    )
+    man_combo = {
+        "min_cluster_size": 5,
+        "min_samples": None,
+        "method": "eom",
+        "eps": 0.0,
+    }
+    fixture = fit_dump("blobs_manhattan", man_combo, X=X_man, metric="manhattan")
+    (OUT_DIR / "blobs_manhattan_mcs5.json").write_text(json.dumps(fixture, indent=2))
 
     n_files = len(list(OUT_DIR.glob("*.json")))
     print(f"Wrote {n_files} HDBSCAN fixtures to {OUT_DIR}")

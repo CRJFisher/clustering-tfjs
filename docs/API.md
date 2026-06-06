@@ -97,7 +97,7 @@ console.log(labels); // [0, 0, 1, 1, 0, 2]
 const centers = kmeans.get_centroids();
 
 // Assign new, unseen points to the fitted clusters
-const newLabels = await kmeans.predict([[2, 3]]);
+const new_labels = await kmeans.predict([[2, 3]]);
 ```
 
 ### SpectralClustering
@@ -444,7 +444,7 @@ throws (PCA is a reducer, not a clusterer).
 import { PCA } from 'clustering-tfjs';
 
 const pca = new PCA({ n_components: 2, random_state: 0 });
-const reduced = pca.fit_transform(highDimData);
+const reduced = pca.fit_transform(high_dim_data);
 // Pre-project before density clustering:
 const labels = await new HDBSCAN({ min_cluster_size: 5 }).fit_predict(reduced);
 ```

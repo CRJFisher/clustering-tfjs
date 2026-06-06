@@ -14,7 +14,7 @@ import { kdistance } from '../distance/kdistance';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
-function euclidean_matrix(X: number[][]): number[][] {
+function metric_matrix(X: number[][], metric: string): number[][] {
   const n = X.length;
   const D: number[][] = Array.from({ length: n }, () =>
     new Array<number>(n).fill(0),
@@ -24,14 +24,18 @@ function euclidean_matrix(X: number[][]): number[][] {
       let s = 0;
       for (let d = 0; d < X[i].length; d++) {
         const diff = X[i][d] - X[j][d];
-        s += diff * diff;
+        s += metric === 'manhattan' ? Math.abs(diff) : diff * diff;
       }
-      const dist = Math.sqrt(s);
+      const dist = metric === 'manhattan' ? s : Math.sqrt(s);
       D[i][j] = dist;
       D[j][i] = dist;
     }
   }
   return D;
+}
+
+function euclidean_matrix(X: number[][]): number[][] {
+  return metric_matrix(X, 'euclidean');
 }
 
 function labels_equivalent_with_noise(a: number[], b: number[]): boolean {
@@ -143,7 +147,7 @@ describe('condensation_tree – end-to-end agreement from raw data', () => {
       const D =
         fixture.params.metric === 'precomputed'
           ? fixture.distance_matrix!
-          : euclidean_matrix(fixture.X!);
+          : metric_matrix(fixture.X!, fixture.params.metric);
       const n = D.length;
       const ms =
         fixture.params.min_samples ?? fixture.params.min_cluster_size;
