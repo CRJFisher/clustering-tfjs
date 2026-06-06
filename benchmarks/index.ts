@@ -170,6 +170,16 @@ export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   for (const backend of backends) {
     for (const algorithm of algorithms) {
       for (const config of BENCHMARK_CONFIGS) {
+        // HDBSCAN builds dense O(n²) distance / mutual-reachability matrices, so
+        // it is benchmarked only up to its documented ~5k-sample ceiling; larger
+        // datasets are skipped (and logged) rather than OOM the run.
+        if (algorithm === 'hdbscan' && config.samples > 5000) {
+          console.log(
+            `Skipping hdbscan on ${config.label} dataset (n=${config.samples} exceeds the dense O(n²) ceiling).`,
+          );
+          continue;
+        }
+
         console.log(
           `Benchmarking ${algorithm} on ${backend} with ${config.label} dataset...`,
         );
