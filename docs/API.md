@@ -382,6 +382,13 @@ under the requested metric (the medoid), plus its distance. Runs in `O(n*d)`
 without materialising an `n×n` matrix. Noise (`-1`) labels are ignored; a cluster
 with no members yields index `-1`.
 
+AgglomerativeClustering and SpectralClustering expose the same accessor as a
+method, which fills `medoid_indices_` from the fitted `labels_`:
+
+```typescript
+compute_medoids(X: DataMatrix): Promise<Int32Array> // throws before fit()
+```
+
 ```typescript
 const agglo = new AgglomerativeClustering({ n_clusters: 3, metric: 'cosine' });
 await agglo.fit(data);
@@ -402,11 +409,13 @@ track_clusters(
 ```
 
 Matches clusters across two consecutive snapshots by cosine similarity of their
-representative vectors (e.g. KMeans centroids or HDBSCAN exemplars), via an
-optimal bipartite (Hungarian) assignment with pruning of pairs below
-`threshold`. Each cluster is classified as `PERSIST`, `EMERGE`, `DIE`, `MERGE`,
-or `SPLIT`, with a stable lifeline id carried forward. The function is
-**stateless**: the caller owns and threads the returned `state`.
+representative vectors (e.g. KMeans centroids or HDBSCAN exemplars). An optimal
+bipartite (Hungarian) assignment — pruned of pairs below `threshold` — yields the
+one-to-one `PERSIST` matches and drives lifeline continuity. `MERGE`, `SPLIT`,
+`EMERGE`, and `DIE` are then determined from the above-threshold candidate-edge
+degrees (how many previous clusters map to a current one and vice versa). Each
+cluster carries a stable lifeline id forward. The function is **stateless**: the
+caller owns and threads the returned `state`.
 
 ```typescript
 const r1 = track_clusters(prev_centroids, curr_centroids, { threshold: 0.6 });
@@ -483,6 +492,7 @@ function silhouette_score(
 
 - `X`: Input data (n_samples × n_features)
 - `labels`: Cluster labels for each sample
+- `metric`: Distance metric, `'euclidean'` (default) or `'cosine'`
 
 #### Returns
 
