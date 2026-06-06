@@ -121,8 +121,12 @@ export function compute_knn_affinity(
   // efficiency thanks to matrix operations.
 
   // Keep tensors that are required across blocks to avoid accidental disposal.
+  // The squared-norm reduction runs in a tidy so its `.square()` intermediate
+  // is disposed; only the final (n,) vector is kept across blocks.
   const points_kept = tf.keep(points) as tf.Tensor2D;
-  const squared_norms_kept = tf.keep(points_kept.square().sum(1)) as tf.Tensor1D; // (n)
+  const squared_norms_kept = tf.keep(
+    tf.tidy(() => points_kept.square().sum(1)),
+  ) as tf.Tensor1D; // (n)
 
   const coords: number[][] = [];
 

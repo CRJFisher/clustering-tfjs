@@ -57,23 +57,20 @@ export interface DebugInfo {
 }
 
 /**
- * Spectral clustering estimator skeleton.
+ * Spectral clustering estimator.
  *
- * This initial implementation only covers:
- *   • Constructor & hyper-parameter validation
- *   • Public instance properties
- *   • Synchronous method stubs for `fit` / `fit_predict`
+ * Clusters by embedding the data into the eigenspace of its graph Laplacian and
+ * running k-means on that embedding. The pipeline is:
+ *   1. Build the similarity graph (affinity matrix) — `'rbf'`,
+ *      `'nearest_neighbors'`, `'cosine'`, `'precomputed'`, or a user callable.
+ *   2. Form the normalised Laplacian and take its smallest eigenvectors.
+ *   3. Row-normalise the embedding and cluster it with k-means.
  *
- * The heavy lifting – affinity matrix construction, graph Laplacian
- * computation, eigen-decomposition and the final k-means step – will be
- * implemented in subsequent tasks (see backlog).
- *
- * Updates introduced in *task-12*:
- *   • Support for `affinity = "precomputed"` and user-supplied callable
- *     affinities with rigorous matrix validation (square, symmetric,
- *     non-negative).
- *   • Public `dispose()` method and automatic clean-up on repeated `fit`
- *     calls to prevent tensor memory leaks.
+ * Precomputed and callable affinities are validated (square, symmetric,
+ * non-negative). The estimator is transductive: it exposes no `predict` and no
+ * JSON serialization (representatives are available via {@link compute_medoids}).
+ * `dispose()` releases cached tensors; repeated `fit` calls clean up
+ * automatically.
  */
 export class SpectralClustering
   implements

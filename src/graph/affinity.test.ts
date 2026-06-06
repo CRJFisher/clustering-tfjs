@@ -96,3 +96,28 @@ describe("compute_cosine_affinity", () => {
     X.dispose();
   });
 });
+
+describe("compute_knn_affinity – tensor lifecycle (AC 49.1 #7)", () => {
+  const run_once = (): void => {
+    const X = tf.tensor2d([
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [5, 5],
+    ]);
+    const { affinity, neighbor_indices, neighbor_distances } =
+      compute_knn_affinity(X, 2, true);
+    expect(neighbor_indices.length).toBe(5);
+    expect(neighbor_distances.length).toBe(5);
+    affinity.dispose();
+    if (!X.isDisposed) X.dispose();
+  };
+
+  it("does not leak tensors across repeated calls", () => {
+    run_once(); // warm up one-time allocations
+    const before = tf.memory().numTensors;
+    for (let i = 0; i < 5; i++) run_once();
+    expect(tf.memory().numTensors).toBe(before);
+  });
+});

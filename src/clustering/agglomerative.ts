@@ -40,8 +40,9 @@ export class AgglomerativeClustering
 
   /**
    * Children of each non-leaf node in the hierarchical clustering tree.
-   * Shape: `(n_samples-1, 2)` where each row gives the indices of the merged
-   * clusters. Lazily populated by future implementation.
+   * Shape: `(n_samples-1, 2)` where each row gives the indices of the two
+   * merged clusters (sklearn convention: original samples are `0..n-1`, each
+   * merge creates id `n, n+1, ...`). Populated by `fit`.
    */
   public children_: number[][] | null = null;
   public n_leaves_: number | null = null;

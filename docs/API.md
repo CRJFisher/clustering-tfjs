@@ -115,11 +115,15 @@ new SpectralClustering(params: SpectralClusteringParams)
 | Parameter      | Type                           | Default     | Description                         |
 | -------------- | ------------------------------ | ----------- | ----------------------------------- |
 | `n_clusters`   | `number`                       | required    | Number of clusters                  |
-| `affinity`     | `'rbf' \| 'nearest_neighbors'` | `'rbf'`     | Affinity matrix construction method |
+| `affinity`     | `string`                       | `'rbf'`     | `'rbf'`, `'nearest_neighbors'`, `'cosine'`, `'precomputed'`, or a callable |
 | `gamma`        | `number`                       | `1.0`       | Kernel coefficient for RBF          |
 | `n_neighbors`  | `number`                       | `10`        | Number of neighbors for k-NN        |
 | `n_init`       | `number`                       | `10`        | Number of K-means initializations   |
 | `random_state` | `number`                       | `undefined` | Random seed                         |
+
+`affinity: 'cosine'` builds the similarity graph from cosine affinity (ideal for
+direction-dominated data); `'precomputed'` treats the input `X` as an `(n, n)`
+affinity matrix.
 
 #### Example
 
@@ -405,9 +409,9 @@ or `SPLIT`, with a stable lifeline id carried forward. The function is
 **stateless**: the caller owns and threads the returned `state`.
 
 ```typescript
-const r1 = track_clusters(prevCentroids, currCentroids, { threshold: 0.6 });
+const r1 = track_clusters(prev_centroids, curr_centroids, { threshold: 0.6 });
 console.log(r1.transitions);   // [{ type: 'PERSIST', prev: [0], curr: [1], lifeline_id: 0 }, ...]
-const r2 = track_clusters(currCentroids, nextCentroids, { threshold: 0.6 }, r1.state);
+const r2 = track_clusters(curr_centroids, next_centroids, { threshold: 0.6 }, r1.state);
 ```
 
 Rectangular cases (differing cluster counts) are handled — extra clusters on
@@ -491,7 +495,7 @@ import { KMeans, silhouette_score } from 'clustering-tfjs';
 
 const kmeans = new KMeans({ n_clusters: 3 });
 const labels = await kmeans.fit_predict(data);
-const score = await silhouette_score(data, labels);
+const score = silhouette_score(data, labels);
 console.log(`Silhouette score: ${score}`);
 ```
 
@@ -500,13 +504,18 @@ console.log(`Silhouette score: ${score}`);
 Computes the Davies-Bouldin index.
 
 ```typescript
-function davies_bouldin(X: DataMatrix, labels: LabelVector): Promise<number>;
+function davies_bouldin(
+  X: DataMatrix,
+  labels: LabelVector,
+  metric?: 'euclidean' | 'cosine',
+): number;
 ```
 
 #### Parameters
 
 - `X`: Input data (n_samples × n_features)
 - `labels`: Cluster labels for each sample
+- `metric`: Distance metric, `'euclidean'` (default) or `'cosine'`
 
 #### Returns
 
@@ -514,10 +523,10 @@ Davies-Bouldin index (range: [0, ∞), lower is better)
 
 ### calinski_harabasz
 
-Computes the Calinski-Harabasz index.
+Computes the Calinski-Harabasz index (variance-based, metric-independent).
 
 ```typescript
-function calinski_harabasz(X: DataMatrix, labels: LabelVector): Promise<number>;
+function calinski_harabasz(X: DataMatrix, labels: LabelVector): number;
 ```
 
 #### Parameters
