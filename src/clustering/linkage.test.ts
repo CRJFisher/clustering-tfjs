@@ -14,7 +14,7 @@ function to_flat(D2d: number[][]): Float64Array {
   return flat;
 }
 
-describe('storedNNCluster', () => {
+describe('stored_nn_cluster', () => {
   /**
    * Base distance matrix for three singleton clusters:
    *

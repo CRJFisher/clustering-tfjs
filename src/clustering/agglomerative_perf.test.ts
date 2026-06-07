@@ -52,6 +52,10 @@ describe('Agglomerative clustering performance', () => {
 
     expect(model.labels_).not.toBeNull();
     expect((model.labels_ as number[]).length).toBe(5000);
+    // Loose upper bound: an O(n³) regression would take many minutes at
+    // n=5000, so a generous 60s ceiling fails loudly on a cubic blowup while
+    // leaving ample headroom for the typical O(n²) run on slow CI.
+    expect(elapsed).toBeLessThan(60);
 
     console.log(`5000 samples, ward linkage: ${elapsed.toFixed(2)}s`);
   }, 120_000);

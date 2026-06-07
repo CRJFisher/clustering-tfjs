@@ -12,8 +12,9 @@ import { stored_nn_cluster } from './linkage';
  * Agglomerative (hierarchical) clustering using a stored-nearest-neighbor
  * merge strategy with Lance–Williams distance updates.
  *
- * Achieves O(n²) amortized complexity instead of the naive O(n³) approach by
- * caching per-cluster nearest neighbors and updating them incrementally.
+ * Caches per-cluster nearest neighbors and updates them incrementally,
+ * achieving O(n²) complexity in the typical case (O(n³) worst case) instead of
+ * the O(n³) cost of recomputing the nearest pair from scratch every merge.
  */
 export class AgglomerativeClustering
   implements BaseClustering<AgglomerativeClusteringParams>
@@ -28,11 +29,19 @@ export class AgglomerativeClustering
   public labels_: number[] | null = null;
 
   /**
-   * Children of each non-leaf node in the hierarchical clustering tree.
-   * Shape: `(n_samples-1, 2)` where each row gives the indices of the merged
-   * clusters. Lazily populated by future implementation.
+   * Children recorded for each merge performed during agglomeration.
+   * Shape: `(n_merges, 2)` where `n_merges = n_samples - n_clusters` (merging
+   * stops once `n_clusters` clusters remain, so the full tree is not built).
+   * Each row gives the global ids of the two merged clusters (sklearn
+   * convention: original samples are `0..n-1`, each merge creates id
+   * `n, n+1, ...`). Populated by `fit`.
    */
   public children_: number[][] | null = null;
+
+  /**
+   * Number of leaves in the hierarchical clustering tree, equal to the number
+   * of input samples. Populated by `fit`.
+   */
   public n_leaves_: number | null = null;
 
   private static readonly VALID_LINKAGES = [
@@ -105,20 +114,20 @@ export class AgglomerativeClustering
 
     const { metric = 'euclidean', linkage = 'ward', n_clusters } = this.params;
 
-    // Compute initial pairwise distance matrix
+    // Compute initial pairwise distance matrix. Read it as a flat row-major
+    // typed array (matching the i*n+j layout used downstream) and copy into a
+    // Float64Array for cache-friendly access and in-place updates — avoiding
+    // the heavy intermediate nested number[][].
     const distance_tensor = pairwise_distance_matrix(points, metric);
-    const D2d = (await distance_tensor.array()) as number[][];
+    const flat = await distance_tensor.data();
     distance_tensor.dispose();
 
-    // Convert to flat Float64Array for cache-friendly access and in-place updates
     const D = new Float64Array(n_samples * n_samples);
-    for (let i = 0; i < n_samples; i++) {
-      for (let j = 0; j < n_samples; j++) {
-        D[i * n_samples + j] = D2d[i][j];
-      }
+    for (let i = 0; i < D.length; i++) {
+      D[i] = flat[i];
     }
 
-    // Run stored-nearest-neighbor clustering — O(n²) amortized
+    // Run stored-nearest-neighbor clustering — typical O(n²), worst case O(n³)
     const merges = stored_nn_cluster(D, n_samples, n_clusters, linkage);
 
     // Build children_ array using global cluster IDs (sklearn convention:

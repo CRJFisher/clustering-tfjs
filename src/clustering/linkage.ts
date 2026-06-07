@@ -2,10 +2,12 @@
  * Optimized hierarchical agglomerative clustering using a stored-nearest-
  * neighbor priority queue with Lance–Williams distance updates.
  *
- * Achieves O(n²) amortized complexity by maintaining per-cluster nearest-
- * neighbor pointers. Finding the global minimum merge pair is O(n) per step
- * (scan the NN distance array), and distance updates are O(n) per merge via
- * Lance–Williams. Total work is O(n²) amortized across all merges.
+ * Maintains per-cluster nearest-neighbor pointers (the stored-NN / Anderberg
+ * scheme). Finding the global minimum merge pair is O(n) per step (scan the NN
+ * distance array), and distance updates are O(n) per merge via Lance–Williams.
+ * Typical (average-case) complexity is O(n²); the worst case is O(n³) when a
+ * large fraction of clusters must re-scan their nearest neighbor after each
+ * merge.
  *
  * The distance matrix is stored as a flat Float64Array of size n×n with
  * index-based active tracking (Uint8Array flags). This avoids the
@@ -41,7 +43,7 @@ export interface MergeRecord {
  * Computes the Lance–Williams updated distance between the newly merged
  * cluster t = (i ∪ j) and another cluster k.
  */
-function lancewilliams(
+function lance_williams(
   dik: number,
   djk: number,
   dij: number,
@@ -101,8 +103,9 @@ function update_nearest_neighbor(
  *
  * For each active cluster, the nearest neighbor and its distance are cached.
  * The global minimum merge pair is found by scanning these cached distances
- * in O(n) time. After each merge, the cache is updated in O(n) amortized
- * time, yielding O(n²) amortized total complexity.
+ * in O(n) time. After each merge, the cache is updated incrementally, giving
+ * O(n²) total complexity in the typical case (O(n³) worst case when most
+ * clusters must re-scan their nearest neighbor every merge).
  *
  * @param D     Flat n×n distance matrix (Float64Array). Mutated in place.
  * @param n     Number of original data points.
@@ -124,7 +127,7 @@ export function stored_nn_cluster(
 
   // Per-cluster nearest neighbor cache (the "priority queue")
   const nn = new Int32Array(n);      // nn[i] = nearest neighbor of i
-  const nn_dist = new Float64Array(n); // nnDist[i] = distance to nn[i]
+  const nn_dist = new Float64Array(n); // nn_dist[i] = distance to nn[i]
 
   // Initialize NN cache — O(n²)
   for (let i = 0; i < n; i++) {
@@ -171,7 +174,7 @@ export function stored_nn_cluster(
     for (let k = 0; k < n; k++) {
       if (!active[k] || k === survivor) continue;
 
-      const new_dist = lancewilliams(
+      const new_dist = lance_williams(
         D[survivor * n + k],
         D[removed * n + k],
         dij,
