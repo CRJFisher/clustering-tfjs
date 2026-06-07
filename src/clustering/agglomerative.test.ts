@@ -1,4 +1,5 @@
 import { AgglomerativeClustering } from "..";
+import * as tf from "../../test_support/tensorflow_helper";
 
 describe("AgglomerativeClustering class structure & validation", () => {
   it("instantiates with minimal valid params", () => {
@@ -132,6 +133,26 @@ describe("AgglomerativeClustering – distances_", () => {
     await model.fit([[3, 4]]);
     expect(model.distances_).toEqual([]);
   });
+
+  it("merge distances are non-decreasing for ward linkage", async () => {
+    // The distance_threshold prune-prefix logic relies on monotonic merge
+    // heights; verify it holds for ward (not just single linkage).
+    const X = [
+      [0, 0],
+      [0.2, 0.1],
+      [5, 5],
+      [5.1, 5.2],
+      [10, 0],
+      [10.1, 0.2],
+    ];
+    const model = new AgglomerativeClustering({ n_clusters: 1, linkage: "ward" });
+    await model.fit(X);
+    const d = model.distances_!;
+    expect(d.length).toBe(5);
+    for (let i = 1; i < d.length; i++) {
+      expect(d[i]).toBeGreaterThanOrEqual(d[i - 1] - 1e-9);
+    }
+  });
 });
 
 describe("AgglomerativeClustering – distance_threshold", () => {
@@ -177,6 +198,35 @@ describe("AgglomerativeClustering – distance_threshold", () => {
     expect(model.children_).toEqual([]);
     expect(model.distances_).toEqual([]);
   });
+
+  it("excludes a merge whose distance equals the threshold (strict <)", async () => {
+    // Collinear points with exact integer single-linkage merge distances:
+    // merge (0,1) at distance 1, then merge with point 2 at distance 2.
+    const LINE = [
+      [0, 0],
+      [0, 1],
+      [0, 3],
+    ];
+
+    // threshold exactly 1.0 → the distance-1 merge is at the threshold and must
+    // be excluded, leaving all 3 points as singletons.
+    const at_boundary = new AgglomerativeClustering({
+      distance_threshold: 1.0,
+      linkage: "single",
+    });
+    const at_labels = await at_boundary.fit_predict(LINE);
+    expect(new Set(at_labels).size).toBe(3);
+    expect(at_boundary.distances_).toEqual([]);
+
+    // threshold just above 1.0 → the distance-1 merge is now included → 2 clusters.
+    const above = new AgglomerativeClustering({
+      distance_threshold: 1.5,
+      linkage: "single",
+    });
+    const above_labels = await above.fit_predict(LINE);
+    expect(new Set(above_labels).size).toBe(2);
+    expect(above.distances_).toEqual([1]);
+  });
 });
 
 describe("AgglomerativeClustering – metric 'precomputed'", () => {
@@ -201,6 +251,30 @@ describe("AgglomerativeClustering – metric 'precomputed'", () => {
     expect(precomputed.distances_!.length).toBe(internal.distances_!.length);
     for (let i = 0; i < precomputed.distances_!.length; i++) {
       expect(precomputed.distances_![i]).toBeCloseTo(internal.distances_![i], 3);
+    }
+  });
+
+  it("accepts a precomputed matrix passed as a tensor", async () => {
+    const D = euclidean_distance_matrix(TWO_PAIRS);
+
+    const from_array = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage: "average",
+      metric: "precomputed",
+    });
+    const array_labels = await from_array.fit_predict(D);
+
+    const D_tensor = tf.tensor2d(D);
+    try {
+      const from_tensor = new AgglomerativeClustering({
+        n_clusters: 2,
+        linkage: "average",
+        metric: "precomputed",
+      });
+      const tensor_labels = await from_tensor.fit_predict(D_tensor);
+      expect(tensor_labels).toEqual(array_labels);
+    } finally {
+      D_tensor.dispose();
     }
   });
 

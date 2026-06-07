@@ -99,9 +99,7 @@ export class AgglomerativeClustering
     let n_samples: number;
 
     if (metric === 'precomputed') {
-      const raw = is_tensor(_X)
-        ? ((await (_X as tf.Tensor2D).array()) as number[][])
-        : (_X as number[][]);
+      const raw = is_tensor(_X) ? await (_X as tf.Tensor2D).array() : _X;
       AgglomerativeClustering.validate_precomputed(raw);
       n_samples = raw.length;
       D = new Float64Array(n_samples * n_samples);

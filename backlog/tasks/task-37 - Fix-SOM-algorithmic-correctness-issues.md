@@ -16,7 +16,7 @@ The SOM implementation has multiple correctness bugs. (1) Weight update missing 
 
 - [x] Weight update normalizes by sum of influences for batch and mini-batch modes
 - [x] Rectangular topology uses consistent connectivity (4 or 8) for both areNeighbors and getUMatrix
-- [x] findSecondBMU uses iterative min-finding instead of Math.min spread
+- [x] Second-BMU search avoids `Math.min(...spread)` (no stack overflow on large grids)
 - [x] Training epochs shuffle data or randomly sample
 - [x] Linear initialization uses actual PCA components to span 2D surface
 - [x] getDensityMap applies Gaussian convolution or is removed/marked unimplemented
@@ -43,11 +43,11 @@ All 6 correctness bugs were fixed in the core SOM files, with 7 new tests added 
 
 2. **8-connectivity** (`som.ts:areNeighbors`, `som_visualization.ts:getNeighborDistanceMatrix`): Standardized on 8-connectivity for rectangular topology to match MiniSom reference, `getUMatrix`, and `getNeighbors`. The `areNeighbors` check now uses `rowDiff <= 1 && colDiff <= 1 && (rowDiff + colDiff > 0)`.
 
-3. **Iterative min-finding** (`som_utils.ts:findSecondBMU`): Replaced `Math.min(...distancesArray.filter(...))` with a single O(n) pass loop. Also eliminated unnecessary `Array.from()` copy by iterating directly over `Float32Array`.
+3. **Second-BMU search** (`som.ts:topographic_error`): The second-best matching unit is computed fully vectorized — `argMin` over the distance grid, one-hot masking of the first BMU, then `argMin` again — eliminating the `Math.min(...spread)` that overflowed the call stack on grids larger than ~100×100. (A standalone `findSecondBMU` helper is no longer needed.)
 
 4. **Epoch shuffling** (`som.ts:fitTensor`): Added Fisher-Yates shuffle via `make_random_stream` from the project's seeded RNG. Each epoch creates shuffled indices, uses `tf.gather` to reorder data, then disposes. Deterministic when `randomState` is set.
 
-5. **Linear PCA init** (`som_utils.ts:initializeWeights 'linear'`): Replaced broken 1D interpolation (`alpha*0.7 + beta*0.3`) with proper PCA-based initialization: computes covariance, extracts top-2 eigenvectors via power iteration, scales by projection std, and spans a 2D surface from -1 to +1 along each PC (matching MiniSom's `pca_weights_init`).
+5. **Linear PCA init** (`som_neighborhood.ts:initialize_weights 'linear'`): Replaced broken 1D interpolation (`alpha*0.7 + beta*0.3`) with proper PCA-based initialization: computes covariance, extracts top-2 eigenvectors via power iteration, scales by projection std, and spans a 2D surface from -1 to +1 along each PC (matching MiniSom's `pca_weights_init`).
 
 6. **getDensityMap convolution** (`som_visualization.ts`): Completed the Gaussian convolution using `tf.conv2d` with 'same' padding. The hitMap is properly reshaped to [1,H,W,1], convolved with the kernel [K,K,1,1], and squeezed back. Added proper `hitMap.dispose()` in finally block.
 
@@ -58,7 +58,7 @@ All 6 correctness bugs were fixed in the core SOM files, with 7 new tests added 
 
 ### Modified files
 - `src/clustering/som.ts` — weight normalization, 8-connectivity, epoch shuffling, shuffle helper
-- `src/clustering/som_utils.ts` — iterative findSecondBMU, PCA-based linear initialization
+- `src/clustering/som_neighborhood.ts` — PCA-based linear initialization, 8-connectivity neighbor helpers
 - `src/utils/som_visualization.ts` — getDensityMap convolution, 8-connectivity in getNeighborDistanceMatrix
 - `src/index.ts` — added exports
 - `test/clustering/som.test.ts` — 7 new tests for all fixes

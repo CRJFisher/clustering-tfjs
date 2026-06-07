@@ -293,14 +293,26 @@ export async function find_optimal_clusters(
     let calinski_harabasz = 0;
     let wss: number | undefined;
 
+    // Validation metrics require at least 2 distinct clusters. The SOM
+    // two-phase path can collapse to fewer than k labels when all sample BMUs
+    // fall into a single neuron macro-cluster; in that degenerate case assign
+    // worst-case metric values (so this k ranks last) instead of crashing.
+    const has_enough_clusters = new Set(labels).size >= 2;
+
     if (compute_silhouette) {
-      silhouette = silhouette_score(data_tensor, labels);
+      silhouette = has_enough_clusters
+        ? silhouette_score(data_tensor, labels)
+        : -1;
     }
     if (compute_db) {
-      davies_bouldin = davies_bouldin_efficient(data_tensor, labels);
+      davies_bouldin = has_enough_clusters
+        ? davies_bouldin_efficient(data_tensor, labels)
+        : Infinity;
     }
     if (compute_ch) {
-      calinski_harabasz = calinski_harabasz_efficient(data_tensor, labels);
+      calinski_harabasz = has_enough_clusters
+        ? calinski_harabasz_efficient(data_tensor, labels)
+        : 0;
     }
     if (should_compute_wss) {
       // Optimize: read inertia directly from KMeans instead of recomputing
