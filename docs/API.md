@@ -189,7 +189,7 @@ new SOM(params: SOMParams)
 | `grid_height`    | `number`                                  | required                           | Height of the SOM grid                         |
 | `topology`       | `'rectangular' \| 'hexagonal'`            | `'rectangular'`                    | Grid topology (4/8 or 6 neighbors)             |
 | `neighborhood`   | `'gaussian' \| 'bubble' \| 'mexican_hat'` | `'gaussian'`                       | Neighborhood function for weight updates       |
-| `initialization` | `'random' \| 'linear' \| 'pca'`           | `'linear'`                         | Weight initialization method                   |
+| `initialization` | `'random' \| 'linear' \| 'pca'`           | `'random'`                         | Weight initialization method                   |
 | `learning_rate`  | `number \| DecayFunction`                 | `0.5`                              | Initial learning rate or custom decay function |
 | `radius`         | `number \| DecayFunction`                 | `max(grid_width, grid_height) / 2` | Initial neighborhood radius or custom decay    |
 | `num_epochs`     | `number`                                  | `100`                              | Number of training epochs                      |

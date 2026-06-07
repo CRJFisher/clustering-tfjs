@@ -122,6 +122,28 @@ describe("findOptimalClusters", () => {
     }
   });
 
+  it("SOM degenerate collapse (<2 distinct labels) yields worst-case metrics without crashing", async () => {
+    // All-identical points → every sample shares one BMU → the two-phase
+    // mapping collapses to a single label for every k. The metric functions
+    // require >=2 clusters, so this exercises the degenerate-label guard.
+    const data = Array.from({ length: 20 }, () => [1, 1]);
+
+    const result = await find_optimal_clusters(data, {
+      algorithm: 'som',
+      min_clusters: 2,
+      max_clusters: 4,
+      metrics: ['silhouette', 'davies_bouldin', 'calinski_harabasz'],
+      algorithm_params: { num_epochs: 5, random_state: 42 },
+    });
+
+    for (const e of result.evaluations) {
+      expect(new Set(e.labels).size).toBe(1);
+      expect(e.silhouette).toBe(-1);
+      expect(e.davies_bouldin).toBe(Infinity);
+      expect(e.calinski_harabasz).toBe(0);
+    }
+  });
+
   it("should respect min and max cluster bounds", async () => {
     const data = [[1, 2], [2, 3], [3, 4], [10, 11], [11, 12]];
 
