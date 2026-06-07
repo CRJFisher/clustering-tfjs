@@ -171,7 +171,20 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
   max_samples?: number;
 }
 
-export interface AgglomerativeClusteringParams extends BaseClusteringParams {
+export interface AgglomerativeClusteringParams extends CoreClusteringParams {
+  /**
+   * Desired number of clusters. Mutually exclusive with `distance_threshold`:
+   * provide exactly one. Must be ≥ 1.
+   */
+  n_clusters?: number;
+
+  /**
+   * Linkage distance threshold at or above which clusters will not be merged.
+   * Mutually exclusive with `n_clusters`: provide exactly one. The resulting
+   * number of clusters is determined by the data and the threshold.
+   */
+  distance_threshold?: number;
+
   /**
    * Linkage criterion used to merge clusters.
    */
@@ -179,8 +192,12 @@ export interface AgglomerativeClusteringParams extends BaseClusteringParams {
 
   /**
    * Metric to compute linkage.
+   *
+   * Use `'precomputed'` to pass a precomputed square, symmetric distance matrix
+   * (zero diagonal) directly to `fit`/`fit_predict` instead of a data matrix.
+   * `'precomputed'` is incompatible with `linkage: 'ward'`.
    */
-  metric?: 'euclidean' | 'manhattan' | 'cosine';
+  metric?: 'euclidean' | 'manhattan' | 'cosine' | 'precomputed';
 }
 
 /**

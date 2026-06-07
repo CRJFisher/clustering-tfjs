@@ -3,8 +3,8 @@ id: task-33
 title: >-
   Fix memory leaks, broken SOM clustering path, and missing agglomerative
   features
-status: To Do
-assignee: []
+status: Done
+assignee: ['claude']
 created_date: '2026-03-20'
 labels: []
 dependencies: []
@@ -16,18 +16,18 @@ Five parallel investigation agents identified four confirmed bugs/gaps in the cl
 
 ## Acceptance Criteria
 
-- [ ] Add dispose() method to KMeans that cleans up centroids_ tensor
-- [ ] Call clusterer.dispose() after extracting labels in findOptimalClusters loop (after line 187) for all algorithms that have dispose()
-- [ ] Fix findOptimalClusters SOM path to use two-phase clustering: train SOM then apply agglomerative/kmeans on weight vectors to produce exactly k clusters
-- [ ] Add distances_ property to AgglomerativeClustering that records merge distance at each step (capture minDist before it is discarded after line 152)
-- [ ] Add distanceThreshold parameter to AgglomerativeClusteringParams as alternative stopping criterion to nClusters
-- [ ] Add metric precomputed to AgglomerativeClustering that bypasses pairwiseDistanceMatrix and uses input directly as distance matrix
-- [ ] Validate precomputed distance matrix is square symmetric with zero diagonal
-- [ ] Disallow linkage ward with metric precomputed (matching scikit-learn)
-- [ ] Add tensor leak regression tests using tf.memory().numTensors assertions in findOptimalClusters tests
-- [ ] Add tests for SOM two-phase clustering producing correct cluster count
-- [ ] Add tests for agglomerative distances_ output matching expected merge distances
-- [ ] Add tests for agglomerative with metric precomputed producing same results as computing distances internally
+- [x] Add dispose() method to KMeans that cleans up centroids_ tensor
+- [x] Call clusterer.dispose() after extracting labels in findOptimalClusters loop (after line 187) for all algorithms that have dispose()
+- [x] Fix findOptimalClusters SOM path to use two-phase clustering: train SOM then apply agglomerative/kmeans on weight vectors to produce exactly k clusters
+- [x] Add distances_ property to AgglomerativeClustering that records merge distance at each step (capture minDist before it is discarded after line 152)
+- [x] Add distanceThreshold parameter to AgglomerativeClusteringParams as alternative stopping criterion to nClusters
+- [x] Add metric precomputed to AgglomerativeClustering that bypasses pairwiseDistanceMatrix and uses input directly as distance matrix
+- [x] Validate precomputed distance matrix is square symmetric with zero diagonal
+- [x] Disallow linkage ward with metric precomputed (matching scikit-learn)
+- [x] Add tensor leak regression tests using tf.memory().numTensors assertions in findOptimalClusters tests
+- [x] Add tests for SOM two-phase clustering producing correct cluster count
+- [x] Add tests for agglomerative distances_ output matching expected merge distances
+- [x] Add tests for agglomerative with metric precomputed producing same results as computing distances internally
 
 ## Implementation Plan
 
@@ -211,3 +211,70 @@ After SOM training, apply secondary clustering on the SOM weight vectors to prod
 | `src/clustering/types.ts` | Add `distanceThreshold`, expand `metric` union type |
 | `test/utils/findOptimalClusters.test.ts` | Tensor leak regression tests, SOM two-phase tests |
 | `test/clustering/agglomerative.test.ts` | Tests for `distances_`, `distanceThreshold`, precomputed |
+
+## Implementation Notes
+
+### State at start
+
+The codebase had been reorganized to snake_case with a domain layout (no `utils/`).
+`find_optimal_clusters` lives in `src/model_selection/`, SOM visualization in
+`src/visualization/`. Bug 1 had already been resolved by prior work:
+`KMeans.dispose()` exists, `find_optimal_clusters` already disposes each clusterer
+in the loop, and `SpectralClustering.dispose()` cleans up its internal KMeans
+(the internal KMeans is disposed inline after use). The two-phase SOM grouping
+also already existed as `SOM.cluster(k)`. The remaining gaps were Bug 2 (wiring
+`find_optimal_clusters`' SOM path to the two-phase method), Bug 3, and Bug 4.
+
+### Changes
+
+1. **Bug 2 — SOM path in `find_optimal_clusters`** (`src/model_selection/find_optimal_clusters.ts`):
+   Replaced the broken per-k grid sizing (which produced `grid_w * grid_h` labels
+   regardless of `k`) with a single shared SOM trained once before the k-sweep.
+   The grid is sized via the common `~5·√n` neuron heuristic, floored so the
+   neuron count always exceeds the largest `k`. Each `k` is produced by
+   `shared_som.cluster(k)` (two-phase: agglomerative grouping of neuron weight
+   vectors → map samples through their BMU). The shared SOM is disposed after the
+   loop; non-SOM clusterers are still disposed per iteration via a typed
+   `disposable` reference (using `'dispose' in x` narrowing — no casts).
+
+2. **Bug 3 — merge distances + `distance_threshold`** (`agglomerative.ts`, `types.ts`):
+   `MergeRecord` already carried `distance`, so `distances_` is populated from the
+   performed merges (aligned 1:1 with `children_`). Added `distance_threshold` as
+   an alternative stopping criterion: the full tree is built (target 1 cluster)
+   then merges at/above the threshold are dropped — merge distances are
+   non-decreasing, so kept merges form a prefix. `AgglomerativeClusteringParams`
+   now extends `CoreClusteringParams` with optional `n_clusters` and
+   `distance_threshold`; validation requires exactly one.
+
+3. **Bug 4 — `metric: 'precomputed'`** (`agglomerative.ts`, `types.ts`):
+   When `metric === 'precomputed'`, `fit` uses the input directly as the distance
+   matrix (no `pairwise_distance_matrix`). `validate_precomputed` enforces square,
+   symmetric, zero-diagonal (tol 1e-8). Ward + precomputed is rejected (the
+   existing "ward requires euclidean" check already covers this).
+
+### Technical decisions
+
+- `distances_` mirrors `children_` (performed merges only) rather than always
+  building the full sklearn tree — consistent with this codebase's existing
+  "stop early at n_clusters" behavior and avoids surplus computation (YAGNI).
+- `distance_threshold` cut reuses the existing `stored_nn_cluster` unchanged
+  (build-then-prune) instead of threading a threshold through the hot loop.
+- Float32 note: tfjs pairwise distances are float32, so precomputed (float64)
+  runs match internal runs only to ~1e-3; tests assert accordingly.
+
+### Modified files
+
+- `src/clustering/types.ts` — `AgglomerativeClusteringParams`: optional
+  `n_clusters`, new `distance_threshold`, `metric` union gains `'precomputed'`.
+- `src/clustering/agglomerative.ts` — `distances_`, `distance_threshold` cut,
+  precomputed metric + `validate_precomputed`, mutual-exclusivity validation.
+- `src/model_selection/find_optimal_clusters.ts` — two-phase SOM sweep, typed
+  per-k disposal, shared-SOM disposal.
+- `src/clustering/agglomerative.test.ts` — `distances_`, `distance_threshold`,
+  precomputed tests (incl. validation rejections).
+- `src/model_selection/find_optimal_clusters.test.ts` — SOM two-phase cluster
+  count test.
+- `src/memory_regression.test.ts` — leak regression tests for spectral,
+  agglomerative, and SOM paths of `find_optimal_clusters`.
+- `docs/API.md`, `README.md` — documented `distances_`, `distance_threshold`,
+  precomputed metric, and SOM two-phase `find_optimal_clusters` behavior.

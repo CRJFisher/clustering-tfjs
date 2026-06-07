@@ -285,10 +285,15 @@ new SpectralClustering({
 
 ```typescript
 new AgglomerativeClustering({
-  n_clusters: number;
+  // Provide exactly one stopping criterion:
+  n_clusters?: number;
+  distance_threshold?: number;
   linkage?: 'ward' | 'complete' | 'average' | 'single';
+  metric?: 'euclidean' | 'manhattan' | 'cosine' | 'precomputed';
 })
 ```
+
+After `fit`, the estimator exposes `children_`, `distances_` (merge heights, aligned with `children_`), and `n_leaves_`. Use `metric: 'precomputed'` to pass a square, symmetric, zero-diagonal distance matrix directly (not allowed with `linkage: 'ward'`).
 
 ### SOM (Self-Organizing Maps)
 

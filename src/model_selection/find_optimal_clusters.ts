@@ -225,47 +225,67 @@ export async function find_optimal_clusters(
 
   const evaluations: ClusterEvaluation[] = [];
 
+  // SOM training is independent of k: a single map is trained once, then each k
+  // is produced by two-phase clustering (agglomerative grouping of the trained
+  // neuron weight vectors into exactly k macro-clusters). This is the only
+  // correct way to sweep k for SOM — the grid size does not equal the cluster
+  // count. The grid is sized so the neuron count comfortably exceeds the
+  // largest k while following the common ~5·√n heuristic for total neurons.
+  let shared_som: SOM | null = null;
+  if (algorithm === 'som') {
+    const heuristic_grid = Math.ceil(Math.sqrt(5 * Math.sqrt(n_samples)));
+    const min_grid = Math.ceil(Math.sqrt(effective_max_clusters));
+    const grid_size = Math.max(2, heuristic_grid, min_grid);
+    shared_som = new SOM({
+      grid_width: grid_size,
+      grid_height: grid_size,
+      // algorithm_params may override grid dimensions and other SOM settings.
+      ...algorithm_params,
+    });
+    await shared_som.fit(data_tensor);
+  }
+
   // Test each k value
   for (let k = min_clusters; k <= effective_max_clusters; k++) {
-    // Create clustering instance
-    let clusterer;
+    let labels: number[];
     let kmeans_instance: KMeans | null = null;
+    let disposable:
+      | KMeans
+      | SpectralClustering
+      | AgglomerativeClustering
+      | null = null;
 
-    switch (algorithm) {
-      case 'kmeans':
-        kmeans_instance = new KMeans({ n_clusters: k, ...algorithm_params });
-        clusterer = kmeans_instance;
-        break;
-      case 'spectral':
-        clusterer = new SpectralClustering({
-          n_clusters: k,
-          ...algorithm_params,
-        });
-        break;
-      case 'agglomerative':
-        clusterer = new AgglomerativeClustering({
-          n_clusters: k,
-          ...algorithm_params,
-        });
-        break;
-      case 'som': {
-        // For SOM, we need to determine grid dimensions
-        // Use square grid as default, can be overridden via algorithm_params
-        const grid_size = Math.ceil(Math.sqrt(k));
-        const params = algorithm_params as Record<string, unknown>;
-        clusterer = new SOM({
-          grid_width: (params.grid_width as number) || grid_size,
-          grid_height: (params.grid_height as number) || Math.ceil(k / grid_size),
-          ...algorithm_params,
-        });
-        break;
+    if (algorithm === 'som') {
+      // Phase 2: group trained neurons into exactly k macro-clusters and map
+      // each sample (via its BMU) to a macro-cluster label.
+      labels = await shared_som!.cluster(k);
+    } else {
+      let clusterer: KMeans | SpectralClustering | AgglomerativeClustering;
+      switch (algorithm) {
+        case 'kmeans':
+          kmeans_instance = new KMeans({ n_clusters: k, ...algorithm_params });
+          clusterer = kmeans_instance;
+          break;
+        case 'spectral':
+          clusterer = new SpectralClustering({
+            n_clusters: k,
+            ...algorithm_params,
+          });
+          break;
+        case 'agglomerative':
+          clusterer = new AgglomerativeClustering({
+            n_clusters: k,
+            ...algorithm_params,
+          });
+          break;
+        default:
+          throw new Error(`Unknown algorithm: ${algorithm}`);
       }
-      default:
-        throw new Error(`Unknown algorithm: ${algorithm}`);
-    }
 
-    // Fit and predict
-    const labels = await clusterer.fit_predict(data_tensor);
+      // Fit and predict
+      labels = await clusterer.fit_predict(data_tensor);
+      disposable = clusterer;
+    }
 
     // Calculate metrics
     let silhouette = 0;
@@ -311,12 +331,19 @@ export async function find_optimal_clusters(
 
     evaluations.push(evaluation);
 
-    // Dispose clustering instance to free held tensors
-    const disposable = clusterer as { dispose?: () => void };
-    if (typeof disposable.dispose === 'function') {
+    // Dispose the per-k clustering instance to free held tensors. (SOM is
+    // trained once and disposed after the loop.)
+    if (
+      disposable &&
+      'dispose' in disposable &&
+      typeof disposable.dispose === 'function'
+    ) {
       disposable.dispose();
     }
   }
+
+  // Dispose the shared SOM once the k-sweep is complete.
+  shared_som?.dispose();
 
   // Post-loop scoring based on method (only when no custom scorer)
   if (!scoring_function) {

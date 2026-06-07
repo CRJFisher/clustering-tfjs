@@ -84,3 +84,171 @@ describe("AgglomerativeClustering – edge cases", () => {
     expect(new Set(labels).size).toBe(2);
   });
 });
+
+// Two well-separated pairs: {0,1} close, {2,3} close, large gap between them.
+const TWO_PAIRS = [
+  [0, 0],
+  [0, 0.1],
+  [5, 5],
+  [5.1, 5],
+];
+
+function euclidean_distance_matrix(X: number[][]): number[][] {
+  return X.map((a) =>
+    X.map((b) =>
+      Math.sqrt(a.reduce((s, ai, k) => s + (ai - b[k]) ** 2, 0)),
+    ),
+  );
+}
+
+describe("AgglomerativeClustering – distances_", () => {
+  it("records one merge distance per merge, aligned with children_", async () => {
+    // n_clusters = 1 builds the full tree: n_samples - 1 = 3 merges.
+    const model = new AgglomerativeClustering({ n_clusters: 1, linkage: "single" });
+    await model.fit(TWO_PAIRS);
+
+    expect(model.distances_).not.toBeNull();
+    expect(model.distances_!.length).toBe(3);
+    expect(model.children_!.length).toBe(model.distances_!.length);
+
+    // Merge distances are non-decreasing for single linkage. (Distances come
+    // from float32 tfjs ops, so compare with modest precision.)
+    const d = model.distances_!;
+    expect(d[0]).toBeCloseTo(0.1, 3);
+    expect(d[1]).toBeCloseTo(0.1, 3);
+    // Final merge joins the two far-apart pairs (min cross distance ~7.0).
+    expect(d[2]).toBeGreaterThan(6.9);
+    expect(d[1]).toBeLessThanOrEqual(d[2]);
+  });
+
+  it("distances_ has length n_samples - n_clusters", async () => {
+    const model = new AgglomerativeClustering({ n_clusters: 2, linkage: "single" });
+    await model.fit(TWO_PAIRS);
+    expect(model.distances_!.length).toBe(2);
+  });
+
+  it("single sample yields empty distances_", async () => {
+    const model = new AgglomerativeClustering({ n_clusters: 1 });
+    await model.fit([[3, 4]]);
+    expect(model.distances_).toEqual([]);
+  });
+});
+
+describe("AgglomerativeClustering – distance_threshold", () => {
+  it("requires exactly one of n_clusters or distance_threshold", () => {
+    expect(() => new AgglomerativeClustering({})).toThrow();
+    expect(
+      () => new AgglomerativeClustering({ n_clusters: 2, distance_threshold: 1 }),
+    ).toThrow();
+  });
+
+  it("throws for non-positive distance_threshold", () => {
+    expect(() => new AgglomerativeClustering({ distance_threshold: 0 })).toThrow();
+    expect(() => new AgglomerativeClustering({ distance_threshold: -1 })).toThrow();
+  });
+
+  it("cuts the tree at the threshold (mid threshold → 2 clusters)", async () => {
+    const model = new AgglomerativeClustering({
+      distance_threshold: 1.0,
+      linkage: "single",
+    });
+    const labels = await model.fit_predict(TWO_PAIRS);
+    // Only the two 0.1-distance merges are below the threshold.
+    expect(new Set(labels).size).toBe(2);
+    expect(model.distances_!.every((d) => d < 1.0)).toBe(true);
+  });
+
+  it("merges everything when threshold exceeds all distances (1 cluster)", async () => {
+    const model = new AgglomerativeClustering({
+      distance_threshold: 100,
+      linkage: "single",
+    });
+    const labels = await model.fit_predict(TWO_PAIRS);
+    expect(new Set(labels).size).toBe(1);
+  });
+
+  it("merges nothing when threshold is below all distances (n clusters)", async () => {
+    const model = new AgglomerativeClustering({
+      distance_threshold: 0.01,
+      linkage: "single",
+    });
+    const labels = await model.fit_predict(TWO_PAIRS);
+    expect(new Set(labels).size).toBe(TWO_PAIRS.length);
+    expect(model.children_).toEqual([]);
+    expect(model.distances_).toEqual([]);
+  });
+});
+
+describe("AgglomerativeClustering – metric 'precomputed'", () => {
+  it("produces the same labels as computing distances internally", async () => {
+    const linkage = "average" as const;
+
+    const internal = new AgglomerativeClustering({ n_clusters: 2, linkage });
+    const internal_labels = await internal.fit_predict(TWO_PAIRS);
+
+    const D = euclidean_distance_matrix(TWO_PAIRS);
+    const precomputed = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage,
+      metric: "precomputed",
+    });
+    const precomputed_labels = await precomputed.fit_predict(D);
+
+    expect(precomputed_labels).toEqual(internal_labels);
+    // Merge distances should match the euclidean run too. The internal path
+    // computes distances in float32 (tfjs) while the precomputed matrix is
+    // float64, so compare with modest precision.
+    expect(precomputed.distances_!.length).toBe(internal.distances_!.length);
+    for (let i = 0; i < precomputed.distances_!.length; i++) {
+      expect(precomputed.distances_![i]).toBeCloseTo(internal.distances_![i], 3);
+    }
+  });
+
+  it("rejects ward linkage with precomputed metric", () => {
+    expect(
+      () =>
+        new AgglomerativeClustering({
+          n_clusters: 2,
+          linkage: "ward",
+          metric: "precomputed",
+        }),
+    ).toThrow();
+  });
+
+  it("rejects a non-square precomputed matrix", async () => {
+    const model = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage: "average",
+      metric: "precomputed",
+    });
+    await expect(model.fit([[0, 1, 2], [1, 0, 3]])).rejects.toThrow();
+  });
+
+  it("rejects an asymmetric precomputed matrix", async () => {
+    const model = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage: "average",
+      metric: "precomputed",
+    });
+    await expect(
+      model.fit([
+        [0, 1],
+        [2, 0],
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("rejects a precomputed matrix with non-zero diagonal", async () => {
+    const model = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage: "average",
+      metric: "precomputed",
+    });
+    await expect(
+      model.fit([
+        [1, 1],
+        [1, 1],
+      ]),
+    ).rejects.toThrow();
+  });
+});

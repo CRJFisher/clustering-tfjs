@@ -177,6 +177,49 @@ describe('Memory regression tests', () => {
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
     });
+
+    it('should not leak tensors with spectral algorithm', async () => {
+      const before = tf.memory().numTensors;
+
+      await find_optimal_clusters(data, {
+        min_clusters: 2,
+        max_clusters: 3,
+        algorithm: 'spectral',
+        algorithm_params: { random_state: 42 },
+      });
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it('should not leak tensors with agglomerative algorithm', async () => {
+      const before = tf.memory().numTensors;
+
+      await find_optimal_clusters(data, {
+        min_clusters: 2,
+        max_clusters: 3,
+        algorithm: 'agglomerative',
+      });
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it('should not leak tensors with som algorithm', async () => {
+      const before = tf.memory().numTensors;
+
+      await find_optimal_clusters(data, {
+        min_clusters: 2,
+        max_clusters: 3,
+        algorithm: 'som',
+        algorithm_params: { num_epochs: 3, random_state: 42 },
+      });
+
+      const after = tf.memory().numTensors;
+      // SOM retains a small, bounded number of backend tensors after dispose
+      // (same tolerance as the standalone SOM memory tests above).
+      expect(after).toBeLessThanOrEqual(before + 4);
+    });
   });
 
   describe('Validation functions', () => {

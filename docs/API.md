@@ -122,12 +122,25 @@ Hierarchical clustering using bottom-up approach.
 new AgglomerativeClustering(params: AgglomerativeClusteringParams)
 ```
 
+Provide **exactly one** of `n_clusters` or `distance_threshold` as the stopping criterion.
+
 #### Parameters
 
-| Parameter    | Type                                            | Default  | Description        |
-| ------------ | ----------------------------------------------- | -------- | ------------------ |
-| `n_clusters` | `number`                                        | required | Number of clusters |
-| `linkage`    | `'ward' \| 'complete' \| 'average' \| 'single'` | `'ward'` | Linkage criterion  |
+| Parameter            | Type                                                      | Default       | Description                                                                                            |
+| -------------------- | --------------------------------------------------------- | ------------- | ------------------------------------------------------------------------------------------------------ |
+| `n_clusters`         | `number`                                                  | —             | Number of clusters. Mutually exclusive with `distance_threshold`.                                      |
+| `distance_threshold` | `number`                                                  | —             | Linkage distance at or above which clusters are not merged. Mutually exclusive with `n_clusters`.      |
+| `linkage`            | `'ward' \| 'complete' \| 'average' \| 'single'`           | `'ward'`      | Linkage criterion.                                                                                     |
+| `metric`             | `'euclidean' \| 'manhattan' \| 'cosine' \| 'precomputed'` | `'euclidean'` | Distance metric. `'precomputed'` accepts a distance matrix directly and is incompatible with `'ward'`. |
+
+#### Properties (populated after `fit`)
+
+| Property     | Type         | Description                                                                                         |
+| ------------ | ------------ | --------------------------------------------------------------------------------------------------- |
+| `labels_`    | `number[]`   | Cluster label per sample.                                                                           |
+| `children_`  | `number[][]` | The two cluster ids merged at each step (sklearn convention; ids `0..n-1` are leaves).              |
+| `distances_` | `number[]`   | Distance at which each merge occurred, aligned 1:1 with `children_`. Useful for dendrogram cutting. |
+| `n_leaves_`  | `number`     | Number of leaves (input samples).                                                                   |
 
 #### Example
 
@@ -140,6 +153,22 @@ const agglo = new AgglomerativeClustering({
 });
 
 const labels = await agglo.fit_predict(data);
+console.log(agglo.distances_); // merge heights for a dendrogram
+
+// Stop by distance instead of a fixed cluster count:
+const by_threshold = new AgglomerativeClustering({
+  distance_threshold: 2.5,
+  linkage: 'average',
+});
+await by_threshold.fit_predict(data);
+
+// Cluster a precomputed (square, symmetric, zero-diagonal) distance matrix:
+const precomputed = new AgglomerativeClustering({
+  n_clusters: 3,
+  linkage: 'average',
+  metric: 'precomputed',
+});
+await precomputed.fit_predict(distance_matrix);
 ```
 
 ### SOM (Self-Organizing Maps)
@@ -344,14 +373,17 @@ function find_optimal_clusters(
 
 #### Options
 
-| Parameter          | Type                                        | Default                                                 | Description                   |
-| ------------------ | ------------------------------------------- | ------------------------------------------------------- | ----------------------------- |
-| `min_clusters`     | `number`                                    | `2`                                                     | Minimum clusters to test      |
-| `max_clusters`     | `number`                                    | `10`                                                    | Maximum clusters to test      |
-| `algorithm`        | `'kmeans' \| 'spectral' \| 'agglomerative'` | `'kmeans'`                                              | Algorithm to use              |
-| `algorithm_params` | `object`                                    | `{}`                                                    | Algorithm-specific parameters |
-| `metrics`          | `string[]`                                  | `['silhouette', 'davies_bouldin', 'calinski_harabasz']` | Metrics to compute            |
-| `scoring_function` | `(eval: ClusterEvaluation) => number`       | Combined score                                          | Custom scoring                |
+| Parameter          | Type                                                 | Default                                                 | Description                   |
+| ------------------ | ---------------------------------------------------- | ------------------------------------------------------- | ----------------------------- |
+| `min_clusters`     | `number`                                             | `2`                                                     | Minimum clusters to test      |
+| `max_clusters`     | `number`                                             | `10`                                                    | Maximum clusters to test      |
+| `algorithm`        | `'kmeans' \| 'spectral' \| 'agglomerative' \| 'som'` | `'kmeans'`                                              | Algorithm to use              |
+| `algorithm_params` | `object`                                             | `{}`                                                    | Algorithm-specific parameters |
+| `metrics`          | `string[]`                                           | `['silhouette', 'davies_bouldin', 'calinski_harabasz']` | Metrics to compute            |
+| `scoring_function` | `(eval: ClusterEvaluation) => number`                | Combined score                                          | Custom scoring                |
+| `method`           | `'combined' \| 'elbow' \| 'silhouette'`              | `'combined'`                                            | Selection method              |
+
+With `algorithm: 'som'`, a single map is trained once (grid sized from the data) and each candidate `k` is produced by two-phase clustering — agglomerative grouping of the trained neuron weight vectors into `k` macro-clusters, then mapping each sample to its neuron's group. This means the number of clusters tracks `k`, not the SOM grid size.
 
 #### Returns
 

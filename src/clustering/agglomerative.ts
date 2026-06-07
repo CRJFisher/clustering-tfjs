@@ -31,12 +31,20 @@ export class AgglomerativeClustering
   /**
    * Children recorded for each merge performed during agglomeration.
    * Shape: `(n_merges, 2)` where `n_merges = n_samples - n_clusters` (merging
-   * stops once `n_clusters` clusters remain, so the full tree is not built).
-   * Each row gives the global ids of the two merged clusters (sklearn
-   * convention: original samples are `0..n-1`, each merge creates id
-   * `n, n+1, ...`). Populated by `fit`.
+   * stops once `n_clusters` clusters remain, so the full tree is not built), or
+   * the number of merges strictly below `distance_threshold` when that
+   * stopping criterion is used. Each row gives the global ids of the two merged
+   * clusters (sklearn convention: original samples are `0..n-1`, each merge
+   * creates id `n, n+1, ...`). Populated by `fit`.
    */
   public children_: number[][] | null = null;
+
+  /**
+   * Distance at which each merge in `children_` occurred. Aligned 1:1 with
+   * `children_` (same length and order). Enables dendrogram cutting and
+   * inspection of merge heights. Populated by `fit`.
+   */
+  public distances_: number[] | null = null;
 
   /**
    * Number of leaves in the hierarchical clustering tree, equal to the number
@@ -55,6 +63,7 @@ export class AgglomerativeClustering
     'euclidean',
     'manhattan',
     'cosine',
+    'precomputed',
   ] as const;
 
   /**
@@ -80,24 +89,62 @@ export class AgglomerativeClustering
    * ```
    */
   async fit(_X: DataMatrix): Promise<void> {
-    const owned_tensor = !is_tensor(_X);
-    const points: tf.Tensor2D = owned_tensor
-      ? tf.tensor2d(_X as number[][])
-      : (_X as tf.Tensor2D);
+    const { metric = 'euclidean', linkage = 'ward' } = this.params;
+    const use_threshold = this.params.distance_threshold != null;
 
-    const n_samples = points.shape[0];
+    // Resolve a flat row-major (i*n+j) Float64 distance matrix `D` and
+    // `n_samples`, either from a precomputed matrix or by computing pairwise
+    // distances from the data points.
+    let D: Float64Array;
+    let n_samples: number;
 
-    if (n_samples === 0) {
+    if (metric === 'precomputed') {
+      const raw = is_tensor(_X)
+        ? ((await (_X as tf.Tensor2D).array()) as number[][])
+        : (_X as number[][]);
+      AgglomerativeClustering.validate_precomputed(raw);
+      n_samples = raw.length;
+      D = new Float64Array(n_samples * n_samples);
+      for (let i = 0; i < n_samples; i++) {
+        const row = raw[i];
+        for (let j = 0; j < n_samples; j++) {
+          D[i * n_samples + j] = row[j];
+        }
+      }
+    } else {
+      const owned_tensor = !is_tensor(_X);
+      const points: tf.Tensor2D = owned_tensor
+        ? tf.tensor2d(_X as number[][])
+        : (_X as tf.Tensor2D);
+
+      n_samples = points.shape[0];
+
+      if (n_samples === 0) {
+        if (owned_tensor) {
+          points.dispose();
+        }
+        throw new Error('Input X must contain at least one sample.');
+      }
+
+      // Compute initial pairwise distance matrix. Read it as a flat row-major
+      // typed array (matching the i*n+j layout used downstream) and copy into a
+      // Float64Array for cache-friendly access and in-place updates — avoiding
+      // the heavy intermediate nested number[][].
+      const distance_tensor = pairwise_distance_matrix(points, metric);
+      const flat = await distance_tensor.data();
+      distance_tensor.dispose();
+
+      D = new Float64Array(n_samples * n_samples);
+      for (let i = 0; i < D.length; i++) {
+        D[i] = flat[i];
+      }
+
       if (owned_tensor) {
         points.dispose();
       }
-      throw new Error('Input X must contain at least one sample.');
     }
 
-    if (this.params.n_clusters > n_samples) {
-      if (owned_tensor) {
-        points.dispose();
-      }
+    if (!use_threshold && this.params.n_clusters! > n_samples) {
       throw new Error('n_clusters cannot exceed number of samples.');
     }
 
@@ -105,30 +152,21 @@ export class AgglomerativeClustering
     if (n_samples === 1) {
       this.labels_ = [0];
       this.children_ = [];
+      this.distances_ = [];
       this.n_leaves_ = 1;
-      if (owned_tensor) {
-        points.dispose();
-      }
       return;
     }
 
-    const { metric = 'euclidean', linkage = 'ward', n_clusters } = this.params;
-
-    // Compute initial pairwise distance matrix. Read it as a flat row-major
-    // typed array (matching the i*n+j layout used downstream) and copy into a
-    // Float64Array for cache-friendly access and in-place updates — avoiding
-    // the heavy intermediate nested number[][].
-    const distance_tensor = pairwise_distance_matrix(points, metric);
-    const flat = await distance_tensor.data();
-    distance_tensor.dispose();
-
-    const D = new Float64Array(n_samples * n_samples);
-    for (let i = 0; i < D.length; i++) {
-      D[i] = flat[i];
-    }
+    // When stopping by distance threshold, build the full tree (target 1
+    // cluster) then keep only the merges strictly below the threshold. Merge
+    // distances are non-decreasing, so the kept merges form a prefix.
+    const target_clusters = use_threshold ? 1 : this.params.n_clusters!;
 
     // Run stored-nearest-neighbor clustering — typical O(n²), worst case O(n³)
-    const merges = stored_nn_cluster(D, n_samples, n_clusters, linkage);
+    const all_merges = stored_nn_cluster(D, n_samples, target_clusters, linkage);
+    const merges = use_threshold
+      ? all_merges.filter((m) => m.distance < this.params.distance_threshold!)
+      : all_merges;
 
     // Build children_ array using global cluster IDs (sklearn convention:
     // original samples are 0..n-1, each merge creates n, n+1, n+2, ...)
@@ -175,12 +213,8 @@ export class AgglomerativeClustering
 
     this.labels_ = labels;
     this.children_ = children;
+    this.distances_ = merges.map((m) => m.distance);
     this.n_leaves_ = n_samples;
-
-    // Dispose tensor if we created it from array input
-    if (owned_tensor) {
-      points.dispose();
-    }
   }
 
   /**
@@ -199,10 +233,28 @@ export class AgglomerativeClustering
   }
 
   private static validate_params(params: AgglomerativeClusteringParams): void {
-    const { n_clusters, linkage = 'ward', metric = 'euclidean' } = params;
+    const {
+      n_clusters,
+      distance_threshold,
+      linkage = 'ward',
+      metric = 'euclidean',
+    } = params;
 
-    if (!Number.isInteger(n_clusters) || n_clusters < 1) {
+    const has_n_clusters = n_clusters != null;
+    const has_threshold = distance_threshold != null;
+
+    if (has_n_clusters === has_threshold) {
+      throw new Error(
+        'Provide exactly one of n_clusters or distance_threshold.',
+      );
+    }
+
+    if (has_n_clusters && (!Number.isInteger(n_clusters) || n_clusters < 1)) {
       throw new Error('n_clusters must be a positive integer (>= 1).');
+    }
+
+    if (has_threshold && !(distance_threshold > 0)) {
+      throw new Error('distance_threshold must be a positive number.');
     }
 
     if (!AgglomerativeClustering.VALID_LINKAGES.includes(linkage)) {
@@ -219,6 +271,41 @@ export class AgglomerativeClustering
 
     if (linkage === 'ward' && metric !== 'euclidean') {
       throw new Error("Ward linkage requires metric to be 'euclidean'.");
+    }
+  }
+
+  /**
+   * Validates that a precomputed distance matrix is square, symmetric, and has
+   * a zero diagonal.
+   */
+  private static validate_precomputed(D: number[][]): void {
+    const n = D.length;
+    if (n === 0) {
+      throw new Error(
+        'Precomputed distance matrix must contain at least one row.',
+      );
+    }
+
+    for (let i = 0; i < n; i++) {
+      if (!Array.isArray(D[i]) || D[i].length !== n) {
+        throw new Error(
+          `Precomputed distance matrix must be square (${n}x${n}).`,
+        );
+      }
+    }
+
+    const tol = 1e-8;
+    for (let i = 0; i < n; i++) {
+      if (Math.abs(D[i][i]) > tol) {
+        throw new Error(
+          'Precomputed distance matrix must have a zero diagonal.',
+        );
+      }
+      for (let j = i + 1; j < n; j++) {
+        if (Math.abs(D[i][j] - D[j][i]) > tol) {
+          throw new Error('Precomputed distance matrix must be symmetric.');
+        }
+      }
     }
   }
 }

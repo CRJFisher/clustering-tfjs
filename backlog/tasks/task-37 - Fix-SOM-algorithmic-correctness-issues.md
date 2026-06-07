@@ -1,7 +1,7 @@
 ---
 id: task-37
 title: Fix SOM algorithmic correctness issues
-status: In Progress
+status: Done
 assignee: [claude]
 created_date: '2026-03-20'
 labels: []

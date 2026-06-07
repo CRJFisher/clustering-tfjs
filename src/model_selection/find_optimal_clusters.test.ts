@@ -80,6 +80,48 @@ describe("findOptimalClusters", () => {
     expect(agglo_result.optimal.k).toBeLessThanOrEqual(4);
   });
 
+  it("SOM two-phase path produces exactly k clusters for each k", async () => {
+    // Three well-separated blobs.
+    const { X } = make_blobs({
+      n_samples: 60,
+      n_features: 2,
+      centers: 3,
+      cluster_std: 0.4,
+      random_state: 42,
+    });
+
+    try {
+      const result = await find_optimal_clusters(X, {
+        algorithm: 'som',
+        min_clusters: 2,
+        max_clusters: 5,
+        algorithm_params: { num_epochs: 20, random_state: 42 },
+      });
+
+      // One evaluation per k in [2, 5].
+      expect(result.evaluations.map((e) => e.k).sort()).toEqual([2, 3, 4, 5]);
+
+      // The core fix: the output cluster count is driven by k (via two-phase
+      // grouping of neuron weights), NOT by the SOM grid size. Each evaluation
+      // yields at most k labels — never the grid's neuron count. (A macro-
+      // cluster of neurons with no assigned samples can leave fewer than k
+      // distinct labels, which is expected.)
+      for (const evaluation of result.evaluations) {
+        const unique = new Set(evaluation.labels);
+        expect(unique.size).toBeGreaterThanOrEqual(2);
+        expect(unique.size).toBeLessThanOrEqual(evaluation.k);
+        expect(evaluation.labels).toHaveLength(60);
+      }
+
+      // The sweep should recover the 3 underlying blobs exactly.
+      const optimal_unique = new Set(result.optimal.labels);
+      expect(result.optimal.k).toBe(3);
+      expect(optimal_unique.size).toBe(3);
+    } finally {
+      X.dispose();
+    }
+  });
+
   it("should respect min and max cluster bounds", async () => {
     const data = [[1, 2], [2, 3], [3, 4], [10, 11], [11, 12]];
 
