@@ -7,6 +7,8 @@ import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 import { stored_nn_cluster } from './linkage';
+import type { ClusterRepresentations } from './representations';
+import { select_medoids } from './medoid_selection';
 
 /**
  * Agglomerative (hierarchical) clustering using a stored-nearest-neighbor
@@ -16,9 +18,18 @@ import { stored_nn_cluster } from './linkage';
  * caching per-cluster nearest neighbors and updating them incrementally.
  */
 export class AgglomerativeClustering
-  implements BaseClustering<AgglomerativeClusteringParams>
+  implements
+    BaseClustering<AgglomerativeClusteringParams>,
+    ClusterRepresentations
 {
   public readonly params: AgglomerativeClusteringParams;
+
+  /**
+   * Index of the representative sample (medoid) per cluster, populated by
+   * {@link compute_medoids}. Position `c` holds cluster `c`'s medoid index, or
+   * `-1` if that cluster has no assigned samples.
+   */
+  public medoid_indices_: Int32Array | null = null;
 
   /**
    * Cluster labels produced by `fit` / `fit_predict`.
@@ -29,8 +40,9 @@ export class AgglomerativeClustering
 
   /**
    * Children of each non-leaf node in the hierarchical clustering tree.
-   * Shape: `(n_samples-1, 2)` where each row gives the indices of the merged
-   * clusters. Lazily populated by future implementation.
+   * Shape: `(n_samples-1, 2)` where each row gives the indices of the two
+   * merged clusters (sklearn convention: original samples are `0..n-1`, each
+   * merge creates id `n, n+1, ...`). Populated by `fit`.
    */
   public children_: number[][] | null = null;
   public n_leaves_: number | null = null;
@@ -187,6 +199,31 @@ export class AgglomerativeClustering
       throw new Error('AgglomerativeClustering failed to compute labels.');
     }
     return this.labels_;
+  }
+
+  /**
+   * Computes the representative sample (medoid) of every cluster — the sample
+   * closest to its cluster mean under the estimator's metric — and stores them
+   * in {@link medoid_indices_}.
+   *
+   * @param X The data the model was fitted on (same row order as `labels_`).
+   * @returns The populated `medoid_indices_`.
+   * @throws {Error} If called before `fit()`.
+   */
+  async compute_medoids(X: DataMatrix): Promise<Int32Array> {
+    if (this.labels_ == null) {
+      throw new Error(
+        'AgglomerativeClustering.compute_medoids called before fit().',
+      );
+    }
+    const { indices } = await select_medoids(
+      X,
+      this.labels_,
+      this.params.n_clusters,
+      this.params.metric ?? 'euclidean',
+    );
+    this.medoid_indices_ = indices;
+    return indices;
   }
 
   private static validate_params(params: AgglomerativeClusteringParams): void {

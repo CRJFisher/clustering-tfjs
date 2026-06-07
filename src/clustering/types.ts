@@ -23,6 +23,11 @@ export type DataMatrix = tf.Tensor2D | number[][];
 export type LabelVector = tf.Tensor1D | number[];
 
 /**
+ * Distance metric shared across estimators and representation accessors.
+ */
+export type ClusteringMetric = 'euclidean' | 'manhattan' | 'cosine';
+
+/**
  * Minimal options shared by *all* clustering algorithms, including those
  * that do not use an explicit cluster count (e.g. SOM).
  */
@@ -71,6 +76,13 @@ export interface KMeansParams extends BaseClusteringParams {
    * Mirrors scikit-learn’s `n_init` parameter. Must be ≥ 1. Defaults to 10.
    */
   n_init?: number;
+
+  /**
+   * Distance metric. `'cosine'` runs spherical k-means: rows are L2-normalized
+   * onto the unit sphere and all distances are cosine distances, routed through
+   * `pairwise_distance_matrix`. `'euclidean'` (default) runs standard Lloyd.
+   */
+  metric?: 'euclidean' | 'cosine';
 }
 
 export interface SpectralClusteringParams extends BaseClusteringParams {
@@ -82,6 +94,7 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
   affinity?:
     | 'rbf'
     | 'nearest_neighbors'
+    | 'cosine'
     | 'precomputed'
     | ((X: DataMatrix) => tf.Tensor2D);
 
@@ -169,6 +182,41 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Default: 10000
    */
   max_samples?: number;
+}
+
+export interface HDBSCANParams extends CoreClusteringParams {
+  /**
+   * Minimum cluster size; groups smaller than this become noise. Default 5,
+   * minimum 2.
+   */
+  min_cluster_size?: number;
+
+  /**
+   * Core-distance neighbourhood size. Defaults to `min_cluster_size`. The
+   * point itself counts as its own first neighbour. Minimum 1.
+   */
+  min_samples?: number;
+
+  /**
+   * `'euclidean'` and `'manhattan'` are computed natively from the data; with
+   * `'precomputed'`, `fit` accepts an `(n, n)` distance matrix directly (the
+   * cosine path supplies a precomputed cosine distance matrix). Default
+   * `'euclidean'`.
+   */
+  metric?: 'euclidean' | 'manhattan' | 'precomputed';
+
+  /**
+   * Flat-cut distance threshold: clusters whose birth distance
+   * (`1 / birth_lambda`) is below `epsilon` are merged into a coarser ancestor.
+   * Default 0 (disabled).
+   */
+  cluster_selection_epsilon?: number;
+
+  /** Cluster extraction strategy. Default `'eom'` (Excess of Mass). */
+  cluster_selection_method?: 'eom' | 'leaf';
+
+  /** Store the most-persistent exemplar point per cluster. Default false. */
+  store_exemplars?: boolean;
 }
 
 export interface AgglomerativeClusteringParams extends BaseClusteringParams {

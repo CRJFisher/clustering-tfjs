@@ -15,8 +15,8 @@ describe("compute_knn_affinity – deterministic tie-breaking", () => {
 
     const X = tf.tensor2d(pts, [4, 2]);
 
-    const A1 = compute_knn_affinity(X, 2);
-    const A2 = compute_knn_affinity(tf.tensor2d(pts, [4, 2]), 2);
+    const { affinity: A1 } = compute_knn_affinity(X, 2);
+    const { affinity: A2 } = compute_knn_affinity(tf.tensor2d(pts, [4, 2]), 2);
 
     const equal = await tf.equal(A1, A2).all().data();
     expect(equal[0]).toBe(1);

@@ -18,8 +18,35 @@ export {
   type IntermediateSteps,
   type DebugInfo,
 } from './clustering/spectral';
-export { KMeans } from './clustering/kmeans';
+export { KMeans, type KMeansJSON } from './clustering/kmeans';
+export { HDBSCAN } from './clustering/hdbscan';
 export { SOM } from './clustering/som';
+
+// Decomposition
+export {
+  PCA,
+  type PCAParams,
+  type PCAJSON,
+  type EigResult,
+  power_iteration_eig,
+} from './decomposition/pca';
+
+// Cluster representation accessors
+export type { ClusterRepresentations } from './clustering/representations';
+export {
+  select_medoids,
+  type MedoidResult,
+} from './clustering/medoid_selection';
+
+// Cross-snapshot cluster tracking
+export {
+  track_clusters,
+  type TrackingResult,
+  type TrackingState,
+  type ClusterTransition,
+  type ClusterTrackingOptions,
+  type TransitionType,
+} from './clustering/cluster_tracking';
 
 // Utilities
 export { pairwise_distance_matrix } from './distance/pairwise_distance';
@@ -38,6 +65,7 @@ export {
   silhouette_samples,
   silhouette_score,
   silhouette_score_subset,
+  type ValidationMetric,
 } from './validation/silhouette';
 export {
   davies_bouldin,

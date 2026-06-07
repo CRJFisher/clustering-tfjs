@@ -61,10 +61,10 @@ export async function validation_based_optimization(
         score = validation_module.calinski_harabasz(embedding, labels);
         break;
       case 'davies-bouldin':
-        score = validation_module.davies_bouldin(embedding, labels);
+        score = validation_module.davies_bouldin(embedding, labels, 'euclidean');
         break;
       case 'silhouette':
-        score = validation_module.silhouette_score(embedding, labels);
+        score = validation_module.silhouette_score(embedding, labels, 'euclidean');
         break;
     }
 
@@ -160,10 +160,10 @@ export async function intensive_parameter_sweep(
             score = validation_module.calinski_harabasz(embedding, labels);
             break;
           case 'davies-bouldin':
-            score = -validation_module.davies_bouldin(embedding, labels);
+            score = -validation_module.davies_bouldin(embedding, labels, 'euclidean');
             break;
           case 'silhouette':
-            score = validation_module.silhouette_score(embedding, labels);
+            score = validation_module.silhouette_score(embedding, labels, 'euclidean');
             break;
         }
         avg_score += score;

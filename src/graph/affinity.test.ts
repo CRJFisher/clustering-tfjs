@@ -3,6 +3,8 @@ import * as tf from "../../test_support/tensorflow_helper";
 import {
   compute_rbf_affinity,
   compute_knn_affinity,
+  compute_cosine_affinity,
+  compute_affinity_matrix,
 } from "./affinity";
 
 describe("Affinity matrix utilities", () => {
@@ -32,7 +34,7 @@ describe("Affinity matrix utilities", () => {
     // Four points on a line at positions 0,1,2,3
     const X = tf.tensor2d([[0], [1], [2], [3]]);
 
-    const A = compute_knn_affinity(X, 1); // connect each point to its nearest neighbour
+    const { affinity: A } = compute_knn_affinity(X, 1); // connect each point to its nearest neighbour
 
     const arr = A.arraySync() as number[][];
 
@@ -54,3 +56,68 @@ describe("Affinity matrix utilities", () => {
   });
 });
 
+
+describe("compute_cosine_affinity", () => {
+  afterEach(() => tf.engine().disposeVariables());
+
+  it("produces a symmetric similarity matrix with unit diagonal", () => {
+    const X = tf.tensor2d([
+      [1, 0],
+      [0, 1],
+      [1, 1],
+    ]);
+    const A = compute_cosine_affinity(X);
+    const arr = A.arraySync() as number[][];
+
+    // Diagonal forced to 1.
+    for (let i = 0; i < 3; i++) expect(arr[i][i]).toBeCloseTo(1, 6);
+    // Symmetric.
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++) expect(arr[i][j]).toBeCloseTo(arr[j][i], 6);
+    // cos similarity between [1,0] and [0,1] is 0 -> affinity 0.
+    expect(arr[0][1]).toBeCloseTo(0, 6);
+    // cos similarity between [1,0] and [1,1] is 1/sqrt(2).
+    expect(arr[0][2]).toBeCloseTo(1 / Math.sqrt(2), 5);
+
+    A.dispose();
+    X.dispose();
+  });
+
+  it("is reachable through compute_affinity_matrix dispatcher", () => {
+    const X = tf.tensor2d([
+      [1, 0],
+      [0, 1],
+    ]);
+    const A = compute_affinity_matrix(X, { affinity: "cosine" });
+    const arr = A.arraySync() as number[][];
+    expect(arr[0][0]).toBeCloseTo(1, 6);
+    expect(arr[0][1]).toBeCloseTo(0, 6);
+    A.dispose();
+    X.dispose();
+  });
+});
+
+describe("compute_knn_affinity – tensor lifecycle (AC 49.1 #7)", () => {
+  const run_once = (): void => {
+    const X = tf.tensor2d([
+      [0, 0],
+      [1, 0],
+      [0, 1],
+      [1, 1],
+      [5, 5],
+    ]);
+    const { affinity, neighbor_indices, neighbor_distances } =
+      compute_knn_affinity(X, 2, true);
+    expect(neighbor_indices.length).toBe(5);
+    expect(neighbor_distances.length).toBe(5);
+    affinity.dispose();
+    if (!X.isDisposed) X.dispose();
+  };
+
+  it("does not leak tensors across repeated calls", () => {
+    run_once(); // warm up one-time allocations
+    const before = tf.memory().numTensors;
+    for (let i = 0; i < 5; i++) run_once();
+    expect(tf.memory().numTensors).toBe(before);
+  });
+});

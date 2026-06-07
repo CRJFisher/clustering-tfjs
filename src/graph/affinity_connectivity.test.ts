@@ -11,7 +11,7 @@ describe("k-NN affinity connectivity", () => {
       [11, 0],  // Far from others
     ]);
     
-    const affinity = compute_knn_affinity(points, 1, true);
+    const { affinity } = compute_knn_affinity(points, 1, true);
     const affinity_array = await affinity.array();
     
     // Check diagonal has self-loops
@@ -37,7 +37,7 @@ describe("k-NN affinity connectivity", () => {
       [100, 0.1],
     ]);
     
-    const affinity = compute_knn_affinity(points, 2, true);
+    const { affinity } = compute_knn_affinity(points, 2, true);
     const affinity_array = await affinity.array();
     
     // Each point should connect to itself
@@ -65,7 +65,7 @@ describe("k-NN affinity connectivity", () => {
       [2, 0],
     ]);
     
-    const affinity = compute_knn_affinity(points, 1, false);
+    const { affinity } = compute_knn_affinity(points, 1, false);
     const affinity_array = await affinity.array();
     
     // Check diagonal has no self-loops
