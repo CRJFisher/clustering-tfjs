@@ -46,3 +46,30 @@ New JSON files will automatically be picked up by the parity Jest tests (see
 algorithms simply extend `generate.py` with extra parameter grids and output
 directories.
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+Archived as superseded. The sklearn-parity fixture pipeline this task describes
+is fully built and operational, delivered incrementally by other tasks:
+
+- AC #1, #3, #6 — Agglomerative parity: `src/clustering/agglomerative_reference.test.ts`
+  runs exact (permutation-invariant) label matching over 13 fixtures in
+  `__fixtures__/agglomerative/`.
+- AC #4 — Spectral parity: `src/clustering/spectral_reference.test.ts` (ARI ≥ 0.95
+  over 14 fixtures, both `rbf` and `knn` affinity) plus
+  `spectral_embedding_numerical.test.ts` (intermediate embedding vs sklearn).
+- AC #2 — Reference generators exist under `tools/sklearn_fixtures/`
+  (`generate.py`, `generate_spectral.py`, `generate_spectral_embedding.py`,
+  `generate_som.py`).
+- AC #5 — Validation metrics (ARI, NMI, Calinski-Harabasz, Davies-Bouldin) carry
+  inline sklearn reference values in their colocated `*.test.ts` files.
+- AC #7 — Edge cases (single sample, n_clusters == n_samples, coincident points)
+  covered in `agglomerative.test.ts` and `kmeans.test.ts`.
+
+Remaining items are not worth keeping the task open:
+
+- AC #8 (sklearn-vs-TS performance comparison reports) — YAGNI; never part of the
+  codebase intent.
+- Fixture-driven (vs inline) validation-metric tests and a KMeans parity fixture
+  set are marginal gaps; if pursued, they belong in a focused, narrowly-scoped
+  task rather than this broad umbrella.
