@@ -1,20 +1,35 @@
 ---
-id: task-17
+id: TASK-17
 title: Create integration tests comparing with scikit-learn
 status: To Do
 assignee: []
 created_date: '2025-07-15'
+updated_date: '2026-06-07 08:32'
 labels: []
-dependencies:
-  - task-16
+dependencies: []
 ---
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
 Develop comprehensive integration tests that validate the TypeScript implementations against scikit-learn outputs using various synthetic and real-world datasets
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Test datasets prepared (blobs, moons, circles)
+- [ ] #2 Python scripts generate expected outputs for all algorithms
+- [ ] #3 Integration tests for AgglomerativeClustering with all linkage types
+- [ ] #4 Integration tests for SpectralClustering with both affinity types
+- [ ] #5 Integration tests for all validation metrics
+- [ ] #6 Tolerance thresholds defined for numerical differences
+- [ ] #7 Edge case tests (empty data, single cluster, outliers)
+- [ ] #8 Performance comparison reports generated
+<!-- AC:END -->
 
 ## Implementation Plan
 
+<!-- SECTION:PLAN:BEGIN -->
 The repository now contains a dedicated sub-project under
 `tools/sklearn_fixtures` for producing reference outputs from scikit-learn.
 
@@ -30,14 +45,4 @@ New JSON files will automatically be picked up by the parity Jest tests (see
 `test/clustering/*_reference.test.ts`).  When implementing additional
 algorithms simply extend `generate.py` with extra parameter grids and output
 directories.
-
-## Acceptance Criteria
-
-- [ ] Test datasets prepared (blobs, moons, circles)
-- [ ] Python scripts generate expected outputs for all algorithms
-- [ ] Integration tests for AgglomerativeClustering with all linkage types
-- [ ] Integration tests for SpectralClustering with both affinity types
-- [ ] Integration tests for all validation metrics
-- [ ] Tolerance thresholds defined for numerical differences
-- [ ] Edge case tests (empty data, single cluster, outliers)
-- [ ] Performance comparison reports generated
+<!-- SECTION:PLAN:END -->

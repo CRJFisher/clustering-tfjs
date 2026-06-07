@@ -1,5 +1,5 @@
 ---
-id: task-32.5
+id: DRAFT-6
 title: Implement performance optimizations for mobile devices
 status: To Do
 assignee: []
@@ -7,23 +7,32 @@ created_date: '2025-09-03 21:38'
 updated_date: '2025-09-03 21:45'
 labels: []
 dependencies: []
-parent_task_id: task-32
+parent_task_id: TASK-32
 ---
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
+
 Add mobile-specific performance optimizations including tensor management, memory efficiency, and warmup routines to ensure smooth operation on resource-constrained devices.
+
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 
-- [ ] Float32 tensors used by default in RN
-- [ ] Tensor reuse patterns with tf.tidy implemented
-- [ ] Memory cleanup properly handles mobile constraints
-- [ ] Warmup function for graph compilation added
-- [ ] Batch processing optimized for mobile
-- [ ] Performance monitoring hooks available
+<!-- AC:BEGIN -->
+
+- [ ] #1 Float32 tensors used by default in RN
+- [ ] #2 Tensor reuse patterns with tf.tidy implemented
+- [ ] #3 Memory cleanup properly handles mobile constraints
+- [ ] #4 Warmup function for graph compilation added
+- [ ] #5 Batch processing optimized for mobile
+- [ ] #6 Performance monitoring hooks available
+<!-- AC:END -->
 
 ## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
 
 1. Configure default dtype to float32 for RN platform
 2. Implement tensor pooling for frequently used shapes
@@ -35,3 +44,4 @@ Add mobile-specific performance optimizations including tensor management, memor
 8. Add performance timing hooks for profiling
 9. Create memory pressure detection and adaptive algorithms
 10. Test performance on various mobile devices
+<!-- SECTION:PLAN:END -->

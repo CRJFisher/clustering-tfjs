@@ -54,7 +54,6 @@ Create interactive CodePen examples that demonstrate the clustering algorithms i
 8. Document CDN usage and embed instructions
 9. Update README with links to all examples
 
-
 ## Implementation Notes
 
 ### Implementation Summary
@@ -95,40 +94,48 @@ Based on research, determined Observable is superior to CodePen for data science
 ### Usage
 
 Examples can be used by:
+
 1. Opening HTML files directly in browser
 2. Serving locally with 'npm run serve:examples'
 3. Converting to Observable notebooks on observablehq.com
 4. Adapting for other platforms (CodePen, JSFiddle)
 
 Updated main README.md with:
+
 - Links to Observable platform
 - Instructions for local examples
 - Quick-start Observable notebook code
 
 Created comprehensive Observable README with:
+
 - Ready-to-use Observable notebook code
 - Explanation of why Observable is preferred
 - Instructions for converting HTML to Observable notebooks
 
 Created comprehensive Observable examples with interactive visualizations for all clustering algorithms. Determined Observable is superior to CodePen for data science demos. Updated README with links and quick-start code.
+
 ## Technical Notes
 
 ### Visualization Libraries
+
 - Use D3.js for sophisticated visualizations (dendrograms, interactive scatter plots)
 - Use Chart.js or Plotly.js for simpler 2D scatter plots
 - Consider using Canvas API directly for performance with large datasets
 
 ### Color Schemes
+
 - Use colorblind-friendly palettes (e.g., Viridis, Cividis)
 - Support up to 10 distinct clusters with clear color differentiation
 - Example palette: ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
 
 ### CDN Setup
+
 - Host browser bundle on unpkg.com or jsDelivr
 - Include in CodePen via: `<script src="https://unpkg.com/clustering-tfjs@latest/dist/clustering.browser.js"></script>`
 - Library will be available as `window.ClusteringTFJS`
 
 ### Example Data Generators
+
 ```javascript
 // Generate 2D clusters
 function generateClusters(nClusters, pointsPerCluster, spread = 0.5) {
@@ -139,7 +146,7 @@ function generateClusters(nClusters, pointsPerCluster, spread = 0.5) {
     for (let j = 0; j < pointsPerCluster; j++) {
       data.push([
         centerX + (Math.random() - 0.5) * spread,
-        centerY + (Math.random() - 0.5) * spread
+        centerY + (Math.random() - 0.5) * spread,
       ]);
     }
   }
@@ -148,6 +155,7 @@ function generateClusters(nClusters, pointsPerCluster, spread = 0.5) {
 ```
 
 ### Interactive Controls
+
 - Use HTML5 range inputs for numeric parameters
 - Add play/pause buttons for animations
 - Include reset button to regenerate data

@@ -1,5 +1,5 @@
 ---
-id: task-32
+id: DRAFT-1
 title: Add React Native backend support
 status: To Do
 assignee: []
@@ -10,18 +10,27 @@ dependencies: []
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
+
 Enable clustering-js to run in React Native environments using the TensorFlow.js React Native backend. This will allow mobile applications to use the clustering library with GPU acceleration via the rn-webgl backend.
+
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 
-- [ ] Library detects React Native environment correctly
-- [ ] rn-webgl backend initializes successfully with fallback to CPU
-- [ ] All clustering algorithms work in React Native
-- [ ] Performance optimizations for mobile are implemented
-- [ ] Documentation includes React Native setup guide
-- [ ] Example React Native app demonstrates usage
+<!-- AC:BEGIN -->
+
+- [ ] #1 Library detects React Native environment correctly
+- [ ] #2 rn-webgl backend initializes successfully with fallback to CPU
+- [ ] #3 All clustering algorithms work in React Native
+- [ ] #4 Performance optimizations for mobile are implemented
+- [ ] #5 Documentation includes React Native setup guide
+- [ ] #6 Example React Native app demonstrates usage
+<!-- AC:END -->
 
 ## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
 
 1. **Update environment detection in `src/tf-backend.ts`**
    - Add React Native detection using `navigator.product === 'ReactNative'`
@@ -62,3 +71,4 @@ Enable clustering-js to run in React Native environments using the TensorFlow.js
 - **Required packages**: `@tensorflow/tfjs`, `@tensorflow/tfjs-react-native`, GL bindings (via Expo or manual setup)
 - **Initialization**: Must call `await tf.ready()` before `setBackend()`
 - **No WebGPU**: Existing webgpu backend won't work in RN environment
+<!-- SECTION:PLAN:END -->

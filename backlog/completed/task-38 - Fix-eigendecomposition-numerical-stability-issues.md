@@ -37,25 +37,33 @@ The eigendecomposition routines have critical numerical issues. (1) Division by 
 ## Implementation Notes
 
 ### Fix 1: Jacobi div-by-zero (`eigen_improved.ts:89-108`)
+
 Added three-branch rotation angle computation: when `|diff| <= EPSILON * max(|a_pp|, |a_qq|, 1)`, sets `t = sign(a_pq)` (standard Jacobi for equal diagonal elements, Golub & Van Loan). The existing small-angle and general branches are preserved for non-degenerate cases.
 
 ### Fix 2: PSD clamping (`eigen_improved.ts:174-190`)
+
 Changed from `v < 1e-8 ? 0 : v` (which clamped valid small positives) to only clamping `v < 0` to zero. Added warning for large negative eigenvalues exceeding `tolerance * 100`. Also eliminated variable shadowing of outer `threshold`.
 
 ### Fix 3: Tridiagonal QR (`eigen_qr.ts:147-232`)
+
 Rewrote the QL inner loop to match the standard Numerical Recipes tqli algorithm. The original code used a non-standard formulation (`c = (d[j] - shift) / r`) that was incompatible with the off-diagonal update formula. The corrected version uses `c = g / r` with `g` evolving through the loop as a `let` variable, eliminating the variable shadowing bug entirely. `e[i] = g` now correctly uses the last inner-loop value.
 
 ### Fix 4: Wilkinson shift NaN (`eigen_qr.ts:59`)
+
 Added `if (b === 0) return c` guard — when the off-diagonal is zero, the 2x2 submatrix is already diagonal and the correct shift is `c`. Also initialized `offDiag` from actual matrix norm instead of `Infinity` to avoid unnecessary first iteration on already-diagonal matrices.
 
 ### Fix 5: Zero-eigenvalue tolerance
+
 Changed `TOL` from `1e-2` to `1e-7` in `smallest_eigenvectors_with_values.ts` and from `1e-5` to `1e-7` in `eigen_improved.ts:laplacian_eigen_decomposition`. Eigenvalues as large as 0.009 were previously treated as connected component indicators.
 
 ### Fix 6: Eigenvector orthogonality validation (`eigen_improved.ts:210-222`)
+
 Added post-condition check computing max |v_i · v_j| across all eigenvector pairs. Warns when orthogonality error exceeds 1e-6.
 
 ### Tests
+
 Added `test/utils/eigen_stability.test.ts` with 18 tests covering:
+
 - Equal diagonal elements (2x2, 4x4 Toeplitz, K3 Laplacian)
 - PSD clamping (preserves small positives, clamps negatives, no-op without isPSD)
 - Tridiagonal QR (3x3, identity, 2x2, reconstruction)
@@ -64,6 +72,7 @@ Added `test/utils/eigen_stability.test.ts` with 18 tests covering:
 - Eigenvector orthogonality (Jacobi, tridiagonal QR)
 
 ### Modified files
+
 - `src/utils/eigen_improved.ts` — Fixes 1, 2, 5, 6
 - `src/utils/eigen_qr.ts` — Fixes 3, 4
 - `src/utils/smallest_eigenvectors_with_values.ts` — Fix 5

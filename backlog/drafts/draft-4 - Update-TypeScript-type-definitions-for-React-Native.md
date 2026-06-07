@@ -1,5 +1,5 @@
 ---
-id: task-32.3
+id: DRAFT-4
 title: Update TypeScript type definitions for React Native
 status: To Do
 assignee: []
@@ -7,22 +7,31 @@ created_date: '2025-09-03 21:38'
 updated_date: '2025-09-03 21:44'
 labels: []
 dependencies: []
-parent_task_id: task-32
+parent_task_id: TASK-32
 ---
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
+
 Update all TypeScript interfaces and type definitions to support React Native as a platform and rn-webgl as a backend option.
+
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 
-- [x] Platform type includes 'react-native' option
-- [x] Backend options include 'rn-webgl'
-- [x] BackendConfig interface supports RN-specific options
-- [x] All type exports properly include RN types
-- [x] Type definitions compile without errors
+<!-- AC:BEGIN -->
+
+- [x] #1 Platform type includes 'react-native' option
+- [x] #2 Backend options include 'rn-webgl'
+- [x] #3 BackendConfig interface supports RN-specific options
+- [x] #4 All type exports properly include RN types
+- [x] #5 Type definitions compile without errors
+<!-- AC:END -->
 
 ## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
 
 1. Update clustering-types.ts to add 'react-native' to Platform type
 2. Add 'rn-webgl' to TensorFlowBackend type union
@@ -33,10 +42,14 @@ Update all TypeScript interfaces and type definitions to support React Native as
 7. Update JSDoc comments to mention RN support
 8. Run TypeScript compiler to verify no type errors
 9. Update index.ts exports to include new RN types
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
+<!-- SECTION:NOTES:BEGIN -->
+
 ### Created Files
+
 - **src/types/platform.ts**: Comprehensive platform and backend type definitions
   - Platform type with 'browser', 'node', 'react-native'
   - TensorFlowBackend type with all backend options including 'rn-webgl'
@@ -45,6 +58,7 @@ Update all TypeScript interfaces and type definitions to support React Native as
   - PlatformInfo interface for platform detection
 
 ### Modified Files
+
 - **src/tf-backend.ts**:
   - Updated BackendConfig to use new TensorFlowBackend type
   - Added ReactNativeConfig support
@@ -70,6 +84,8 @@ Update all TypeScript interfaces and type definitions to support React Native as
 4. **ExtendedBackendConfig**: Enhanced version with all platform options
 
 ### Build Verification
+
 - Successfully compiled with npm run build
 - No TypeScript errors
 - Types properly exported and accessible
+<!-- SECTION:NOTES:END -->

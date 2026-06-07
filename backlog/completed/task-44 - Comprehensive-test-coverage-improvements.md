@@ -13,11 +13,15 @@ dependencies: []
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 The test suite has significant coverage gaps and quality issues identified across all reviewers. Major untested modules: connected_components.ts, component_indicators.ts, spectral_consensus.ts, spectral_optimization.ts, eigen_improved.ts, eigen_qr.ts, som_visualization.ts (6 exports), platform.ts, tf-backend.ts, datasets/synthetic.ts. Test quality issues: Math.random() without seed in 6+ test files causing flaky tests, incorrect afterEach scope cleanup in all 3 validation test files (startScope/endScope is a no-op), areLabelingsEquivalent missing reverse-mapping check (undermines 13 reference tests), only 2 of 12 SOM fixtures tested, very loose tolerance thresholds (50% for QE, 0.3 for U-matrix correlation).
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [x] #1 Unit tests added for connected_components and component_indicators
 - [x] #2 Tests added for spectral_consensus and spectral_optimization
 - [x] #3 Tests added for eigen_improved and eigen_qr including degenerate eigenvalue cases
@@ -33,6 +37,7 @@ The test suite has significant coverage gaps and quality issues identified acros
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
+
 1. Fix test quality issues (AC#5, #6, #7, #8) in existing files
 2. Create new unit test files for untested modules (AC#1, #2, #3, #4)
 3. Add edge case tests to existing test files (AC#9)
@@ -44,5 +49,7 @@ The test suite has significant coverage gaps and quality issues identified acros
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+
 Implemented all 10 acceptance criteria. Created 7 new test files and modified 12 existing ones. Total: ~1800 lines of new test code covering previously untested modules, fixing flaky patterns, and adding edge case coverage. See task file for detailed implementation notes.
+
 <!-- SECTION:NOTES:END -->

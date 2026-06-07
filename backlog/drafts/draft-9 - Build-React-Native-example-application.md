@@ -1,5 +1,5 @@
 ---
-id: task-32.8
+id: DRAFT-9
 title: Build React Native example application
 status: To Do
 assignee: []
@@ -7,23 +7,32 @@ created_date: '2025-09-03 21:38'
 updated_date: '2025-09-03 21:47'
 labels: []
 dependencies: []
-parent_task_id: task-32
+parent_task_id: TASK-32
 ---
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
+
 Create a complete React Native example application that demonstrates how to use clustering-js in a mobile app, including visualization and performance monitoring.
+
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 
-- [ ] Example app created with Expo or bare RN
-- [ ] All clustering algorithms demonstrated
-- [ ] Interactive visualizations working
-- [ ] Performance monitoring implemented
-- [ ] App runs on iOS and Android
-- [ ] Code well-commented for learning
+<!-- AC:BEGIN -->
+
+- [ ] #1 Example app created with Expo or bare RN
+- [ ] #2 All clustering algorithms demonstrated
+- [ ] #3 Interactive visualizations working
+- [ ] #4 Performance monitoring implemented
+- [ ] #5 App runs on iOS and Android
+- [ ] #6 Code well-commented for learning
+<!-- AC:END -->
 
 ## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
 
 1. Create examples/react-native directory
 2. Initialize React Native app with Expo or bare RN
@@ -36,3 +45,4 @@ Create a complete React Native example application that demonstrates how to use 
 9. Add export functionality for results
 10. Test on iOS and Android devices
 11. Add README with setup instructions
+<!-- SECTION:PLAN:END -->

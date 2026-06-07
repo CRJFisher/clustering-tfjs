@@ -13,13 +13,17 @@ dependencies: []
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-Multiple reviewers identified systematic tensor memory leaks throughout the codebase. KMeans leaks 6000+ tensors per fit() call from undisposed argMin/min intermediates and centroid shift chains. SpectralClustering leaks tf.cast results when input is a tensor, plus sum().data() and tf.pow intermediates. SOM visualization leaks U-matrix tensors. Validation functions redundantly dispose inside tf.tidy. KMeans has no dispose() method at all, so centroids_ leak permanently. findOptimalClusters never disposes algorithm instances between k evaluations.
+
+Multiple reviewers identified systematic tensor memory leaks throughout the codebase. KMeans leaks 6000+ tensors per fit() call from undisposed argMin/min intermediates and centroid shift chains. SpectralClustering leaks tf.cast results when input is a tensor, plus sum().data() and tf.pow intermediates. SOM visualization leaks U-matrix tensors. Validation functions redundantly dispose inside tf.tidy. KMeans has no dispose() method at all, so centroids\_ leak permanently. findOptimalClusters never disposes algorithm instances between k evaluations.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [x] #1 KMeans.fit wraps argMin/min/centroid-shift ops in tf.tidy or explicitly disposes intermediates
-- [x] #2 KMeans class has a dispose() method that releases centroids_ tensor
+- [x] #2 KMeans class has a dispose() method that releases centroids\_ tensor
 - [x] #3 SpectralClustering.fit disposes tf.cast result when input is a tensor
 - [x] #4 SpectralClustering.fitWithIntermediateSteps disposes tf.pow intermediate
 - [x] #5 Validation functions use consistent tidy-or-manual-dispose pattern (not both)
@@ -31,6 +35,7 @@ Multiple reviewers identified systematic tensor memory leaks throughout the code
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
+
 1. Add dispose() to KMeans (AC#2) - prerequisite for other fixes
 2. Fix KMeans.fit() tensor leaks: argMin/min, slice, centroid shift chain (AC#1)
 3. Fix SpectralClustering tf.cast leak by always disposing Xtensor (AC#3)
@@ -44,5 +49,7 @@ Multiple reviewers identified systematic tensor memory leaks throughout the code
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+
 Implemented all 8 acceptance criteria. Fixed tensor leaks in KMeans, SpectralClustering, validation functions, findOptimalClusters, and SOM visualization. Added 15 memory regression tests.
+
 <!-- SECTION:NOTES:END -->
