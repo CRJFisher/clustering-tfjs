@@ -118,3 +118,83 @@ describe('nn_chain_cluster', () => {
     expect(merges[1].new_size).toBe(3); // merge size-2 with singleton
   });
 });
+
+/**
+ * Ward tie-breaking parity with scikit-learn on a symmetric integer grid.
+ *
+ * A regular grid has many exactly-tied distances, so the dendrogram is only
+ * reproducible if the Lance–Williams update rounds bit-identically to scipy
+ * and distances are computed in float64. These cases pin both: an earlier
+ * `(sum)/total` arrangement and float32 distances each flipped ties here,
+ * producing a "rows" split where sklearn produces "columns".
+ *
+ * Expected partitions are taken from `sklearn.cluster.AgglomerativeClustering`
+ * (linkage='ward') and compared permutation-invariantly via group membership.
+ */
+describe('AgglomerativeClustering – ward tie parity with scikit-learn', () => {
+  function grid_points(side: number): number[][] {
+    const pts: number[][] = [];
+    for (let i = 0; i < side; i++) {
+      for (let j = 0; j < side; j++) pts.push([i, j]);
+    }
+    return pts;
+  }
+
+  /** Canonical signature: sorted list of sorted member-index groups. */
+  function partition_signature(labels: number[]): number[][] {
+    const groups = new Map<number, number[]>();
+    labels.forEach((lab, idx) => {
+      const g = groups.get(lab);
+      if (g) g.push(idx);
+      else groups.set(lab, [idx]);
+    });
+    return [...groups.values()]
+      .map((g) => g.sort((a, b) => a - b))
+      .sort((a, b) => a[0] - b[0]);
+  }
+
+  // Expected groups straight from sklearn AgglomerativeClustering(ward).
+  const cases: Array<{
+    side: number;
+    k: number;
+    expected: number[][];
+  }> = [
+    { side: 4, k: 2, expected: [
+      [0, 1, 4, 5, 8, 9, 12, 13],
+      [2, 3, 6, 7, 10, 11, 14, 15],
+    ] },
+    { side: 4, k: 3, expected: [
+      [0, 1, 4, 5, 8, 9, 12, 13],
+      [2, 3, 6, 7],
+      [10, 11, 14, 15],
+    ] },
+    { side: 4, k: 4, expected: [
+      [0, 1, 4, 5],
+      [2, 3, 6, 7],
+      [8, 9, 12, 13],
+      [10, 11, 14, 15],
+    ] },
+    { side: 5, k: 2, expected: [
+      [0, 1, 5, 6, 10, 11, 15, 16, 20, 21],
+      [2, 3, 4, 7, 8, 9, 12, 13, 14, 17, 18, 19, 22, 23, 24],
+    ] },
+    { side: 5, k: 3, expected: [
+      [0, 1, 5, 6, 10, 11, 15, 16, 20, 21],
+      [2, 3, 4, 7, 8, 9],
+      [12, 13, 14, 17, 18, 19, 22, 23, 24],
+    ] },
+  ];
+
+  cases.forEach(({ side, k, expected }) => {
+    it(`matches sklearn ward on a ${side}x${side} grid at k=${k}`, async () => {
+      const model = new AgglomerativeClustering({
+        n_clusters: k,
+        linkage: 'ward',
+      });
+      const labels = await model.fit_predict(grid_points(side));
+      expect(partition_signature(labels)).toEqual(
+        expected.map((g) => [...g].sort((a, b) => a - b)).sort((a, b) => a[0] - b[0]),
+      );
+    });
+  });
+});
