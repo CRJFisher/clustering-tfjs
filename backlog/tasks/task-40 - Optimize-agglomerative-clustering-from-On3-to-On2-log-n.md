@@ -1,10 +1,10 @@
 ---
 id: TASK-40
-title: Optimize agglomerative clustering from O(n^3) to O(n^2 log n)
-status: In Progress
+title: Optimize agglomerative clustering from O(n^3) to O(n^2)
+status: Done
 assignee: []
 created_date: '2026-03-20'
-updated_date: '2026-06-08 14:30'
+updated_date: '2026-06-08'
 labels: []
 dependencies: []
 ---
@@ -107,3 +107,15 @@ Per **NO BACKWARDS COMPATIBILITY**: rename and re-signature in place, update all
 - Rebuilt `children_` with a scipy-style relabel Union-Find and replaced the float32-to-float64 element copy with `D.set(flat)`.
 - Updated `linkage.test.ts`, `agglomerative_perf.test.ts`, and `tools/sklearn_fixtures/generate.py`. Added a direct hub-shaped merge-loop scaling regression test; current run was 200→400 samples in 7.34ms→15.64ms (2.13x).
 - Verification completed: focused agglomerative/reference/performance tests passed (50 tests); `npm run type-check` passed; `npm run lint` passed; `npx jest --runInBand --testPathIgnorePatterns=src/clustering/som_reference.test.ts` passed (52 suites, 491 tests). Full `npm test -- --runInBand` is blocked by unrelated `src/clustering/som_reference.test.ts`, which does not complete even when run alone after 10 minutes and does not exercise the agglomerative path changed here.
+
+### Follow-up: exact tie parity with scikit-learn (post-review)
+
+A multi-agent review flagged that ward partitions could diverge from scikit-learn on tie-prone data. Root-cause analysis (reproduced against scikit-learn 1.3.2 / scipy 1.10.1) located two real causes — and ruled out the originally-suspected cut logic:
+
+- **Ward Lance–Williams arrangement (root cause, fixed).** The update computed `sqrt((sum)/total)`; scipy's `_ward` distributes `t = 1/total` into each term (`sqrt((si+sx)·t·d_xi² + …)`). The two are algebraically identical but round differently in IEEE-754, which flips exactly-tied distances and yields a different (still valid) dendrogram. Rearranging the formula to scipy's term-by-term form makes ward bit-identical to scipy. A byte-for-byte port of scipy's `nn_chain` confirmed the engine otherwise matches scipy exactly (operands and heights), so the discovery order and "stable-sort + first `n−k`" cut were never wrong — the cut is provably equivalent to scipy's `_hc_cut` given the same tree. The review's suggested `_hc_cut` reimplementation would not have changed anything.
+- **float32 distance seeding (fixed).** The coordinate path seeded distances from the tfjs float32 backend (via the `‖x‖²+‖y‖²−2xᵀy` gram identity), which re-flipped ward ties even after the formula fix. `AgglomerativeClustering` now computes the `n×n` matrix directly in float64 with scikit-learn's `pairwise_distances` definitions (euclidean/manhattan/cosine), upper-triangle-only. The precomputed path was already exact float64.
+- **Single linkage is fundamentally unmatchable on exact ties (documented, not a bug).** scikit-learn's single linkage, scipy's MST single linkage, and the nearest-neighbor chain are three different algorithms that break equal-distance ties differently — on degenerate data scikit-learn and scipy disagree with each other (ARI as low as 0.0). No NN-chain change can match scikit-learn here. Documented in the `AgglomerativeClustering` docstring; partitions agree whenever the data has no exactly-tied distances (the usual continuous case).
+
+Result: ward, complete, and average reproduce scikit-learn partitions exactly, ties included. Added `src/clustering/linkage.test.ts` ward tie-parity cases on 4×4 and 5×5 symmetric grids (hard-coded scikit-learn partitions) — the regression that would have caught the original bug. Focused suites pass (55 tests, +5); full `src/clustering` suite passes (21 suites, 205 tests, excluding the unrelated hanging `som_reference.test.ts`); type-check and lint pass. Perf unchanged within noise: 1000-sample ward 0.30s (AC#3 <5s), 5000-sample ward 7.25s.
+
+- Modified files (follow-up): `src/clustering/linkage.ts` (ward formula), `src/clustering/agglomerative.ts` (float64 `compute_distance_matrix`, docstring), `src/clustering/linkage.test.ts` (ward tie-parity tests).

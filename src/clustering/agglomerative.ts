@@ -5,7 +5,6 @@ import type {
 } from './types';
 import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
-import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 import { MergeRecord, nn_chain_cluster } from './linkage';
 
 /**
@@ -15,6 +14,19 @@ import { MergeRecord, nn_chain_cluster } from './linkage';
  * Builds the full reducible-linkage tree in O(n²) time for single, complete,
  * average, and Ward linkage, then cuts that tree by `n_clusters` or
  * `distance_threshold`.
+ *
+ * Distances are computed in float64 with the same definitions as
+ * scikit-learn's `pairwise_distances`, and the Ward update is arranged to round
+ * bit-identically to scipy. Ward, complete, and average linkage therefore
+ * reproduce scikit-learn's partitions exactly, including the resolution of
+ * exactly-tied merge distances on degenerate data such as integer grids or
+ * duplicate points.
+ *
+ * Single linkage produces a correct single-linkage tree, but its resolution of
+ * tied distances can differ from scikit-learn's: single linkage admits several
+ * equally-valid merge orders, and scikit-learn, scipy, and the nearest-neighbor
+ * chain each break exact ties differently. Partitions agree whenever the data
+ * contains no exactly-tied distances (the usual case for continuous inputs).
  */
 export class AgglomerativeClustering
   implements BaseClustering<AgglomerativeClusteringParams>
@@ -110,34 +122,22 @@ export class AgglomerativeClustering
         }
       }
     } else {
-      const owned_tensor = !is_tensor(_X);
-      const points: tf.Tensor2D = owned_tensor
-        ? tf.tensor2d(_X as number[][])
-        : (_X as tf.Tensor2D);
+      // Materialize the coordinates as a float64 array and compute pairwise
+      // distances directly. scikit-learn computes distances in float64;
+      // matching that precision (instead of the tfjs float32 backend) is what
+      // lets ward/complete/average ties resolve identically to sklearn on
+      // degenerate data such as integer grids or duplicate points.
+      const data: number[][] = is_tensor(_X)
+        ? ((await (_X as tf.Tensor2D).array()) as number[][])
+        : (_X as number[][]);
 
-      n_samples = points.shape[0];
+      n_samples = data.length;
 
       if (n_samples === 0) {
-        if (owned_tensor) {
-          points.dispose();
-        }
         throw new Error('Input X must contain at least one sample.');
       }
 
-      // Compute initial pairwise distance matrix. Read it as a flat row-major
-      // typed array (matching the i*n+j layout used downstream) and copy into a
-      // Float64Array for cache-friendly access and in-place updates — avoiding
-      // the heavy intermediate nested number[][].
-      const distance_tensor = pairwise_distance_matrix(points, metric);
-      const flat = await distance_tensor.data();
-      distance_tensor.dispose();
-
-      D = new Float64Array(n_samples * n_samples);
-      D.set(flat);
-
-      if (owned_tensor) {
-        points.dispose();
-      }
+      D = AgglomerativeClustering.compute_distance_matrix(data, metric);
     }
 
     if (!use_threshold && this.params.n_clusters! > n_samples) {
@@ -257,6 +257,75 @@ export class AgglomerativeClustering
     if (linkage === 'ward' && metric !== 'euclidean') {
       throw new Error("Ward linkage requires metric to be 'euclidean'.");
     }
+  }
+
+  /**
+   * Computes the full `n×n` pairwise distance matrix in float64, laid out
+   * row-major (`i*n+j`) to match the NN-chain engine. Only the upper triangle
+   * is computed and mirrored. Distances use the same definitions as
+   * scikit-learn's `pairwise_distances`, so results are bit-identical to
+   * sklearn for the same coordinates — required for exact tie resolution.
+   */
+  private static compute_distance_matrix(
+    data: number[][],
+    metric: 'euclidean' | 'manhattan' | 'cosine',
+  ): Float64Array {
+    const n = data.length;
+    const dim = n > 0 ? data[0].length : 0;
+    const D = new Float64Array(n * n);
+
+    if (metric === 'euclidean') {
+      for (let i = 0; i < n; i++) {
+        const ri = data[i];
+        for (let j = i + 1; j < n; j++) {
+          const rj = data[j];
+          let sum = 0;
+          for (let k = 0; k < dim; k++) {
+            const diff = ri[k] - rj[k];
+            sum += diff * diff;
+          }
+          const dist = Math.sqrt(sum);
+          D[i * n + j] = dist;
+          D[j * n + i] = dist;
+        }
+      }
+    } else if (metric === 'manhattan') {
+      for (let i = 0; i < n; i++) {
+        const ri = data[i];
+        for (let j = i + 1; j < n; j++) {
+          const rj = data[j];
+          let sum = 0;
+          for (let k = 0; k < dim; k++) {
+            sum += Math.abs(ri[k] - rj[k]);
+          }
+          D[i * n + j] = sum;
+          D[j * n + i] = sum;
+        }
+      }
+    } else {
+      // cosine: 1 − (xᵢ·xⱼ) / (‖xᵢ‖·‖xⱼ‖); a zero-norm vector yields distance 0.
+      const norms = new Float64Array(n);
+      for (let i = 0; i < n; i++) {
+        const ri = data[i];
+        let sq = 0;
+        for (let k = 0; k < dim; k++) sq += ri[k] * ri[k];
+        norms[i] = Math.sqrt(sq);
+      }
+      for (let i = 0; i < n; i++) {
+        const ri = data[i];
+        for (let j = i + 1; j < n; j++) {
+          const rj = data[j];
+          let dot = 0;
+          for (let k = 0; k < dim; k++) dot += ri[k] * rj[k];
+          const denom = norms[i] * norms[j];
+          const dist = denom === 0 ? 0 : 1 - dot / denom;
+          D[i * n + j] = dist;
+          D[j * n + i] = dist;
+        }
+      }
+    }
+
+    return D;
   }
 
   /**

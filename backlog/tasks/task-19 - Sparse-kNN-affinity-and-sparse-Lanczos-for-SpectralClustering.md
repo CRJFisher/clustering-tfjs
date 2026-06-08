@@ -1,10 +1,10 @@
 ---
 id: TASK-19
 title: Sparse kNN affinity and sparse Lanczos for SpectralClustering
-status: In Progress
+status: Done
 assignee: []
 created_date: '2025-07-15'
-updated_date: '2026-06-08 15:35'
+updated_date: '2026-06-08 16:34'
 labels:
   - performance
   - spectral
@@ -41,29 +41,69 @@ own dense path and sklearn's timings.
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 `SpectralClustering` with `affinity='nearest_neighbors'` runs without
+- [x] #1 `SpectralClustering` with `affinity='nearest_neighbors'` runs without
       ever allocating a dense `n × n` matrix (peak memory scales ~`O(n·k)`, not
       `O(n²)`).
-- [ ] #2 kNN affinity is produced and stored in a sparse representation (e.g. CSR),
+- [x] #2 kNN affinity is produced and stored in a sparse representation (e.g. CSR),
       symmetrised consistently with scikit-learn.
-- [ ] #3 The normalised Laplacian is applied as a sparse / matrix-free operator
+- [x] #3 The normalised Laplacian is applied as a sparse / matrix-free operator
       (no dense Laplacian materialised) for the sparse path.
-- [ ] #4 The Lanczos eigensolver accepts a sparse matrix or `matvec` operator and
+- [x] #4 The Lanczos eigensolver accepts a sparse matrix or `matvec` operator and
       returns the `k` smallest eigenpairs without densifying the operand.
-- [ ] #5 Cluster labels for `affinity='nearest_neighbors'` match scikit-learn on
+- [x] #5 Cluster labels for `affinity='nearest_neighbors'` match scikit-learn on
       the existing reference fixtures within the established ARI / label tolerance.
-- [ ] #6 A large-`n` case that is currently infeasible on the dense path (e.g.
+- [x] #6 A large-`n` case that is currently infeasible on the dense path (e.g.
       `n ≥ 10_000`) completes on the sparse path within available memory.
-- [ ] #7 Benchmarks record sparse-path time and peak memory versus (a) the existing
+- [x] #7 Benchmarks record sparse-path time and peak memory versus (a) the existing
       dense path and (b) scikit-learn's `nearest_neighbors` timings, confirming
       the expected reduction.
-- [ ] #8 The dense `rbf` / `precomputed` paths and their existing sklearn parity
+- [x] #8 The dense `rbf` / `precomputed` paths and their existing sklearn parity
       tests remain unchanged and green.
-- [ ] #9 Documentation explains when the sparse path activates, its memory/time
+- [x] #9 Documentation explains when the sparse path activates, its memory/time
       characteristics, and its scikit-learn equivalence.
 <!-- AC:END -->
 
+## Implementation Notes
 
+<!-- SECTION:NOTES:BEGIN -->
+- Added CSR-style sparse matrix helpers in `src/graph/sparse.ts`, a sparse kNN
+  affinity builder in `src/graph/affinity.ts`, sparse connected-component
+  traversal, and a matrix-free normalized-Laplacian operator.
+- Generalized `lanczos_smallest_eigenpairs` and
+  `smallest_eigenvectors_with_values` to accept a `{ n, matvec }` operator; the
+  dense tensor path still uses the existing tensor-to-array behavior.
+- Wired `SpectralClustering.fit` so `affinity='nearest_neighbors'` builds and
+  stores sparse affinity only, skips the dense `max_samples` guard, detects
+  components sparsely, and eigensolves the sparse normalized Laplacian without
+  materializing dense affinity or Laplacian tensors. Dense `rbf`, `precomputed`,
+  and callable affinity paths are unchanged. `fit_with_intermediate_steps`
+  remains the explicit dense-debug path because its public return type exposes
+  dense intermediate tensors.
+- Updated the benchmark harness with a `spectral_sparse` entry and added
+  `tools/sklearn_fixtures/benchmark_spectral_knn.py` for sklearn
+  `nearest_neighbors` timing comparisons. Local validation: JS sparse
+  `n=10000, features=10, centers=5, n_neighbors=10` completed in ~1000 ms with
+  144,720 sparse affinity entries and ~611 MB process RSS; sklearn completed
+  the same case in ~4610 ms with ~375 MB RSS. JS dense-vs-sparse benchmark at
+  `n=1000` recorded dense tensor memory ~4,000,000 bytes vs sparse additional
+  tensor memory ~40,000 bytes.
+- Added documentation in `README.md` describing sparse-path activation, memory
+  characteristics, and scikit-learn symmetrization equivalence.
+- Validation run:
+  - `npm run type-check`
+  - `npm run lint`
+  - Focused sparse/eigen/spectral tests:
+    `npm test -- --runTestsByPath src/graph/sparse.test.ts src/graph/affinity.test.ts src/graph/laplacian_sparse.test.ts src/graph/connected_components_sparse.test.ts src/eigen/lanczos.test.ts src/clustering/spectral_sparse.test.ts`
+  - Existing spectral/sklearn parity tests:
+    `npm test -- --runTestsByPath src/clustering/spectral.test.ts src/clustering/spectral_steps.test.ts src/clustering/spectral_reference.test.ts src/clustering/spectral_affinity.test.ts src/clustering/spectral_scale.test.ts`
+  - Benchmark harness test: `npm test -- --runTestsByPath benchmarks/benchmark.test.ts`
+  - Repo suite excluding unrelated local worktree discovery and the pre-existing
+    independently hanging `src/clustering/som_reference.test.ts`:
+    `npm test -- --testPathIgnorePatterns='/.claude/' 'src/clustering/som_reference.test.ts' --forceExit`
+    passed 56 suites / 499 tests. Running `src/clustering/som_reference.test.ts`
+    alone timed out after setup, so it was not changed as part of this spectral
+    task.
+<!-- SECTION:NOTES:END -->
 
 ## Implementation Plan (the how)
 

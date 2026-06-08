@@ -57,12 +57,22 @@ function lance_williams(
     case 'average':
       return (ni * dik + nj * djk) / (ni + nj);
     case 'ward': {
-      const total = ni + nj + nk;
-      const numerator =
-        (ni + nk) * dik * dik +
-        (nj + nk) * djk * djk -
-        nk * dij * dij;
-      return Math.sqrt(Math.max(numerator / total, 0));
+      // The factor t = 1/(ni+nj+nk) is distributed into each term rather than
+      // dividing a summed numerator once. The two forms are algebraically
+      // identical but round differently in IEEE-754: summing first and dividing
+      // last can shift the result by one ULP, which flips exact distance ties
+      // on symmetric data and produces a different (still valid) dendrogram.
+      // This arrangement is bit-identical to scipy's `_ward`, so NN-chain
+      // reproduces scipy/sklearn ward trees exactly, ties included.
+      const t = 1 / (ni + nj + nk);
+      return Math.sqrt(
+        Math.max(
+          (ni + nk) * t * dik * dik +
+            (nj + nk) * t * djk * djk -
+            nk * t * dij * dij,
+          0,
+        ),
+      );
     }
   }
 }
