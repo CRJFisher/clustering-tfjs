@@ -35,6 +35,7 @@ The SOM implementation has multiple correctness bugs. (1) Weight update missing 
 ## Implementation Notes
 
 ### Approach
+
 All 6 correctness bugs were fixed in the core SOM files, with 7 new tests added to verify each fix.
 
 ### Fixes implemented
@@ -52,11 +53,13 @@ All 6 correctness bugs were fixed in the core SOM files, with 7 new tests added 
 6. **getDensityMap convolution** (`som_visualization.ts`): Completed the Gaussian convolution using `tf.conv2d` with 'same' padding. The hitMap is properly reshaped to [1,H,W,1], convolved with the kernel [K,K,1,1], and squeezed back. Added proper `hitMap.dispose()` in finally block.
 
 ### Additional changes
+
 - Added `getDensityMap` and `getNeighborDistanceMatrix` to public exports in `src/index.ts`
 - Added import for `make_random_stream` and `RandomStream` in `som.ts`
 - Added `shuffleIndices` private method to `SOM` class
 
 ### Modified files
+
 - `src/clustering/som.ts` — weight normalization, 8-connectivity, epoch shuffling, shuffle helper
 - `src/clustering/som_neighborhood.ts` — PCA-based linear initialization, 8-connectivity neighbor helpers
 - `src/utils/som_visualization.ts` — getDensityMap convolution, 8-connectivity in getNeighborDistanceMatrix

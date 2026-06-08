@@ -12,21 +12,21 @@ dependencies: []
 
 ## Description
 
-Five parallel investigation agents identified four confirmed bugs/gaps in the clustering-tfjs library that affect consumers like code-charter. The issues are: (1) findOptimalClusters leaks tensors because clusterer instances are never disposed after fitPredict — spectral clustering leaks 2 tensors per k iteration (affinity matrix + KMeans centroids), KMeans leaks centroids, SOM leaks weights/grid/BMUs. (2) findOptimalClusters with algorithm 'som' is broken by design — the k parameter loosely controls grid size but the output always has gridW*gridH labels, making the optimal-k sweep meaningless. A secondary grouping step (clustering SOM weight vectors) is needed but entirely absent. (3) AgglomerativeClustering computes merge distances (minDist) in the inner loop but discards them — only children_ is stored, not distances_, blocking dendrogram cutting and distance-threshold stopping. (4) AgglomerativeClustering lacks metric 'precomputed' support for consuming pre-built distance/similarity matrices, unlike SpectralClustering which supports affinity 'precomputed'. The validation metrics (silhouette, Davies-Bouldin, Calinski-Harabasz) were confirmed to have NO tensor leaks — they properly use tf.tidy().
+Five parallel investigation agents identified four confirmed bugs/gaps in the clustering-tfjs library that affect consumers like code-charter. The issues are: (1) findOptimalClusters leaks tensors because clusterer instances are never disposed after fitPredict — spectral clustering leaks 2 tensors per k iteration (affinity matrix + KMeans centroids), KMeans leaks centroids, SOM leaks weights/grid/BMUs. (2) findOptimalClusters with algorithm 'som' is broken by design — the k parameter loosely controls grid size but the output always has gridW\*gridH labels, making the optimal-k sweep meaningless. A secondary grouping step (clustering SOM weight vectors) is needed but entirely absent. (3) AgglomerativeClustering computes merge distances (minDist) in the inner loop but discards them — only children* is stored, not distances*, blocking dendrogram cutting and distance-threshold stopping. (4) AgglomerativeClustering lacks metric 'precomputed' support for consuming pre-built distance/similarity matrices, unlike SpectralClustering which supports affinity 'precomputed'. The validation metrics (silhouette, Davies-Bouldin, Calinski-Harabasz) were confirmed to have NO tensor leaks — they properly use tf.tidy().
 
 ## Acceptance Criteria
 
-- [x] Add dispose() method to KMeans that cleans up centroids_ tensor
+- [x] Add dispose() method to KMeans that cleans up centroids\_ tensor
 - [x] Call clusterer.dispose() after extracting labels in findOptimalClusters loop (after line 187) for all algorithms that have dispose()
 - [x] Fix findOptimalClusters SOM path to use two-phase clustering: train SOM then apply agglomerative/kmeans on weight vectors to produce exactly k clusters
-- [x] Add distances_ property to AgglomerativeClustering that records merge distance at each step (capture minDist before it is discarded after line 152)
+- [x] Add distances\_ property to AgglomerativeClustering that records merge distance at each step (capture minDist before it is discarded after line 152)
 - [x] Add distanceThreshold parameter to AgglomerativeClusteringParams as alternative stopping criterion to nClusters
 - [x] Add metric precomputed to AgglomerativeClustering that bypasses pairwiseDistanceMatrix and uses input directly as distance matrix
 - [x] Validate precomputed distance matrix is square symmetric with zero diagonal
 - [x] Disallow linkage ward with metric precomputed (matching scikit-learn)
 - [x] Add tensor leak regression tests using tf.memory().numTensors assertions in findOptimalClusters tests
 - [x] Add tests for SOM two-phase clustering producing correct cluster count
-- [x] Add tests for agglomerative distances_ output matching expected merge distances
+- [x] Add tests for agglomerative distances\_ output matching expected merge distances
 - [x] Add tests for agglomerative with metric precomputed producing same results as computing distances internally
 
 ## Implementation Plan
@@ -36,6 +36,7 @@ Five parallel investigation agents identified four confirmed bugs/gaps in the cl
 **Root cause:** `src/utils/findOptimalClusters.ts` lines 114-198 create clusterer instances in a loop but never call `dispose()` after `fitPredict` returns. No `tf.tidy()` wraps the loop.
 
 **Leaked tensors per k iteration:**
+
 - SpectralClustering: `affinityMatrix_` (n×n tensor) + internal KMeans `centroids_` = 2 tensors
 - KMeans: `centroids_` (k×d tensor) = 1 tensor (KMeans has NO dispose() method)
 - SOM: `weights_` + `gridDistanceMatrix_` + `bmus_` = 3 tensors
@@ -44,6 +45,7 @@ Five parallel investigation agents identified four confirmed bugs/gaps in the cl
 **Fix steps:**
 
 1. **Add `dispose()` to KMeans** (`src/clustering/kmeans.ts`):
+
    ```typescript
    public dispose(): void {
      if (this.centroids_) {
@@ -54,6 +56,7 @@ Five parallel investigation agents identified four confirmed bugs/gaps in the cl
    ```
 
 2. **Add clusterer disposal in findOptimalClusters** (`src/utils/findOptimalClusters.ts`), after extracting labels (~line 187):
+
    ```typescript
    // After: const labels = Array.from(labelsArray);
    if (typeof (clusterer as any).dispose === 'function') {
@@ -82,6 +85,7 @@ Five parallel investigation agents identified four confirmed bugs/gaps in the cl
 After SOM training, apply secondary clustering on the SOM weight vectors to produce exactly `k` clusters:
 
 1. In the `'som'` case of findOptimalClusters, after `fitPredict`:
+
    ```typescript
    case 'som': {
      // Phase 1: Train SOM with fixed grid (e.g., 5×5)
@@ -118,36 +122,43 @@ After SOM training, apply secondary clustering on the SOM weight vectors to prod
 **Fix (~6 lines of production code):**
 
 1. Add property declaration (after line 43):
+
    ```typescript
    public distances_: number[] | null = null;
    ```
 
 2. Initialize array (after line 121):
+
    ```typescript
    const merge_distances: number[] = [];
    ```
 
 3. Capture distance (after line 152):
+
    ```typescript
    merge_distances.push(minDist);
    ```
 
 4. Store result (after line 186):
+
    ```typescript
    this.distances_ = merge_distances;
    ```
 
 5. Handle trivial case (line 95-99):
+
    ```typescript
    this.distances_ = [];
    ```
 
 6. **Add `distanceThreshold` parameter** to `AgglomerativeClusteringParams` in `src/clustering/types.ts`:
+
    ```typescript
    distanceThreshold?: number; // mutually exclusive with nClusters
    ```
 
 7. Change loop condition (line 130):
+
    ```typescript
    while (clusterIds.length > (distanceThreshold != null ? 1 : nClusters)) {
      // ... find minDist ...
@@ -165,6 +176,7 @@ After SOM training, apply secondary clustering on the SOM weight vectors to prod
 **Fix:**
 
 1. Add `'precomputed'` to types (`src/clustering/types.ts` line 161):
+
    ```typescript
    metric?: 'euclidean' | 'manhattan' | 'cosine' | 'precomputed';
    ```
@@ -175,6 +187,7 @@ After SOM training, apply secondary clustering on the SOM weight vectors to prod
    - Disallow `linkage: 'ward'` with `metric: 'precomputed'`
 
 4. Add conditional in `fit()` (before line 108):
+
    ```typescript
    if (this.params.metric === 'precomputed') {
      // Validate: square, symmetric, zero diagonal
@@ -202,15 +215,15 @@ After SOM training, apply secondary clustering on the SOM weight vectors to prod
 
 ### Key Files
 
-| File | Changes |
-|------|---------|
-| `src/utils/findOptimalClusters.ts` | Add clusterer disposal, fix SOM two-phase path |
-| `src/clustering/kmeans.ts` | Add `dispose()` method |
-| `src/clustering/spectral.ts` | Fix `dispose()` to also clean internal KMeans centroids |
-| `src/clustering/agglomerative.ts` | Add `distances_`, `distanceThreshold`, `metric: 'precomputed'` |
-| `src/clustering/types.ts` | Add `distanceThreshold`, expand `metric` union type |
-| `test/utils/findOptimalClusters.test.ts` | Tensor leak regression tests, SOM two-phase tests |
-| `test/clustering/agglomerative.test.ts` | Tests for `distances_`, `distanceThreshold`, precomputed |
+| File                                     | Changes                                                        |
+| ---------------------------------------- | -------------------------------------------------------------- |
+| `src/utils/findOptimalClusters.ts`       | Add clusterer disposal, fix SOM two-phase path                 |
+| `src/clustering/kmeans.ts`               | Add `dispose()` method                                         |
+| `src/clustering/spectral.ts`             | Fix `dispose()` to also clean internal KMeans centroids        |
+| `src/clustering/agglomerative.ts`        | Add `distances_`, `distanceThreshold`, `metric: 'precomputed'` |
+| `src/clustering/types.ts`                | Add `distanceThreshold`, expand `metric` union type            |
+| `test/utils/findOptimalClusters.test.ts` | Tensor leak regression tests, SOM two-phase tests              |
+| `test/clustering/agglomerative.test.ts`  | Tests for `distances_`, `distanceThreshold`, precomputed       |
 
 ## Implementation Notes
 
