@@ -4,7 +4,15 @@ import type {
   BaseClustering,
 } from './types';
 import * as tf from '../backend/adapter';
-import { compute_rbf_affinity, compute_knn_affinity } from '../graph/affinity';
+import {
+  compute_rbf_affinity,
+  compute_knn_affinity,
+  compute_sparse_knn_affinity,
+} from '../graph/affinity';
+import {
+  SparseMatrix,
+  sparse_stats,
+} from '../graph/sparse';
 import { is_tensor } from '../tensor/tensor_guards';
 
 // Types for intermediate step results
@@ -81,6 +89,9 @@ export class SpectralClustering
   /** Cached affinity matrix (shape: n_samples × n_samples). */
   public affinity_matrix_: tf.Tensor2D | null = null;
 
+  /** Cached sparse affinity matrix for nearest-neighbor fits. */
+  public sparse_affinity_matrix_: SparseMatrix | null = null;
+
   /** Debug information (populated when using return_intermediate_steps) */
   private debug_info_: DebugInfo | null = null;
 
@@ -103,6 +114,7 @@ export class SpectralClustering
       this.affinity_matrix_ = null;
     }
 
+    this.sparse_affinity_matrix_ = null;
     this.labels_ = null;
   }
 
@@ -160,8 +172,10 @@ export class SpectralClustering
       throw new Error('n_clusters cannot exceed number of samples.');
     }
 
+    const use_sparse_nearest_neighbors =
+      this.params.affinity === 'nearest_neighbors';
     const max_samples = this.params.max_samples ?? 10_000;
-    if (n_samples > max_samples) {
+    if (!use_sparse_nearest_neighbors && n_samples > max_samples) {
       x_tensor.dispose();
       throw new Error(
         `Input has ${n_samples} samples, which exceeds the maximum of ${max_samples} ` +
@@ -171,14 +185,28 @@ export class SpectralClustering
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
-    this.affinity_matrix_ = SpectralClustering.compute_affinity_matrix(
-      x_tensor,
-      this.params,
-    );
+    let sparse_affinity: SparseMatrix | null = null;
 
-    const sum_tensor = this.affinity_matrix_.sum();
-    const affinity_sum = (await sum_tensor.data())[0];
-    sum_tensor.dispose();
+    if (use_sparse_nearest_neighbors) {
+      const k = SpectralClustering.default_neighbors(this.params, n_samples);
+      sparse_affinity = compute_sparse_knn_affinity(x_tensor, k, true);
+      this.sparse_affinity_matrix_ = sparse_affinity;
+    } else {
+      this.affinity_matrix_ = SpectralClustering.compute_affinity_matrix(
+        x_tensor,
+        this.params,
+      );
+    }
+
+    let affinity_sum: number;
+    if (sparse_affinity != null) {
+      affinity_sum = 0;
+      for (const value of sparse_affinity.data) affinity_sum += value;
+    } else {
+      const sum_tensor = this.affinity_matrix_!.sum();
+      affinity_sum = (await sum_tensor.data())[0];
+      sum_tensor.dispose();
+    }
     if (affinity_sum === 0) {
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
@@ -187,27 +215,33 @@ export class SpectralClustering
 
     // Capture affinity statistics if requested
     if (this.capture_debug_info) {
-      const data = await this.affinity_matrix_.data();
-      const data_array = Array.from(data);
-      const nnz = data_array.filter((v: number) => v !== 0).length;
-      this.debug_info_!.affinity_stats = {
-        shape: this.affinity_matrix_.shape,
-        nnz,
-        min: Math.min(...data_array),
-        max: Math.max(...data_array),
-        mean:
-          data_array.reduce((a: number, b: number) => a + b, 0) /
-          data_array.length,
-      };
+      if (sparse_affinity != null) {
+        this.debug_info_!.affinity_stats = sparse_stats(sparse_affinity);
+      } else {
+        const data = await this.affinity_matrix_!.data();
+        const data_array = Array.from(data);
+        const nnz = data_array.filter((v: number) => v !== 0).length;
+        this.debug_info_!.affinity_stats = {
+          shape: this.affinity_matrix_!.shape,
+          nnz,
+          min: Math.min(...data_array),
+          max: Math.max(...data_array),
+          mean:
+            data_array.reduce((a: number, b: number) => a + b, 0) /
+            data_array.length,
+        };
+      }
     }
 
     /* ---------------------------- 2) Component Detection ---------------------- */
     // Detect connected components
-    const { detect_connected_components } = await import(
+    const { detect_connected_components, detect_sparse_connected_components } = await import(
       '../graph/connected_components'
     );
     const { num_components, is_fully_connected, component_labels } =
-      detect_connected_components(this.affinity_matrix_ as tf.Tensor2D);
+      sparse_affinity != null
+        ? detect_sparse_connected_components(sparse_affinity)
+        : detect_connected_components(this.affinity_matrix_ as tf.Tensor2D);
 
     // Warn if disconnected
     if (!is_fully_connected) {
@@ -259,64 +293,82 @@ export class SpectralClustering
       }
     } else {
       /* ---------------------------- Standard Approach ------------------------ */
-      // Compute Laplacian and eigenvectors as before
-      const { normalised_laplacian } = await import('../graph/laplacian');
-
-      // Compute normalized Laplacian AND get degree information for recovery
-      const { laplacian, sqrt_degrees } = tf.tidy(() =>
-        normalised_laplacian(this.affinity_matrix_ as tf.Tensor2D, true),
-      );
-
-      // Capture Laplacian spectrum if requested
-      if (this.capture_debug_info) {
-        const { smallest_eigenvectors_with_values: spectrum_helper } = await import(
-          '../eigen/smallest_eigenvectors_with_values'
-        );
-        const spectrum_k = Math.min(10, laplacian.shape[0]);
-        const { eigenvalues: spec_evals, eigenvectors: spec_vecs } = spectrum_helper(laplacian, spectrum_k);
-        const spec_data = await spec_evals.data();
-        this.debug_info_!.laplacian_spectrum = Array.from(spec_data);
-        spec_evals.dispose();
-        spec_vecs.dispose();
-      }
-
-      // Get eigenvectors AND eigenvalues for D^{1/2} normalization
       const { smallest_eigenvectors_with_values } = await import(
         '../eigen/smallest_eigenvectors_with_values'
       );
 
-      // When we have more components than clusters, we need to get more eigenvectors
-      // to ensure we capture all component indicators
       const num_eigenvectors = Math.max(this.params.n_clusters, num_components);
+      let U_full: tf.Tensor2D;
+      let eigenvalues: tf.Tensor1D;
+      let sqrt_degrees_tensor: tf.Tensor1D | null = null;
 
-      const { eigenvectors: U_full, eigenvalues } =
-        smallest_eigenvectors_with_values(laplacian, num_eigenvectors);
+      if (sparse_affinity != null) {
+        const { sparse_normalised_laplacian_operator } = await import(
+          '../graph/laplacian'
+        );
+        const sparse_laplacian =
+          sparse_normalised_laplacian_operator(sparse_affinity);
 
-      // Apply sklearn's normalization: divide by D^{1/2} (dd in sklearn)
-      // NO diffusion map scaling for spectral clustering!
-      const U_scaled = tf.tidy(() => {
-        const num_to_use = this.params.n_clusters;
+        if (this.capture_debug_info) {
+          const spectrum_k = Math.min(10, sparse_laplacian.operator.n);
+          const { eigenvalues: spec_evals, eigenvectors: spec_vecs } =
+            smallest_eigenvectors_with_values(
+              sparse_laplacian.operator,
+              spectrum_k,
+            );
+          const spec_data = await spec_evals.data();
+          this.debug_info_!.laplacian_spectrum = Array.from(spec_data);
+          spec_evals.dispose();
+          spec_vecs.dispose();
+        }
 
+        const result = smallest_eigenvectors_with_values(
+          sparse_laplacian.operator,
+          num_eigenvectors,
+        );
+        U_full = result.eigenvectors;
+        eigenvalues = result.eigenvalues;
+        sqrt_degrees_tensor = tf.tensor1d(
+          Array.from(sparse_laplacian.sqrt_degrees),
+          'float32',
+        );
+      } else {
+        const { normalised_laplacian } = await import('../graph/laplacian');
+        const { laplacian, sqrt_degrees } = tf.tidy(() =>
+          normalised_laplacian(this.affinity_matrix_ as tf.Tensor2D, true),
+        );
+
+        if (this.capture_debug_info) {
+          const spectrum_k = Math.min(10, laplacian.shape[0]);
+          const { eigenvalues: spec_evals, eigenvectors: spec_vecs } =
+            smallest_eigenvectors_with_values(laplacian, spectrum_k);
+          const spec_data = await spec_evals.data();
+          this.debug_info_!.laplacian_spectrum = Array.from(spec_data);
+          spec_evals.dispose();
+          spec_vecs.dispose();
+        }
+
+        const result = smallest_eigenvectors_with_values(
+          laplacian,
+          num_eigenvectors,
+        );
+        U_full = result.eigenvectors;
+        eigenvalues = result.eigenvalues;
+        sqrt_degrees_tensor = sqrt_degrees;
+        laplacian.dispose();
+      }
+
+      U = tf.tidy(() => {
         const U_selected = tf.slice(
           U_full,
           [0, 0],
-          [-1, num_to_use],
+          [-1, this.params.n_clusters],
         ) as tf.Tensor2D;
-
-        // Recover embedding from normalized Laplacian eigenvectors by dividing by D^{1/2}
-        // sqrt_degrees is D^{-1/2}, so D^{1/2} = pow(sqrt_degrees, -1)
-        // This matches sklearn's spectral_embedding: embedding /= dd where dd = D^{1/2}
-        const sqrt_deg = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
+        const sqrt_deg = tf.pow(sqrt_degrees_tensor!, -1) as tf.Tensor1D;
         const sqrt_deg_col = sqrt_deg.reshape([-1, 1]) as tf.Tensor2D;
-        const U_normalized = U_selected.div(sqrt_deg_col) as tf.Tensor2D;
-
-        return U_normalized;
+        return U_selected.div(sqrt_deg_col) as tf.Tensor2D;
       });
 
-      // Use the scaled eigenvectors
-      U = U_scaled;
-
-      // Capture embedding statistics if requested
       if (this.capture_debug_info) {
         const emb_data = await U.data();
         const [n, k] = U.shape;
@@ -336,9 +388,7 @@ export class SpectralClustering
         };
       }
 
-      // Clean up intermediate tensors
-      laplacian.dispose();
-      sqrt_degrees.dispose();
+      sqrt_degrees_tensor.dispose();
       eigenvalues.dispose();
       U_full.dispose();
     }

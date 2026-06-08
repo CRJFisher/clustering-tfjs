@@ -1,10 +1,10 @@
 ---
-id: task-19
+id: TASK-19
 title: Sparse kNN affinity and sparse Lanczos for SpectralClustering
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2025-07-15'
-updated_date: '2026-06-08'
+updated_date: '2026-06-08 15:35'
 labels:
   - performance
   - spectral
@@ -14,6 +14,7 @@ dependencies:
 
 ## Description
 
+<!-- SECTION:DESCRIPTION:BEGIN -->
 SpectralClustering does not scale. Every fit materialises a dense `n × n`
 affinity matrix, derives a dense normalised Laplacian from it, and feeds that
 dense matrix to the eigensolver. Memory is `O(n²)` and time is dominated by
@@ -36,29 +37,33 @@ performance**: cluster assignments must match sklearn
 (`affinity='nearest_neighbors'`) within the established tolerance, and the sparse
 path must demonstrate the expected memory/time reduction relative to both our
 own dense path and sklearn's timings.
+<!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
-- [ ] `SpectralClustering` with `affinity='nearest_neighbors'` runs without
+<!-- AC:BEGIN -->
+- [ ] #1 `SpectralClustering` with `affinity='nearest_neighbors'` runs without
       ever allocating a dense `n × n` matrix (peak memory scales ~`O(n·k)`, not
       `O(n²)`).
-- [ ] kNN affinity is produced and stored in a sparse representation (e.g. CSR),
+- [ ] #2 kNN affinity is produced and stored in a sparse representation (e.g. CSR),
       symmetrised consistently with scikit-learn.
-- [ ] The normalised Laplacian is applied as a sparse / matrix-free operator
+- [ ] #3 The normalised Laplacian is applied as a sparse / matrix-free operator
       (no dense Laplacian materialised) for the sparse path.
-- [ ] The Lanczos eigensolver accepts a sparse matrix or `matvec` operator and
+- [ ] #4 The Lanczos eigensolver accepts a sparse matrix or `matvec` operator and
       returns the `k` smallest eigenpairs without densifying the operand.
-- [ ] Cluster labels for `affinity='nearest_neighbors'` match scikit-learn on
+- [ ] #5 Cluster labels for `affinity='nearest_neighbors'` match scikit-learn on
       the existing reference fixtures within the established ARI / label tolerance.
-- [ ] A large-`n` case that is currently infeasible on the dense path (e.g.
+- [ ] #6 A large-`n` case that is currently infeasible on the dense path (e.g.
       `n ≥ 10_000`) completes on the sparse path within available memory.
-- [ ] Benchmarks record sparse-path time and peak memory versus (a) the existing
+- [ ] #7 Benchmarks record sparse-path time and peak memory versus (a) the existing
       dense path and (b) scikit-learn's `nearest_neighbors` timings, confirming
       the expected reduction.
-- [ ] The dense `rbf` / `precomputed` paths and their existing sklearn parity
+- [ ] #8 The dense `rbf` / `precomputed` paths and their existing sklearn parity
       tests remain unchanged and green.
-- [ ] Documentation explains when the sparse path activates, its memory/time
+- [ ] #9 Documentation explains when the sparse path activates, its memory/time
       characteristics, and its scikit-learn equivalence.
+<!-- AC:END -->
+
+
 
 ## Implementation Plan (the how)
 

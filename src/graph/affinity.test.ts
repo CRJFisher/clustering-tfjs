@@ -3,7 +3,9 @@ import * as tf from "../../test_support/tensorflow_helper";
 import {
   compute_rbf_affinity,
   compute_knn_affinity,
+  compute_sparse_knn_affinity,
 } from "./affinity";
+import { sparse_to_dense_array } from "./sparse";
 
 describe("Affinity matrix utilities", () => {
   afterEach(() => tf.engine().disposeVariables());
@@ -51,6 +53,20 @@ describe("Affinity matrix utilities", () => {
     // So each node only connects to its 1 nearest neighbor (which is itself)
     // Result: diagonal matrix with 4 edges
     expect(edge_count).toBe(4);
+  });
+
+  it("computes sparse k-NN affinity matching the dense helper", () => {
+    const X = tf.tensor2d([[0], [1], [2], [4]]);
+
+    const dense = compute_knn_affinity(X, 2);
+    const sparse = compute_sparse_knn_affinity(X, 2);
+
+    expect(sparse.rows).toBe(4);
+    expect(sparse.cols).toBe(4);
+    expect(sparse_to_dense_array(sparse)).toEqual(dense.arraySync());
+
+    dense.dispose();
+    X.dispose();
   });
 });
 

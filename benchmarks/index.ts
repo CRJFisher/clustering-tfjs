@@ -33,7 +33,7 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
 ];
 
 export async function benchmark_algorithm(
-  algorithm: 'kmeans' | 'spectral' | 'agglomerative' | 'som',
+  algorithm: 'kmeans' | 'spectral' | 'spectral_sparse' | 'agglomerative' | 'som',
   config: BenchmarkConfig,
   backend: string,
 ): Promise<BenchmarkResult> {
@@ -69,6 +69,17 @@ export async function benchmark_algorithm(
       const spectral = new SpectralClustering({
         n_clusters: config.centers,
         affinity: 'rbf',
+        random_state: 42,
+      });
+      await spectral.fit(X);
+      _labels = spectral.labels_!;
+      break;
+    }
+    case 'spectral_sparse': {
+      const spectral = new SpectralClustering({
+        n_clusters: config.centers,
+        affinity: 'nearest_neighbors',
+        n_neighbors: Math.min(10, config.samples - 1),
         random_state: 42,
       });
       await spectral.fit(X);
@@ -150,9 +161,12 @@ export async function get_available_backends(): Promise<string[]> {
 export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
   const backends = await get_available_backends();
-  const algorithms: Array<'kmeans' | 'spectral' | 'agglomerative' | 'som'> = [
+  const algorithms: Array<
+    'kmeans' | 'spectral' | 'spectral_sparse' | 'agglomerative' | 'som'
+  > = [
     'kmeans',
     'spectral',
+    'spectral_sparse',
     'agglomerative',
     'som',
   ];

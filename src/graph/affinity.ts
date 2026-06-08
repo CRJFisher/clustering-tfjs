@@ -1,6 +1,11 @@
 import * as tf from '../backend/adapter';
 
 import { pairwise_euclidean_matrix } from '../distance/pairwise_distance';
+import {
+  SparseMatrix,
+  sparse_matrix_from_row_maps,
+  sparse_to_dense_tensor,
+} from './sparse';
 
 /**
  * Computes the RBF (Gaussian) kernel affinity matrix for the given points.
@@ -60,6 +65,22 @@ export function compute_knn_affinity(
   k: number,
   include_self: boolean = true,
 ): tf.Tensor2D {
+  return sparse_to_dense_tensor(
+    compute_sparse_knn_affinity(points, k, include_self),
+  );
+}
+
+/**
+ * Builds a sparse k-nearest-neighbour connectivity graph in CSR form.
+ *
+ * The directed kNN graph is symmetrised as `0.5 * (A + Aᵀ)`, matching the
+ * existing dense helper and sklearn's SpectralClustering connectivity path.
+ */
+export function compute_sparse_knn_affinity(
+  points: tf.Tensor2D,
+  k: number,
+  include_self: boolean = true,
+): SparseMatrix {
   if (!Number.isInteger(k) || k < 1) {
     throw new Error('k (n_neighbors) must be a positive integer.');
   }
@@ -93,7 +114,20 @@ export function compute_knn_affinity(
   const points_kept = tf.keep(points) as tf.Tensor2D;
   const squared_norms_kept = tf.keep(points_kept.square().sum(1)) as tf.Tensor1D; // (n)
 
-  const coords: number[][] = [];
+  const rows: Array<Map<number, number>> = Array.from(
+    { length: n_samples },
+    () => new Map<number, number>(),
+  );
+
+  const add_symmetrised_edge = (row: number, col: number): void => {
+    if (row === col) {
+      rows[row].set(col, 1);
+      return;
+    }
+
+    rows[row].set(col, (rows[row].get(col) ?? 0) + 0.5);
+    rows[col].set(row, (rows[col].get(row) ?? 0) + 0.5);
+  };
 
   // Empirically chosen – small enough to fit typical accelerator memory while
   // large enough to utilise BLAS throughput.
@@ -143,33 +177,16 @@ export function compute_knn_affinity(
         }
 
         for (const nb of neighbours) {
-          coords.push([row_global, nb]);
+          add_symmetrised_edge(row_global, nb);
         }
       }
     }); // tidy – dispose temporaries for this block
   }
 
-  // Release kept tensors
-  points_kept.dispose();
+  // Release tensors created by this helper. The input tensor is caller-owned.
   squared_norms_kept.dispose();
 
-  if (coords.length === 0) {
-    return tf.zeros([n_samples, n_samples]);
-  }
-
-  // Scatter ones into a dense zero matrix – TensorFlow.js scatterND expects
-  // typed arrays / tensors for the indices as well as values.  Passing plain
-  // JS arrays is fine, the backend converts them on the fly.
-  return tf.tidy(() => {
-    const values = tf.ones([coords.length]);
-    const dense = tf.scatter_nd(coords, values, [
-      n_samples,
-      n_samples,
-    ]) as tf.Tensor2D;
-    // Symmetrise: A = 0.5 * (A + Aᵀ) to match sklearn
-    // This gives 0.5 for edges that only appear in one direction
-    return dense.add(dense.transpose()).mul(0.5) as tf.Tensor2D;
-  });
+  return sparse_matrix_from_row_maps(rows, n_samples);
 }
 
 /**

@@ -1,6 +1,6 @@
 import * as tf from '../backend/adapter';
 import { deterministic_eigenpair_processing } from './post';
-import { lanczos_smallest_eigenpairs } from './lanczos';
+import { lanczos_smallest_eigenpairs, LanczosOperator } from './lanczos';
 import { improved_jacobi_eigen } from './improved';
 
 /**
@@ -19,20 +19,34 @@ const LANCZOS_THRESHOLD = 100;
  * - n > 100: Lanczos (iterative, O(n²·m) vs O(n³))
  */
 export function smallest_eigenvectors_with_values(
-  matrix: tf.Tensor2D,
+  matrix: tf.Tensor2D | LanczosOperator,
   k: number,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   if (!Number.isInteger(k) || k < 1) {
     throw new Error('k must be a positive integer.');
   }
 
-  const n = matrix.shape[0];
+  const is_operator = is_lanczos_operator(matrix);
+  const n = is_operator ? matrix.n : matrix.shape[0];
+
+  if (is_operator) {
+    return lanczos_path(matrix, k, n, false);
+  }
 
   if (n > LANCZOS_THRESHOLD && k < n / 3) {
-    return lanczos_path(matrix, k, n);
+    return lanczos_path(matrix, k, n, true);
   }
 
   return jacobi_path(matrix, k);
+}
+
+function is_lanczos_operator(
+  matrix: tf.Tensor2D | LanczosOperator,
+): matrix is LanczosOperator {
+  return (
+    typeof (matrix as LanczosOperator).n === 'number' &&
+    typeof (matrix as LanczosOperator).matvec === 'function'
+  );
 }
 
 /**
@@ -40,9 +54,10 @@ export function smallest_eigenvectors_with_values(
  * Falls back to Jacobi if Lanczos fails.
  */
 function lanczos_path(
-  matrix: tf.Tensor2D,
+  matrix: tf.Tensor2D | LanczosOperator,
   k: number,
   n: number,
+  allow_jacobi_fallback: boolean,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   // Request extra eigenpairs to capture near-zero eigenvalues for component detection
   const k_request = Math.min(k + 5, n);
@@ -82,6 +97,10 @@ function lanczos_path(
       eigenvalues: tf.tensor1d(selected_vals, 'float32'),
     };
   } catch (err) {
+    if (!allow_jacobi_fallback || is_lanczos_operator(matrix)) {
+      throw err;
+    }
+
     console.warn(
       `[spectral] Lanczos solver failed, falling back to Jacobi: ${err instanceof Error ? err.message : String(err)}`,
     );

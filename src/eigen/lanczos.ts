@@ -32,6 +32,11 @@ export interface LanczosResult {
   eigenvectors: number[][];
 }
 
+export interface LanczosOperator {
+  n: number;
+  matvec: (vector: Float64Array) => Float64Array;
+}
+
 /* ---- Float32 numerical constants ---- */
 const CONVERGENCE_TOL_DEFAULT = 1e-6;
 const BREAKDOWN_TOL = 1e-10;
@@ -56,11 +61,12 @@ const NORM_REDUCTION_TRIGGER = 0.7071; // 1/sqrt(2) — triggers second reorth p
  * @returns       The k smallest eigenvalues and corresponding eigenvectors
  */
 export function lanczos_smallest_eigenpairs(
-  matrix: tf.Tensor2D,
+  matrix: tf.Tensor2D | LanczosOperator,
   k: number,
   options?: LanczosOptions,
 ): LanczosResult {
-  const n = matrix.shape[0];
+  const is_operator = is_lanczos_operator(matrix);
+  const n = is_operator ? matrix.n : matrix.shape[0];
 
   if (!Number.isInteger(k) || k < 1) {
     throw new Error('k must be a positive integer >= 1.');
@@ -68,7 +74,7 @@ export function lanczos_smallest_eigenpairs(
   if (k > n) {
     throw new Error(`k (${k}) cannot exceed matrix size n (${n}).`);
   }
-  if (matrix.shape[0] !== matrix.shape[1]) {
+  if (!is_operator && matrix.shape[0] !== matrix.shape[1]) {
     throw new Error('Input matrix must be square.');
   }
 
@@ -83,10 +89,11 @@ export function lanczos_smallest_eigenpairs(
   // Subspace size: need enough room beyond k for convergence
   const m_max = max_subspace_size_opt ?? Math.min(Math.max(2 * k + 20, 4 * k), n, 200);
 
-  // Extract the matrix to JS arrays once — avoids repeated GPU→CPU transfers.
-  // The matvec A*v will be done in pure JS. For n=5000 this is ~25M entries
-  // (200MB), same as the current Jacobi solver.
-  const A = matrix.arraySync() as number[][];
+  // Dense tensors are extracted once to avoid repeated GPU→CPU transfers.
+  // Matrix-free sparse callers provide their own matvec and never densify.
+  const A = is_operator ? null : matrix.arraySync() as number[][];
+  const apply_matvec = (v: Float64Array): Float64Array =>
+    is_operator ? matrix.matvec(v) : dense_matvec(A!, v, n);
 
   // Standard Lanczos: apply A*v directly.
   // Lanczos converges to extreme eigenvalues (both largest and smallest).
@@ -121,7 +128,7 @@ export function lanczos_smallest_eigenpairs(
       const v_j = basis_vectors[j];
 
       // w = A * v_j
-      const w = matvec(A, v_j, n);
+      const w = apply_matvec(v_j);
 
       // w = w - beta_{j-1} * v_{j-1}
       if (j > 0) {
@@ -280,7 +287,16 @@ export function lanczos_smallest_eigenpairs(
 /**
  * Computes A*v (standard matrix-vector product).
  */
-function matvec(
+function is_lanczos_operator(
+  matrix: tf.Tensor2D | LanczosOperator,
+): matrix is LanczosOperator {
+  return (
+    typeof (matrix as LanczosOperator).n === 'number' &&
+    typeof (matrix as LanczosOperator).matvec === 'function'
+  );
+}
+
+function dense_matvec(
   A: number[][],
   v: Float64Array,
   n: number,

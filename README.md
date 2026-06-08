@@ -275,11 +275,17 @@ new KMeans({
 ```typescript
 new SpectralClustering({
   n_clusters: number;
-  affinity?: 'rbf' | 'nearest_neighbors';
+  affinity?: 'rbf' | 'nearest_neighbors' | 'precomputed';
   gamma?: number;
   n_neighbors?: number;
 })
 ```
+
+`affinity: 'nearest_neighbors'` uses a sparse kNN connectivity graph, sparse
+normalized-Laplacian operator, and matrix-free Lanczos eigensolver. This keeps
+peak graph memory proportional to `n_samples * n_neighbors` and mirrors
+scikit-learn's nearest-neighbor spectral clustering symmetrization. `rbf`,
+`precomputed`, and callable affinities remain dense paths.
 
 ### AgglomerativeClustering
 
@@ -348,6 +354,8 @@ Based on our benchmarks:
 
 - K-Means: 0.5ms - 200ms depending on dataset size
 - Spectral: 10ms - 2s (includes eigendecomposition)
+- Spectral nearest-neighbors: sparse graph memory scales with `n_neighbors`,
+  making large sample counts feasible when dense RBF affinity would be O(n²)
 - Agglomerative: 5ms - 500ms
 
 See [benchmarks/](benchmarks/) for detailed performance data.

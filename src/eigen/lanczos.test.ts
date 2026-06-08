@@ -38,6 +38,29 @@ describe('Lanczos eigensolver', () => {
       expect(result.eigenvalues[0]).toBeCloseTo(1, 5);
     });
 
+    it('finds eigenvalues through a matrix-free operator', () => {
+      const diag = [3, 1, 4, 2, 5];
+      const operator = {
+        n: diag.length,
+        matvec(vector: Float64Array): Float64Array {
+          const result = new Float64Array(diag.length);
+          for (let i = 0; i < diag.length; i++) {
+            result[i] = diag[i] * vector[i];
+          }
+          return result;
+        },
+      };
+
+      const result = lanczos_smallest_eigenpairs(operator, 3, {
+        random_seed: 42,
+      });
+
+      expect(result.eigenvalues).toHaveLength(3);
+      expect(result.eigenvalues[0]).toBeCloseTo(1, 4);
+      expect(result.eigenvalues[1]).toBeCloseTo(2, 4);
+      expect(result.eigenvalues[2]).toBeCloseTo(3, 4);
+    });
+
     it('finds all eigenvalues when k equals n', () => {
       const matrix = tf.tensor2d([
         [4, 1, 0],

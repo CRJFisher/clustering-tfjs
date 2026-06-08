@@ -1,5 +1,6 @@
 import * as tf from '../backend/adapter';
 import { smallest_eigenvectors_with_values } from '../eigen/smallest_eigenvectors_with_values';
+import { SparseMatrix, sparse_row_sums } from './sparse';
 
 /* -------------------------------------------------------------------------- */
 /*                        Graph Laplacian – core utilities                    */
@@ -88,6 +89,71 @@ export function normalised_laplacian(
 
     return laplacian;
   });
+}
+
+export interface MatrixFreeOperator {
+  n: number;
+  matvec: (vector: Float64Array) => Float64Array;
+}
+
+export interface SparseNormalisedLaplacian {
+  operator: MatrixFreeOperator;
+  sqrt_degrees: Float64Array;
+  degrees: Float64Array;
+}
+
+export function sparse_normalised_laplacian_operator(
+  affinity: SparseMatrix,
+): SparseNormalisedLaplacian {
+  if (affinity.rows !== affinity.cols) {
+    throw new Error('Affinity matrix must be square (n × n).');
+  }
+
+  const n = affinity.rows;
+  const degrees = sparse_row_sums(affinity, true);
+  const inv_sqrt_degrees = new Float64Array(n);
+
+  for (let i = 0; i < n; i++) {
+    inv_sqrt_degrees[i] = degrees[i] === 0 ? 1 : Math.pow(degrees[i], -0.5);
+  }
+
+  const operator: MatrixFreeOperator = {
+    n,
+    matvec(vector: Float64Array): Float64Array {
+      if (vector.length !== n) {
+        throw new Error(
+          `Vector length ${vector.length} does not match Laplacian size ${n}.`,
+        );
+      }
+
+      const result = new Float64Array(n);
+      for (let row = 0; row < n; row++) {
+        let scaled_affinity_sum = 0;
+        const row_scale = inv_sqrt_degrees[row];
+
+        for (
+          let ptr = affinity.indptr[row];
+          ptr < affinity.indptr[row + 1];
+          ptr++
+        ) {
+          const col = affinity.indices[ptr];
+          if (col === row) continue;
+          scaled_affinity_sum +=
+            affinity.data[ptr] * row_scale * inv_sqrt_degrees[col] * vector[col];
+        }
+
+        result[row] = vector[row] - scaled_affinity_sum;
+      }
+
+      return result;
+    },
+  };
+
+  return {
+    operator,
+    sqrt_degrees: inv_sqrt_degrees,
+    degrees,
+  };
 }
 
 /* -------------------------------------------------------------------------- */
