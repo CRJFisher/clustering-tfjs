@@ -1,4 +1,5 @@
-import { stored_nn_cluster, LinkageCriterion } from './linkage';
+import { AgglomerativeClustering } from './agglomerative';
+import { nn_chain_cluster, LinkageCriterion } from './linkage';
 
 /**
  * Helper: build a flat Float64Array distance matrix from a 2D array.
@@ -14,7 +15,7 @@ function to_flat(D2d: number[][]): Float64Array {
   return flat;
 }
 
-describe('stored_nn_cluster', () => {
+describe('nn_chain_cluster', () => {
   /**
    * Base distance matrix for three singleton clusters:
    *
@@ -34,8 +35,8 @@ describe('stored_nn_cluster', () => {
 
   it('produces the correct number of merges', () => {
     const D = to_flat(base_matrix);
-    const merges = stored_nn_cluster(D, 3, 1, 'single');
-    // 3 clusters down to 1 = 2 merges
+    const merges = nn_chain_cluster(D, 3, 'single');
+    // NN-chain always builds the full tree: 3 samples -> 2 merges.
     expect(merges.length).toBe(2);
   });
 
@@ -43,7 +44,7 @@ describe('stored_nn_cluster', () => {
     const linkages: LinkageCriterion[] = ['single', 'complete', 'average', 'ward'];
     for (const linkage of linkages) {
       const D = to_flat(base_matrix);
-      const merges = stored_nn_cluster(D, 3, 1, linkage);
+      const merges = nn_chain_cluster(D, 3, linkage);
       // First merge should be clusters 0 and 1 (distance 2)
       expect(merges[0].cluster_a).toBe(0);
       expect(merges[0].cluster_b).toBe(1);
@@ -64,18 +65,20 @@ describe('stored_nn_cluster', () => {
   expected_second_merge_dist.forEach(({ linkage, expected_dist }) => {
     it(`${linkage} linkage: second merge distance is correct`, () => {
       const D = to_flat(base_matrix);
-      const merges = stored_nn_cluster(D, 3, 1, linkage);
+      const merges = nn_chain_cluster(D, 3, linkage);
       expect(merges[1].distance).toBeCloseTo(expected_dist, 6);
     });
   });
 
-  it('stops at the requested number of clusters', () => {
-    const D = to_flat(base_matrix);
-    const merges = stored_nn_cluster(D, 3, 2, 'single');
-    // 3 clusters down to 2 = 1 merge
-    expect(merges.length).toBe(1);
-    expect(merges[0].cluster_a).toBe(0);
-    expect(merges[0].cluster_b).toBe(1);
+  it('cuts labels at the requested number of clusters', async () => {
+    const model = new AgglomerativeClustering({
+      n_clusters: 2,
+      linkage: 'single',
+      metric: 'precomputed',
+    });
+    const labels = await model.fit_predict(base_matrix);
+    expect(new Set(labels).size).toBe(2);
+    expect(model.children_).toEqual([[0, 1]]);
   });
 
   it('handles a 4-point dataset correctly with single linkage', () => {
@@ -90,7 +93,7 @@ describe('stored_nn_cluster', () => {
       [9, 8, 3, 0],
     ];
     const D = to_flat(D2d);
-    const merges = stored_nn_cluster(D, 4, 1, 'single');
+    const merges = nn_chain_cluster(D, 4, 'single');
 
     expect(merges.length).toBe(3);
 
@@ -110,7 +113,7 @@ describe('stored_nn_cluster', () => {
 
   it('cluster sizes are tracked correctly', () => {
     const D = to_flat(base_matrix);
-    const merges = stored_nn_cluster(D, 3, 1, 'average');
+    const merges = nn_chain_cluster(D, 3, 'average');
     expect(merges[0].new_size).toBe(2); // merge of two singletons
     expect(merges[1].new_size).toBe(3); // merge size-2 with singleton
   });

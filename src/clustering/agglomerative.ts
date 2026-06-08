@@ -6,15 +6,15 @@ import type {
 import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
-import { stored_nn_cluster } from './linkage';
+import { MergeRecord, nn_chain_cluster } from './linkage';
 
 /**
- * Agglomerative (hierarchical) clustering using a stored-nearest-neighbor
- * merge strategy with Lance–Williams distance updates.
+ * Agglomerative (hierarchical) clustering using nearest-neighbor chain merges
+ * with Lance–Williams distance updates.
  *
- * Caches per-cluster nearest neighbors and updates them incrementally,
- * achieving O(n²) complexity in the typical case (O(n³) worst case) instead of
- * the O(n³) cost of recomputing the nearest pair from scratch every merge.
+ * Builds the full reducible-linkage tree in O(n²) time for single, complete,
+ * average, and Ward linkage, then cuts that tree by `n_clusters` or
+ * `distance_threshold`.
  */
 export class AgglomerativeClustering
   implements BaseClustering<AgglomerativeClusteringParams>
@@ -133,9 +133,7 @@ export class AgglomerativeClustering
       distance_tensor.dispose();
 
       D = new Float64Array(n_samples * n_samples);
-      for (let i = 0; i < D.length; i++) {
-        D[i] = flat[i];
-      }
+      D.set(flat);
 
       if (owned_tensor) {
         points.dispose();
@@ -155,28 +153,17 @@ export class AgglomerativeClustering
       return;
     }
 
-    // When stopping by distance threshold, build the full tree (target 1
-    // cluster) then keep only the merges strictly below the threshold. Merge
-    // distances are non-decreasing, so the kept merges form a prefix.
-    const target_clusters = use_threshold ? 1 : this.params.n_clusters!;
-
-    // Run stored-nearest-neighbor clustering — typical O(n²), worst case O(n³)
-    const all_merges = stored_nn_cluster(D, n_samples, target_clusters, linkage);
+    // NN-chain is exact for the reducible linkages supported here: single,
+    // complete, average, and Ward. It must build the full tree before cutting.
+    const all_merges = nn_chain_cluster(D, n_samples, linkage);
     const merges = use_threshold
       ? all_merges.filter((m) => m.distance < this.params.distance_threshold!)
-      : all_merges;
+      : all_merges.slice(0, n_samples - this.params.n_clusters!);
 
-    // Build children_ array using global cluster IDs (sklearn convention:
-    // original samples are 0..n-1, each merge creates n, n+1, n+2, ...)
-    const global_id = new Int32Array(n_samples);
-    for (let i = 0; i < n_samples; i++) global_id[i] = i;
-    let next_global_id = n_samples;
-
-    const children: number[][] = [];
-    for (const m of merges) {
-      children.push([global_id[m.cluster_a], global_id[m.cluster_b]]);
-      global_id[m.cluster_a] = next_global_id++;
-    }
+    const children = AgglomerativeClustering.build_children(
+      merges,
+      n_samples,
+    );
 
     // Derive flat cluster labels using Union-Find over the merge history
     const parent = new Int32Array(n_samples);
@@ -270,6 +257,42 @@ export class AgglomerativeClustering
     if (linkage === 'ward' && metric !== 'euclidean') {
       throw new Error("Ward linkage requires metric to be 'euclidean'.");
     }
+  }
+
+  /**
+   * Converts raw active-slot merge records into sklearn/scipy-style children
+   * node ids (`0..n-1` leaves, `n..` internal nodes).
+   */
+  private static build_children(
+    merges: MergeRecord[],
+    n_samples: number,
+  ): number[][] {
+    const parent = new Int32Array(2 * n_samples - 1);
+    for (let i = 0; i < parent.length; i++) {
+      parent[i] = i;
+    }
+
+    function find(x: number): number {
+      while (parent[x] !== x) {
+        parent[x] = parent[parent[x]];
+        x = parent[x];
+      }
+      return x;
+    }
+
+    const children: number[][] = [];
+    let next_node = n_samples;
+
+    for (const merge of merges) {
+      const left = find(merge.cluster_a);
+      const right = find(merge.cluster_b);
+      children.push([Math.min(left, right), Math.max(left, right)]);
+      parent[left] = next_node;
+      parent[right] = next_node;
+      next_node++;
+    }
+
+    return children;
   }
 
   /**

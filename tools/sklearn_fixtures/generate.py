@@ -12,10 +12,10 @@ Usage
     python -m venv .venv && source .venv/bin/activate
     pip install -r requirements.txt
 
-    python generate.py --out-dir ../../test/fixtures/agglomerative
+    python generate.py --out-dir ../../__fixtures__/agglomerative
 
 The script is **one-shot only** – it's never run in CI. The resulting JSON
-files feed the Jest tests in `test/clustering/agglomerative_reference.test.ts`.
+files feed the Jest tests in `src/clustering/agglomerative_reference.test.ts`.
 """
 
 from __future__ import annotations
@@ -68,7 +68,7 @@ def dump_fixture(X: np.ndarray, params: Dict[str, Any], out_path: Path) -> None:
     fixture = {
         "X": X.astype(float).tolist(),
         "params": {
-            "nClusters": params["n_clusters"],
+            "n_clusters": params["n_clusters"],
             "linkage": params["linkage"],
             "metric": params["metric"],
         },
