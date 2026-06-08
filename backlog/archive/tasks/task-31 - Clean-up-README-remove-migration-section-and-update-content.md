@@ -36,31 +36,43 @@ Remove the 'Migration from scikit-learn' section from README.md, update the Perf
 ## Specific Changes
 
 ### Features Section
+
 Change:
+
 ```
 - ✅ Pure TypeScript/JavaScript (no Python required)
 ```
+
 To:
+
 ```
 - ✅ Pure TypeScript/JavaScript
 ```
 
 ### Table of Contents
+
 Remove line:
+
 ```
 9. [Migration from scikit-learn](#migration-from-scikit-learn)
 ```
+
 And renumber subsequent items.
 
 ### Performance Section
+
 Current:
+
 ```
 See [benchmarks/](benchmarks/) for detailed performance data.
 ```
+
 Should verify this path exists or update to correct location (likely src/benchmarks/).
 
 ### Migration Section
+
 Remove entire section starting from `## Migration from scikit-learn` including:
+
 - Python to TypeScript comparison
 - Scikit-learn Compatibility subsection
 - All content until the next ## heading (Contributing)

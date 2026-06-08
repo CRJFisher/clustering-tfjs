@@ -1,10 +1,10 @@
 ---
 id: TASK-42
 title: Fix findOptimalClusters combined scoring and add proper methods
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-03-20'
-updated_date: '2026-03-20 15:44'
+updated_date: '2026-06-08'
 labels: []
 dependencies: []
 ---
@@ -66,12 +66,21 @@ The findOptimalClusters default combined score adds raw unnormalized metrics (si
 - `src/validation/contingency.ts` - contingency table builder for ARI/NMI
 - `src/validation/adjusted_rand_index.ts` - ARI implementation
 - `src/validation/normalized_mutual_info.ts` - NMI implementation
-- `src/utils/computeWss.ts` - within-cluster sum of squares
-- `src/utils/kneedle.ts` - knee/elbow detection algorithm
+- `src/model_selection/compute_wss.ts` - within-cluster sum of squares
+- `src/model_selection/kneedle.ts` - knee/elbow detection algorithm
 
 ### Modified files
-- `src/validation/silhouette.ts` - refactored to silhouetteSamples + NaN fix
+- `src/validation/silhouette.ts` - refactored to silhouette_samples + NaN fix
 - `src/validation/davies_bouldin.ts` - coincident centroid fix + validation
 - `src/validation/calinski_harabasz.ts` - labels validation
-- `src/utils/findOptimalClusters.ts` - normalized scoring + method option + WSS + elbow
-- `src/validation/index.ts`, `src/utils/index.ts`, `src/index.ts` - new exports
+- `src/model_selection/find_optimal_clusters.ts` - normalized scoring + method option + WSS + elbow
+- `src/validation/index.ts`, `src/model_selection/index.ts`, `src/index.ts` - new exports
+
+### Post-refactor relocation
+
+This task was implemented and merged before the information-architecture refactor that
+dropped the `src/utils/` folder and adopted Python-style `snake_case` file names. The
+`findOptimalClusters.ts`, `computeWss.ts`, and `kneedle.ts` files now live under
+`src/model_selection/` with snake_case names; identifiers (e.g. `silhouette_samples`,
+`find_optimal_clusters`) were converted accordingly. The implementation and all 8 ACs are
+unchanged — verified by 117 passing tests across `src/model_selection` and `src/validation`.
