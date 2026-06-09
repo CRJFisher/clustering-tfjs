@@ -214,11 +214,11 @@ export class SOM implements BaseClustering<SOMParams> {
       tol
     } = this.params;
     
-    const [n_samples, _n_features] = X.shape;
+    const [n_samples, n_features] = X.shape;
 
     // Initialize weights if not already done
     if (!this.weights_) {
-      this.weights_ = this.make_initial_weights(X, _n_features);
+      this.weights_ = this.make_initial_weights(X, n_features);
     }
     
     // Pre-compute grid distance matrix
@@ -839,13 +839,16 @@ export class SOM implements BaseClustering<SOMParams> {
       throw new Error('SOM must be fitted first');
     }
     
+    // Trained weights are persisted separately, so the injected initial_weights
+    // grid carries no value in a snapshot and is dropped to avoid duplicating it.
+    const { initial_weights: _initial_weights, ...persisted_params } = this.params;
     return {
       weights: this.weights_.arraySync(),
       total_samples: this.total_samples_learned_,
       current_epoch: this.current_epoch_,
       grid_width: this.params.grid_width,
       grid_height: this.params.grid_height,
-      params: this.params,
+      params: persisted_params,
     };
   }
   
@@ -873,10 +876,11 @@ export class SOM implements BaseClustering<SOMParams> {
       throw new Error('SOM must be fitted before saving');
     }
     
+    const { initial_weights: _initial_weights, ...persisted_params } = this.params;
     const model_data = {
       weights: await this.weights_.array(),
       metadata: {
-        params: this.params,
+        params: persisted_params,
         total_samples_learned: this.total_samples_learned_,
         current_epoch: this.current_epoch_,
         quantization_errors: this.quantization_errors_,

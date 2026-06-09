@@ -195,6 +195,7 @@ new SOM(params: SOMParams)
 | `num_epochs`     | `number`                                  | `100`                              | Number of training epochs                      |
 | `tol`            | `number`                                  | `1e-4`                             | Convergence tolerance                          |
 | `random_state`   | `number`                                  | `undefined`                        | Random seed for reproducibility                |
+| `initial_weights`| `number[][][]`                            | `undefined`                        | Explicit `[grid_height][grid_width][n_features]` grid; overrides `initialization` for reproducible training |
 
 #### Methods
 

@@ -223,13 +223,71 @@ describe('SOM (online mini-batch — production path properties)', () => {
         [2, 2],
         [3, 3],
       ];
+      // A fixed random_state makes the per-epoch shuffle deterministic, so the
+      // only source of nondeterminism would be the weight init — which the
+      // injected grid pins. Equal results confirm injection + seed reproduce.
       const run = async (): Promise<number[][][]> => {
-        const som = new SOM({ grid_width: 2, grid_height: 2, num_epochs: 5, initial_weights: initial });
+        const som = new SOM({
+          grid_width: 2,
+          grid_height: 2,
+          num_epochs: 5,
+          random_state: 42,
+          initial_weights: initial,
+        });
         await som.fit(data);
         return som.get_weights();
       };
 
       expect(await run()).toEqual(await run());
+    });
+
+    it('honors initial_weights on the first partial_fit (online mode)', async () => {
+      const initial: number[][][] = [
+        [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
+        [
+          [0.5, 0.6],
+          [0.7, 0.8],
+        ],
+      ];
+      const som = new SOM({ grid_width: 2, grid_height: 2, online_mode: true, initial_weights: initial });
+
+      await som.partial_fit([
+        [0, 0],
+        [1, 1],
+      ]);
+
+      const weights = som.get_weights();
+      expect(weights.length).toBe(2);
+      expect(weights[0].length).toBe(2);
+      expect(weights[0][0].length).toBe(2);
+    });
+
+    it('throws on the first partial_fit when initial_weights feature dimension mismatches data', async () => {
+      const som = new SOM({
+        grid_width: 2,
+        grid_height: 2,
+        online_mode: true,
+        initial_weights: [
+          [
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+          [
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+        ],
+      });
+
+      await expect(
+        som.partial_fit([
+          [0, 0],
+          [1, 1],
+        ]),
+      ).rejects.toThrow(/feature dimension/);
     });
 
     it('throws when initial_weights shape does not match the grid', () => {

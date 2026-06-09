@@ -29,8 +29,9 @@ import type { SOMTopology, SOMNeighborhood } from './types';
 /** Vertical spacing between hexagonal rows: MiniSom's literal `Y_HEX_CONV_FACTOR`. */
 const Y_HEX_CONV_FACTOR = 0.8660254037844387;
 
-/** Tolerance for the hexagonal topographic-error adjacency test (numpy `isclose`). */
-const HEX_NEIGHBOR_ATOL = 1e-5 + 1e-8;
+/** Absolute and relative tolerances for the hexagonal adjacency test (numpy `isclose` defaults). */
+const ISCLOSE_ATOL = 1e-8;
+const ISCLOSE_RTOL = 1e-5;
 
 export interface MiniSomReferenceParams {
   /** MiniSom `x` dimension (number of columns). */
@@ -279,7 +280,8 @@ function topographic_error(
       const dx = xx[a1][b1] - xx[a2][b2];
       const dy = yy[a1][b1] - yy[a2][b2];
       const dist = Math.sqrt(dx * dx + dy * dy);
-      if (Math.abs(dist - 1) > HEX_NEIGHBOR_ATOL) {
+      // numpy isclose(1, dist): |dist - 1| <= atol + rtol * |dist|.
+      if (Math.abs(dist - 1) > ISCLOSE_ATOL + ISCLOSE_RTOL * Math.abs(dist)) {
         errors++;
       }
     } else {

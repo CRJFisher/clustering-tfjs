@@ -1,7 +1,7 @@
 ---
 id: TASK-51
 title: Rigorous SOM benchmarking against MiniSom reference
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-06-07 18:27'
 labels: []
@@ -20,15 +20,15 @@ The SOM reference fixtures are generated from MiniSom but validated with very lo
 
 <!-- AC:BEGIN -->
 
-- [ ] A deterministic batch training path produces SOM weights that match MiniSom's batch SOM to within a tight per-element tolerance (≤ 1e-3 on standardized data) for every reference config, given identical initial weights and decay schedule.
-- [ ] Reference fixtures pin the exact initial weight grid, and the test injects those initial weights into both the implementation and the reference run, so weight comparison is not confounded by RNG/init differences.
-- [ ] Learning-rate and radius decay schedules used to generate fixtures are identical to those used by the implementation under test, and the exact formulas are documented.
-- [ ] Quantization error and topographic error match the MiniSom reference within ≤ 1% relative error for every reference config.
-- [ ] BMU indices and resulting cluster labels match the reference exactly (or, where exactness is provably impossible, the documented near-exact bound is justified).
-- [ ] Reference coverage spans rectangular (with documented 4- vs 8-connectivity) and hexagonal topology, the gaussian and bubble neighborhood functions (plus mexican_hat where the implementation supports it), and a range of grid sizes and datasets.
-- [ ] No reference tests are skipped; the previously-skipped `blobs_10x10_gaussian_rectangular` case passes under the matched pipeline, or is removed with a documented, defensible reason.
-- [ ] The fixture-generation pipeline is reproducible and documented (venv setup, command, what each fixture field means, and the tolerance rationale).
-- [ ] The existing online-mode SOM property/self-consistency tests remain and are clearly separated from the numeric reference tests, so the production (online) training path is still exercised.
+- [x] A deterministic batch training path produces SOM weights that match MiniSom's batch SOM to within a tight per-element tolerance (≤ 1e-3 on standardized data) for every reference config, given identical initial weights and decay schedule.
+- [x] Reference fixtures pin the exact initial weight grid, and the test injects those initial weights into both the implementation and the reference run, so weight comparison is not confounded by RNG/init differences.
+- [x] Learning-rate and radius decay schedules used to generate fixtures are identical to those used by the implementation under test, and the exact formulas are documented.
+- [x] Quantization error and topographic error match the MiniSom reference within ≤ 1% relative error for every reference config.
+- [x] BMU indices and resulting cluster labels match the reference exactly (or, where exactness is provably impossible, the documented near-exact bound is justified).
+- [x] Reference coverage spans rectangular (with documented 4- vs 8-connectivity) and hexagonal topology, the gaussian and bubble neighborhood functions (plus mexican_hat where the implementation supports it), and a range of grid sizes and datasets.
+- [x] No reference tests are skipped; the previously-skipped `blobs_10x10_gaussian_rectangular` case passes under the matched pipeline, or is removed with a documented, defensible reason.
+- [x] The fixture-generation pipeline is reproducible and documented (venv setup, command, what each fixture field means, and the tolerance rationale).
+- [x] The existing online-mode SOM property/self-consistency tests remain and are clearly separated from the numeric reference tests, so the production (online) training path is still exercised.
 <!-- AC:END -->
 
 ## Implementation Plan
@@ -84,3 +84,86 @@ Add a SOM benchmarking guide (under `docs/` or `backlog/docs/`) covering regener
 ### Relationship to prior work
 
 Builds on task-37 (SOM algorithmic correctness fixes) and task-33 (SOM two-phase clustering path). This task does not change the default online training behavior; it adds a verifiable reference mode and rebuilds the fixtures so the existing loose tolerances can be replaced with rigorous ones.
+
+## Implementation Notes
+
+### High-level summary
+
+The SOM has two training paths, validated independently. The production path
+(`SOM.fit`) is online mini-batch training, unchanged by this task. The new
+reference path (`train_minisom_reference` in `src/clustering/som_reference_training.ts`)
+is a tensor-free transcription of MiniSom's `train_batch` used only for numeric
+validation. Because `train_batch` is deterministic once the initial weights are
+fixed, injecting identical initial weights into MiniSom (at fixture-generation
+time) and into the reference trainer (at test time) makes the two match to
+floating-point precision. This replaces the previous loose tolerances (per-element
+weight average difference < 2.0, QE relative error < 60%, one skipped fixture)
+with per-element parity at 1e-9 for weights/QE/U-matrix, exact BMU/labels, and
+topographic error within the acceptance bound — across 32 fixtures spanning four
+datasets, square and non-square grids, both topologies, and all three
+neighborhood functions, with nothing skipped.
+
+### Key correction to the original plan
+
+The task's Implementation Plan recommended a "batch-map" mode
+(`w <- sum(h*x) / sum(h)`), believing MiniSom's `train_batch` is a batch SOM. It is
+not: `train_batch` is deterministic **online-sequential** training (sample
+`data[t mod n]`, single-sample update `w += eta(t)*g(t)*(x - w)` over the whole
+grid, asymptotic per-iteration decay `p0 / (1 + t/(T/2))`). A batch-map mode
+would not reproduce MiniSom and so could not validate against it. The reference
+trainer therefore replicates the real `train_batch`, which both matches MiniSom
+to ~1e-12 (far exceeding the <=1e-3 criterion) and is robust because the only
+stochastic input — the initial weights — is injected. The plan's stated reason
+for rejecting this ("brittle RNG order") does not apply: `train_batch`'s order is
+deterministic.
+
+### What was built
+
+- **Reference trainer** (`src/clustering/som_reference_training.ts`): plain-array
+  (not tensor) replication of MiniSom — asymptotic decay; separable gaussian,
+  open-box bubble (integer indices, strict inequality), and Ricker mexican_hat
+  neighborhoods; hexagonal offset coordinates (`(grid_height - 1 - row)` parity,
+  `Y_HEX_CONV_FACTOR`); MiniSom's `[width][height]` weight axes transposed at the
+  boundary to the library's `[height][width]`; and matching quantization error,
+  topographic error (rectangular `> 1.42`, hexagonal numpy-`isclose` on hex
+  coordinates), and `distance_map` U-matrix.
+- **`initial_weights` production feature** (`SOMParams`, `som.ts`): an optional
+  `[grid_height][grid_width][n_features]` grid honored by `fit` and `partial_fit`
+  for reproducible training and warm-start, with shape and feature-dimension
+  validation. It is excluded from persisted snapshots (the trained weights are
+  saved separately).
+- **Fixture generator** (`tools/sklearn_fixtures/generate_som.py`): injects and
+  exports deterministic initial weights, uses MiniSom's native metrics, transposes
+  axes (correct for non-square grids), uses snake_case schema with the unambiguous
+  `num_iteration` field, expands coverage (mexican_hat + 8x4/4x8 grids), fixes the
+  BMU/label convention, and pins its dependencies. 32 fixtures regenerated.
+- **Reference suite** (`som_reference.test.ts`): rewritten to inject
+  `initial_weights`, train once per fixture, and assert per-element weights/QE/
+  U-matrix at 1e-9, exact BMU/labels, and TE within 1% relative (with an
+  exact-zero guard); no skips.
+- **Suite separation**: the online-mode property suites (`som.test.ts`,
+  `som_hexagonal.test.ts`) are kept and relabeled with headers cross-referencing
+  the reference suite.
+- **Docs**: `docs/som-benchmarking.md` (two paths, formulas, connectivity, fixture
+  schema, tolerance rationale, regeneration steps, CI policy), linked from
+  `docs/debugging-guide.md`; `initial_weights` added to `docs/API.md`.
+
+### Tolerance rationale
+
+Weights, QE, and the U-matrix are continuous functions of the matched weights and
+match to ~1e-12; they are asserted at 1e-9. BMU indices and labels are integer
+argmins over matched weights and are asserted exactly. Topographic error is a
+discrete metric whose second-nearest-neuron selection is discontinuous at distance
+degeneracies, so a sub-1e-9 weight difference can flip one sample's classification;
+it is held to the acceptance criterion's <=1% relative bound (observed: 31/32
+fixtures at 0% deviation, one at 0.24%).
+
+### Modified or added files
+
+- Added: `src/clustering/som_reference_training.ts`, `docs/som-benchmarking.md`,
+  16 new `__fixtures__/som/*.json`, the committed comprehension companion.
+- Modified: `src/clustering/types.ts`, `src/clustering/som.ts`,
+  `src/clustering/som_reference.test.ts`, `src/clustering/som.test.ts`,
+  `src/clustering/som_hexagonal.test.ts`, `tools/sklearn_fixtures/generate_som.py`,
+  `tools/sklearn_fixtures/requirements.txt`, `docs/debugging-guide.md`,
+  `docs/API.md`, 16 regenerated `__fixtures__/som/*.json`.
