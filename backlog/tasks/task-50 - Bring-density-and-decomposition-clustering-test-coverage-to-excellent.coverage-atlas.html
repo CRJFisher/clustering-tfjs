@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Task 50 — Density & decomposition coverage atlas</title>
+<style>
+  :root {
+    --ivory: #f6f2e9;
+    --oat: #e9e1d0;
+    --slate: #2f3133;
+    --slate-2: #44484b;
+    --clay: #b56a45;
+    --olive: #6f7a4f;
+    --rust: #9c3b2e;
+    --oat-line: #d8cdb6;
+    --g3: #756f63;
+    --g5: #9b9484;
+    --g7: #c3bba8;
+    --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    --r: 10px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--ivory);
+    color: var(--slate);
+    font-family: var(--sans);
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+  main {
+    width: 90%;
+    max-width: 1600px;
+    margin-inline: auto;
+    padding: 2.2rem 0 5rem;
+  }
+  .prose { max-width: 68ch; }
+  section { margin-top: 3.4rem; scroll-margin-top: 120px; }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: 2.5rem; line-height: 1.1; margin: .2rem 0 .4rem; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 1.65rem; margin: 0 0 .3rem; }
+  h3 { font-family: var(--serif); font-weight: 600; font-size: 1.18rem; margin: 1.4rem 0 .3rem; }
+  p { margin: .5rem 0; }
+  .eyebrow {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    font-size: .72rem;
+    color: var(--clay);
+  }
+  .sub { color: var(--g3); }
+  code, .mono { font-family: var(--mono); font-size: .82em; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+  .chip {
+    font-family: var(--mono);
+    font-size: .72rem;
+    border: 1px solid var(--oat-line);
+    background: #fff;
+    border-radius: 999px;
+    padding: .25rem .65rem;
+    color: var(--slate-2);
+    white-space: nowrap;
+  }
+  .chip strong { color: var(--slate); }
+  /* top nav */
+  nav.cross {
+    position: sticky; top: 0; z-index: 10;
+    background: var(--ivory);
+    border-bottom: 1px solid var(--oat-line);
+    width: 100%;
+  }
+  nav.cross .inner {
+    width: 90%; max-width: 1600px; margin-inline: auto;
+    display: flex; flex-wrap: wrap; align-items: center; gap: .4rem;
+    padding: .55rem 0;
+  }
+  nav.cross .tag {
+    font-family: var(--mono); font-size: .7rem; text-transform: uppercase;
+    letter-spacing: .1em; color: var(--clay); margin-right: .6rem;
+  }
+  nav.cross a {
+    font-family: var(--mono); font-size: .73rem;
+    text-decoration: none; color: var(--slate-2);
+    padding: .25rem .6rem; border-radius: 999px;
+    border: 1px solid transparent;
+  }
+  nav.cross a:hover { border-color: var(--oat-line); background: #fff; }
+  nav.cross a[aria-current="page"] {
+    background: var(--slate); color: var(--ivory);
+  }
+  /* sticky outline rail */
+  nav.toc {
+    position: sticky; top: 49px; z-index: 9;
+    background: var(--oat);
+    border-bottom: 1px solid var(--oat-line);
+    width: 100%;
+  }
+  nav.toc .inner {
+    width: 90%; max-width: 1600px; margin-inline: auto;
+    display: flex; flex-wrap: wrap; gap: .35rem; padding: .5rem 0;
+  }
+  nav.toc a {
+    font-family: var(--mono); font-size: .72rem;
+    text-decoration: none; color: var(--slate-2);
+    padding: .2rem .55rem; border-radius: 999px;
+    display: inline-flex; align-items: center; gap: .4rem;
+  }
+  nav.toc a:hover { background: #fff; }
+  nav.toc a.active { background: var(--slate); color: var(--ivory); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+  .dot.safe { background: var(--olive); }
+  .dot.med { background: var(--clay); }
+  .dot.att { background: var(--rust); }
+  /* provenance */
+  .prov {
+    border-left: 4px solid var(--clay);
+    background: #fff;
+    border-radius: 0 var(--r) var(--r) 0;
+    padding: .9rem 1.1rem;
+    margin-top: 1.4rem;
+  }
+  .prov .label { font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: var(--clay); }
+  .prov ul { margin: .4rem 0 0; padding-left: 1.1rem; }
+  .prov li { font-family: var(--mono); font-size: .78rem; color: var(--slate-2); }
+  /* callout */
+  aside.callout {
+    border-left: 4px solid var(--olive);
+    background: #fff;
+    border-radius: 0 var(--r) var(--r) 0;
+    padding: 1rem 1.2rem;
+    margin: 1.4rem 0;
+  }
+  aside.callout.warn { border-left-color: var(--rust); }
+  aside.callout.med { border-left-color: var(--clay); }
+  aside.callout .k { font-family: var(--mono); text-transform: uppercase; letter-spacing: .1em; font-size: .68rem; color: var(--olive); }
+  aside.callout.warn .k { color: var(--rust); }
+  aside.callout.med .k { color: var(--clay); }
+  aside.callout p { margin: .35rem 0; }
+  /* atlas cards */
+  .atlas { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 1rem; margin-top: 1.2rem; }
+  article.modcard {
+    background: #fff;
+    border: 1px solid var(--oat-line);
+    border-radius: var(--r);
+    padding: 1rem 1.1rem 1.2rem;
+    display: flex; flex-direction: column;
+  }
+  article.modcard.full { grid-column: 1 / -1; }
+  .modhead { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+  .modhead .fname { font-family: var(--mono); font-size: .9rem; font-weight: 600; color: var(--slate); }
+  .modhead .badge {
+    font-family: var(--mono); font-size: .66rem; text-transform: uppercase;
+    letter-spacing: .08em; padding: .12rem .5rem; border-radius: 999px; color: #fff;
+  }
+  .badge.att { background: var(--rust); }
+  .badge.med { background: var(--clay); }
+  .badge.safe { background: var(--olive); }
+  /* branch bar */
+  .barwrap { margin: .55rem 0 .2rem; }
+  .barline { display: flex; align-items: center; gap: .55rem; margin: .25rem 0; }
+  .barline .lbl { font-family: var(--mono); font-size: .68rem; color: var(--g3); width: 52px; flex: none; }
+  .track { flex: 1; height: 16px; background: var(--oat); border-radius: 4px; position: relative; overflow: hidden; }
+  .fill { height: 100%; border-radius: 4px; }
+  .fill.att { background: var(--rust); }
+  .fill.med { background: var(--clay); }
+  .fill.safe { background: var(--olive); }
+  .threshold { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--slate); }
+  .barline .val { font-family: var(--mono); font-size: .72rem; width: 86px; flex: none; text-align: right; }
+  .barline .val .now { font-weight: 600; }
+  .barline .val .arr { color: var(--olive); }
+  .branch-list { margin: .7rem 0 0; padding: 0; list-style: none; }
+  .branch-list li {
+    border-top: 1px solid var(--oat-line);
+    padding: .5rem 0;
+    display: grid; grid-template-columns: 22px 1fr; gap: .5rem;
+  }
+  .branch-list li .gn {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--clay); color: #fff;
+    font-family: var(--mono); font-size: .66rem; font-weight: 600;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .branch-list li .gn.safe { background: var(--olive); }
+  .branch-list .what { font-size: .85rem; }
+  .branch-list .loc { font-family: var(--mono); font-size: .68rem; color: var(--g3); }
+  .branch-list .test { font-family: var(--mono); font-size: .7rem; color: var(--olive); margin-top: .15rem; }
+  .branch-list .test.exists { color: var(--g3); }
+  /* code panel */
+  .code {
+    background: #23272b; color: #d7d2c6;
+    border-radius: var(--r); overflow: hidden; margin: 1rem 0;
+    border: 1px solid #1a1d20;
+  }
+  .code .file-label {
+    font-family: var(--mono); font-size: .7rem; color: #b7c08f;
+    padding: .45rem .85rem; border-bottom: 1px solid #34383c;
+    background: #1d2023; display: flex; justify-content: space-between;
+  }
+  .code pre { margin: 0; padding: .85rem 1rem; overflow-x: auto; font-family: var(--mono); font-size: .76rem; line-height: 1.55; white-space: pre; }
+  .code .kw { color: #c98a6a; }
+  .code .str { color: #a3b07a; }
+  .code .cm { color: #6d7176; font-style: italic; }
+  .code .fn { color: #d9c27e; }
+  .code .hl { background: rgba(181,106,69,.22); display: inline-block; width: 100%; }
+  .code .dim { color: #6d7176; }
+  /* SVG figure */
+  figure { margin: 1.4rem 0; }
+  figure svg { width: 100%; height: auto; display: block; }
+  figcaption { font-size: .82rem; color: var(--g3); margin-top: .5rem; }
+  .figframe { background: #fff; border: 1px solid var(--oat-line); border-radius: var(--r); padding: 1rem; }
+  /* sweep matrix */
+  .matrix-wrap { overflow-x: auto; margin-top: 1rem; }
+  table.matrix { border-collapse: collapse; width: 100%; font-size: .8rem; }
+  table.matrix th, table.matrix td { border: 1px solid var(--oat-line); padding: .45rem .55rem; text-align: center; }
+  table.matrix th { background: var(--oat); font-family: var(--mono); font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; }
+  table.matrix td.lbl { text-align: left; font-family: var(--mono); font-size: .74rem; background: #fff; white-space: nowrap; }
+  .cellmark { display: inline-flex; align-items: center; justify-content: center; width: 100%; height: 100%; }
+  .glyph { width: 16px; height: 16px; border-radius: 50%; display: inline-block; }
+  .glyph.have { background: var(--olive); }
+  .glyph.new { background: var(--clay); }
+  .glyph.none { background: transparent; border: 1.5px solid var(--g7); }
+  .legend { display: flex; flex-wrap: wrap; gap: 1.1rem; margin-top: .7rem; font-size: .76rem; color: var(--g3); }
+  .legend span { display: inline-flex; align-items: center; gap: .4rem; }
+  /* two-col explainer */
+  .twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top: 1rem; }
+  .panel { background: #fff; border: 1px solid var(--oat-line); border-radius: var(--r); padding: 1rem 1.1rem; }
+  .panel h3 { margin-top: 0; }
+  .tag-pill { font-family: var(--mono); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; padding: .12rem .5rem; border-radius: 999px; }
+  .tag-pill.exact { background: var(--olive); color: #fff; }
+  .tag-pill.tol { background: var(--clay); color: #fff; }
+  /* checklist */
+  .checklist { list-style: none; padding: 0; margin: 1rem 0 0; }
+  .checklist li { display: grid; grid-template-columns: 22px 1fr; gap: .6rem; padding: .5rem 0; border-top: 1px solid var(--oat-line); align-items: start; }
+  .checklist .box { width: 16px; height: 16px; border: 2px solid var(--g7); border-radius: 4px; margin-top: 3px; }
+  .checklist .ac-id { font-family: var(--mono); font-size: .66rem; color: var(--clay); }
+  footer { margin-top: 4rem; padding-top: 1.2rem; border-top: 1px solid var(--oat-line); font-family: var(--mono); font-size: .72rem; color: var(--g5); }
+  @media (max-width: 900px) {
+    .twocol { grid-template-columns: 1fr; }
+    .atlas { grid-template-columns: 1fr; }
+    h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="cross" aria-label="Companion documents">
+  <div class="inner">
+    <span class="tag">task-50</span>
+    <a href="#" aria-current="page">Coverage atlas</a>
+  </div>
+</nav>
+
+<nav class="toc" aria-label="On this page">
+  <div class="inner">
+    <a href="#overview"><span class="dot med"></span>Baseline</a>
+    <a href="#atlas"><span class="dot att"></span>Branch atlas</a>
+    <a href="#pipeline"><span class="dot med"></span>Fixture pipeline</a>
+    <a href="#ties"><span class="dot att"></span>Tie ambiguity</a>
+    <a href="#sweep"><span class="dot med"></span>Sweep matrix</a>
+    <a href="#prob"><span class="dot med"></span>Probability bound</a>
+    <a href="#representatives"><span class="dot safe"></span>Representatives</a>
+    <a href="#ac"><span class="dot safe"></span>Acceptance</a>
+  </div>
+</nav>
+
+<main>
+
+  <header>
+    <div class="eyebrow">Test coverage &middot; density &amp; decomposition clustering</div>
+    <h1>Bringing the density pipeline to sklearn-grounded coverage</h1>
+    <p class="prose sub">The HDBSCAN density pipeline, PCA, and the medoid/exemplar representatives are validated against scikit-learn, but a branch-coverage audit found named gaps and a few behaviours pinned only by tolerance. This is a map of every gap: which branch is uncovered, where it lives in source, the test that exercises it, and why some assertions can be exact while others cannot.</p>
+    <div class="meta-row">
+      <span class="chip"><strong>8</strong> modules</span>
+      <span class="chip">branch &ge; <strong>90%</strong></span>
+      <span class="chip">stmt / line &ge; <strong>95%</strong></span>
+      <span class="chip">worst gap: <strong>pca 52% branch</strong></span>
+    </div>
+  </header>
+
+  <div class="prov">
+    <div class="label">Source of truth</div>
+    <p class="prose" style="margin:.4rem 0 .2rem; font-size:.85rem;">Generated from the task spec and the live source it describes.</p>
+    <ul>
+      <li>backlog/tasks/task-50 &mdash; …test-coverage-to-excellent.md</li>
+      <li>src/decomposition/pca.ts &middot; src/clustering/hdbscan.ts &middot; src/clustering/medoid_selection.ts</li>
+      <li>src/graph/{condensation_tree,mutual_reachability,minimum_spanning_tree}.ts</li>
+      <li>tools/sklearn_fixtures/{generate_hdbscan,generate_kmeans}.py</li>
+    </ul>
+  </div>
+
+  <!-- ===================== BASELINE ===================== -->
+  <section id="overview">
+    <div class="eyebrow">where coverage stands</div>
+    <h2>The measured baseline</h2>
+    <p class="prose">Coverage audited at task-49 completion. The vertical line on each bar is the target gate (branch&nbsp;90%, statements&nbsp;95%). Bars short of the line are the work; <code>kdistance</code> already clears both.</p>
+
+    <figure class="figframe">
+      <svg viewBox="0 0 980 360" role="img" aria-label="Branch vs statement coverage by module against the target gate">
+        <!-- gridlines -->
+        <g font-family="ui-monospace, monospace" font-size="11" fill="#9b9484">
+          <line x1="300" y1="20" x2="300" y2="330" stroke="#d8cdb6"/>
+          <line x1="470" y1="20" x2="470" y2="330" stroke="#d8cdb6"/>
+          <line x1="640" y1="20" x2="640" y2="330" stroke="#d8cdb6"/>
+          <line x1="810" y1="20" x2="810" y2="330" stroke="#d8cdb6"/>
+          <line x1="980" y1="20" x2="980" y2="330" stroke="#d8cdb6"/>
+          <text x="300" y="348">50%</text>
+          <text x="470" y="348">62.5</text>
+          <text x="640" y="348">75%</text>
+          <text x="810" y="348">87.5</text>
+          <text x="975" y="348" text-anchor="end">100%</text>
+        </g>
+        <!-- 90% branch gate -->
+        <line x1="765" y1="14" x2="765" y2="334" stroke="#2f3133" stroke-width="2" stroke-dasharray="5 4"/>
+        <text x="765" y="12" text-anchor="middle" font-family="ui-monospace, monospace" font-size="10" fill="#2f3133">branch gate 90%</text>
+        <!-- scale: x = 130 + pct% * (980-130)/100 ... we map 0..100 to 130..980. so px per pct = 8.5 ; 50%->555? fix mapping -->
+        <!-- Use mapping: x(pct) = 130 + pct*8.5 . 50 -> 555. But gridlines above placed at fixed; recompute: we want 100% at 980 and 0 at 130 => per pct 8.5. 50->555,62.5->661,75->767,87.5->874. Adjust gridlines via transform instead. -->
+        <g transform="translate(0,0)">
+          <!-- bars: each module two bars (branch top, stmt bottom). y rows every 38px from 30 -->
+          <!-- helper mapping done in authored widths below: width = pct*8.5 -->
+          <!-- pca -->
+          <text x="124" y="46" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">pca</text>
+          <rect x="130" y="36" width="442" height="13" rx="3" fill="#9c3b2e"/><text x="578" y="46" font-family="ui-monospace,monospace" font-size="11" fill="#9c3b2e">52% br</text>
+          <rect x="130" y="51" width="799" height="9" rx="3" fill="#c3bba8"/><text x="935" y="59" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">94 st</text>
+          <!-- hdbscan -->
+          <text x="124" y="86" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">hdbscan</text>
+          <rect x="130" y="76" width="629" height="13" rx="3" fill="#b56a45"/><text x="765" y="86" font-family="ui-monospace,monospace" font-size="11" fill="#b56a45">74% br</text>
+          <rect x="130" y="91" width="748" height="9" rx="3" fill="#c3bba8"/><text x="884" y="99" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">88 st</text>
+          <!-- condensation_tree -->
+          <text x="124" y="126" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">condensation_tree</text>
+          <rect x="130" y="116" width="637" height="13" rx="3" fill="#b56a45"/><text x="773" y="126" font-family="ui-monospace,monospace" font-size="11" fill="#b56a45">75% br</text>
+          <rect x="130" y="131" width="807" height="9" rx="3" fill="#c3bba8"/><text x="943" y="139" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">95 st</text>
+          <!-- medoid_selection -->
+          <text x="124" y="166" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">medoid_selection</text>
+          <rect x="130" y="156" width="663" height="13" rx="3" fill="#b56a45"/><text x="799" y="166" font-family="ui-monospace,monospace" font-size="11" fill="#b56a45">78% br</text>
+          <rect x="130" y="171" width="791" height="9" rx="3" fill="#c3bba8"/><text x="927" y="179" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">93 st</text>
+          <!-- mutual_reachability -->
+          <text x="124" y="206" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">mutual_reachability</text>
+          <rect x="130" y="196" width="680" height="13" rx="3" fill="#b56a45"/><text x="816" y="206" font-family="ui-monospace,monospace" font-size="11" fill="#b56a45">80% br</text>
+          <rect x="130" y="211" width="807" height="9" rx="3" fill="#c3bba8"/><text x="943" y="219" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">95 st</text>
+          <!-- minimum_spanning_tree -->
+          <text x="124" y="246" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">minimum_spanning_tree</text>
+          <rect x="130" y="236" width="765" height="13" rx="3" fill="#6f7a4f"/><text x="901" y="246" font-family="ui-monospace,monospace" font-size="11" fill="#6f7a4f">90% br</text>
+          <rect x="130" y="251" width="833" height="9" rx="3" fill="#c3bba8"/><text x="935" y="259" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484">98 st</text>
+          <!-- kdistance -->
+          <text x="124" y="286" text-anchor="end" font-family="ui-monospace, monospace" font-size="12" fill="#2f3133">kdistance</text>
+          <rect x="130" y="276" width="850" height="13" rx="3" fill="#6f7a4f"/><text x="966" y="286" font-family="ui-monospace,monospace" font-size="11" fill="#6f7a4f" text-anchor="end">100% br</text>
+          <rect x="130" y="291" width="850" height="9" rx="3" fill="#c3bba8"/><text x="966" y="299" font-family="ui-monospace,monospace" font-size="10" fill="#9b9484" text-anchor="end">100 st</text>
+        </g>
+      </svg>
+      <figcaption>Thick bar = branch coverage (rust below gate, clay close, olive clears); thin bar beneath = statement coverage. The dashed vertical line is the 90% branch gate. <code>representations.ts</code> is a pure interface file with no runtime branches; it joins the gate via behavioural tests on the estimators that implement it.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== BRANCH ATLAS ===================== -->
+  <section id="atlas">
+    <div class="eyebrow">the work, per file</div>
+    <h2>Branch atlas: every named gap and its test</h2>
+    <p class="prose">Each card holds one module: its current branch/statement coverage, the specific uncovered branches the audit named, the exact source location of each, and the targeted test that exercises it. Numbered markers are <strong>new tests to add</strong>; an olive marker means the branch is already covered and only needs the gate.</p>
+
+    <div class="atlas">
+
+      <!-- PCA -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">decomposition/pca.ts</span><span class="badge att">52% branch</span></div>
+        <div class="barwrap">
+          <div class="barline"><span class="lbl">branch</span><div class="track"><div class="fill att" style="width:52%"></div><div class="threshold" style="left:90%"></div></div><span class="val"><span class="now">52%</span> <span class="arr">&rarr; 90</span></span></div>
+          <div class="barline"><span class="lbl">stmt</span><div class="track"><div class="fill safe" style="width:94%"></div><div class="threshold" style="left:95%"></div></div><span class="val"><span class="now">94%</span> <span class="arr">&rarr; 95</span></span></div>
+        </div>
+        <ul class="branch-list">
+          <li><span class="gn">1</span><div>
+            <div class="what">Error path: <code>n_components &gt; n_features</code> rejected.</div>
+            <div class="loc">pca.ts :139&ndash;143 &middot; <code>fit()</code></div>
+            <div class="test exists">already hit by "rejects n_components greater than features"; verify counted.</div>
+          </div></li>
+          <li><span class="gn">2</span><div>
+            <div class="what">Error path: empty input <code>n === 0</code> throws.</div>
+            <div class="loc">pca.ts :137 &middot; <code>fit()</code></div>
+            <div class="test">new: <code>fit([])</code> throws "at least one sample".</div>
+          </div></li>
+          <li><span class="gn">3</span><div>
+            <div class="what">Pre-fit guards on transform / inverse_transform / to_json.</div>
+            <div class="loc">pca.ts :186, :209, :234 &middot; null checks</div>
+            <div class="test">new: call each before <code>fit()</code>, expect throw.</div>
+          </div></li>
+          <li><span class="gn">4</span><div>
+            <div class="what">Zero-norm fallback in power iteration (random vector norms to 0 &rarr; canonical basis seed).</div>
+            <div class="loc">pca.ts :83&ndash;86 &middot; <code>power_iteration_eig()</code></div>
+            <div class="test">new: drive <code>power_iteration_eig</code> with a seed/stub yielding a zero vector; assert <code>v[c%d]=1</code> seed.</div>
+          </div></li>
+          <li><span class="gn">5</span><div>
+            <div class="what">Convergence early-break <code>nw &lt; 1e-12</code> (deflated matrix exhausted).</div>
+            <div class="loc">pca.ts :92 &middot; iteration loop</div>
+            <div class="test">new: rank-deficient cov (duplicate features) so a later component deflates to ~0.</div>
+          </div></li>
+          <li><span class="gn">6</span><div>
+            <div class="what"><code>n &gt; 1 ? n-1 : 1</code> denominator &mdash; single-sample covariance branch.</div>
+            <div class="loc">pca.ts :152 &middot; <code>fit()</code></div>
+            <div class="test">new: fit a single-row matrix, assert mean equals the row, zero variance.</div>
+          </div></li>
+        </ul>
+      </article>
+
+      <!-- HDBSCAN -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">clustering/hdbscan.ts</span><span class="badge med">74% branch</span></div>
+        <div class="barwrap">
+          <div class="barline"><span class="lbl">branch</span><div class="track"><div class="fill med" style="width:74%"></div><div class="threshold" style="left:90%"></div></div><span class="val"><span class="now">74%</span> <span class="arr">&rarr; 90</span></span></div>
+          <div class="barline"><span class="lbl">stmt</span><div class="track"><div class="fill med" style="width:88%"></div><div class="threshold" style="left:95%"></div></div><span class="val"><span class="now">88%</span> <span class="arr">&rarr; 95</span></span></div>
+        </div>
+        <ul class="branch-list">
+          <li><span class="gn">1</span><div>
+            <div class="what">Single-sample short-circuit <code>n === 1</code> &rarr; label <code>-1</code>, prob <code>0</code>.</div>
+            <div class="loc">hdbscan.ts :140&ndash;145 &middot; <code>fit()</code></div>
+            <div class="test">new: <code>fit([[3,4]])</code>; assert <code>labels_=[-1]</code>, <code>probabilities_=[0]</code>; with/without <code>store_exemplars</code>.</div>
+          </div></li>
+          <li><span class="gn">2</span><div>
+            <div class="what">Empty input <code>n === 0</code> throws.</div>
+            <div class="loc">hdbscan.ts :137 &middot; <code>fit()</code></div>
+            <div class="test">new: <code>fit([])</code> rejects.</div>
+          </div></li>
+          <li><span class="gn">3</span><div>
+            <div class="what">Precomputed non-square matrix rejected.</div>
+            <div class="loc">hdbscan.ts :110&ndash;116 &middot; <code>distance_matrix()</code></div>
+            <div class="test">new: <code>metric:'precomputed'</code> with a ragged/non-<code>n×n</code> matrix throws.</div>
+          </div></li>
+          <li><span class="gn">4</span><div>
+            <div class="what">Manhattan native path (non-precomputed branch with L1).</div>
+            <div class="loc">hdbscan.ts :120&ndash;128 &middot; <code>distance_matrix()</code></div>
+            <div class="test">new fixture: <code>blobs_manhattan_mcs5.json</code> parity (already in generator).</div>
+          </div></li>
+          <li><span class="gn">5</span><div>
+            <div class="what"><code>min_samples</code> clamp to <code>n</code> when defaulted from <code>min_cluster_size</code>.</div>
+            <div class="loc">hdbscan.ts :150&ndash;153 &middot; <code>fit()</code></div>
+            <div class="test">new: tiny dataset where <code>min_cluster_size &gt; n</code> exercises the <code>Math.min</code>.</div>
+          </div></li>
+        </ul>
+      </article>
+
+      <!-- condensation_tree -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">graph/condensation_tree.ts</span><span class="badge med">75% branch</span></div>
+        <div class="barwrap">
+          <div class="barline"><span class="lbl">branch</span><div class="track"><div class="fill med" style="width:75%"></div><div class="threshold" style="left:90%"></div></div><span class="val"><span class="now">75%</span> <span class="arr">&rarr; 90</span></span></div>
+          <div class="barline"><span class="lbl">stmt</span><div class="track"><div class="fill safe" style="width:95%"></div><div class="threshold" style="left:95%"></div></div><span class="val"><span class="now">95%</span></span></div>
+        </div>
+        <ul class="branch-list">
+          <li><span class="gn">1</span><div>
+            <div class="what"><code>epsilon_search</code> &rarr; <code>traverse_upwards</code> branches: parent is root, parent born coarser than &epsilon; (stop), recursive climb.</div>
+            <div class="loc">condensation_tree.ts :313&ndash;340</div>
+            <div class="test">new fixtures: <code>cluster_selection_epsilon</code> sweep (3 values) in both eom &amp; leaf forces every climb branch.</div>
+          </div></li>
+          <li><span class="gn">2</span><div>
+            <div class="what"><code>allow_single_cluster</code> &amp;&amp; <code>parent === root</code> return-root branch.</div>
+            <div class="loc">condensation_tree.ts :323&ndash;324</div>
+            <div class="test">new: degenerate single-cluster fixture with <code>allow_single_cluster</code>.</div>
+          </div></li>
+          <li><span class="gn">3</span><div>
+            <div class="what">leaf-mode <code>leaves.size === 0 &rarr; {root}</code> fallback.</div>
+            <div class="loc">condensation_tree.ts :429</div>
+            <div class="test">new: all-noise dataset where no leaf survives.</div>
+          </div></li>
+          <li><span class="gn">4</span><div>
+            <div class="what">Infinite-&lambda; (zero-distance merge) probability branch <code>!Number.isFinite(lam)</code>.</div>
+            <div class="loc">condensation_tree.ts :556 &middot; <code>extract_labels()</code></div>
+            <div class="test">new: duplicate points so a merge distance is 0.</div>
+          </div></li>
+        </ul>
+      </article>
+
+      <!-- medoid_selection -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">clustering/medoid_selection.ts</span><span class="badge med">78% branch</span></div>
+        <div class="barwrap">
+          <div class="barline"><span class="lbl">branch</span><div class="track"><div class="fill med" style="width:78%"></div><div class="threshold" style="left:90%"></div></div><span class="val"><span class="now">78%</span> <span class="arr">&rarr; 90</span></span></div>
+          <div class="barline"><span class="lbl">stmt</span><div class="track"><div class="fill safe" style="width:93%"></div><div class="threshold" style="left:95%"></div></div><span class="val"><span class="now">93%</span> <span class="arr">&rarr; 95</span></span></div>
+        </div>
+        <ul class="branch-list">
+          <li><span class="gn">1</span><div>
+            <div class="what">Manhattan metric branch in <code>pointwise_distance</code>.</div>
+            <div class="loc">medoid_selection.ts :33&ndash;35</div>
+            <div class="test">new: <code>select_medoids(X, labels, k, 'manhattan')</code>; assert medoid matches hand-computed L1 argmin.</div>
+          </div></li>
+          <li><span class="gn">2</span><div>
+            <div class="what">Cosine metric branch.</div>
+            <div class="loc">medoid_selection.ts :36&ndash;38</div>
+            <div class="test">new: <code>'cosine'</code> on directional data.</div>
+          </div></li>
+          <li><span class="gn">3</span><div>
+            <div class="what">Empty-input <code>n === 0</code> early return (all <code>-1</code> / <code>Infinity</code>).</div>
+            <div class="loc">medoid_selection.ts :104&ndash;106</div>
+            <div class="test">new: <code>select_medoids([], [], 2)</code>; assert both slots <code>-1</code>.</div>
+          </div></li>
+          <li><span class="gn">4</span><div>
+            <div class="what">Tensor-input branches (<code>is_tensor(X)</code>, <code>is_tensor(labels)</code>).</div>
+            <div class="loc">medoid_selection.ts :72&ndash;79</div>
+            <div class="test">new: pass <code>tf.tensor2d</code> X and <code>tf.tensor1d</code> labels.</div>
+          </div></li>
+        </ul>
+      </article>
+
+      <!-- mutual_reachability + mst -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">graph/mutual_reachability.ts</span><span class="badge med">80% branch</span></div>
+        <div class="barwrap">
+          <div class="barline"><span class="lbl">branch</span><div class="track"><div class="fill med" style="width:80%"></div><div class="threshold" style="left:90%"></div></div><span class="val"><span class="now">80%</span> <span class="arr">&rarr; 90</span></span></div>
+        </div>
+        <ul class="branch-list">
+          <li><span class="gn">1</span><div>
+            <div class="what">Non-square row guard inside the loop.</div>
+            <div class="loc">mutual_reachability.ts :41&ndash;45</div>
+            <div class="test">new: ragged matrix (one short row) throws "must be square".</div>
+          </div></li>
+          <li><span class="gn">2</span><div>
+            <div class="what"><code>core_i &gt; core_j</code> ternary (both arms of the max).</div>
+            <div class="loc">mutual_reachability.ts :52&ndash;54</div>
+            <div class="test exists">covered by elementwise unit test; verify both arms counted.</div>
+          </div></li>
+        </ul>
+        <div class="modhead" style="margin-top:1rem;"><span class="fname">graph/minimum_spanning_tree.ts</span><span class="badge safe">90% branch</span></div>
+        <ul class="branch-list">
+          <li><span class="gn safe">&check;</span><div>
+            <div class="what">Disconnected guard, flat-Float64Array path, trivial <code>n&le;1</code> &mdash; all already covered.</div>
+            <div class="loc">minimum_spanning_tree.ts :55, :87, :40</div>
+            <div class="test">remaining: the <code>!Number.isInteger(size)</code> guard on a malformed flat array.</div>
+          </div></li>
+        </ul>
+      </article>
+
+      <!-- representations -->
+      <article class="modcard">
+        <div class="modhead"><span class="fname">clustering/representations.ts</span><span class="badge safe">interface</span></div>
+        <p class="prose" style="font-size:.85rem; margin-top:.6rem;">A pure <code>ClusterRepresentations</code> interface &mdash; <code>centroids_</code> (KMeans), <code>medoid_indices_</code> (Agglomerative / Spectral), <code>exemplar_indices_</code> (HDBSCAN). No runtime branches of its own; the gate is met by the behavioural tests on the estimators that implement it.</p>
+        <ul class="branch-list">
+          <li><span class="gn safe">&check;</span><div>
+            <div class="what">Each estimator's representative is asserted: correct count, in-range indices, deterministic tie-break.</div>
+            <div class="loc">medoid_selection.test.ts &middot; hdbscan.test.ts</div>
+            <div class="test">see &ldquo;Representatives&rdquo; section below.</div>
+          </div></li>
+        </ul>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ===================== FIXTURE PIPELINE ===================== -->
+  <section id="pipeline">
+    <div class="eyebrow">how a reference number reaches an assertion</div>
+    <h2>The HDBSCAN fixture pipeline</h2>
+    <p class="prose">A scikit-learn run produces a JSON fixture carrying <em>both</em> the final labels/probabilities <em>and</em> sklearn's own single-linkage hierarchy. That dual payload is what lets the same fixture feed two assertions of very different strictness &mdash; one bit-exact, one tolerance-based &mdash; depending on which stage of the pipeline is under test.</p>
+
+    <figure class="figframe">
+      <svg viewBox="0 0 1180 470" role="img" aria-label="Fixture pipeline from python generator through two divergent jest assertion paths">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#5a5e62"/>
+          </marker>
+          <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#9c3b2e"/>
+          </marker>
+          <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="#6f7a4f"/>
+          </marker>
+        </defs>
+
+        <!-- python source -->
+        <rect x="20" y="180" width="190" height="100" rx="10" fill="#e9e1d0" stroke="#b56a45" stroke-width="1.5"/>
+        <text x="115" y="210" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#2f3133" font-weight="600">generate_hdbscan.py</text>
+        <text x="115" y="232" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">sklearn HDBSCAN</text>
+        <text x="115" y="248" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">.venv + numpy</text>
+        <text x="115" y="266" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">deterministic</text>
+
+        <!-- JSON fixture -->
+        <rect x="290" y="150" width="210" height="160" rx="10" fill="#ffffff" stroke="#b56a45" stroke-width="1.5"/>
+        <text x="395" y="178" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#2f3133" font-weight="600">JSON fixture</text>
+        <line x1="305" y1="190" x2="485" y2="190" stroke="#d8cdb6"/>
+        <text x="305" y="210" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4f">labels[]</text>
+        <text x="305" y="228" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4f">probabilities[]</text>
+        <text x="305" y="250" font-family="ui-monospace,monospace" font-size="10" fill="#9c3b2e" font-weight="600">single_linkage_tree[]</text>
+        <text x="305" y="266" font-family="ui-monospace,monospace" font-size="9" fill="#756f63">  (sklearn's own hierarchy)</text>
+        <text x="305" y="288" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">X[] or distance_matrix[]</text>
+
+        <line x1="210" y1="225" x2="285" y2="225" stroke="#5a5e62" stroke-width="1.6" marker-end="url(#arr)"/>
+
+        <!-- PATH A: exact -->
+        <rect x="600" y="40" width="230" height="120" rx="10" fill="#ffffff" stroke="#6f7a4f" stroke-width="1.8"/>
+        <text x="715" y="66" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="13" fill="#2f3133" font-weight="600">Path A — condensed core</text>
+        <text x="715" y="86" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">condense_hierarchy(slt)</text>
+        <text x="715" y="102" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">excess_of_mass → extract_labels</text>
+        <text x="715" y="124" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4f" font-weight="600">feeds sklearn's hierarchy in</text>
+        <text x="715" y="140" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4f" font-weight="600">→ skips MST tie-ordering</text>
+
+        <rect x="890" y="55" width="270" height="90" rx="10" fill="#6f7a4f"/>
+        <text x="1025" y="84" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="14" fill="#f6f2e9" font-weight="600">BIT-EXACT assertion</text>
+        <text x="1025" y="106" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">labels ≡ sklearn (up to perm)</text>
+        <text x="1025" y="122" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">probabilities toBeCloseTo …, 6</text>
+
+        <!-- slt feeds path A -->
+        <path d="M460 250 C 540 250, 540 100, 598 100" fill="none" stroke="#6f7a4f" stroke-width="1.8" marker-end="url(#arrG)"/>
+        <line x1="830" y1="100" x2="888" y2="100" stroke="#6f7a4f" stroke-width="1.8" marker-end="url(#arrG)"/>
+
+        <!-- PATH B: tolerance -->
+        <rect x="600" y="300" width="230" height="130" rx="10" fill="#ffffff" stroke="#9c3b2e" stroke-width="1.8"/>
+        <text x="715" y="326" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="13" fill="#2f3133" font-weight="600">Path B — full estimator</text>
+        <text x="715" y="346" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">HDBSCAN.fit_predict(X)</text>
+        <text x="715" y="362" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">kdistance → mutual_reachability</text>
+        <text x="715" y="378" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#9c3b2e" font-weight="600">→ minimum_spanning_tree</text>
+        <text x="715" y="398" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#9c3b2e" font-weight="600">argsort over tied weights ⚠</text>
+        <text x="715" y="416" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">→ condensed tree → labels</text>
+
+        <rect x="890" y="315" width="270" height="100" rx="10" fill="#9c3b2e"/>
+        <text x="1025" y="344" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="14" fill="#f6f2e9" font-weight="600">TOLERANCE assertion</text>
+        <text x="1025" y="366" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">cluster count == exact</text>
+        <text x="1025" y="382" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">label agreement ≥ 0.95</text>
+        <text x="1025" y="398" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">probability MAE ≤ 0.2 → tighten</text>
+
+        <!-- X feeds path B -->
+        <path d="M460 290 C 540 290, 540 360, 598 360" fill="none" stroke="#9c3b2e" stroke-width="1.8" marker-end="url(#arrR)"/>
+        <line x1="830" y1="365" x2="888" y2="365" stroke="#9c3b2e" stroke-width="1.8" marker-end="url(#arrR)"/>
+
+        <!-- legend -->
+        <g font-family="ui-monospace,monospace" font-size="10">
+          <rect x="600" y="200" width="14" height="14" rx="3" fill="#6f7a4f"/>
+          <text x="622" y="211" fill="#2f3133">exact — bypasses the tie-prone MST stage</text>
+          <rect x="600" y="222" width="14" height="14" rx="3" fill="#9c3b2e"/>
+          <text x="622" y="233" fill="#2f3133">tolerance — runs the full pipeline incl. MST argsort</text>
+        </g>
+      </svg>
+      <figcaption>One generated fixture, two assertion paths. <strong>Path A</strong> (olive) feeds scikit-learn's <em>own</em> single-linkage hierarchy straight into the condensed-tree core, so it never touches the implementation's MST construction &mdash; labels and probabilities are asserted bit-exact (<code>toBeCloseTo(…, 6)</code>). <strong>Path B</strong> (rust) runs the estimator end-to-end from <code>X</code>, including the minimum spanning tree, where tied mutual-reachability weights get ordered by numpy's unstable argsort &mdash; so it can only assert cluster-count exact, &ge;95% label agreement, and a probability bound.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== TIE AMBIGUITY ===================== -->
+  <section id="ties">
+    <div class="eyebrow">the subtle part</div>
+    <h2>Why some assertions are exact and others cannot be</h2>
+    <p class="prose">The divergence is born in exactly one place: when two MST edges carry <em>equal</em> mutual-reachability weight, their merge order is undetermined. scikit-learn (via numpy's unstable argsort) and this implementation (Prim's, by insertion order) may break that tie differently. Downstream, a different merge order can flip which boundary point falls out of which cluster first &mdash; shifting a handful of labels and their probabilities. The condensed-tree core is innocent: given the <em>same</em> hierarchy, it is deterministic and exact.</p>
+
+    <div class="twocol">
+      <div class="panel">
+        <h3>Path A — <span class="tag-pill exact">exact</span></h3>
+        <p style="font-size:.88rem;">Input is sklearn's hierarchy, so the only ambiguous step (edge sort) has already been resolved <em>by sklearn</em>. Both sides condense the identical merge order.</p>
+        <div class="code">
+          <div class="file-label"><span>condensation_tree.test.ts</span><span>:88&ndash;107</span></div>
+<pre><span class="kw">const</span> tree = <span class="fn">condense_hierarchy</span>(
+  fixture.<span class="hl">single_linkage_tree</span>, n, mcs);
+<span class="kw">const</span> { labels, probabilities } =
+  <span class="fn">extract_labels</span>(tree, selected, n);
+<span class="cm">// exact, up to cluster-id permutation</span>
+<span class="fn">expect</span>(labels_equivalent_with_noise(
+  labels, fixture.labels)).<span class="fn">toBe</span>(<span class="kw">true</span>);
+<span class="fn">expect</span>(probabilities[i])
+  .<span class="fn">toBeCloseTo</span>(fixture.probabilities[i], <span class="hl">6</span>);</pre>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Path B — <span class="tag-pill tol">tolerance</span></h3>
+        <p style="font-size:.88rem;">Input is raw <code>X</code>. The implementation builds its own MST; tied weights may sort differently than numpy did, so a few boundary points diverge.</p>
+        <div class="code">
+          <div class="file-label"><span>hdbscan.test.ts</span><span>:84&ndash;103</span></div>
+<pre><span class="kw">const</span> labels = <span class="kw">await</span> model.<span class="fn">fit_predict</span>(data);
+<span class="cm">// MST tie-ordering ⇒ cannot be exact</span>
+<span class="fn">expect</span>(mine_clusters).<span class="fn">toBe</span>(sk_clusters);
+<span class="fn">expect</span>(<span class="fn">alignment_agreement</span>(labels,
+  fixture.labels)).<span class="fn">toBeGreaterThanOrEqual</span>(<span class="hl">0.95</span>);
+<span class="cm">// blanket bound today — to be tightened:</span>
+<span class="fn">expect</span>(mae / probs.length)
+  .<span class="fn">toBeLessThanOrEqual</span>(<span class="hl">0.2</span>);</pre>
+        </div>
+      </div>
+    </div>
+
+    <figure class="figframe" style="margin-top:1.4rem;">
+      <svg viewBox="0 0 1060 250" role="img" aria-label="Two tied MST edges resolved in different orders shift a boundary point">
+        <!-- shared cluster cores -->
+        <g>
+          <circle cx="120" cy="90" r="6" fill="#6f7a4f"/><circle cx="150" cy="120" r="6" fill="#6f7a4f"/><circle cx="100" cy="135" r="6" fill="#6f7a4f"/>
+          <text x="120" y="60" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#6f7a4f">cluster A</text>
+          <circle cx="420" cy="90" r="6" fill="#b56a45"/><circle cx="450" cy="125" r="6" fill="#b56a45"/><circle cx="400" cy="140" r="6" fill="#b56a45"/>
+          <text x="425" y="60" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#b56a45">cluster B</text>
+          <!-- boundary point -->
+          <circle cx="285" cy="150" r="8" fill="#2f3133"/>
+          <text x="285" y="180" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2f3133">boundary point p</text>
+          <!-- two equal-weight edges -->
+          <line x1="285" y1="150" x2="150" y2="120" stroke="#756f63" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <line x1="285" y1="150" x2="420" y2="90" stroke="#756f63" stroke-width="1.6" stroke-dasharray="4 3"/>
+          <text x="205" y="128" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">w = 0.42</text>
+          <text x="345" y="108" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">w = 0.42  (tie!)</text>
+        </g>
+        <line x1="540" y1="40" x2="540" y2="210" stroke="#d8cdb6"/>
+        <!-- two outcomes -->
+        <text x="800" y="50" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="13" fill="#2f3133" font-weight="600">tie broken two ways → p lands differently</text>
+        <g font-family="ui-monospace,monospace" font-size="11">
+          <rect x="600" y="75" width="180" height="50" rx="8" fill="#6f7a4f"/>
+          <text x="690" y="98" text-anchor="middle" fill="#f6f2e9">sklearn order</text>
+          <text x="690" y="115" text-anchor="middle" fill="#e9e1d0">p → cluster A</text>
+          <rect x="820" y="75" width="180" height="50" rx="8" fill="#9c3b2e"/>
+          <text x="910" y="98" text-anchor="middle" fill="#f6f2e9">Prim order</text>
+          <text x="910" y="115" text-anchor="middle" fill="#e9e1d0">p → cluster B</text>
+        </g>
+        <text x="800" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#44484b">Same data, same condensed-tree logic — only the merge order of the two</text>
+        <text x="800" y="190" text-anchor="middle" font-family="ui-sans-serif,system-ui,sans-serif" font-size="12" fill="#44484b">equal-weight edges differs. That is the entire source of &lt;5% label drift.</text>
+      </svg>
+      <figcaption>The mechanism, concretely: a boundary point reachable by two equal-weight edges joins whichever cluster's edge is merged first. Tie-free fixtures have no such ambiguity &mdash; which is exactly what licenses an exact probability assertion for them.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== SWEEP MATRIX ===================== -->
+  <section id="sweep">
+    <div class="eyebrow">parameter coverage</div>
+    <h2>The fixture sweep matrix</h2>
+    <p class="prose">Each cell is one scikit-learn fixture combining a dataset with a parameter setting. Olive cells exist today (the five <code>COMBOS</code> &times; three datasets, plus cosine and manhattan singletons); clay cells are the additions task-50 requires &mdash; the degenerate cases and the wider <code>min_samples</code> / <code>cluster_selection_epsilon</code> sweeps in both selection modes.</p>
+
+    <div class="matrix-wrap">
+      <table class="matrix">
+        <thead>
+          <tr>
+            <th rowspan="2" style="text-align:left;">parameter setting</th>
+            <th rowspan="2">mode</th>
+            <th colspan="3">existing datasets</th>
+            <th colspan="2">degenerate (new)</th>
+          </tr>
+          <tr>
+            <th>blobs</th><th>moons</th><th>circles</th>
+            <th>all&#8209;noise</th><th>single dense</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="lbl">mcs5 · ms=def · eps0</td><td>eom</td>
+            <td><span class="glyph have" title="exists"></span></td><td><span class="glyph have"></span></td><td><span class="glyph have"></span></td>
+            <td><span class="glyph new" title="new"></span></td><td><span class="glyph new"></span></td></tr>
+          <tr><td class="lbl">mcs10 · ms=def · eps0</td><td>eom</td>
+            <td><span class="glyph have"></span></td><td><span class="glyph have"></span></td><td><span class="glyph have"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs5 · ms=3 · eps0</td><td>eom</td>
+            <td><span class="glyph have"></span></td><td><span class="glyph have"></span></td><td><span class="glyph have"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs5 · <b>ms=2</b> · eps0 (new)</td><td>eom</td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td><td><span class="glyph new"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs5 · <b>ms=8</b> · eps0 (new)</td><td>eom</td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td><td><span class="glyph new"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs5 · ms=def · eps0</td><td>leaf</td>
+            <td><span class="glyph have"></span></td><td><span class="glyph have"></span></td><td><span class="glyph have"></span></td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td></tr>
+          <tr><td class="lbl">mcs8 · ms=def · <b>eps0.3</b></td><td>eom</td>
+            <td><span class="glyph have"></span></td><td><span class="glyph have"></span></td><td><span class="glyph have"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs8 · ms=def · <b>eps0.15</b> (new)</td><td>eom</td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td><td><span class="glyph new"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs8 · ms=def · <b>eps0.5</b> (new)</td><td>eom</td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td><td><span class="glyph new"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+          <tr><td class="lbl">mcs8 · ms=def · <b>eps0.3</b> (new)</td><td>leaf</td>
+            <td><span class="glyph new"></span></td><td><span class="glyph new"></span></td><td><span class="glyph new"></span></td>
+            <td><span class="glyph none"></span></td><td><span class="glyph none"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legend">
+      <span><span class="glyph have"></span> exists today (18 fixtures)</span>
+      <span><span class="glyph new"></span> task-50 adds</span>
+      <span><span class="glyph none"></span> not in scope</span>
+    </div>
+
+    <aside class="callout med">
+      <div class="k">also new, outside the grid</div>
+      <p class="prose"><b>blobs_cosine_precomputed</b> and <b>blobs_manhattan</b> already exist as singletons. Task-50 adds a <b>KMeans cosine (spherical k-means)</b> fixture in <code>generate_kmeans.py</code> &mdash; <code>normalize(X)</code> then euclidean <code>KMeans</code> &mdash; asserting centroids and labels up to permutation, plus a colocated parity test. The current <code>generate_kmeans.py</code> emits only euclidean blob cases (<code>blobs_n3/n4/n5</code>); the cosine case is the new branch.</p>
+    </aside>
+  </section>
+
+  <!-- ===================== PROBABILITY BOUND ===================== -->
+  <section id="prob">
+    <div class="eyebrow">tightening the loosest assertion</div>
+    <h2>From blanket MAE to documented bound</h2>
+    <p class="prose">Today every fixture passes under one blanket rule: mean absolute probability error &le; 0.2. That is far looser than most fixtures need. The tightening classifies each fixture by whether its mutual-reachability weights contain ties, then asserts as strictly as the fixture allows.</p>
+
+    <figure class="figframe">
+      <svg viewBox="0 0 1060 210" role="img" aria-label="Probability assertion tightening from one blanket bound to per-fixture exact-or-bounded">
+        <defs>
+          <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="#5a5e62"/></marker>
+        </defs>
+        <rect x="30" y="70" width="240" height="70" rx="10" fill="#9c3b2e"/>
+        <text x="150" y="100" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="14" fill="#f6f2e9" font-weight="600">today: one rule</text>
+        <text x="150" y="122" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#e9e1d0">MAE ≤ 0.2 for all</text>
+
+        <line x1="270" y1="105" x2="350" y2="105" stroke="#5a5e62" stroke-width="1.8" marker-end="url(#arr2)"/>
+        <text x="310" y="95" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#756f63">classify</text>
+
+        <!-- decision -->
+        <path d="M460 105 L520 65 L580 105 L520 145 Z" fill="#e9e1d0" stroke="#b56a45" stroke-width="1.5"/>
+        <text x="520" y="100" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#2f3133">mreach</text>
+        <text x="520" y="114" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#2f3133">weight ties?</text>
+
+        <line x1="355" y1="105" x2="458" y2="105" stroke="#5a5e62" stroke-width="1.6" marker-end="url(#arr2)"/>
+
+        <!-- tie-free -> exact -->
+        <line x1="580" y1="90" x2="690" y2="60" stroke="#6f7a4f" stroke-width="1.8" marker-end="url(#arr2)"/>
+        <text x="630" y="62" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4f">no</text>
+        <rect x="700" y="35" width="330" height="55" rx="10" fill="#6f7a4f"/>
+        <text x="865" y="58" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="13" fill="#f6f2e9" font-weight="600">exact</text>
+        <text x="865" y="78" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#e9e1d0">probabilities[i] toBeCloseTo ref, 6</text>
+
+        <!-- tied -> bounded -->
+        <line x1="580" y1="120" x2="690" y2="150" stroke="#b56a45" stroke-width="1.8" marker-end="url(#arr2)"/>
+        <text x="630" y="150" font-family="ui-monospace,monospace" font-size="10" fill="#b56a45">yes</text>
+        <rect x="700" y="125" width="330" height="60" rx="10" fill="#b56a45"/>
+        <text x="865" y="148" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="13" fill="#f6f2e9" font-weight="600">documented bound</text>
+        <text x="865" y="168" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#f6f2e9">stated per-fixture tolerance + reason</text>
+        <text x="865" y="182" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#f6f2e9">(only points on tied edges may drift)</text>
+      </svg>
+      <figcaption>The fixture generator can flag tie-presence (it already has the full mutual-reachability graph in numpy). Tie-free fixtures &mdash; well-separated blobs, the cosine directional case &mdash; assert probabilities exactly; only genuinely tied fixtures keep a bound, and that bound is documented with the count of points it can affect.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ===================== REPRESENTATIVES ===================== -->
+  <section id="representatives">
+    <div class="eyebrow">library-defined, no sklearn equivalent</div>
+    <h2>Exemplars and medoids: behavioural-only coverage</h2>
+    <p class="prose"><code>exemplar_indices_</code> (HDBSCAN, the most-persistent point per cluster) and <code>medoid_indices_</code> (the real sample nearest each cluster mean) have <em>no</em> scikit-learn counterpart to diff against. They are documented in code as library-defined and pinned by behaviour instead of by reference output.</p>
+
+    <div class="twocol">
+      <div class="panel">
+        <h3><code>exemplar_indices_</code> &mdash; HDBSCAN</h3>
+        <p style="font-size:.88rem;">The point reaching the highest &lambda; within its cluster (survives to highest density). Computed in <code>extract_labels</code> via <code>best_lambda</code> per label.</p>
+        <ul class="branch-list">
+          <li><span class="gn safe">&check;</span><div><div class="what">Populated only when <code>store_exemplars</code> set; <code>null</code> otherwise.</div><div class="loc">hdbscan.ts :177&ndash;179</div></div></li>
+          <li><span class="gn safe">&check;</span><div><div class="what">One entry per non-noise cluster id.</div></div></li>
+          <li><span class="gn">+</span><div><div class="what">Every index in-range; deterministic tie-break (lowest index / first-seen at max &lambda;).</div><div class="test">new behavioural assertions.</div></div></li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3><code>medoid_indices_</code> &mdash; Agglomerative / Spectral</h3>
+        <p style="font-size:.88rem;">Sample closest to the cluster mean under the metric. Ties broken to the lowest sample index; empty cluster &rarr; <code>-1</code>.</p>
+        <ul class="branch-list">
+          <li><span class="gn safe">&check;</span><div><div class="what"><code>-1</code> for empty clusters; noise ignored.</div><div class="loc">medoid_selection.ts :101&ndash;102, :91</div></div></li>
+          <li><span class="gn">+</span><div><div class="what">Deterministic lowest-index tie-break asserted on a constructed tie.</div></div></li>
+          <li><span class="gn">+</span><div><div class="what">Manhattan / cosine metric branches (also branch-atlas items).</div></div></li>
+        </ul>
+      </div>
+    </div>
+
+    <aside class="callout">
+      <div class="k">documentation deliverable</div>
+      <p class="prose">Both properties get a code comment stating explicitly: <em>library-defined, no scikit-learn equivalent; correctness is defined by the behavioural contract above, not by reference parity.</em> This closes the acceptance criterion and prevents a future reader from mistaking the tolerance for an unfinished sklearn comparison.</p>
+    </aside>
+  </section>
+
+  <!-- ===================== ACCEPTANCE ===================== -->
+  <section id="ac">
+    <div class="eyebrow">definition of done</div>
+    <h2>Acceptance criteria, mapped to the work above</h2>
+    <ul class="checklist">
+      <li><div class="box"></div><div><span class="ac-id">AC-1</span> &nbsp; Branch &ge; 90%, stmt/line &ge; 95% for all eight modules. <span class="sub">&rarr; Branch atlas + CI gate.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-2</span> &nbsp; Named uncovered branches exercised (PCA errors/zero-norm; HDBSCAN n=1 / precomputed-non-square / manhattan; epsilon traverse_upwards; medoid manhattan + empty). <span class="sub">&rarr; numbered atlas markers.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-3</span> &nbsp; HDBSCAN degenerate fixtures: all-noise &amp; single dense cluster, labels + probabilities vs sklearn. <span class="sub">&rarr; sweep matrix, clay degenerate columns.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-4</span> &nbsp; <code>min_samples</code> &amp; <code>cluster_selection_epsilon</code> swept &ge;3 values each, eom + leaf. <span class="sub">&rarr; sweep matrix rows.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-5</span> &nbsp; Probability assertion tightened: exact where tie-free, documented bound otherwise. <span class="sub">&rarr; probability-bound decision.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-6</span> &nbsp; KMeans <code>metric:'cosine'</code> validated vs <code>normalize(X)</code> + <code>KMeans</code> fixture. <span class="sub">&rarr; sweep callout.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-7</span> &nbsp; <code>exemplar_indices_</code> / <code>medoid_indices_</code> documented as library-defined + behavioural tests. <span class="sub">&rarr; representatives section.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-8</span> &nbsp; CI enforces a jest <code>coverageThreshold</code> for these module paths. <span class="sub">&rarr; gate added to jest.config.js, runs in ci.yml's test step.</span></div></li>
+      <li><div class="box"></div><div><span class="ac-id">AC-9</span> &nbsp; All fixtures regenerated reproducibly by <code>tools/sklearn_fixtures/*.py</code>; none hand-edited. <span class="sub">&rarr; generators are the only fixture source.</span></div></li>
+    </ul>
+
+    <aside class="callout med">
+      <div class="k">the CI gate, concretely</div>
+      <div class="code" style="margin-top:.6rem;">
+        <div class="file-label"><span>jest.config.js</span><span>coverageThreshold (new)</span></div>
+<pre><span class="kw">coverageThreshold</span>: {
+  <span class="str">"src/decomposition/pca.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/clustering/hdbscan.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/clustering/medoid_selection.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/clustering/representations.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/graph/condensation_tree.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/graph/mutual_reachability.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/graph/minimum_spanning_tree.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> },
+  <span class="str">"src/distance/kdistance.ts"</span>: { branches: <span class="hl">90</span>, statements: <span class="hl">95</span>, lines: <span class="hl">95</span> }
+}<span class="cm">  // npm test in ci.yml fails the build below these</span></pre>
+      </div>
+    </aside>
+  </section>
+
+  <footer>
+    Generated from task-50 and the live source under src/ and tools/sklearn_fixtures/. &nbsp;
+    Coverage figures are the task-49 audit baseline. &nbsp; Open this file directly in any browser — no build, no network.
+  </footer>
+
+</main>
+
+<script>
+  // Progressive enhancement: highlight the active section in the outline rail.
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('nav.toc a'));
+    var map = {};
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      map[id] = a;
+    });
+    var sections = Array.prototype.slice.call(document.querySelectorAll('main section[id]'));
+    if (!('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) {
+          links.forEach(function (l) { l.classList.remove('active'); });
+          var a = map[e.target.id];
+          if (a) a.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-120px 0px -65% 0px', threshold: 0 });
+    sections.forEach(function (s) { io.observe(s); });
+  })();
+</script>
+</body>
+</html>

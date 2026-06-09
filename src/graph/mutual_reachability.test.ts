@@ -31,6 +31,18 @@ describe('mutual_reachability', () => {
     expect(() => mutual_reachability([[0, 1], [1, 0]], [1])).toThrow();
   });
 
+  it('throws on a non-square distance matrix', () => {
+    expect(() =>
+      mutual_reachability(
+        [
+          [0, 1, 2],
+          [1, 0, 1],
+        ],
+        [1, 2],
+      ),
+    ).toThrow('square');
+  });
+
   it('matches numpy-derived reachability on fixtures', () => {
     const files = fs
       .readdirSync(FIXTURE_DIR)

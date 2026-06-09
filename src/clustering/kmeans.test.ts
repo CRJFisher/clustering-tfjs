@@ -282,7 +282,11 @@ describe("KMeans – centroids & predict parity with scikit-learn", () => {
     const fixture = JSON.parse(
       fs.readFileSync(path.join(FIXTURE_DIR, file), "utf-8"),
     ) as {
-      params: { n_clusters: number; random_state: number };
+      params: {
+        n_clusters: number;
+        random_state: number;
+        metric?: "cosine";
+      };
       X: number[][];
       labels: number[];
       cluster_centers_: number[][];
@@ -295,12 +299,20 @@ describe("KMeans – centroids & predict parity with scikit-learn", () => {
         n_clusters: fixture.params.n_clusters,
         random_state: fixture.params.random_state,
         n_init: 10,
+        ...(fixture.params.metric ? { metric: fixture.params.metric } : {}),
       });
       await model.fit(fixture.X);
 
+      // The cosine reference is normalize(X) + KMeans; both conventions store
+      // centroids as means of the assigned unit vectors, but the float32
+      // spherical Lloyd path converges less sharply than euclidean.
+      const tol = fixture.params.metric === "cosine" ? 5e-2 : 1e-2;
       const centroids = model.get_centroids();
       expect(centroids.length).toBe(fixture.cluster_centers_.length);
-      expect(centroids_match(centroids, fixture.cluster_centers_, 1e-2)).toBe(true);
+      expect(centroids_match(centroids, fixture.cluster_centers_, tol)).toBe(true);
+
+      const fitted = await model.predict(fixture.X);
+      expect(labelings_equivalent(fitted, fixture.labels)).toBe(true);
 
       const predicted = await model.predict(fixture.x_test);
       expect(labelings_equivalent(predicted, fixture.predict_labels)).toBe(true);

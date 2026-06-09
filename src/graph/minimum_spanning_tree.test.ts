@@ -36,6 +36,15 @@ describe('minimum_spanning_tree', () => {
     expect(minimum_spanning_tree([[0]])).toEqual([]);
   });
 
+  it('throws when the node count is invalid', () => {
+    expect(() => minimum_spanning_tree(new Float64Array(0), -1)).toThrow(
+      'valid node count',
+    );
+    expect(() =>
+      minimum_spanning_tree(new Float64Array(4), Number.NaN),
+    ).toThrow('valid node count');
+  });
+
   it('builds the expected tree for a tiny line graph', () => {
     // Points at 0, 1, 2.5 -> MST connects 0-1 (1) and 1-2 (1.5)
     const D = euclidean_matrix([[0], [1], [2.5]]);

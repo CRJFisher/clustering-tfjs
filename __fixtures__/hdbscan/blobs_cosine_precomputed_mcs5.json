@@ -727,6 +727,8 @@
       90
     ]
   ],
+  "tie_free": false,
+  "min_mst_gap": 0.0,
   "distance_matrix": [
     [
       0.0005929809539977349,

@@ -59,6 +59,13 @@ jobs:
         run: |
           node -e "try { require('./dist/clustering.browser.js'); console.log('Browser CommonJS build loaded'); } catch(e) { console.log('Browser build requires browser environment (expected)'); }"
       
+      # Fails the build when the density/decomposition clustering modules drop
+      # below their coverage thresholds, and produces the lcov report the
+      # upload step consumes. Single cell only: coverage is platform-agnostic.
+      - name: Enforce clustering coverage thresholds
+        if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22.x'
+        run: npm run test:coverage:gate
+
       - name: Upload coverage
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == '22.x'
         uses: codecov/codecov-action@v4

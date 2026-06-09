@@ -23,8 +23,18 @@ export interface ClusterRepresentations {
    * Index of the representative sample per cluster (Agglomerative, Spectral).
    * Position `c` holds the medoid index of cluster `c`, or `-1` if that cluster
    * has no assigned samples.
+   *
+   * Library-defined: scikit-learn exposes no equivalent attribute. The medoid
+   * is the in-cluster sample closest to the cluster mean under the fit metric;
+   * ties resolve towards the lowest sample index.
    */
   medoid_indices_?: Int32Array | null;
-  /** Exemplar sample index per cluster id (HDBSCAN). */
+  /**
+   * Exemplar sample index per cluster id (HDBSCAN).
+   *
+   * Library-defined: scikit-learn exposes no equivalent attribute. The
+   * exemplar is the most-persistent (highest-λ) point of each cluster; ties
+   * resolve towards the lowest sample index.
+   */
   exemplar_indices_?: Map<number, number> | null;
 }

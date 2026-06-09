@@ -9,6 +9,13 @@ TypeScript implementation converge to the same global optimum; cluster
 assignments then agree up to a permutation of cluster ids, and centroids match
 to high precision.
 
+The cosine (spherical k-means) fixture follows the reference convention
+``normalize(X)`` + euclidean ``KMeans``: rows are L2-normalized onto the unit
+sphere and clustered with the standard algorithm, so ``cluster_centers_`` are
+the (un-renormalized) means of the assigned unit vectors — exactly the
+convention the TypeScript cosine path stores. ``X`` and ``x_test`` are emitted
+raw; the TypeScript model normalizes internally.
+
 Usage
 -----
     cd tools/sklearn_fixtures
@@ -24,6 +31,7 @@ from typing import Any, Dict, List
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.datasets import make_blobs
+from sklearn.preprocessing import normalize
 
 
 OUT_DIR = Path(__file__).resolve().parents[2] / "__fixtures__" / "kmeans"
@@ -71,11 +79,58 @@ def make_fixture(case: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def make_direction_data(
+    rng: np.random.RandomState, n_per_cluster: int
+) -> np.ndarray:
+    """Direction-dominated data: the direction carries the cluster, the
+    magnitude is uniform noise — unambiguous under cosine, ambiguous under
+    euclidean."""
+    directions = np.array(
+        [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]
+    )
+    blocks = []
+    for d in directions:
+        angular = d + 0.04 * rng.randn(n_per_cluster, 3)
+        magnitudes = rng.uniform(0.5, 5.0, size=(n_per_cluster, 1))
+        blocks.append(angular * magnitudes)
+    return np.vstack(blocks)
+
+
+def make_cosine_fixture() -> Dict[str, Any]:
+    random_state = 42
+    rng = np.random.RandomState(0)
+    X = make_direction_data(rng, 40)
+    x_test = make_direction_data(rng, 10)
+
+    model = KMeans(n_clusters=3, n_init=10, random_state=random_state)
+    labels = model.fit_predict(normalize(X))
+    predict_labels = model.predict(normalize(x_test))
+
+    return {
+        "name": "cosine_directions_n3",
+        "params": {
+            "n_clusters": 3,
+            "random_state": random_state,
+            "metric": "cosine",
+        },
+        "X": X.astype(float).tolist(),
+        "labels": labels.astype(int).tolist(),
+        "cluster_centers_": model.cluster_centers_.astype(float).tolist(),
+        "inertia_": float(model.inertia_),
+        "x_test": x_test.astype(float).tolist(),
+        "predict_labels": predict_labels.astype(int).tolist(),
+    }
+
+
 def main() -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     for case in CASES:
         fixture = make_fixture(case)
         (OUT_DIR / f"{case['name']}.json").write_text(json.dumps(fixture, indent=2))
+    cosine_fixture = make_cosine_fixture()
+    (OUT_DIR / "cosine_directions_n3.json").write_text(
+        json.dumps(cosine_fixture, indent=2)
+    )
     print(f"Wrote KMeans fixtures to {OUT_DIR}")
 
 

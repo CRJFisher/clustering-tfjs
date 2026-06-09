@@ -233,7 +233,7 @@ new HDBSCAN(params?: Partial<HDBSCANParams>)
 
 - `labels_: number[] | null` — cluster ids `>= 0`, `-1` for noise.
 - `probabilities_: number[] | null` — per-sample membership strength in `[0, 1]`.
-- `exemplar_indices_: Map<number, number> | null` — exemplar sample index per cluster label (when `store_exemplars`).
+- `exemplar_indices_: Map<number, number> | null` — exemplar sample index per cluster label (when `store_exemplars`). Library-defined: scikit-learn has no equivalent attribute; ties resolve towards the lowest sample index.
 
 #### Example
 
@@ -385,6 +385,11 @@ nearest-representative lookups) works the same regardless of algorithm:
 - **AgglomerativeClustering** and **SpectralClustering** expose `medoid_indices_`
   via `compute_medoids(X)` — the real sample closest to each cluster's mean.
 - **HDBSCAN** exposes `exemplar_indices_` (most-persistent point per cluster).
+
+`medoid_indices_` and `exemplar_indices_` are library-defined representatives:
+scikit-learn exposes no equivalent attributes, so they are specified by
+behaviour (member of the cluster, deterministic lowest-index tie-breaking)
+rather than by reference fixtures.
 
 ```typescript
 interface ClusterRepresentations {

@@ -60,6 +60,7 @@
     "dev": "ts-node src/index.ts",
     "test": "jest",
     "test:coverage": "jest --coverage",
+    "test:coverage:gate": "jest --config jest.coverage.config.js --runTestsByPath src/clustering/hdbscan.test.ts src/clustering/medoid_selection.test.ts src/decomposition/pca.test.ts src/distance/kdistance.test.ts src/graph/condensation_tree.test.ts src/graph/minimum_spanning_tree.test.ts src/graph/mutual_reachability.test.ts",
     "lint": "eslint src test_support benchmarks",
     "type-check": "tsc --noEmit",
     "benchmark": "ts-node scripts/benchmark.ts",

@@ -12,6 +12,10 @@ import {
  * distances to the cluster mean. Both arrays are indexed by cluster id and have
  * length `n_clusters`. A cluster with no assigned samples has index `-1` and
  * distance `Infinity`.
+ *
+ * Medoids are library-defined representatives — scikit-learn exposes no
+ * equivalent attribute, so `indices` is covered by behavioural tests rather
+ * than reference fixtures.
  */
 export interface MedoidResult {
   indices: Int32Array;

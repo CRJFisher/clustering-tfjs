@@ -1,9 +1,11 @@
 ---
 id: TASK-50
 title: Bring density and decomposition clustering test coverage to excellent
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@claude'
 created_date: '2026-06-07 08:35'
+updated_date: '2026-06-09 20:40'
 labels:
   - testing
 dependencies: []
@@ -12,7 +14,6 @@ dependencies: []
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-
 The density, cosine, and representation clustering upgrade (task-49) is tested against scikit-learn reference outputs, but a coverage audit found branch-coverage gaps and a few behaviours not pinned to sklearn output. Raise these new clustering modules to excellent, sklearn-grounded coverage so correctness is locked in against regressions.
 
 ### Measured baseline (audit at task-49 completion)
@@ -36,28 +37,24 @@ Known gaps the audit surfaced:
 - No coverage threshold is enforced in CI for these modules, so regressions can erode coverage silently.
 
 `exemplar_indices_` (HDBSCAN) and `medoid_indices_` have no scikit-learn equivalent to assert against; the goal for those is exhaustive behavioural coverage and documentation that they are library-defined, not sklearn-derived.
-
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
-
 <!-- AC:BEGIN -->
-
-- [ ] Branch coverage for every new clustering module (`condensation_tree`, `minimum_spanning_tree`, `mutual_reachability`, `kdistance`, `hdbscan`, `medoid_selection`, `pca`, `representations`) is ≥ 90%, and statement/line coverage is ≥ 95%
-- [ ] The previously-uncovered branches are exercised: PCA error paths + zero-norm fallback; HDBSCAN `n===1` single-sample, precomputed non-square rejection, and manhattan native path; the epsilon `traverse_upwards` branches; medoid manhattan metric branch and empty-input path
-- [ ] HDBSCAN has scikit-learn reference fixtures for the degenerate cases it must handle: an all-noise dataset (every label `-1`) and a single dense cluster, with labels and `probabilities_` asserted against sklearn
-- [ ] HDBSCAN `min_samples` and `cluster_selection_epsilon` are each swept over at least three values against sklearn fixtures, in both `eom` and `leaf` modes
-- [ ] The HDBSCAN probability assertion is tightened: the per-point probability tolerance is documented and as tight as the tie-ambiguity allows (e.g. exact for tie-free fixtures, a stated bound otherwise) rather than a blanket MAE ≤ 0.2
-- [ ] KMeans `metric:'cosine'` (spherical k-means) is validated against a scikit-learn reference fixture (`normalize(X)` + `KMeans`), asserting centroids and labels up to permutation
-- [ ] `exemplar_indices_` and `medoid_indices_` are documented in code as library-defined (no scikit-learn equivalent) and covered by behavioural tests (correct count, valid in-range indices, deterministic tie-breaking)
-- [ ] CI enforces a coverage threshold for these clustering modules so future regressions fail the build
-- [ ] All fixtures are regenerated reproducibly by the `tools/sklearn_fixtures/*.py` generators; no committed fixture is hand-edited
+- [ ] #1 Branch coverage for every new clustering module (`condensation_tree`, `minimum_spanning_tree`, `mutual_reachability`, `kdistance`, `hdbscan`, `medoid_selection`, `pca`, `representations`) is ≥ 90%, and statement/line coverage is ≥ 95%
+- [ ] #2 The previously-uncovered branches are exercised: PCA error paths + zero-norm fallback; HDBSCAN `n===1` single-sample, precomputed non-square rejection, and manhattan native path; the epsilon `traverse_upwards` branches; medoid manhattan metric branch and empty-input path
+- [ ] #3 HDBSCAN has scikit-learn reference fixtures for the degenerate cases it must handle: an all-noise dataset (every label `-1`) and a single dense cluster, with labels and `probabilities_` asserted against sklearn
+- [ ] #4 HDBSCAN `min_samples` and `cluster_selection_epsilon` are each swept over at least three values against sklearn fixtures, in both `eom` and `leaf` modes
+- [ ] #5 The HDBSCAN probability assertion is tightened: the per-point probability tolerance is documented and as tight as the tie-ambiguity allows (e.g. exact for tie-free fixtures, a stated bound otherwise) rather than a blanket MAE ≤ 0.2
+- [ ] #6 KMeans `metric:'cosine'` (spherical k-means) is validated against a scikit-learn reference fixture (`normalize(X)` + `KMeans`), asserting centroids and labels up to permutation
+- [ ] #7 `exemplar_indices_` and `medoid_indices_` are documented in code as library-defined (no scikit-learn equivalent) and covered by behavioural tests (correct count, valid in-range indices, deterministic tie-breaking)
+- [ ] #8 CI enforces a coverage threshold for these clustering modules so future regressions fail the build
+- [ ] #9 All fixtures are regenerated reproducibly by the `tools/sklearn_fixtures/*.py` generators; no committed fixture is hand-edited
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-
 1. Run `jest --coverage` scoped to these clustering modules to get the current per-file branch report and the exact uncovered line numbers.
 2. Add targeted edge-case tests to hit uncovered branches (PCA errors/zero-norm; HDBSCAN n=1 / precomputed-non-square / manhattan; medoid manhattan/empty; epsilon traverse_upwards).
 3. Extend `generate_hdbscan.py` with all-noise and single-cluster datasets and wider `min_samples`/`cluster_selection_epsilon` sweeps; regenerate fixtures.

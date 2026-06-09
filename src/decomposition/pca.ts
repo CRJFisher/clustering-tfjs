@@ -41,6 +41,20 @@ function to_array(X: DataMatrix): number[][] {
 }
 
 /**
+ * Unit-norm power-iteration start vector for component `c`: the candidate
+ * normalized, or the `c % d` standard basis vector when the candidate has
+ * zero norm (so iteration always starts from a valid direction).
+ */
+export function unit_init_vector(candidate: number[], c: number): number[] {
+  const d = candidate.length;
+  const vn = Math.sqrt(candidate.reduce((s, x) => s + x * x, 0));
+  if (vn === 0) {
+    return candidate.map((_x, i) => (i === c % d ? 1 : 0));
+  }
+  return candidate.map((x) => x / vn);
+}
+
+/**
  * Top-`k` eigenvectors/eigenvalues of a symmetric matrix via power iteration
  * with deflation. Deterministic for a fixed `random_state`. Shared by
  * {@link PCA} and SOM principal-component initialization.
@@ -78,13 +92,10 @@ export function power_iteration_eig(
     a.reduce((s, x, i) => s + x * b[i], 0);
 
   for (let c = 0; c < count; c++) {
-    let v = Array.from({ length: d }, () => rng.rand() * 2 - 1);
-    let vn = norm(v);
-    if (vn === 0) {
-      v = v.map((_x, i) => (i === c % d ? 1 : 0));
-      vn = 1;
-    }
-    v = v.map((x) => x / vn);
+    let v = unit_init_vector(
+      Array.from({ length: d }, () => rng.rand() * 2 - 1),
+      c,
+    );
 
     for (let iter = 0; iter < 300; iter++) {
       const w = mat_vec(m, v);

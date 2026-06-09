@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 import { PCA } from '..';
+import { power_iteration_eig, unit_init_vector } from './pca';
+import * as tf from '../../test_support/tensorflow_helper';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'pca');
 
@@ -114,5 +116,94 @@ describe('PCA – API behaviour', () => {
     const a = pca.transform(X);
     const b = restored.transform(X);
     expect(b).toEqual(a);
+  });
+
+  it('rejects a non-integer or non-positive n_components', () => {
+    expect(() => new PCA({ n_components: 0 })).toThrow('positive integer');
+    expect(() => new PCA({ n_components: 1.5 })).toThrow('positive integer');
+    expect(() => new PCA({ n_components: -2 })).toThrow('positive integer');
+  });
+
+  it('rejects empty input', () => {
+    expect(() => new PCA({ n_components: 1 }).fit([])).toThrow(
+      'at least one sample',
+    );
+  });
+
+  it('transform, inverse_transform, and to_json throw before fit', () => {
+    const pca = new PCA({ n_components: 2 });
+    expect(() => pca.transform(X)).toThrow('before fit');
+    expect(() => pca.inverse_transform([[0, 0]])).toThrow('before fit');
+    expect(() => pca.to_json()).toThrow('before fit');
+  });
+
+  it('fits a single sample without NaN (denominator clamps to 1)', () => {
+    const pca = new PCA({ n_components: 1, random_state: 0 });
+    pca.fit([[1, 2, 3]]);
+    expect(pca.mean_).toEqual([1, 2, 3]);
+    for (const v of pca.explained_variance_!) {
+      expect(Number.isFinite(v)).toBe(true);
+      expect(v).toBeCloseTo(0, 10);
+    }
+  });
+
+  it('handles constant features (exact zeros in centered data)', () => {
+    // Column 0 is constant, so every centered value in it is exactly 0.
+    const data = [
+      [3, 1],
+      [3, 5],
+      [3, 9],
+    ];
+    const pca = new PCA({ n_components: 2, random_state: 0 });
+    const z = pca.fit_transform(data);
+    expect(pca.explained_variance_![0]).toBeCloseTo(16, 6);
+    expect(pca.explained_variance_![1]).toBeCloseTo(0, 6);
+    expect(z.length).toBe(3);
+  });
+
+  it('accepts tensor input and matches the array-input fit', () => {
+    const from_array = new PCA({ n_components: 2, random_state: 0 });
+    from_array.fit(X);
+
+    const points = tf.tensor2d(X);
+    const from_tensor = new PCA({ n_components: 2, random_state: 0 });
+    from_tensor.fit(points);
+    const transformed = from_tensor.transform(tf.tensor2d([[1, 1, 1]]));
+    points.dispose();
+
+    expect(from_tensor.components_).toEqual(from_array.components_);
+    expect(transformed).toEqual(from_array.transform([[1, 1, 1]]));
+  });
+});
+
+describe('power-iteration eigensolver – degenerate matrices', () => {
+  it('falls back to a basis vector when the init candidate has zero norm', () => {
+    expect(unit_init_vector([0, 0, 0], 0)).toEqual([1, 0, 0]);
+    expect(unit_init_vector([0, 0, 0], 4)).toEqual([0, 1, 0]);
+    // Non-degenerate candidates are normalized, not replaced.
+    expect(unit_init_vector([0, 3, 4], 0)).toEqual([0, 0.6, 0.8]);
+  });
+
+  it('returns zero eigenvalues for the zero matrix without iterating forever', () => {
+    const { components, eigenvalues } = power_iteration_eig(
+      [
+        [0, 0],
+        [0, 0],
+      ],
+      2,
+      0,
+    );
+    expect(eigenvalues).toEqual([0, 0]);
+    expect(components).toHaveLength(2);
+    for (const v of components) {
+      const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0));
+      expect(norm).toBeCloseTo(1, 12);
+    }
+  });
+
+  it('clamps the component count to the matrix dimension', () => {
+    const { eigenvalues } = power_iteration_eig([[4]], 3, 0);
+    expect(eigenvalues).toHaveLength(1);
+    expect(eigenvalues[0]).toBeCloseTo(4, 12);
   });
 });

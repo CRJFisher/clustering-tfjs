@@ -3,6 +3,7 @@ import path from 'path';
 
 import { HDBSCAN } from '..';
 import type { HDBSCANParams } from './types';
+import * as tf from '../../test_support/tensorflow_helper';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
@@ -17,8 +18,63 @@ interface HdbscanFixture {
   };
   labels: number[];
   probabilities: number[];
+  /** Whether the fixture's MST edge weights are all distinct (see generator). */
+  tie_free: boolean;
+  min_mst_gap: number;
   X?: number[][];
   distance_matrix?: number[][];
+}
+
+function load_fixtures(filter: (name: string) => boolean = () => true): {
+  file: string;
+  fixture: HdbscanFixture;
+}[] {
+  return fs
+    .readdirSync(FIXTURE_DIR)
+    .filter((f) => f.endsWith('.json') && filter(f))
+    .map((file) => ({
+      file,
+      fixture: JSON.parse(
+        fs.readFileSync(path.join(FIXTURE_DIR, file), 'utf-8'),
+      ) as HdbscanFixture,
+    }));
+}
+
+function fit_input(fixture: HdbscanFixture): number[][] {
+  return fixture.params.metric === 'precomputed'
+    ? fixture.distance_matrix!
+    : fixture.X!;
+}
+
+function fixture_params(fixture: HdbscanFixture): Partial<HDBSCANParams> {
+  const params: Partial<HDBSCANParams> = {
+    min_cluster_size: fixture.params.min_cluster_size,
+    cluster_selection_method: fixture.params.cluster_selection_method,
+    cluster_selection_epsilon: fixture.params.cluster_selection_epsilon,
+    metric: fixture.params.metric,
+  };
+  if (fixture.params.min_samples != null) {
+    params.min_samples = fixture.params.min_samples;
+  }
+  return params;
+}
+
+/** Exact label equality up to a bijective cluster-id permutation (noise fixed). */
+function labels_equivalent_with_noise(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false;
+  const fwd = new Map<number, number>();
+  const rev = new Map<number, number>();
+  for (let i = 0; i < a.length; i++) {
+    if ((a[i] === -1) !== (b[i] === -1)) return false;
+    if (a[i] === -1) continue;
+    if (fwd.has(a[i])) {
+      if (fwd.get(a[i]) !== b[i]) return false;
+    } else fwd.set(a[i], b[i]);
+    if (rev.has(b[i])) {
+      if (rev.get(b[i]) !== a[i]) return false;
+    } else rev.set(b[i], a[i]);
+  }
+  return true;
 }
 
 /**
@@ -53,37 +109,43 @@ function alignment_agreement(mine: number[], sk: number[]): number {
  * End-to-end parity with scikit-learn. The condensed-tree + EOM core is
  * validated bit-exactly against sklearn's own hierarchy in
  * `condensation_tree.test.ts`; here the full pipeline (including
- * minimum-spanning-tree construction) is compared with tolerance, because
- * mutual-reachability weight ties are ordered differently across
- * implementations (numpy's unstable argsort), shifting a few boundary points.
+ * minimum-spanning-tree construction) runs from raw input.
+ *
+ * The assertion is tiered by the fixture's `tie_free` flag:
+ *
+ * - **Tie-free** (all MST edge weights distinct): the MST — and hence the
+ *   whole flat clustering — is unique, so labels must match exactly (up to
+ *   cluster-id permutation) and probabilities per-point to 1e-6.
+ * - **Tie-bound**: numpy's unstable argsort orders tied mutual-reachability
+ *   weights differently than Prim's algorithm, shifting a few boundary
+ *   points between equally valid hierarchies. Cluster count stays exact,
+ *   label agreement >= 0.95 under optimal alignment, and the per-fixture
+ *   probability MAE is bounded by 0.16. The whole pipeline is deterministic
+ *   float64, so the observed MAEs are stable; the worst fixture (precomputed
+ *   cosine, whose saturated distances tie heavily) sits at 0.150 and every
+ *   other fixture at or below 0.077.
  */
 describe('HDBSCAN – parity with scikit-learn', () => {
-  const files = fs.readdirSync(FIXTURE_DIR).filter((f) => f.endsWith('.json'));
-
-  for (const file of files) {
-    const fixture = JSON.parse(
-      fs.readFileSync(path.join(FIXTURE_DIR, file), 'utf-8'),
-    ) as HdbscanFixture;
-
+  for (const { file, fixture } of load_fixtures()) {
     it(`matches labels and probabilities for ${file}`, async () => {
-      const params: Partial<HDBSCANParams> = {
-        min_cluster_size: fixture.params.min_cluster_size,
-        cluster_selection_method: fixture.params.cluster_selection_method,
-        cluster_selection_epsilon: fixture.params.cluster_selection_epsilon,
-        metric: fixture.params.metric,
-      };
-      if (fixture.params.min_samples != null) {
-        params.min_samples = fixture.params.min_samples;
-      }
-
-      const model = new HDBSCAN(params);
-      const data =
-        fixture.params.metric === 'precomputed'
-          ? fixture.distance_matrix!
-          : fixture.X!;
-      const labels = await model.fit_predict(data);
+      const model = new HDBSCAN(fixture_params(fixture));
+      const labels = await model.fit_predict(fit_input(fixture));
 
       expect(labels.length).toBe(fixture.labels.length);
+      const probs = model.probabilities_!;
+      for (const p of probs) {
+        expect(p).toBeGreaterThanOrEqual(0);
+        expect(p).toBeLessThanOrEqual(1 + 1e-9);
+      }
+
+      if (fixture.tie_free) {
+        expect(labels_equivalent_with_noise(labels, fixture.labels)).toBe(true);
+        for (let i = 0; i < probs.length; i++) {
+          expect(probs[i]).toBeCloseTo(fixture.probabilities[i], 6);
+        }
+        return;
+      }
+
       // Same number of clusters and consistent noise vs. sklearn.
       const mine_clusters = new Set(labels.filter((l) => l !== -1)).size;
       const sk_clusters = new Set(fixture.labels.filter((l) => l !== -1)).size;
@@ -91,16 +153,38 @@ describe('HDBSCAN – parity with scikit-learn', () => {
       expect(alignment_agreement(labels, fixture.labels)).toBeGreaterThanOrEqual(
         0.95,
       );
-
-      // Probabilities are in range and close in aggregate (tie-sensitive).
-      const probs = model.probabilities_!;
       let mae = 0;
       for (let i = 0; i < probs.length; i++) {
-        expect(probs[i]).toBeGreaterThanOrEqual(0);
-        expect(probs[i]).toBeLessThanOrEqual(1 + 1e-9);
         mae += Math.abs(probs[i] - fixture.probabilities[i]);
       }
-      expect(mae / probs.length).toBeLessThanOrEqual(0.2);
+      expect(mae / probs.length).toBeLessThanOrEqual(0.16);
+    });
+  }
+});
+
+/**
+ * Degenerate inputs, pinned to scikit-learn output. Both come back all-noise:
+ * an all-noise dataset because no density peak clears min_cluster_size, and a
+ * single dense blob because candidate clusters are created in sibling pairs,
+ * so with `allow_single_cluster` unsupported a root-only tree labels nothing.
+ */
+describe('HDBSCAN – degenerate cases match scikit-learn', () => {
+  const degenerate = load_fixtures(
+    (f) => f.startsWith('allnoise_') || f.startsWith('single_blob_'),
+  );
+
+  it('has fixtures for both degenerate datasets in both modes', () => {
+    expect(degenerate.length).toBe(4);
+  });
+
+  for (const { file, fixture } of degenerate) {
+    it(`labels every sample noise with probability 0 for ${file}`, async () => {
+      expect(fixture.labels.every((l) => l === -1)).toBe(true);
+
+      const model = new HDBSCAN(fixture_params(fixture));
+      const labels = await model.fit_predict(fit_input(fixture));
+      expect(labels).toEqual(fixture.labels);
+      expect(model.probabilities_).toEqual(fixture.probabilities);
     });
   }
 });
@@ -186,4 +270,129 @@ describe('HDBSCAN – API surface', () => {
     expect(model.labels_).toBeNull();
     expect(model.probabilities_).toBeNull();
   });
+
+  it('rejects empty input', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4 });
+    await expect(model.fit([])).rejects.toThrow('at least one sample');
+  });
+
+  it('labels a single sample noise (deliberate deviation: sklearn raises)', async () => {
+    const with_ex = new HDBSCAN({ min_cluster_size: 4, store_exemplars: true });
+    await with_ex.fit([[1, 2]]);
+    expect(with_ex.labels_).toEqual([-1]);
+    expect(with_ex.probabilities_).toEqual([0]);
+    expect(with_ex.exemplar_indices_).toEqual(new Map());
+
+    const without = new HDBSCAN({ min_cluster_size: 4 });
+    await without.fit([[1, 2]]);
+    expect(without.labels_).toEqual([-1]);
+    expect(without.exemplar_indices_).toBeNull();
+  });
+
+  it('rejects a non-square precomputed distance matrix', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4, metric: 'precomputed' });
+    await expect(
+      model.fit([
+        [0, 1, 2],
+        [1, 0, 1],
+      ]),
+    ).rejects.toThrow('square');
+  });
+
+  it('accepts tensor input for native and precomputed metrics', async () => {
+    const from_array = new HDBSCAN({ min_cluster_size: 4 });
+    const array_labels = await from_array.fit_predict(X);
+
+    const points = tf.tensor2d(X);
+    const from_tensor = new HDBSCAN({ min_cluster_size: 4 });
+    const tensor_labels = await from_tensor.fit_predict(points);
+    points.dispose();
+    expect(tensor_labels).toEqual(array_labels);
+
+    const n = X.length;
+    const D: number[][] = Array.from({ length: n }, (_v, i) =>
+      Array.from({ length: n }, (_w, j) => {
+        let s = 0;
+        for (let d = 0; d < X[i].length; d++) {
+          const diff = X[i][d] - X[j][d];
+          s += diff * diff;
+        }
+        return Math.sqrt(s);
+      }),
+    );
+    const D_tensor = tf.tensor2d(D);
+    const precomputed = new HDBSCAN({
+      min_cluster_size: 4,
+      metric: 'precomputed',
+    });
+    const precomputed_labels = await precomputed.fit_predict(D_tensor);
+    D_tensor.dispose();
+    expect(precomputed_labels).toEqual(array_labels);
+  });
+
+  it('clusters under the manhattan metric', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4, metric: 'manhattan' });
+    const labels = await model.fit_predict(X);
+    expect(labels.length).toBe(X.length);
+    expect(new Set(labels.filter((l) => l !== -1)).size).toBe(2);
+  });
+
+  it('clamps min_samples to n (deliberate deviation: sklearn raises)', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4, min_samples: 100 });
+    const labels = await model.fit_predict(X);
+    expect(labels.length).toBe(X.length);
+  });
+
+  it('uses default params when constructed without arguments', async () => {
+    const model = new HDBSCAN();
+    // Default min_cluster_size is 5; both blobs have 5 members.
+    const labels = await model.fit_predict(X);
+    expect(new Set(labels.filter((l) => l !== -1)).size).toBe(2);
+  });
+
+  it('selects exemplars deterministically across fits', async () => {
+    const a = new HDBSCAN({ min_cluster_size: 4, store_exemplars: true });
+    const b = new HDBSCAN({ min_cluster_size: 4, store_exemplars: true });
+    await a.fit(X);
+    await b.fit(X);
+    expect(a.exemplar_indices_).toEqual(b.exemplar_indices_);
+  });
+});
+
+/**
+ * The parameter sweeps required for sklearn-grounded coverage: at least three
+ * `min_samples` values and three `cluster_selection_epsilon` values, each in
+ * both `eom` and `leaf` modes. Locks the fixture inventory itself so a
+ * regenerated set cannot silently drop the sweeps.
+ */
+describe('HDBSCAN – fixture sweep inventory', () => {
+  const all = load_fixtures();
+
+  for (const method of ['eom', 'leaf'] as const) {
+    it(`sweeps min_samples over >= 3 values in ${method} mode`, () => {
+      const values = new Set(
+        all
+          .filter(
+            ({ fixture }) =>
+              fixture.params.cluster_selection_method === method &&
+              fixture.params.min_samples != null,
+          )
+          .map(({ fixture }) => fixture.params.min_samples),
+      );
+      expect(values.size).toBeGreaterThanOrEqual(3);
+    });
+
+    it(`sweeps cluster_selection_epsilon over >= 3 values in ${method} mode`, () => {
+      const values = new Set(
+        all
+          .filter(
+            ({ fixture }) =>
+              fixture.params.cluster_selection_method === method &&
+              fixture.params.cluster_selection_epsilon > 0,
+          )
+          .map(({ fixture }) => fixture.params.cluster_selection_epsilon),
+      );
+      expect(values.size).toBeGreaterThanOrEqual(3);
+    });
+  }
 });

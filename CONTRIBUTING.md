@@ -199,6 +199,18 @@ describe('KMeans', () => {
 });
 ```
 
+### Coverage Gate
+
+CI enforces per-file coverage thresholds (branch ≥ 90%, statements/lines/functions ≥ 95%) on the density and decomposition clustering modules: `hdbscan`, `medoid_selection`, `pca`, `kdistance`, `condensation_tree`, `minimum_spanning_tree`, and `mutual_reachability`. The gate runs on one CI cell (ubuntu / Node 22) and fails the build when a module drops below its threshold.
+
+Reproduce it locally:
+
+```bash
+npm run test:coverage:gate
+```
+
+The printed coverage table lists the uncovered line numbers to target. The gated module list lives in `jest.coverage.config.js`; keep it in lockstep with the test paths in the `test:coverage:gate` script. `src/clustering/representations.ts` is intentionally not gated — it is a type-only interface module with no runtime code; its contract is covered behaviourally by the estimator tests.
+
 ### Scikit-learn Parity
 
 When implementing algorithms, ensure compatibility with scikit-learn:
