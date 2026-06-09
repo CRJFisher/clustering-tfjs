@@ -229,6 +229,10 @@ new HDBSCAN(params?: Partial<HDBSCANParams>)
 | `cluster_selection_method`  | `string` | `eom`         | `eom` (Excess of Mass) or `leaf`                  |
 | `store_exemplars`           | `boolean`| `false`       | Populate `exemplar_indices_` (most-persistent point per cluster) |
 
+Two small-input behaviours deliberately deviate from scikit-learn (which raises
+in both cases): a single-sample input returns `labels_ = [-1]` with probability
+`0`, and `min_samples` is clamped to the sample count.
+
 #### Fitted attributes
 
 - `labels_: number[] | null` — cluster ids `>= 0`, `-1` for noise.

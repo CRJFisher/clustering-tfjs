@@ -131,6 +131,14 @@ export class HDBSCAN
     }
 
     const n = rows.length;
+    const d = n > 0 ? rows[0].length : 0;
+    for (const row of rows) {
+      if (row.length !== d) {
+        throw new Error(
+          'Input data must be rectangular: every sample needs the same feature count.',
+        );
+      }
+    }
     const D: number[][] = Array.from({ length: n }, () =>
       new Array<number>(n).fill(0),
     );

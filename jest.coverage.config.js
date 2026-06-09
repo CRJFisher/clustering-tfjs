@@ -2,14 +2,14 @@ const base = require('./jest.config.js');
 
 /**
  * Coverage gate for the density / decomposition clustering modules
- * (task-50): run via `npm run test:coverage:gate`, which scopes the test run
- * to these modules' colocated suites.
+ * (task-50): run via `npm run test:coverage:gate`. See the "Coverage Gate"
+ * section of CONTRIBUTING.md for how to read a failure.
  *
- * Every file listed in `coverageThreshold` must also be in
- * `collectCoverageFrom` AND be instrumented by the executed tests — Jest
- * hard-fails with "Coverage data ... not found" otherwise. Keep this list,
- * `collectCoverageFrom`, and the `--runTestsByPath` arguments of the gate
- * script in lockstep.
+ * GATED_MODULES is the single source of truth: each module is instrumented
+ * for coverage, held to PER_FILE_THRESHOLD, and its colocated `*.test.ts`
+ * suite (derived below) is the test selection for the run. A gated file with
+ * no coverage data hard-fails the run ("Coverage data ... not found"), so a
+ * renamed module or test surfaces loudly here.
  *
  * `src/clustering/representations.ts` is intentionally absent: it is a
  * type-only module (a single interface) with no runtime code to instrument;
@@ -37,8 +37,11 @@ module.exports = {
   ...base,
   collectCoverage: true,
   collectCoverageFrom: GATED_MODULES,
-  coverageReporters: ['text', 'text-summary', 'lcov'],
+  coverageReporters: ['text', 'text-summary'],
   coverageThreshold: Object.fromEntries(
     GATED_MODULES.map((file) => [file, PER_FILE_THRESHOLD]),
+  ),
+  testMatch: GATED_MODULES.map(
+    (file) => `<rootDir>/${file.replace(/\.ts$/, '.test.ts')}`,
   ),
 };

@@ -4,6 +4,10 @@ import path from 'path';
 import { HDBSCAN } from '..';
 import type { HDBSCANParams } from './types';
 import * as tf from '../../test_support/tensorflow_helper';
+import {
+  alignment_agreement,
+  labels_equivalent_with_noise,
+} from '../../test_support/label_agreement';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
@@ -20,6 +24,7 @@ interface HdbscanFixture {
   probabilities: number[];
   /** Whether the fixture's MST edge weights are all distinct (see generator). */
   tie_free: boolean;
+  /** Raw diagnostic behind tie_free; asserted generator-side, not here. */
   min_mst_gap: number;
   X?: number[][];
   distance_matrix?: number[][];
@@ -59,52 +64,6 @@ function fixture_params(fixture: HdbscanFixture): Partial<HDBSCANParams> {
   return params;
 }
 
-/** Exact label equality up to a bijective cluster-id permutation (noise fixed). */
-function labels_equivalent_with_noise(a: number[], b: number[]): boolean {
-  if (a.length !== b.length) return false;
-  const fwd = new Map<number, number>();
-  const rev = new Map<number, number>();
-  for (let i = 0; i < a.length; i++) {
-    if ((a[i] === -1) !== (b[i] === -1)) return false;
-    if (a[i] === -1) continue;
-    if (fwd.has(a[i])) {
-      if (fwd.get(a[i]) !== b[i]) return false;
-    } else fwd.set(a[i], b[i]);
-    if (rev.has(b[i])) {
-      if (rev.get(b[i]) !== a[i]) return false;
-    } else rev.set(b[i], a[i]);
-  }
-  return true;
-}
-
-/**
- * Cluster-assignment agreement under the optimal cluster-id alignment, with
- * noise (-1) treated as its own label.
- */
-function alignment_agreement(mine: number[], sk: number[]): number {
-  const pairs = new Map<string, number>();
-  for (let i = 0; i < mine.length; i++) {
-    const k = `${sk[i]}|${mine[i]}`;
-    pairs.set(k, (pairs.get(k) ?? 0) + 1);
-  }
-  const map = new Map<number, number>();
-  for (const s of new Set(sk)) {
-    let best = -99;
-    let bc = -1;
-    for (const m of new Set(mine)) {
-      const c = pairs.get(`${s}|${m}`) ?? 0;
-      if (c > bc) {
-        bc = c;
-        best = m;
-      }
-    }
-    map.set(s, best);
-  }
-  let ok = 0;
-  for (let i = 0; i < mine.length; i++) if (map.get(sk[i]) === mine[i]) ok++;
-  return ok / mine.length;
-}
-
 /**
  * End-to-end parity with scikit-learn. The condensed-tree + EOM core is
  * validated bit-exactly against sklearn's own hierarchy in
@@ -123,7 +82,10 @@ function alignment_agreement(mine: number[], sk: number[]): number {
  *   probability MAE is bounded by 0.16. The whole pipeline is deterministic
  *   float64, so the observed MAEs are stable; the worst fixture (precomputed
  *   cosine, whose saturated distances tie heavily) sits at 0.150 and every
- *   other fixture at or below 0.077.
+ *   other fixture at or below 0.077. The bound is that observed maximum plus
+ *   deliberate slack — exceeding it means the fixtures were regenerated under
+ *   a different scikit-learn version, which calls for re-measuring, not
+ *   loosening.
  */
 describe('HDBSCAN – parity with scikit-learn', () => {
   for (const { file, fixture } of load_fixtures()) {
@@ -287,6 +249,16 @@ describe('HDBSCAN – API surface', () => {
     await without.fit([[1, 2]]);
     expect(without.labels_).toEqual([-1]);
     expect(without.exemplar_indices_).toBeNull();
+  });
+
+  it('rejects ragged input rows', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4 });
+    await expect(
+      model.fit([
+        [0, 1],
+        [1, 0, 2],
+      ]),
+    ).rejects.toThrow('rectangular');
   });
 
   it('rejects a non-square precomputed distance matrix', async () => {

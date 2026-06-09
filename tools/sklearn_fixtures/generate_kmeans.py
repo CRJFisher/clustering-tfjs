@@ -98,6 +98,8 @@ def make_direction_data(
 
 def make_cosine_fixture() -> Dict[str, Any]:
     random_state = 42
+    # One shared stream: x_test continues where the X draws stopped, so the
+    # call order is load-bearing for byte-identical regeneration.
     rng = np.random.RandomState(0)
     X = make_direction_data(rng, 40)
     x_test = make_direction_data(rng, 10)

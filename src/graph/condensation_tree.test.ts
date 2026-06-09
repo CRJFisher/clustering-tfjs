@@ -12,6 +12,10 @@ import type { CondensedEdge } from './condensation_tree';
 import { minimum_spanning_tree } from './minimum_spanning_tree';
 import { mutual_reachability } from './mutual_reachability';
 import { kdistance } from '../distance/kdistance';
+import {
+  alignment_agreement,
+  labels_equivalent_with_noise,
+} from '../../test_support/label_agreement';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
@@ -37,23 +41,6 @@ function metric_matrix(X: number[][], metric: string): number[][] {
 
 function euclidean_matrix(X: number[][]): number[][] {
   return metric_matrix(X, 'euclidean');
-}
-
-function labels_equivalent_with_noise(a: number[], b: number[]): boolean {
-  if (a.length !== b.length) return false;
-  const fwd = new Map<number, number>();
-  const rev = new Map<number, number>();
-  for (let i = 0; i < a.length; i++) {
-    if ((a[i] === -1) !== (b[i] === -1)) return false;
-    if (a[i] === -1) continue;
-    if (fwd.has(a[i])) {
-      if (fwd.get(a[i]) !== b[i]) return false;
-    } else fwd.set(a[i], b[i]);
-    if (rev.has(b[i])) {
-      if (rev.get(b[i]) !== a[i]) return false;
-    } else rev.set(b[i], a[i]);
-  }
-  return true;
 }
 
 interface HdbscanFixture {
@@ -115,30 +102,6 @@ describe('condensation_tree – exact parity on sklearn hierarchy', () => {
  * the two implementations order them differently.
  */
 describe('condensation_tree – end-to-end agreement from raw data', () => {
-  function agreement(mine: number[], sk: number[]): number {
-    const pairs = new Map<string, number>();
-    for (let i = 0; i < mine.length; i++) {
-      const k = `${sk[i]}|${mine[i]}`;
-      pairs.set(k, (pairs.get(k) ?? 0) + 1);
-    }
-    const map = new Map<number, number>();
-    for (const s of new Set(sk)) {
-      let best = -99;
-      let bc = -1;
-      for (const m of new Set(mine)) {
-        const c = pairs.get(`${s}|${m}`) ?? 0;
-        if (c > bc) {
-          bc = c;
-          best = m;
-        }
-      }
-      map.set(s, best);
-    }
-    let ok = 0;
-    for (let i = 0; i < mine.length; i++) if (map.get(sk[i]) === mine[i]) ok++;
-    return ok / mine.length;
-  }
-
   for (const file of files) {
     const fixture = JSON.parse(
       fs.readFileSync(path.join(FIXTURE_DIR, file), 'utf-8'),
@@ -170,7 +133,9 @@ describe('condensation_tree – end-to-end agreement from raw data', () => {
       const mine_clusters = new Set(labels.filter((l) => l !== -1)).size;
       const sk_clusters = new Set(fixture.labels.filter((l) => l !== -1)).size;
       expect(mine_clusters).toBe(sk_clusters);
-      expect(agreement(labels, fixture.labels)).toBeGreaterThanOrEqual(0.95);
+      expect(
+        alignment_agreement(labels, fixture.labels),
+      ).toBeGreaterThanOrEqual(0.95);
     });
   }
 });

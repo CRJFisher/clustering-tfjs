@@ -209,7 +209,7 @@ Reproduce it locally:
 npm run test:coverage:gate
 ```
 
-The printed coverage table lists the uncovered line numbers to target. The gated module list lives in `jest.coverage.config.js`; keep it in lockstep with the test paths in the `test:coverage:gate` script. `src/clustering/representations.ts` is intentionally not gated — it is a type-only interface module with no runtime code; its contract is covered behaviourally by the estimator tests.
+The printed coverage table lists the uncovered line numbers to target. The gated module list (`GATED_MODULES`) lives in `jest.coverage.config.js` and is the single source of truth: it drives instrumentation, the thresholds, and the test selection (each module's colocated `*.test.ts`). `src/clustering/representations.ts` is intentionally not gated — it is a type-only interface module with no runtime code; its contract is covered behaviourally by the estimator tests.
 
 ### Scikit-learn Parity
 
