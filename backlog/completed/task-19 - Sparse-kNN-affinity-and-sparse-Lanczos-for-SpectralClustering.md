@@ -15,6 +15,7 @@ dependencies:
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 SpectralClustering does not scale. Every fit materialises a dense `n × n`
 affinity matrix, derives a dense normalised Laplacian from it, and feeds that
 dense matrix to the eigensolver. Memory is `O(n²)` and time is dominated by
@@ -37,10 +38,13 @@ performance**: cluster assignments must match sklearn
 (`affinity='nearest_neighbors'`) within the established tolerance, and the sparse
 path must demonstrate the expected memory/time reduction relative to both our
 own dense path and sklearn's timings.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [x] #1 `SpectralClustering` with `affinity='nearest_neighbors'` runs without
       ever allocating a dense `n × n` matrix (peak memory scales ~`O(n·k)`, not
       `O(n²)`).
@@ -60,12 +64,13 @@ own dense path and sklearn's timings.
 - [x] #8 The dense `rbf` / `precomputed` paths and their existing sklearn parity
       tests remain unchanged and green.
 - [x] #9 Documentation explains when the sparse path activates, its memory/time
-      characteristics, and its scikit-learn equivalence.
+    characteristics, and its scikit-learn equivalence.
 <!-- AC:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
+
 - Added CSR-style sparse matrix helpers in `src/graph/sparse.ts`, a sparse kNN
   affinity builder in `src/graph/affinity.ts`, sparse connected-component
   traversal, and a matrix-free normalized-Laplacian operator.
@@ -98,12 +103,12 @@ own dense path and sklearn's timings.
     `npm test -- --runTestsByPath src/clustering/spectral.test.ts src/clustering/spectral_steps.test.ts src/clustering/spectral_reference.test.ts src/clustering/spectral_affinity.test.ts src/clustering/spectral_scale.test.ts`
   - Benchmark harness test: `npm test -- --runTestsByPath benchmarks/benchmark.test.ts`
   - Repo suite excluding unrelated local worktree discovery and the pre-existing
-    independently hanging `src/clustering/som_reference.test.ts`:
-    `npm test -- --testPathIgnorePatterns='/.claude/' 'src/clustering/som_reference.test.ts' --forceExit`
-    passed 56 suites / 499 tests. Running `src/clustering/som_reference.test.ts`
-    alone timed out after setup, so it was not changed as part of this spectral
-    task.
-<!-- SECTION:NOTES:END -->
+  independently hanging `src/clustering/som_reference.test.ts`:
+  `npm test -- --testPathIgnorePatterns='/.claude/' 'src/clustering/som_reference.test.ts' --forceExit`
+  passed 56 suites / 499 tests. Running `src/clustering/som_reference.test.ts`
+  alone timed out after setup, so it was not changed as part of this spectral
+  task.
+  <!-- SECTION:NOTES:END -->
 
 ## Implementation Plan (the how)
 
@@ -121,7 +126,7 @@ own dense path and sklearn's timings.
 - `src/clustering/spectral.ts` — builds the affinity matrix, warns about
   `O(n²)` memory (~line 168), then runs Laplacian + eigensolve on dense tensors.
 - `src/eigen/smallest_eigenvectors_with_values.ts` — already routes `n > 100,
-  k < n/3` to Lanczos; this is the path to extend with a sparse operand.
+k < n/3` to Lanczos; this is the path to extend with a sparse operand.
 
 ### Phase 1 — Sparse affinity representation
 
