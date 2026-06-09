@@ -38,16 +38,6 @@ export {
   type MedoidResult,
 } from './clustering/medoid_selection';
 
-// Cross-snapshot cluster tracking
-export {
-  track_clusters,
-  type TrackingResult,
-  type TrackingState,
-  type ClusterTransition,
-  type ClusterTrackingOptions,
-  type TransitionType,
-} from './clustering/cluster_tracking';
-
 // Utilities
 export { pairwise_distance_matrix } from './distance/pairwise_distance';
 export { find_optimal_clusters } from './model_selection/find_optimal_clusters';

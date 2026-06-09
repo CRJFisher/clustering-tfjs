@@ -5,8 +5,7 @@ status: Done
 assignee: []
 created_date: '2026-06-05'
 updated_date: '2026-06-06 12:22'
-labels:
-  - tdt
+labels: []
 dependencies:
   - task-49.1
   - task-49.2

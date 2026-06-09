@@ -255,8 +255,8 @@ jobs:
           echo "Node.js bundle: $(ls -lh dist/clustering.node.js | awk '{print $5}')"
           echo "Standard build: $(ls -lh dist/index.js | awk '{print $5}')"
           
-          # Fail if browser bundle is too large (>150KB). Raised from 120KB for
-          # the TDT estimators (HDBSCAN, PCA, cosine, cluster tracking, medoids).
+          # Fail if browser bundle is too large (>150KB). Sized for the density
+          # and decomposition estimators (HDBSCAN, PCA, cosine, medoids).
           if [[ "$RUNNER_OS" == "macOS" ]]; then
             BROWSER_SIZE=$(stat -f%z dist/clustering.browser.js)
           else

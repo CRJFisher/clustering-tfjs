@@ -12,8 +12,6 @@ Complete API documentation for clustering-tfjs.
   - [SOM](#som-self-organizing-maps)
 - [Cluster Representations](#cluster-representations)
   - [select_medoids](#select_medoids)
-- [Cluster Tracking](#cluster-tracking)
-  - [track_clusters](#track_clusters)
 - [Decomposition](#decomposition)
   - [PCA](#pca)
 - [Validation Metrics](#validation-metrics)
@@ -424,37 +422,6 @@ const agglo = new AgglomerativeClustering({ n_clusters: 3, metric: 'cosine' });
 await agglo.fit(data);
 const medoids = await agglo.compute_medoids(data); // Int32Array, one index per cluster
 ```
-
-## Cluster Tracking
-
-### track_clusters
-
-```typescript
-track_clusters(
-  prev: number[][],          // representative vectors of previous snapshot's clusters
-  curr: number[][],          // representative vectors of current snapshot's clusters
-  options?: { threshold?: number },  // similarity threshold, default 0.5
-  prev_state?: TrackingState,        // thread between frames for stable lifeline ids
-): TrackingResult
-```
-
-Matches clusters across two consecutive snapshots by cosine similarity of their
-representative vectors (e.g. KMeans centroids or HDBSCAN exemplars). All
-transition types — `PERSIST`, `MERGE`, `SPLIT`, `EMERGE`, `DIE` — are determined
-from the above-threshold candidate-edge degrees (how many previous clusters map
-to a current one and vice versa); a clean one-to-one candidate match is a
-`PERSIST`. An optimal bipartite (Hungarian) assignment, pruned of pairs below
-`threshold`, is used only to carry stable lifeline ids forward across frames.
-The function is **stateless**: the caller owns and threads the returned `state`.
-
-```typescript
-const r1 = track_clusters(prev_centroids, curr_centroids, { threshold: 0.6 });
-console.log(r1.transitions);   // [{ type: 'PERSIST', prev: [0], curr: [1], lifeline_id: 0 }, ...]
-const r2 = track_clusters(curr_centroids, next_centroids, { threshold: 0.6 }, r1.state);
-```
-
-Rectangular cases (differing cluster counts) are handled — extra clusters on
-either side surface as `EMERGE`/`DIE`.
 
 ## Decomposition
 
