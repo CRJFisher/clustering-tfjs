@@ -54,6 +54,10 @@ PARAM_GRID: List[Dict[str, Any]] = [
     {"n_clusters": 3, "linkage": "average", "metric": "euclidean"},
     {"n_clusters": 3, "linkage": "complete", "metric": "euclidean"},
     {"n_clusters": 3, "linkage": "ward", "metric": "euclidean"},
+    # Cosine linkage (ward is euclidean-only and excluded).
+    {"n_clusters": 2, "linkage": "single", "metric": "cosine"},
+    {"n_clusters": 3, "linkage": "average", "metric": "cosine"},
+    {"n_clusters": 3, "linkage": "complete", "metric": "cosine"},
 ]
 
 

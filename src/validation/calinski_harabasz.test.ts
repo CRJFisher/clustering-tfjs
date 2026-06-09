@@ -210,3 +210,30 @@ describe("Calinski-Harabasz Score", () => {
     });
   });
 });
+describe("Calinski-Harabasz – noise (-1) awareness", () => {
+  const two_clusters = [
+    [0, 0],
+    [0.1, 0],
+    [5, 5],
+    [5.1, 5],
+  ];
+
+  it("excludes noise so score equals the noise-free score", () => {
+    const base = calinski_harabasz(two_clusters, [0, 0, 1, 1]);
+    const with_noise = calinski_harabasz(
+      [...two_clusters, [100, 100], [-100, -100]],
+      [0, 0, 1, 1, -1, -1],
+    );
+    expect(with_noise).toBeCloseTo(base, 4);
+  });
+
+  it("returns defined 0 when every label is noise", () => {
+    expect(calinski_harabasz(two_clusters, [-1, -1, -1, -1])).toBe(0);
+    expect(calinski_harabasz_efficient(two_clusters, [-1, -1, -1, -1])).toBe(0);
+  });
+
+  it("returns defined 0 for a single cluster plus noise", () => {
+    expect(calinski_harabasz(two_clusters, [0, 0, 0, -1])).toBe(0);
+    expect(calinski_harabasz_efficient(two_clusters, [0, 0, 0, -1])).toBe(0);
+  });
+});

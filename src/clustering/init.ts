@@ -8,6 +8,7 @@ import { initialize_backend, reset_backend, BackendConfig } from '../backend/bac
 import { KMeans } from './kmeans';
 import { SpectralClustering } from './spectral';
 import { AgglomerativeClustering } from './agglomerative';
+import { HDBSCAN } from './hdbscan';
 import { SOM } from './som';
 import type { Platform, PlatformFeatures } from '../backend/platform_types';
 import { get_platform } from '../backend/platform';
@@ -194,5 +195,6 @@ export const Clustering = {
   KMeans: KMeans,
   SpectralClustering: SpectralClustering,
   AgglomerativeClustering: AgglomerativeClustering,
+  HDBSCAN: HDBSCAN,
   SOM: SOM,
 };

@@ -1,6 +1,9 @@
 import * as tf from '../backend/adapter';
 
-import { pairwise_euclidean_matrix } from '../distance/pairwise_distance';
+import {
+  pairwise_euclidean_matrix,
+  pairwise_distance_matrix,
+} from '../distance/pairwise_distance';
 import {
   SparseMatrix,
   sparse_matrix_from_row_maps,
@@ -112,7 +115,11 @@ export function compute_sparse_knn_affinity(
 
   // Keep tensors that are required across blocks to avoid accidental disposal.
   const points_kept = tf.keep(points) as tf.Tensor2D;
-  const squared_norms_kept = tf.keep(points_kept.square().sum(1)) as tf.Tensor1D; // (n)
+  // The squared-norm reduction runs in a tidy so its `.square()` intermediate
+  // is disposed; only the final (n,) vector is kept across blocks.
+  const squared_norms_kept = tf.keep(
+    tf.tidy(() => points_kept.square().sum(1)),
+  ) as tf.Tensor1D; // (n)
 
   const rows: Array<Map<number, number>> = Array.from(
     { length: n_samples },
@@ -190,6 +197,32 @@ export function compute_sparse_knn_affinity(
 }
 
 /**
+ * Computes the cosine affinity matrix for the given points.
+ *
+ *   A[i, j] = 1 - cosine_distance(x_i, x_j)  (i.e. cosine similarity)
+ *
+ *  • The result is symmetric by construction.
+ *  • The diagonal is forced to exactly 1.
+ *
+ * Cosine affinity is the natural similarity for direction-dominated,
+ * magnitude-noisy data (text embeddings, TF-IDF vectors). The computation
+ * reuses `pairwise_distance_matrix(points, 'cosine')` as the single source of
+ * truth for the cosine metric.
+ */
+export function compute_cosine_affinity(points: tf.Tensor2D): tf.Tensor2D {
+  return tf.tidy(() => {
+    const distances = pairwise_distance_matrix(points, 'cosine'); // (n, n), diag 0
+    const ones = tf.ones_like(distances);
+    const sim = ones.sub(distances); // 1 - cosine_distance
+
+    // Ensure exact symmetry and force the diagonal to 1.
+    const sym = sim.add(sim.transpose()).div(2);
+    const eye = tf.eye(sym.shape[0]);
+    return sym.mul(tf.scalar(1).sub(eye)).add(eye) as tf.Tensor2D;
+  });
+}
+
+/**
  * Convenience wrapper that dispatches to the appropriate affinity builder
  * based on the provided `affinity` option.
  */
@@ -197,10 +230,15 @@ export function compute_affinity_matrix(
   points: tf.Tensor2D,
   options:
     | { affinity: 'rbf'; gamma?: number }
+    | { affinity: 'cosine' }
     | { affinity: 'nearest_neighbors'; n_neighbors: number },
 ): tf.Tensor2D {
   if (options.affinity === 'rbf') {
     return compute_rbf_affinity(points, options.gamma);
+  }
+
+  if (options.affinity === 'cosine') {
+    return compute_cosine_affinity(points);
   }
 
   // nearest neighbours - include self-loops for connectivity

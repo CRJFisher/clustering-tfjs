@@ -4,6 +4,7 @@ import { AgglomerativeClustering } from '../src/clustering/agglomerative';
 import { SpectralClustering } from '../src/clustering/spectral';
 import { KMeans } from '../src/clustering/kmeans';
 import { SOM } from '../src/clustering/som';
+import { HDBSCAN } from '../src/clustering/hdbscan';
 import { make_blobs } from '../src/datasets/synthetic';
 
 export interface BenchmarkResult {
@@ -33,7 +34,13 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
 ];
 
 export async function benchmark_algorithm(
-  algorithm: 'kmeans' | 'spectral' | 'spectral_sparse' | 'agglomerative' | 'som',
+  algorithm:
+    | 'kmeans'
+    | 'spectral'
+    | 'spectral_sparse'
+    | 'agglomerative'
+    | 'som'
+    | 'hdbscan',
   config: BenchmarkConfig,
   backend: string,
 ): Promise<BenchmarkResult> {
@@ -110,6 +117,16 @@ export async function benchmark_algorithm(
       _labels = som.labels_!;
       break;
     }
+    case 'hdbscan': {
+      // Density-based: no preset cluster count; min_cluster_size scales mildly
+      // with the dataset so blobs resolve as clusters rather than noise.
+      const hdbscan = new HDBSCAN({
+        min_cluster_size: Math.max(5, Math.floor(config.samples / 50)),
+      });
+      await hdbscan.fit(X);
+      _labels = hdbscan.labels_!;
+      break;
+    }
   }
 
   const execution_time = performance.now() - start;
@@ -162,13 +179,19 @@ export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   const results: BenchmarkResult[] = [];
   const backends = await get_available_backends();
   const algorithms: Array<
-    'kmeans' | 'spectral' | 'spectral_sparse' | 'agglomerative' | 'som'
+    | 'kmeans'
+    | 'spectral'
+    | 'spectral_sparse'
+    | 'agglomerative'
+    | 'som'
+    | 'hdbscan'
   > = [
     'kmeans',
     'spectral',
     'spectral_sparse',
     'agglomerative',
     'som',
+    'hdbscan',
   ];
 
   console.log(`Available backends: ${backends.join(', ')}`);
@@ -176,6 +199,16 @@ export async function run_benchmark_suite(): Promise<BenchmarkResult[]> {
   for (const backend of backends) {
     for (const algorithm of algorithms) {
       for (const config of BENCHMARK_CONFIGS) {
+        // HDBSCAN builds dense O(n²) distance / mutual-reachability matrices, so
+        // it is benchmarked only up to its documented ~5k-sample ceiling; larger
+        // datasets are skipped (and logged) rather than OOM the run.
+        if (algorithm === 'hdbscan' && config.samples > 5000) {
+          console.log(
+            `Skipping hdbscan on ${config.label} dataset (n=${config.samples} exceeds the dense O(n²) ceiling).`,
+          );
+          continue;
+        }
+
         console.log(
           `Benchmarking ${algorithm} on ${backend} with ${config.label} dataset...`,
         );

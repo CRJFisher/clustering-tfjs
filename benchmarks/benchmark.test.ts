@@ -24,9 +24,22 @@ describe('Benchmarking System', () => {
   it('should benchmark all algorithms', async () => {
     const config = BENCHMARK_CONFIGS[0]; // small dataset
     const algorithms: Array<
-      'kmeans' | 'spectral' | 'spectral_sparse' | 'agglomerative' | 'som'
-    > = ['kmeans', 'spectral', 'spectral_sparse', 'agglomerative', 'som'];
-    
+      | 'kmeans'
+      | 'spectral'
+      | 'spectral_sparse'
+      | 'agglomerative'
+      | 'som'
+      | 'hdbscan'
+    > = [
+      'kmeans',
+      'spectral',
+      'spectral_sparse',
+      'agglomerative',
+      'som',
+      'hdbscan',
+    ];
+
+
     for (const algo of algorithms) {
       const result = await benchmark_algorithm(algo, config, 'cpu');
       expect(result.algorithm).toBe(algo);

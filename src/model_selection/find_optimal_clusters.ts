@@ -301,12 +301,12 @@ export async function find_optimal_clusters(
 
     if (compute_silhouette) {
       silhouette = has_enough_clusters
-        ? silhouette_score(data_tensor, labels)
+        ? silhouette_score(data_tensor, labels, 'euclidean')
         : -1;
     }
     if (compute_db) {
       davies_bouldin = has_enough_clusters
-        ? davies_bouldin_efficient(data_tensor, labels)
+        ? davies_bouldin_efficient(data_tensor, labels, 'euclidean')
         : Infinity;
     }
     if (compute_ch) {

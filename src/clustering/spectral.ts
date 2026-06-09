@@ -8,12 +8,15 @@ import {
   compute_rbf_affinity,
   compute_knn_affinity,
   compute_sparse_knn_affinity,
+  compute_cosine_affinity,
 } from '../graph/affinity';
 import {
   SparseMatrix,
   sparse_stats,
 } from '../graph/sparse';
 import { is_tensor } from '../tensor/tensor_guards';
+import type { ClusterRepresentations } from './representations';
+import { select_medoids } from './medoid_selection';
 
 // Types for intermediate step results
 export interface LaplacianResult {
@@ -59,32 +62,38 @@ export interface DebugInfo {
 }
 
 /**
- * Spectral clustering estimator skeleton.
+ * Spectral clustering estimator.
  *
- * This initial implementation only covers:
- *   • Constructor & hyper-parameter validation
- *   • Public instance properties
- *   • Synchronous method stubs for `fit` / `fit_predict`
+ * Clusters by embedding the data into the eigenspace of its graph Laplacian and
+ * running k-means on that embedding. The pipeline is:
+ *   1. Build the similarity graph (affinity matrix) — `'rbf'`,
+ *      `'nearest_neighbors'`, `'cosine'`, `'precomputed'`, or a user callable.
+ *   2. Form the normalised Laplacian and take its smallest eigenvectors.
+ *   3. Row-normalise the embedding and cluster it with k-means.
  *
- * The heavy lifting – affinity matrix construction, graph Laplacian
- * computation, eigen-decomposition and the final k-means step – will be
- * implemented in subsequent tasks (see backlog).
- *
- * Updates introduced in *task-12*:
- *   • Support for `affinity = "precomputed"` and user-supplied callable
- *     affinities with rigorous matrix validation (square, symmetric,
- *     non-negative).
- *   • Public `dispose()` method and automatic clean-up on repeated `fit`
- *     calls to prevent tensor memory leaks.
+ * Precomputed and callable affinities are validated (square, symmetric,
+ * non-negative). The estimator is transductive: it exposes no `predict` and no
+ * JSON serialization (representatives are available via {@link compute_medoids}).
+ * `dispose()` releases cached tensors; repeated `fit` calls clean up
+ * automatically.
  */
 export class SpectralClustering
-  implements BaseClustering<SpectralClusteringParams>
+  implements
+    BaseClustering<SpectralClusteringParams>,
+    ClusterRepresentations
 {
   /** Hyper-parameters (deep-copied from user input). */
   public readonly params: SpectralClusteringParams;
 
   /** Lazy-filled cluster labels after calling `fit`. */
   public labels_: number[] | null = null;
+
+  /**
+   * Index of the representative sample (medoid) per cluster, populated by
+   * {@link compute_medoids}. Position `c` holds cluster `c`'s medoid index, or
+   * `-1` if that cluster has no assigned samples.
+   */
+  public medoid_indices_: Int32Array | null = null;
 
   /** Cached affinity matrix (shape: n_samples × n_samples). */
   public affinity_matrix_: tf.Tensor2D | null = null;
@@ -122,6 +131,7 @@ export class SpectralClustering
   private static readonly VALID_AFFINITIES = [
     'rbf',
     'nearest_neighbors',
+    'cosine',
     'precomputed',
   ] as const;
 
@@ -509,6 +519,30 @@ export class SpectralClustering
   }
 
   /**
+   * Computes the representative sample (medoid) of every cluster — the sample
+   * closest to its cluster mean in the original feature space (Euclidean) — and
+   * stores them in {@link medoid_indices_}. SpectralClustering has no synthetic
+   * centroids, so medoids are its `ClusterRepresentations` surface.
+   *
+   * @param X The data the model was fitted on (same row order as `labels_`).
+   * @returns The populated `medoid_indices_`.
+   * @throws {Error} If called before `fit()`.
+   */
+  async compute_medoids(X: DataMatrix): Promise<Int32Array> {
+    if (this.labels_ == null) {
+      throw new Error('SpectralClustering.compute_medoids called before fit().');
+    }
+    const { indices } = await select_medoids(
+      X,
+      this.labels_,
+      this.params.n_clusters,
+      'euclidean',
+    );
+    this.medoid_indices_ = indices;
+    return indices;
+  }
+
+  /**
    * Get debug information if available.
    */
   public get_debug_info(): DebugInfo | null {
@@ -776,6 +810,10 @@ export class SpectralClustering
 
     if (affinity === 'rbf') {
       return compute_rbf_affinity(X, params.gamma);
+    }
+
+    if (affinity === 'cosine') {
+      return compute_cosine_affinity(X);
     }
 
     // nearest_neighbors - include self-loops for connectivity

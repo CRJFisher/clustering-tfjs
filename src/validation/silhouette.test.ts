@@ -400,3 +400,47 @@ describe("Silhouette Score", () => {
     });
   });
 });
+describe("Silhouette – noise (-1) awareness", () => {
+  const two_clusters = [
+    [0, 0],
+    [0.1, 0],
+    [5, 5],
+    [5.1, 5],
+  ];
+
+  it("excludes noise so score equals the noise-free score", () => {
+    const base = silhouette_score(two_clusters, [0, 0, 1, 1]);
+    // Same four cluster points plus two noise points that must be ignored.
+    const with_noise = silhouette_score(
+      [...two_clusters, [100, 100], [-100, -100]],
+      [0, 0, 1, 1, -1, -1],
+    );
+    expect(with_noise).toBeCloseTo(base, 6);
+  });
+
+  it("returns defined 0 when every label is noise", () => {
+    expect(silhouette_score(two_clusters, [-1, -1, -1, -1])).toBe(0);
+    expect(silhouette_samples(two_clusters, [-1, -1, -1, -1])).toEqual([]);
+  });
+
+  it("returns defined 0 for a single cluster plus noise", () => {
+    expect(silhouette_score(two_clusters, [0, 0, 0, -1])).toBe(0);
+  });
+
+  it("silhouette_score_subset ignores noise samples and neighbours", () => {
+    const base = silhouette_score_subset(two_clusters, [0, 0, 1, 1], [0, 2]);
+    const with_noise = silhouette_score_subset(
+      [...two_clusters, [100, 100]],
+      [0, 0, 1, 1, -1],
+      [0, 2, 4],
+    );
+    expect(with_noise).toBeCloseTo(base, 6);
+    // All-noise subset is defined 0.
+    expect(silhouette_score_subset(two_clusters, [-1, -1, -1, -1], [0, 1])).toBe(0);
+  });
+
+  it("supports the cosine metric", () => {
+    const s = silhouette_score(two_clusters, [0, 0, 1, 1], "cosine");
+    expect(Number.isFinite(s)).toBe(true);
+  });
+});

@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import * as tf from "../../test_support/tensorflow_helper";
 
 import { pairwise_distance_matrix } from "./pairwise_distance";
@@ -82,5 +84,23 @@ describe("pairwiseDistanceMatrix", () => {
         expect(dist_mat[i][j]).toBeLessThanOrEqual(2); // cosine distance between 0 and 2
       }
     }
+  });
+});
+
+describe("pairwise_distance_matrix – cosine parity with sklearn", () => {
+  const fixture = JSON.parse(
+    fs.readFileSync(
+      path.join(process.cwd(), "__fixtures__", "pairwise", "cosine.json"),
+      "utf-8",
+    ),
+  ) as { X: number[][]; cosine_distances: number[][] };
+
+  it("matches sklearn pairwise_distances(metric='cosine')", () => {
+    const X = tf.tensor2d(fixture.X);
+    const D = pairwise_distance_matrix(X, "cosine");
+    const arr = D.arraySync() as number[][];
+    expect(close_to(arr, fixture.cosine_distances, 1e-4)).toBe(true);
+    X.dispose();
+    D.dispose();
   });
 });
