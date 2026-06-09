@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eigendecomposition Engine — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific additions */
+.readout{font-family:var(--mono);font-size:.82rem;color:var(--muted);margin-left:.4rem}
+.readout b{color:var(--ink);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;font-family:var(--mono);font-size:.76rem;color:var(--muted);margin-top:.6rem}
+.legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:3px;margin-right:.35rem;vertical-align:-1px}
+.tag{font-family:var(--mono);font-size:.72rem;padding:.05rem .45rem;border-radius:4px;font-weight:600}
+.tag.jac{background:rgba(88,166,255,.18);color:var(--c1)}
+.tag.lan{background:rgba(126,231,135,.18);color:var(--c2)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;align-items:start}
+@media(max-width:640px){.split{grid-template-columns:1fr}}
+.statbar{display:flex;flex-wrap:wrap;gap:.4rem .9rem;font-family:var(--mono);font-size:.8rem;color:var(--muted);margin:.5rem 0 0}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a class="active" href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Eigendecomposition Engine</h1>
+<p class="lede">A size-adaptive symmetric eigensolver that extracts the <i>k</i> smallest eigenpairs of a normalized graph Laplacian — Jacobi for small matrices, Lanczos for large ones — then deterministically orders and sign-fixes them to match scikit-learn's spectral embedding.</p>
+
+<div class="statbar">
+  <span><span class="tag jac">Jacobi</span> n&nbsp;≤&nbsp;100, O(n³), every eigenpair</span>
+  <span><span class="tag lan">Lanczos</span> n&nbsp;&gt;&nbsp;100 &amp; k&nbsp;&lt;&nbsp;n/3, O(n²·m), bottom slice only</span>
+</div>
+
+<!-- ───────────────────────── INTUITION ───────────────────────── -->
+<h2>Intuition</h2>
+<p>Spectral clustering needs the <b>smoothest coordinates on a graph</b>: the eigenvectors of the normalized Laplacian belonging to its <i>smallest</i> eigenvalues. The smallest eigenvalue is always 0, and its eigenvector is <b>constant</b> — every node gets the same value. The next-smallest eigenvalues belong to vectors that bend gently across the graph, and those gentle bends are exactly where cluster boundaries hide. So the engine exists to extract the <b>bottom slice</b> of the spectrum of a real symmetric matrix — accurately and reproducibly.</p>
+
+<p>There are two regimes:</p>
+<div class="grid two">
+  <div class="card">
+    <span class="tag jac">Jacobi</span> &nbsp;<b>small matrices (n ≤ 100)</b>
+    <p class="muted" style="margin:.5rem 0 0">A full eigendecomposition by cyclic Jacobi: repeatedly apply a tiny 2×2 plane rotation that zeros out one off-diagonal pair at a time, slowly grinding the matrix toward diagonal form while accumulating the rotations into an eigenvector matrix <code>V</code>. O(n³), but rock-solid, and it produces <i>every</i> eigenpair.</p>
+  </div>
+  <div class="card">
+    <span class="tag lan">Lanczos</span> &nbsp;<b>large matrices (n &gt; 100, k small)</b>
+    <p class="muted" style="margin:.5rem 0 0">An iterative method that never needs the full matrix — only the ability to multiply it by a vector. Lanczos builds a small tridiagonal matrix whose extreme eigenvalues rapidly approximate the extreme eigenvalues of the big matrix, so you get the bottom <i>k</i> cheaply at O(n²·m).</p>
+  </div>
+</div>
+
+<p>The subtle part is <b>reproducibility</b>. Eigenvectors are defined only up to sign, and (within repeated eigenvalues) up to rotation; iterative solvers return them in arbitrary order. Downstream clustering must be deterministic, so a post-processing pass sorts eigenpairs ascending by eigenvalue and flips each vector so its largest-magnitude component is positive — exactly scikit-learn's convention. The numerically-wobbly near-constant zero eigenvector is replaced with the exact <code>1/√n</code> constant vector.</p>
+
+<div class="note">A recurring theme is <b>float32 hygiene</b>. TensorFlow.js works in float32, which erodes orthonormality as rotations accumulate, so the engine re-runs Gram-Schmidt on the eigenvector columns, double-orthogonalizes inside Lanczos when cancellation is detected, and clamps tiny negative eigenvalues to 0 (the Laplacian is known to be positive semi-definite).</p>
+
+<!-- ───────────────────────── HOW IT WORKS ───────────────────────── -->
+<h2>How it works</h2>
+<ol class="steps">
+  <li><b>Dispatch by size and shape.</b> <code>smallest_eigenvectors_with_values</code> picks a path: a matrix-free <code>LanczosOperator</code> always goes Lanczos; a dense matrix with n &gt; 100 <i>and</i> k &lt; n/3 goes Lanczos (Jacobi fallback allowed); otherwise Jacobi. <code>LANCZOS_THRESHOLD = 100</code>.</li>
+  <li><b>Jacobi path — full decomposition.</b> <code>improved_jacobi_eigen(matrix, {is_psd:true, max_iterations:3000, tolerance:1e-14})</code>. Cyclic sweeps cover all (p,q) pairs, skipping any off-diagonal below an adaptive threshold <code>tolerance · ‖A‖<sub>F</sub></code>.</li>
+  <li><b>Jacobi rotation math.</b> For each non-negligible pair, compute the rotation that zeros A[p][q], update the affected rows/columns in stable rank-2 form, and accumulate the rotation into V. Equal diagonals use a 45° rotation.</li>
+  <li><b>PSD clamp + orthonormality check.</b> With <code>is_psd</code>, negative eigenvalues are clamped to 0 (warning below <code>-tolerance·100</code>). Pairs are sorted ascending and the code verifies <code>max|v<sub>i</sub>·v<sub>j</sub>|</code> and <code>|‖v<sub>i</sub>‖−1|</code> stay under 1e-6.</li>
+  <li><b>QR algorithm (alternative dense path).</b> <code>qr_eigen_decomposition</code> iterates <code>A<sub>i+1</sub> = R<sub>i</sub>Q<sub>i</sub></code> with a Wilkinson shift for fast convergence on the trailing eigenvalue, accumulating <code>V = Q₀Q₁…</code> If a singular shift makes <code>tf.linalg.qr</code> emit NaN, it retries that step unshifted, then runs Gram-Schmidt on V to repair float32 drift.</li>
+  <li><b>Tridiagonal QL solver.</b> <code>tridiagonal_qr_eigen</code> and the Lanczos-internal <code>tridiagonal_ql</code> implement Numerical Recipes <code>tqli</code>: find a negligible off-diagonal, compute a Wilkinson shift from the bottom 2×2 block, then chase the bulge with Givens rotations. Capped at 30 iterations per eigenvalue.</li>
+  <li><b>Lanczos — build the Krylov tridiagonal.</b> Start from a seeded random unit vector (seed 42). At step j: <code>w = A·v<sub>j</sub></code>; <code>w −= β<sub>j-1</sub>v<sub>j-1</sub></code>; <code>α<sub>j</sub> = v<sub>j</sub>·w</code>; <code>w −= α<sub>j</sub>v<sub>j</sub></code>. This produces the symmetric tridiagonal T (α = diagonal, β = off-diagonal).</li>
+  <li><b>Full reorthogonalization.</b> After each step, project w against <i>all</i> prior basis vectors. If the norm drops below <code>0.7071</code> of its pre-orthogonalization value, run a second Gram-Schmidt pass to fight float32 cancellation. If <code>β<sub>j</sub> &lt; 1e-10</code> it's a lucky breakdown (invariant subspace found).</li>
+  <li><b>Convergence test + restart.</b> Every 5 steps past <code>j ≥ 2k</code>, solve T and check the residual bound <code>|β<sub>m</sub>·s<sub>last,i</sub>| &lt; tol·max(1,|θ<sub>i</sub>|)</code> for the k smallest Ritz values. On reaching <code>m_max</code> without convergence, simple-restart from the best Ritz vector; up to 10 restarts.</li>
+  <li><b>Reconstruct Ritz vectors + clamp.</b> <code>extract_smallest</code> rebuilds <code>u = Q·s</code>, clamps negatives to 0 under is_psd (warn below -1e-5), and sorts ascending.</li>
+  <li><b>Deterministic ordering + sign fix.</b> <code>deterministic_eigenpair_processing</code> sorts ascending and flips each vector so its largest-magnitude entry is positive. Lanczos applies the same convention inline in <code>extract_smallest</code>.</li>
+  <li><b>Select k + zero-eigenvalue padding.</b> Both paths count numerically-zero eigenvalues c (Jacobi TOL 1e-7; Lanczos TOL 1e-2) and return <b>k + c</b> columns, so near-zero eigenvectors from disconnected components aren't dropped. Lanczos over-requests k+5 pairs up front.</li>
+  <li><b>Constant eigenvector substitution.</b> <code>create_constant_eigenvector</code> returns the exact unit constant vector (every entry <code>1/√n</code>), replacing the noisy zero-eigenvalue vector of a connected graph — matching sklearn.</li>
+</ol>
+
+<!-- ───────────────────────── THE MATH ───────────────────────── -->
+<h2>The math</h2>
+
+<h3>QR iteration</h3>
+<div class="eq">A<sub>i</sub> = Q<sub>i</sub> R<sub>i</sub> ,&nbsp;&nbsp; A<sub>i+1</sub> = R<sub>i</sub> Q<sub>i</sub> &nbsp;→&nbsp; diag(λ) , &nbsp;&nbsp; V = Q₀ Q₁ … Q<sub>i</sub></div>
+<p>Each QR step factors A into an orthogonal <b>Q</b> and upper-triangular <b>R</b>, then reverses the product. Because <code>R<sub>i</sub>Q<sub>i</sub> = Q<sub>i</sub><sup>T</sup>A<sub>i</sub>Q<sub>i</sub></code> this is a <b>similarity transform</b> — it preserves eigenvalues while pushing mass onto the diagonal. The accumulated product of all Q columns becomes the eigenvectors.</p>
+
+<h3>Wilkinson shift</h3>
+<div class="eq">δ = (a − c)/2 ,&nbsp;&nbsp; μ = c − sign(δ)·b² / (|δ| + √(δ²+b²))</div>
+<p>From the trailing 2×2 block <code>[[a,b],[b,c]]</code> (here <code>a = A[n-2][n-2]</code>, <code>b = A[n-2][n-1]</code>, <code>c = A[n-1][n-1]</code>), the shift <b>μ</b> is the eigenvalue nearest <code>c</code>. Subtracting <code>μ·I</code> before each QR step gives near-cubic convergence on the trailing eigenvalue. <span class="muted">(qr.ts:51, lanczos.ts:536)</span></p>
+
+<h3>Jacobi rotation</h3>
+<div class="eq">θ = (a<sub>qq</sub> − a<sub>pp</sub>)/(2 a<sub>pq</sub>) ,&nbsp;&nbsp; t = sign(θ)/(|θ| + √(1+θ²)) ,&nbsp;&nbsp; c = 1/√(1+t²) ,&nbsp;&nbsp; s = t·c</div>
+<p>This plane rotation annihilates the (p,q) off-diagonal entry. <b>θ</b> measures how far the two diagonal entries are apart relative to their coupling <code>a<sub>pq</sub></code>; <b>t = tan</b> of the rotation, from which the cosine <b>c</b> and sine <b>s</b> follow. The auxiliary <code>τ = s/(1+c)</code> lets the row/column updates be written in numerically stable rank-2 form. <span class="muted">(improved.ts:105)</span></p>
+
+<h3>Lanczos three-term recurrence</h3>
+<div class="eq">β<sub>j</sub> v<sub>j+1</sub> = A v<sub>j</sub> − α<sub>j</sub> v<sub>j</sub> − β<sub>j−1</sub> v<sub>j−1</sub> ,&nbsp;&nbsp; α<sub>j</sub> = v<sub>j</sub><sup>T</sup> A v<sub>j</sub></div>
+<p>Each new basis vector is <code>A·v<sub>j</sub></code> with the components along the previous two basis vectors subtracted off, then normalized — the norm of the leftover is <b>β<sub>j</sub></b>. The resulting orthonormal basis <b>Q</b> satisfies <code>Q<sup>T</sup>A Q = T</code>, a small tridiagonal matrix (α on the diagonal, β off it). The eigenvalues of T — the <b>Ritz values</b> — approximate the extreme eigenvalues of A. <span class="muted">(lanczos.ts:127–188)</span></p>
+
+<h3>Ritz convergence bound</h3>
+<div class="eq">‖A u<sub>i</sub> − θ<sub>i</sub> u<sub>i</sub>‖ ≈ |β<sub>m</sub> · s<sub>m,i</sub>| &lt; tol · max(1, |θ<sub>i</sub>|)</div>
+<p>A converged Ritz pair <code>(θ<sub>i</sub>, u<sub>i</sub> = Q s<sub>i</sub>)</code> has a residual equal to the <b>last component</b> of T's eigenvector <code>s<sub>i</sub></code> scaled by the final <b>β<sub>m</sub></b>. This is cheap to evaluate <i>without</i> ever forming the full vector <code>u<sub>i</sub></code> — you peek at the bottom entry of the tiny tridiagonal eigenvector. <span class="muted">(check_convergence, lanczos.ts:362)</span></p>
+
+<h3>Ritz vector reconstruction</h3>
+<div class="eq">u<sub>i</sub> = Q · s<sub>i</sub> = Σ<sub>col</sub> basis[col] · s[col][i]</div>
+<p>An eigenvector of the big matrix is a linear combination of the small Lanczos basis vectors, weighted by the tridiagonal eigenvector. <span class="muted">(extract_smallest, lanczos.ts:432)</span></p>
+
+<h3>Sign convention</h3>
+<div class="eq">r* = argmax<sub>r</sub> |v[r]| ;&nbsp;&nbsp; if v[r*] &lt; 0 then v ← −v</div>
+<p>Find the entry of largest absolute value and force it positive. Since an eigenvector is only defined up to ±1, this makes identical input yield identical embeddings — and it matches scikit-learn. <span class="muted">(post.ts:71–84, lanczos.ts:442)</span></p>
+
+<h3>Constant eigenvector</h3>
+<div class="eq">v₀ = (1/√n) · 𝟙 &nbsp;&nbsp; (every entry equal, ‖v₀‖ = 1)</div>
+<p>The exact null-space vector of a connected normalized Laplacian. The plain <code>1/√n</code> constant is substituted for the noisy numerical one — note this is the <i>plain</i> constant, not the degree-weighted form. <span class="muted">(constant_eigenvector.ts:23)</span></p>
+
+<h3>Off-diagonal convergence norm</h3>
+<div class="eq">off(A) = √( Σ<sub>i≠j</sub> A[i][j]² )</div>
+<p>The Frobenius norm of the off-diagonal entries. Jacobi and QR iterate until this falls below tolerance, signaling the matrix is effectively diagonal. <span class="muted">(qr.ts:34, improved.ts:55)</span></p>
+
+<!-- ───────────────────────── DEMO 1: JACOBI ───────────────────────── -->
+<h2>Try it — Jacobi off-diagonal annihilation</h2>
+<p>A symmetric 6×6 matrix shown as a heatmap of magnitudes (brighter = larger). The cyclic sweep visits each <code>(p,q)</code> pair above the diagonal; for the selected pair the engine computes the plane rotation that zeros <code>A[p][q]</code> and updates the crossing rows/columns. Watch the off-diagonal entries fade toward zero while the Frobenius off-diagonal norm decays on the right. <b>V</b> is the accumulating eigenvector matrix.</p>
+
+<div class="demo">
+  <div class="split">
+    <div>
+      <div class="muted" style="font-family:var(--mono);font-size:.78rem;margin-bottom:.3rem">A &nbsp;<span id="jac_a_state">(working matrix)</span></div>
+      <canvas id="jac_canvas" width="560" height="300"></canvas>
+    </div>
+    <div>
+      <div class="muted" style="font-family:var(--mono);font-size:.78rem;margin-bottom:.3rem">off(A) decay &nbsp;·&nbsp; toggle V below</div>
+      <canvas id="jac_chart" width="560" height="300"></canvas>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="jac_step">Step one rotation</button>
+    <button id="jac_play" class="ghost">▶ Play sweep</button>
+    <button id="jac_reset" class="ghost">↺ Reset</button>
+    <label class="readout">skip threshold <input id="jac_thr" type="range" min="0" max="60" value="2" style="vertical-align:middle"> <b id="jac_thr_val">0.02</b></label>
+    <label class="readout"><input id="jac_showv" type="checkbox"> show V</label>
+  </div>
+  <div class="statbar" id="jac_stat"></div>
+  <div class="legend">
+    <span><i style="background:#0a0e14;border:1px solid #2b333d"></i>≈0</span>
+    <span><i style="background:#1f6feb"></i>small</span>
+    <span><i style="background:#7ee787"></i>medium</span>
+    <span><i style="background:#f0b429"></i>large</span>
+    <span><i style="background:var(--pink)"></i>active (p,q) pair</span>
+  </div>
+</div>
+
+<!-- ───────────────────────── DEMO 2: LANCZOS ───────────────────────── -->
+<h2>Try it — Lanczos Krylov tridiagonalization</h2>
+<p>On the left, the dense 24×24 test matrix (eigenvalues spread from ~0 to ~4). On the right, the growing tridiagonal <b>T</b> built by the three-term recurrence — each step adds <code>α<sub>j</sub></code> to the diagonal and <code>β<sub>j</sub></code> to the off-diagonal. Below, the smallest Ritz values of T (colored dots) march toward the true smallest eigenvalues of A (grey ticks). Turn off full reorthogonalization to watch the <code>Q<sup>T</sup>Q</code> orthogonality heatmap rot away in float arithmetic.</p>
+
+<div class="demo">
+  <div class="split">
+    <div>
+      <div class="muted" style="font-family:var(--mono);font-size:.78rem;margin-bottom:.3rem">A (24×24 dense)&nbsp;·&nbsp;step <b id="lan_j">0</b></div>
+      <canvas id="lan_A" width="280" height="280"></canvas>
+    </div>
+    <div>
+      <div class="muted" style="font-family:var(--mono);font-size:.78rem;margin-bottom:.3rem" id="lan_right_label">tridiagonal T (m × m)</div>
+      <canvas id="lan_T" width="280" height="280"></canvas>
+    </div>
+  </div>
+  <div style="margin-top:.8rem">
+    <div class="muted" style="font-family:var(--mono);font-size:.78rem;margin-bottom:.3rem">Ritz values (●) converging onto true eigenvalues (│)</div>
+    <canvas id="lan_ritz" width="560" height="120"></canvas>
+  </div>
+  <div class="controls">
+    <button id="lan_step">Step Lanczos</button>
+    <button id="lan_play" class="ghost">▶ Play</button>
+    <button id="lan_reset" class="ghost">↺ Reset</button>
+    <label class="readout"><input id="lan_reorth" type="checkbox" checked> full reorthogonalization</label>
+    <label class="readout"><input id="lan_showQ" type="checkbox"> show QᵀQ heatmap (right)</label>
+  </div>
+  <div class="statbar" id="lan_stat"></div>
+  <div class="legend">
+    <span><i style="background:var(--c2)"></i>smallest Ritz</span>
+    <span><i style="background:var(--c6)"></i>other Ritz</span>
+    <span><i style="background:#9aa7b4"></i>true eigenvalue</span>
+    <span class="muted">QᵀQ: diagonal should be bright, off-diagonal dark (orthogonal)</span>
+  </div>
+</div>
+
+<!-- ───────────────────────── DEMO 3: WILKINSON ───────────────────────── -->
+<h2>Try it — Wilkinson shift convergence race</h2>
+<p>Two copies of the same symmetric tridiagonal matrix run the QR/QL iteration side by side: one <b>unshifted</b>, one with the <b>Wilkinson shift</b>. The number line shows the diagonal estimates (the eventual eigenvalues); the bars below track the trailing off-diagonal <code>|e<sub>n-1</sub>|</code> — the quantity that must hit zero before the bottom eigenvalue is locked in. Scrub the matrix conditioning and watch the shifted run lock the trailing eigenvalue in a fraction of the iterations.</p>
+
+<div class="demo">
+  <canvas id="wilk_canvas" width="560" height="280"></canvas>
+  <div class="controls">
+    <button id="wilk_step">Step both</button>
+    <button id="wilk_play" class="ghost">▶ Play</button>
+    <button id="wilk_reset" class="ghost">↺ Reset</button>
+    <label class="readout">conditioning <input id="wilk_cond" type="range" min="0" max="100" value="40" style="vertical-align:middle"></label>
+  </div>
+  <div class="statbar" id="wilk_stat"></div>
+  <div class="legend">
+    <span><i style="background:var(--c3)"></i>unshifted |e<sub>n-1</sub>|</span>
+    <span><i style="background:var(--c2)"></i>shifted |e<sub>n-1</sub>|</span>
+    <span class="muted">converged when |e<sub>n-1</sub>| &lt; 1e-10</span>
+  </div>
+</div>
+
+<!-- ───────────────────────── INSIDE THE CODE ───────────────────────── -->
+<h2>Inside the code</h2>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>smallest_eigenvectors_with_values.ts:21</code></td><td>Public entry point: dispatches between Lanczos and Jacobi by size/shape, returns k smallest eigenvectors + eigenvalues as tensors.</td></tr>
+<tr><td><code>smallest_eigenvectors_with_values.ts:56</code></td><td><code>lanczos_path</code>: over-requests k+5 pairs, counts near-zero eigenvalues (TOL 1e-2), slices k+c columns, Jacobi fallback for dense matrices.</td></tr>
+<tr><td><code>smallest_eigenvectors_with_values.ts:114</code></td><td><code>jacobi_path</code>: full Jacobi decomposition, then deterministic post-processing and k+c slicing (TOL 1e-7).</td></tr>
+<tr><td><code>improved.ts:12</code></td><td><code>improved_jacobi_eigen</code>: cyclic Jacobi with adaptive threshold, PSD clamp, and orthonormality validation.</td></tr>
+<tr><td><code>improved.ts:243</code></td><td><code>laplacian_eigen_decomposition</code>: Laplacian-specialized Jacobi returning k + num_zeros eigenvector columns as a tensor.</td></tr>
+<tr><td><code>qr.ts:19</code></td><td><code>qr_eigen_decomposition</code>: shifted QR iteration with Wilkinson shift, NaN-shift fallback, Gram-Schmidt cleanup.</td></tr>
+<tr><td><code>qr.ts:51</code></td><td><code>wilkinson_shift</code>: shift estimate from the trailing 2×2 submatrix.</td></tr>
+<tr><td><code>qr.ts:181</code></td><td><code>tridiagonal_qr_eigen</code>: Numerical Recipes QL (tqli) for symmetric tridiagonal matrices.</td></tr>
+<tr><td><code>lanczos.ts:63</code></td><td><code>lanczos_smallest_eigenpairs</code>: Lanczos with full reorthogonalization, convergence check, and simple restart.</td></tr>
+<tr><td><code>lanczos.ts:299</code></td><td><code>dense_matvec</code>: A·v product for dense inputs; matrix-free callers supply <code>operator.matvec</code> instead.</td></tr>
+<tr><td><code>lanczos.ts:362</code></td><td><code>check_convergence</code>: residual bound |β<sub>m</sub>·s<sub>last</sub>| &lt; tol on the k smallest Ritz values.</td></tr>
+<tr><td><code>lanczos.ts:394</code></td><td><code>extract_smallest</code>: reconstructs Ritz vectors u = Q·s, PSD-clamps, applies sign convention, sorts.</td></tr>
+<tr><td><code>lanczos.ts:490</code></td><td><code>tridiagonal_ql</code>: implicit QL with Wilkinson shift and bulge-chasing Givens rotations.</td></tr>
+<tr><td><code>orthogonalize.ts:12</code></td><td><code>reorthogonalize_vector</code>: in-place projection of w out of a basis (used by Lanczos).</td></tr>
+<tr><td><code>orthogonalize.ts:33</code></td><td><code>gram_schmidt_columns</code>: modified Gram-Schmidt over matrix columns (used by QR cleanup).</td></tr>
+<tr><td><code>post.ts:33</code></td><td><code>deterministic_eigenpair_processing</code>: ascending sort + largest-magnitude-positive sign fix (sklearn convention).</td></tr>
+<tr><td><code>constant_eigenvector.ts:17</code></td><td><code>create_constant_eigenvector</code>: exact 1/√n unit constant vector for connected graphs.</td></tr>
+</tbody>
+</table>
+
+<!-- ───────────────────────── PARAMETERS ───────────────────────── -->
+<h2>Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>k</code></td><td>Number of smallest eigenpairs requested. Integer ≥ 1 and ≤ n. The engine may return <b>k + c</b> columns where c = count of near-zero eigenvalues.</td></tr>
+<tr><td><code>LANCZOS_THRESHOLD</code> = 100</td><td>Matrix-size cutoff: n ≤ 100 uses Jacobi; n &gt; 100 <i>and</i> k &lt; n/3 uses Lanczos.</td></tr>
+<tr><td><code>max_iterations</code> (Jacobi 3000, QR 1000)</td><td>Cap on sweeps/iterations before warning of non-convergence.</td></tr>
+<tr><td><code>tolerance</code> (Jacobi 1e-14, QR 1e-10)</td><td>Off-diagonal convergence threshold; in Jacobi it also scales the adaptive rotation-skip threshold <code>tolerance·‖A‖<sub>F</sub></code>.</td></tr>
+<tr><td><code>is_psd</code> (default true)</td><td>When set, negative eigenvalues are clamped to 0 (Laplacians are PSD). Large negatives trigger a warning.</td></tr>
+<tr><td><code>max_subspace_size</code> (m_max)</td><td>Lanczos Krylov dimension before restart. Default <code>min(max(2k+20, 4k), n, 200)</code>.</td></tr>
+<tr><td><code>max_restarts</code> = 10</td><td>Simple restarts (from best Ritz vector) Lanczos allows before returning its best approximation.</td></tr>
+<tr><td><code>convergence_tol</code> = 1e-6</td><td>Ritz-value residual tolerance for the Lanczos convergence test.</td></tr>
+<tr><td><code>random_seed</code> = 42</td><td>Seeds <code>make_random_stream</code> for the deterministic Lanczos starting vector — key to reproducible embeddings.</td></tr>
+<tr><td><code>compute_vectors</code> (default true)</td><td>In <code>tridiagonal_qr_eigen</code>: whether to accumulate eigenvectors or only return eigenvalues.</td></tr>
+<tr><td><code>BREAKDOWN_TOL</code> = 1e-10</td><td>Below this β<sub>j</sub>, Lanczos declares a lucky breakdown (invariant subspace found).</td></tr>
+<tr><td><code>NORM_REDUCTION_TRIGGER</code> = 0.7071</td><td>If reorthogonalization shrinks ‖w‖ below 1/√2 of its prior value, a second Gram-Schmidt pass runs.</td></tr>
+</tbody>
+</table>
+
+<!-- ───────────────────────── EDGE CASES ───────────────────────── -->
+<h2>Edge cases &amp; scikit-learn parity</h2>
+<table>
+<thead><tr><th>Situation</th><th>Handling</th></tr></thead>
+<tbody>
+<tr><td>Sign ambiguity</td><td>Eigenvectors are defined up to ±1; both paths force the largest-magnitude component positive (post.ts:71, lanczos.ts:442) for determinism.</td></tr>
+<tr><td>Degenerate / repeated eigenvalues</td><td>Eigenvectors are defined only up to rotation within the eigenspace; sorting is stable on value, but the basis inside a degenerate block is solver-dependent.</td></tr>
+<tr><td>Constant eigenvector</td><td>The connected-graph zero eigenvector is numerically noisy; <code>create_constant_eigenvector</code> substitutes the exact 1/√n vector — the <i>plain</i> constant, not the degree-weighted version.</td></tr>
+<tr><td>PSD clamping</td><td>Tiny negative eigenvalues from float32 are set to 0; magnitudes beyond tolerance (Jacobi −tolerance·100, Lanczos −1e-5) log a warning rather than silently corrupting results.</td></tr>
+<tr><td>Zero-eigenvalue padding</td><td>Both paths return k + c columns (c = count of near-zero eigenvalues) so disconnected-component eigenvectors aren't dropped. Counting tolerances differ (Jacobi 1e-7, Lanczos 1e-2 in the path, 1e-7 in <code>laplacian_eigen_decomposition</code>).</td></tr>
+<tr><td>QR singular shift</td><td>When the Wilkinson shift hits an exact eigenvalue, A_shifted is singular and <code>tf.linalg.qr</code> can return NaN on some platforms; qr.ts:90 detects non-finite R and retries that step unshifted.</td></tr>
+<tr><td>Float32 orthonormality drift</td><td>Accumulated rotations erode orthogonality, so QR re-runs <code>gram_schmidt_columns</code> and Jacobi validates with a 1e-6 post-condition check.</td></tr>
+<tr><td>Lanczos cancellation</td><td>Full reorthogonalization plus a conditional second pass guard against loss of orthogonality in the Krylov basis.</td></tr>
+<tr><td>Lucky breakdown, too few pairs</td><td>Lanczos generates a random vector orthogonal to the current basis (up to 5 attempts) to continue; returns early if the basis already spans the space.</td></tr>
+<tr><td>Non-convergence</td><td>QR, Jacobi, tridiagonal QL (30-iter cap) and Lanczos (max_restarts) all warn and return best-effort results rather than throwing.</td></tr>
+<tr><td>Lanczos failure</td><td><code>lanczos_path</code> catches errors and falls back to Jacobi only for dense matrices (not matrix-free operators) and only when allowed.</td></tr>
+</tbody>
+</table>
+
+<div class="card">
+  <h3 style="margin-top:0">scikit-learn parity</h3>
+  <p class="muted">The post-processing convention is explicitly modeled on scikit-learn: ascending eigenvalue order plus sign-fixing so each eigenvector's largest-magnitude component is positive. The constant-eigenvector substitution mirrors sklearn's <code>spectral_embedding</code>, which replaces the noisy zero-eigenvalue vector for connected graphs with a clean constant — and crucially uses the plain <code>1/√n</code> constant rather than the degree-weighted form. PSD clamping reflects sklearn's assumption that the normalized Laplacian's spectrum lies in [0, 2], so small numerical negatives are zeroed. The deterministic <code>random_seed=42</code> Lanczos start makes the iterative path as reproducible as the dense path. The k + c zero-eigenvalue padding parallels how connected-component count affects the usable embedding dimension. The tridiagonal QL solver follows Numerical Recipes <code>tqli</code> (Golub &amp; Van Loan §8.3.3) — the same algorithm family LAPACK/sklearn rely on under the hood.</p>
+</div>
+
+<footer>
+  <p><b>Eigendecomposition Engine</b> — part of the Clustering Atlas.</p>
+  <p>← <a href="./som.html">Self-Organizing Maps (SOM)</a> &nbsp;·&nbsp; <a href="./graph.html">Graph &amp; Laplacian Construction</a> → &nbsp;·&nbsp; <a href="./spectral.html">Spectral Clustering</a> &nbsp;·&nbsp; <a href="./random.html">Deterministic RNG</a></p>
+  <p><a href="./index.html">◆ Back to index</a></p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ===================================================================== */
+/*  Shared helpers                                                       */
+/* ===================================================================== */
+function magColor(v, max){
+  // map magnitude -> palette ramp
+  if(max<=0) return "#0a0e14";
+  const t = Math.min(1, Math.abs(v)/max);
+  if(t<0.02) return "#0a0e14";
+  if(t<0.25) return "#1f6feb";
+  if(t<0.55) return "#7ee787";
+  return "#f0b429";
+}
+function frob_off(M){ // off-diagonal frobenius norm
+  let s=0, n=M.length;
+  for(let i=0;i<n;i++) for(let j=0;j<n;j++) if(i!==j) s+=M[i][j]*M[i][j];
+  return Math.sqrt(s);
+}
+function clone2d(M){ return M.map(r=>r.slice()); }
+
+/* ===================================================================== */
+/*  DEMO 1 — Jacobi off-diagonal annihilation                            */
+/* ===================================================================== */
+(function(){
+  const N=6;
+  const cv=document.getElementById('jac_canvas'), cx=cv.getContext('2d');
+  const ch=document.getElementById('jac_chart'), hx=ch.getContext('2d');
+  const statEl=document.getElementById('jac_stat');
+  const thrSlider=document.getElementById('jac_thr'), thrVal=document.getElementById('jac_thr_val');
+  const showV=document.getElementById('jac_showv');
+
+  let A, V, history, pairs, ptr, A0, maxMag, playing=false, raf=null;
+
+  function buildA0(){
+    // deterministic symmetric matrix with a clear spectrum
+    const seed=[
+      [4.0,1.6,0.9,0.3,1.1,0.4],
+      [1.6,3.2,1.2,0.7,0.2,0.8],
+      [0.9,1.2,2.6,1.4,0.5,0.3],
+      [0.3,0.7,1.4,2.1,1.0,0.6],
+      [1.1,0.2,0.5,1.0,1.7,1.3],
+      [0.4,0.8,0.3,0.6,1.3,1.0]
+    ];
+    return seed;
+  }
+  function eye(n){return Array.from({length:n},(_, i)=>Array.from({length:n},(_,j)=>i===j?1:0));}
+
+  function threshVal(){ return Math.pow(10, -3 + thrSlider.value/20); } // ~1e-3 .. ~1e0
+
+  function reset(){
+    A0=buildA0(); A=clone2d(A0); V=eye(N);
+    maxMag=0; for(let i=0;i<N;i++)for(let j=0;j<N;j++) maxMag=Math.max(maxMag,Math.abs(A[i][j]));
+    history=[frob_off(A)];
+    // cyclic pair list (one full sweep)
+    pairs=[]; for(let p=0;p<N-1;p++) for(let q=p+1;q<N;q++) pairs.push([p,q]);
+    ptr=0;
+    draw(null);
+  }
+
+  function rotate(p,q){
+    const a_pp=A[p][p], a_qq=A[q][q], a_pq=A[p][q];
+    if(Math.abs(a_pq) < threshVal()) return false; // skipped
+    const diff=a_qq-a_pp;
+    let t;
+    if(Math.abs(diff) <= Number.EPSILON*Math.max(Math.abs(a_pp),Math.abs(a_qq),1)){
+      t = a_pq>=0?1:-1;
+    } else {
+      const theta=diff/(2*a_pq);
+      t=1/(Math.abs(theta)+Math.sqrt(1+theta*theta));
+      if(theta<0) t=-t;
+    }
+    const c=1/Math.sqrt(1+t*t), s=t*c, tau=s/(1+c);
+    A[p][p]=a_pp-t*a_pq; A[q][q]=a_qq+t*a_pq; A[p][q]=A[q][p]=0;
+    for(let j=0;j<p;j++){const g=A[j][p],h=A[j][q];A[j][p]=A[p][j]=g-s*(h+g*tau);A[j][q]=A[q][j]=h+s*(g-h*tau);}
+    for(let j=p+1;j<q;j++){const g=A[p][j],h=A[j][q];A[p][j]=A[j][p]=g-s*(h+g*tau);A[j][q]=A[q][j]=h+s*(g-h*tau);}
+    for(let j=q+1;j<N;j++){const g=A[p][j],h=A[q][j];A[p][j]=A[j][p]=g-s*(h+g*tau);A[q][j]=A[j][q]=h+s*(g-h*tau);}
+    for(let j=0;j<N;j++){const g=V[j][p],h=V[j][q];V[j][p]=g-s*(h+g*tau);V[j][q]=h+s*(g-h*tau);}
+    return true;
+  }
+
+  function step(){
+    if(ptr>=pairs.length){ ptr=0; } // loop the sweep
+    const [p,q]=pairs[ptr];
+    const did=rotate(p,q);
+    history.push(frob_off(A));
+    draw([p,q]);
+    ptr++;
+    return did;
+  }
+
+  function drawMatrix(ctx, M, hl, showVmat){
+    const w=cv.width, h=cv.height, pad=18;
+    const grid = showVmat ? V : M;
+    const cell=Math.min((w-2*pad)/N, (h-2*pad)/N);
+    const ox=(w-cell*N)/2, oy=(h-cell*N)/2;
+    ctx.clearRect(0,0,w,h);
+    let localMax=showVmat?1:maxMag;
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      const x=ox+j*cell, y=oy+i*cell;
+      ctx.fillStyle = showVmat ? magColor(grid[i][j],1.0) : magColor(grid[i][j], maxMag);
+      ctx.fillRect(x,y,cell-2,cell-2);
+      if(!showVmat && hl && ((hl[0]===i&&hl[1]===j)||(hl[1]===i&&hl[0]===j))){
+        ctx.strokeStyle="#ff7b9c"; ctx.lineWidth=2.5; ctx.strokeRect(x+1,y+1,cell-4,cell-4);
+      }
+      if(!showVmat && hl && (i===hl[0]||i===hl[1]||j===hl[0]||j===hl[1])){
+        ctx.strokeStyle="rgba(255,123,156,.35)"; ctx.lineWidth=1; ctx.strokeRect(x+1,y+1,cell-4,cell-4);
+      }
+      ctx.fillStyle = "rgba(230,237,243,.82)";
+      ctx.font="10px ui-monospace,monospace"; ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText(grid[i][j].toFixed(1), x+(cell-2)/2, y+(cell-2)/2);
+    }
+  }
+
+  function drawChart(){
+    const w=ch.width,h=ch.height,pad=34;
+    hx.clearRect(0,0,w,h);
+    hx.strokeStyle="#2b333d"; hx.lineWidth=1;
+    hx.beginPath(); hx.moveTo(pad,8); hx.lineTo(pad,h-pad); hx.lineTo(w-8,h-pad); hx.stroke();
+    const maxV=Math.max.apply(null,history)||1;
+    hx.strokeStyle="#58a6ff"; hx.lineWidth=2; hx.beginPath();
+    history.forEach((v,i)=>{
+      const x=pad+(w-pad-12)*(history.length<=1?0:i/(history.length-1));
+      const y=(h-pad)-(h-pad-12)*(v/maxV);
+      i?hx.lineTo(x,y):hx.moveTo(x,y);
+    });
+    hx.stroke();
+    history.forEach((v,i)=>{
+      const x=pad+(w-pad-12)*(history.length<=1?0:i/(history.length-1));
+      const y=(h-pad)-(h-pad-12)*(v/maxV);
+      hx.fillStyle="#58a6ff"; hx.beginPath(); hx.arc(x,y,2.4,0,7); hx.fill();
+    });
+    hx.fillStyle="#9aa7b4"; hx.font="11px ui-monospace,monospace"; hx.textAlign="left";
+    hx.fillText("off(A)="+(history[history.length-1]).toFixed(4), pad+4, 16);
+    hx.textAlign="right";
+    hx.fillText("rotation #", w-10, h-pad+16);
+  }
+
+  function draw(hl){
+    drawMatrix(cx, A, hl, showV.checked);
+    drawChart();
+    const diag=Array.from({length:N},(_,i)=>A[i][i].toFixed(2));
+    statEl.innerHTML =
+      "<span>rotations applied: <b style='color:#e6edf3'>"+(history.length-1)+"</b></span>"+
+      "<span>off(A): <b style='color:#e6edf3'>"+(history[history.length-1]).toFixed(5)+"</b></span>"+
+      "<span>skip below: <b style='color:#e6edf3'>"+threshVal().toExponential(1)+"</b></span>"+
+      "<span>diag(A) ≈ eigenvalues: <b style='color:#7ee787'>["+diag.join(", ")+"]</b></span>";
+  }
+
+  function loop(){
+    if(!playing) return;
+    step();
+    if(history[history.length-1] < 1e-4){ playing=false; document.getElementById('jac_play').textContent="▶ Play sweep"; }
+    raf=requestAnimationFrame(()=>setTimeout(loop, 260));
+  }
+
+  document.getElementById('jac_step').onclick=()=>{ playing=false; document.getElementById('jac_play').textContent="▶ Play sweep"; step(); };
+  document.getElementById('jac_play').onclick=function(){
+    playing=!playing; this.textContent=playing?"❚❚ Pause":"▶ Play sweep";
+    if(playing) loop();
+  };
+  document.getElementById('jac_reset').onclick=()=>{ playing=false; document.getElementById('jac_play').textContent="▶ Play sweep"; reset(); };
+  thrSlider.oninput=()=>{ thrVal.textContent=threshVal().toExponential(1); draw(null); };
+  showV.onchange=()=>{ document.getElementById('jac_a_state').textContent = showV.checked? "(eigenvector matrix V)":"(working matrix)"; draw(null); };
+  thrVal.textContent=threshVal().toExponential(1);
+  reset();
+})();
+
+/* ===================================================================== */
+/*  DEMO 2 — Lanczos Krylov tridiagonalization                           */
+/* ===================================================================== */
+(function(){
+  const N=24, MAXM=18;
+  const cA=document.getElementById('lan_A'), ax=cA.getContext('2d');
+  const cT=document.getElementById('lan_T'), tx=cT.getContext('2d');
+  const cR=document.getElementById('lan_ritz'), rx=cR.getContext('2d');
+  const statEl=document.getElementById('lan_stat');
+  const reorthEl=document.getElementById('lan_reorth');
+  const showQEl=document.getElementById('lan_showQ');
+  const jLabel=document.getElementById('lan_j');
+  const rightLabel=document.getElementById('lan_right_label');
+
+  // Build a fixed symmetric matrix A with a known spectrum.
+  // Use A = sum lambda_k * q_k q_k^T from an orthonormal basis (DCT-ish).
+  let A, trueEig, Amax;
+  function buildA(){
+    // target eigenvalues spread across [0,4], smallest near 0
+    const lam=[]; for(let k=0;k<N;k++) lam.push( 4*Math.pow(k/(N-1),1.4) );
+    trueEig=lam.slice();
+    // orthonormal basis: discrete cosine vectors
+    const Q=Array.from({length:N},()=>new Float64Array(N));
+    for(let k=0;k<N;k++){
+      let nrm=0;
+      for(let i=0;i<N;i++){ const v=Math.cos(Math.PI*(i+0.5)*k/N); Q[i][k]=v; nrm+=v*v; }
+      nrm=Math.sqrt(nrm); for(let i=0;i<N;i++) Q[i][k]/=nrm;
+    }
+    const M=Array.from({length:N},()=>new Float64Array(N));
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      let s=0; for(let k=0;k<N;k++) s+=Q[i][k]*lam[k]*Q[j][k]; M[i][j]=s;
+    }
+    Amax=0; for(let i=0;i<N;i++)for(let j=0;j<N;j++) Amax=Math.max(Amax,Math.abs(M[i][j]));
+    return M;
+  }
+
+  // Lanczos state
+  let basis, alpha, beta, rng_state, ritz=[], QtQ=null;
+
+  function rngNext(){ // simple deterministic LCG seeded at 42
+    rng_state=(1103515245*rng_state+12345)&0x7fffffff;
+    return rng_state/0x7fffffff;
+  }
+  function matvec(v){
+    const r=new Float64Array(N);
+    for(let i=0;i<N;i++){ let s=0; const row=A[i]; for(let j=0;j<N;j++) s+=row[j]*v[j]; r[i]=s; }
+    return r;
+  }
+  function dot(a,b){ let s=0; for(let i=0;i<N;i++) s+=a[i]*b[i]; return s; }
+  function norm(a){ return Math.sqrt(dot(a,a)); }
+
+  function reset(){
+    A=buildA();
+    rng_state=42;
+    const q=new Float64Array(N); let nr=0;
+    for(let i=0;i<N;i++){ q[i]=rngNext()-0.5; nr+=q[i]*q[i]; }
+    nr=Math.sqrt(nr); for(let i=0;i<N;i++) q[i]/=nr;
+    basis=[q]; alpha=[]; beta=[]; ritz=[]; QtQ=null;
+    drawAll();
+  }
+
+  // QL solver for the small symmetric tridiagonal (alpha diag, beta off)
+  function tridiag_ql(d_in,e_in){
+    const m=d_in.length; if(m===0) return {values:[],vectors:[]};
+    if(m===1) return {values:[d_in[0]],vectors:[[1]]};
+    const d=Float64Array.from(d_in), e=new Float64Array(m);
+    for(let i=0;i<e_in.length;i++) e[i]=e_in[i]; e[m-1]=0;
+    const V=Array.from({length:m},(_, i)=>Array.from({length:m},(_,j)=>i===j?1:0));
+    for(let l=0;l<m;l++){
+      let iter=0;
+      while(true){
+        let mm; for(mm=l;mm<m-1;mm++){ const dd=Math.abs(d[mm])+Math.abs(d[mm+1]); if(Math.abs(e[mm])<=Number.EPSILON*dd) break; }
+        if(mm===l) break;
+        if(iter++>=30) break;
+        let g=(d[l+1]-d[l])/(2*e[l]); let r=Math.sqrt(g*g+1);
+        g=d[mm]-d[l]+e[l]/(g+(g>=0?r:-r));
+        let s=1,c=1,p=0;
+        for(let i=mm-1;i>=l;i--){
+          const f=s*e[i], b=c*e[i];
+          r=Math.sqrt(f*f+g*g); e[i+1]=r;
+          if(r===0){ d[i+1]-=p; e[mm]=0; break; }
+          s=f/r; c=g/r; g=d[i+1]-p; r=(d[i]-g)*s+2*c*b; p=s*r; d[i+1]=g+p; g=c*r-b;
+          for(let k=0;k<m;k++){ const t=V[k][i+1]; V[k][i+1]=s*V[k][i]+c*t; V[k][i]=c*V[k][i]-s*t; }
+        }
+        d[l]-=p; e[l]=g; e[mm]=0;
+      }
+    }
+    return {values:Array.from(d),vectors:V};
+  }
+
+  function computeRitz(){
+    if(alpha.length<1) { ritz=[]; return; }
+    const res=tridiag_ql(alpha.slice(), beta.slice(0,alpha.length-1));
+    ritz=res.values.slice().sort((a,b)=>a-b);
+  }
+
+  function computeQtQ(){
+    const m=basis.length;
+    QtQ=Array.from({length:m},()=>new Float64Array(m));
+    for(let a=0;a<m;a++)for(let b=0;b<m;b++) QtQ[a][b]=Math.abs(dot(basis[a],basis[b]));
+  }
+
+  function step(){
+    const j=alpha.length;
+    if(j>=MAXM) return;
+    const v_j=basis[j];
+    let w=matvec(v_j);
+    if(j>0){ const bp=beta[j-1], vp=basis[j-1]; for(let i=0;i<N;i++) w[i]-=bp*vp[i]; }
+    let a_j=dot(v_j,w); alpha.push(a_j);
+    for(let i=0;i<N;i++) w[i]-=a_j*v_j[i];
+    if(reorthEl.checked){
+      const nb=norm(w);
+      for(let b=0;b<basis.length;b++){ const q=basis[b]; const dd=dot(q,w); for(let i=0;i<N;i++) w[i]-=dd*q[i]; }
+      const na=norm(w);
+      if(na < 0.7071*nb){ for(let b=0;b<basis.length;b++){ const q=basis[b]; const dd=dot(q,w); for(let i=0;i<N;i++) w[i]-=dd*q[i]; } }
+    }
+    const b_j=norm(w);
+    if(b_j<1e-12){ return; } // breakdown
+    beta.push(b_j);
+    const qn=new Float64Array(N); for(let i=0;i<N;i++) qn[i]=w[i]/b_j;
+    basis.push(qn);
+    computeRitz();
+    computeQtQ();
+    drawAll();
+  }
+
+  function drawHeat(ctx,cnv,M,n,max){
+    const w=cnv.width,h=cnv.height; ctx.clearRect(0,0,w,h);
+    const cell=Math.min(w,h)/n;
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+      ctx.fillStyle=magColor(M[i][j],max);
+      ctx.fillRect(j*cell, i*cell, cell-0.6, cell-0.6);
+    }
+  }
+
+  function drawTri(){
+    const m=alpha.length;
+    tx.clearRect(0,0,cT.width,cT.height);
+    if(showQEl.checked && QtQ){
+      rightLabel.textContent="QᵀQ orthogonality ("+basis.length+"×"+basis.length+")";
+      drawHeat(tx,cT,QtQ,basis.length,1.0);
+      return;
+    }
+    rightLabel.textContent="tridiagonal T ("+m+"×"+m+")";
+    if(m===0){ return; }
+    const T=Array.from({length:m},()=>new Float64Array(m));
+    let mx=0;
+    for(let i=0;i<m;i++){ T[i][i]=alpha[i]; mx=Math.max(mx,Math.abs(alpha[i])); }
+    for(let i=0;i<m-1;i++){ T[i][i+1]=beta[i]; T[i+1][i]=beta[i]; mx=Math.max(mx,Math.abs(beta[i])); }
+    drawHeat(tx,cT,T,m,mx);
+  }
+
+  function drawRitz(){
+    const w=cR.width,h=cR.height,pad=24;
+    rx.clearRect(0,0,w,h);
+    const lo=-0.1, hi=4.2;
+    const X=v=> pad + (w-2*pad)*((v-lo)/(hi-lo));
+    // axis
+    rx.strokeStyle="#2b333d"; rx.beginPath(); rx.moveTo(pad,h-30); rx.lineTo(w-pad,h-30); rx.stroke();
+    // true eigenvalues as grey ticks
+    trueEig.forEach(v=>{ const x=X(v); rx.strokeStyle="#9aa7b4"; rx.lineWidth=1; rx.beginPath(); rx.moveTo(x,h-44); rx.lineTo(x,h-16); rx.stroke(); });
+    // ritz dots (smallest 4 highlighted)
+    ritz.forEach((v,i)=>{
+      const x=X(v);
+      rx.fillStyle = i<4 ? "#7ee787" : "#39d0d8";
+      rx.beginPath(); rx.arc(x, h-30, i<4?5:3.4, 0, 7); rx.fill();
+    });
+    rx.fillStyle="#9aa7b4"; rx.font="10px ui-monospace,monospace"; rx.textAlign="left";
+    rx.fillText("0", X(0)-2, h-6); rx.textAlign="center";
+    rx.fillText("2", X(2), h-6); rx.fillText("4", X(4), h-6);
+  }
+
+  function drawAll(){
+    drawHeat(ax,cA,A,N,Amax);
+    drawTri();
+    drawRitz();
+    jLabel.textContent=alpha.length;
+    const sm = ritz.length? ritz.slice(0,Math.min(4,ritz.length)).map(v=>v.toFixed(3)).join(", ") : "—";
+    const trueSm = trueEig.slice(0,4).map(v=>v.toFixed(3)).join(", ");
+    // max off-diagonal of QtQ (orthogonality loss)
+    let orthErr=0;
+    if(QtQ){ for(let i=0;i<QtQ.length;i++)for(let j=0;j<QtQ.length;j++) if(i!==j) orthErr=Math.max(orthErr,QtQ[i][j]); }
+    statEl.innerHTML=
+      "<span>subspace m = <b style='color:#e6edf3'>"+alpha.length+"</b> / "+MAXM+"</span>"+
+      "<span>smallest Ritz: <b style='color:#7ee787'>["+sm+"]</b></span>"+
+      "<span>true smallest: <b style='color:#9aa7b4'>["+trueSm+"]</b></span>"+
+      "<span>max off-diag QᵀQ: <b style='color:"+(orthErr>1e-3?'#ff7b9c':'#7ee787')+"'>"+orthErr.toExponential(1)+"</b></span>";
+  }
+
+  let playing=false;
+  function loop(){
+    if(!playing) return;
+    if(alpha.length>=MAXM){ playing=false; document.getElementById('lan_play').textContent="▶ Play"; return; }
+    step();
+    requestAnimationFrame(()=>setTimeout(loop,360));
+  }
+  document.getElementById('lan_step').onclick=()=>{ playing=false; document.getElementById('lan_play').textContent="▶ Play"; step(); };
+  document.getElementById('lan_play').onclick=function(){ playing=!playing; this.textContent=playing?"❚❚ Pause":"▶ Play"; if(playing) loop(); };
+  document.getElementById('lan_reset').onclick=()=>{ playing=false; document.getElementById('lan_play').textContent="▶ Play"; reset(); };
+  reorthEl.onchange=()=>{}; // affects next steps
+  showQEl.onchange=drawAll;
+  reset();
+})();
+
+/* ===================================================================== */
+/*  DEMO 3 — Wilkinson shift convergence race                            */
+/* ===================================================================== */
+(function(){
+  const cv=document.getElementById('wilk_canvas'), cx=cv.getContext('2d');
+  const statEl=document.getElementById('wilk_stat');
+  const condSlider=document.getElementById('wilk_cond');
+  const M=5; // tridiagonal size
+
+  // Two QL states (shifted / unshifted) operating on a copy of the matrix.
+  let dS,eS,dU,eU, iterS, iterU, doneS, doneU, hist;
+
+  function buildTridiag(){
+    // conditioning slider controls how clustered the eigenvalues are
+    const c = condSlider.value/100; // 0..1
+    // base diagonal & off-diagonal; tighter clustering = harder = slower unshifted
+    const d=[], e=[];
+    for(let i=0;i<M;i++) d.push(2 + (1-c)*Math.cos(i)*1.5);
+    for(let i=0;i<M-1;i++) e.push(0.7 + 0.5*c);
+    return {d,e};
+  }
+
+  function reset(){
+    const t=buildTridiag();
+    dS=t.d.slice(); eS=t.e.slice(); dU=t.d.slice(); eU=t.e.slice();
+    iterS=0; iterU=0; doneS=false; doneU=false;
+    hist={s:[Math.abs(eS[M-2])], u:[Math.abs(eU[M-2])]};
+    draw();
+  }
+
+  // One QL sweep on the trailing block, with or without Wilkinson shift.
+  function qlSweep(d,e,useShift){
+    // operate on full matrix; deflate from bottom
+    // find active block end (largest l with e nonzero)
+    let n=M;
+    while(n>1 && Math.abs(e[n-2])<1e-12) n--;
+    if(n<=1) return true; // fully converged
+    const l=0, mm=n-1;
+    let g,r;
+    if(useShift){
+      g=(d[l+1]-d[l])/(2*e[l]); r=Math.sqrt(g*g+1);
+      g=d[mm]-d[l]+e[l]/(g+(g>=0?r:-r));
+    } else {
+      // unshifted: pretend shift origin = d[l]
+      g=(d[l+1]-d[l])/(2*e[l]); r=Math.sqrt(g*g+1);
+      g=d[mm]-d[l]+e[l]*0; // no shift contribution
+      g=d[mm]-d[l];
+    }
+    let s=1,c=1,p=0;
+    for(let i=mm-1;i>=l;i--){
+      const f=s*e[i], b=c*e[i];
+      r=Math.sqrt(f*f+g*g); e[i+1]=r;
+      if(r===0){ d[i+1]-=p; e[mm]=0; break; }
+      s=f/r; c=g/r; g=d[i+1]-p; r=(d[i]-g)*s+2*c*b; p=s*r; d[i+1]=g+p; g=c*r-b;
+    }
+    d[l]-=p; e[l]=g;
+    // converged if trailing off-diag negligible
+    return Math.abs(e[n-2])<1e-10;
+  }
+
+  function step(){
+    if(!doneS){ doneS=qlSweep(dS,eS,true); iterS++; }
+    if(!doneU){ doneU=qlSweep(dU,eU,false); iterU++; }
+    hist.s.push(Math.abs(eS[M-2])); hist.u.push(Math.abs(eU[M-2]));
+    if(hist.s.length>40){ hist.s.shift(); hist.u.shift(); }
+    draw();
+  }
+
+  function draw(){
+    const w=cv.width,h=cv.height;
+    cx.clearRect(0,0,w,h);
+    // top: number line of diagonal estimates
+    const lo=Math.min.apply(null,dS.concat(dU))-0.6;
+    const hi=Math.max.apply(null,dS.concat(dU))+0.6;
+    const pad=30, topY=58;
+    const X=v=> pad+(w-2*pad)*((v-lo)/(hi-lo));
+    cx.fillStyle="#9aa7b4"; cx.font="12px var(--sans)"; cx.textAlign="left";
+    cx.fillText("Diagonal estimates (→ eigenvalues)", pad, 22);
+    cx.strokeStyle="#2b333d"; cx.beginPath(); cx.moveTo(pad,topY); cx.lineTo(w-pad,topY); cx.stroke();
+    dU.forEach(v=>{ const x=X(v); cx.fillStyle="#ff7b9c"; cx.beginPath(); cx.arc(x,topY-7,4,0,7); cx.fill(); });
+    dS.forEach(v=>{ const x=X(v); cx.fillStyle="#7ee787"; cx.beginPath(); cx.arc(x,topY+7,4,0,7); cx.fill(); });
+    cx.fillStyle="#ff7b9c"; cx.font="10px ui-monospace,monospace"; cx.textAlign="left"; cx.fillText("unshifted", pad, topY-16);
+    cx.fillStyle="#7ee787"; cx.fillText("shifted", pad, topY+24);
+
+    // bottom: trailing |e_{n-1}| bars over iterations (log scale)
+    const baseY=h-26, chartTop=110, plotH=baseY-chartTop;
+    cx.fillStyle="#9aa7b4"; cx.font="12px var(--sans)"; cx.textAlign="left";
+    cx.fillText("Trailing off-diagonal |e_{n-1}| (log scale) — must reach 0", pad, chartTop-12);
+    cx.strokeStyle="#2b333d"; cx.beginPath(); cx.moveTo(pad,baseY); cx.lineTo(w-pad,baseY); cx.stroke();
+    const logMap=v=>{ const lv=Math.max(v,1e-12); return ( (Math.log10(lv)+11)/12 ); }; // 1e-11..1e1 -> 0..1
+    const n=hist.s.length;
+    const bw=(w-2*pad)/Math.max(n,1);
+    for(let i=0;i<n;i++){
+      const x=pad+i*bw;
+      const hu=logMap(hist.u[i])*plotH, hs=logMap(hist.s[i])*plotH;
+      cx.fillStyle="rgba(255,123,156,.7)"; cx.fillRect(x, baseY-hu, bw*0.42, hu);
+      cx.fillStyle="rgba(126,231,135,.85)"; cx.fillRect(x+bw*0.5, baseY-hs, bw*0.42, hs);
+    }
+
+    statEl.innerHTML=
+      "<span>iterations — shifted: <b style='color:#7ee787'>"+iterS+(doneS?" ✓ converged":"")+"</b></span>"+
+      "<span>unshifted: <b style='color:#ff7b9c'>"+iterU+(doneU?" ✓ converged":"")+"</b></span>"+
+      "<span>|e<sub>n-1</sub>| shifted: <b style='color:#7ee787'>"+Math.abs(eS[M-2]).toExponential(1)+"</b></span>"+
+      "<span>unshifted: <b style='color:#ff7b9c'>"+Math.abs(eU[M-2]).toExponential(1)+"</b></span>";
+  }
+
+  let playing=false;
+  function loop(){
+    if(!playing) return;
+    step();
+    if(doneS && doneU){ playing=false; document.getElementById('wilk_play').textContent="▶ Play"; return; }
+    requestAnimationFrame(()=>setTimeout(loop,300));
+  }
+  document.getElementById('wilk_step').onclick=()=>{ playing=false; document.getElementById('wilk_play').textContent="▶ Play"; step(); };
+  document.getElementById('wilk_play').onclick=function(){ playing=!playing; this.textContent=playing?"❚❚ Pause":"▶ Play"; if(playing) loop(); };
+  document.getElementById('wilk_reset').onclick=()=>{ playing=false; document.getElementById('wilk_play').textContent="▶ Play"; reset(); };
+  condSlider.oninput=reset;
+  reset();
+})();
+</script>
+</body>
+</html>

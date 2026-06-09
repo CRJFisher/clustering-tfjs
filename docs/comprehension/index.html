@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clustering Atlas — How clustering-tfjs works under the hood</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+
+/* ---- atlas-specific additions (do not change variables above) ---- */
+.hero-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin:1rem 0 0}
+.role-est{--role:var(--c2)} .role-num{--role:var(--c1)} .role-tool{--role:var(--c4)}
+.maplegend{display:flex;flex-wrap:wrap;gap:1rem;font-size:.82rem;margin:.6rem 0 0}
+.maplegend .key{display:inline-flex;align-items:center;gap:.4rem}
+.maplegend .dot{width:.85rem;height:.85rem;border-radius:4px;display:inline-block}
+#depmap svg{cursor:default}
+#depmap .node{cursor:pointer}
+#depmap .node rect{transition:fill .15s, stroke .15s, filter .15s}
+#depmap .node text{font-family:var(--sans);font-weight:600;fill:var(--ink);pointer-events:none}
+#depmap .node .sub{font-family:var(--mono);font-size:9px;fill:var(--muted);font-weight:400}
+#depmap .edge{stroke:var(--line);stroke-width:1.6;fill:none;transition:stroke .15s, stroke-width .15s, opacity .15s;marker-end:url(#arrow)}
+#depmap.lit .edge{opacity:.18}
+#depmap.lit .edge.on{opacity:1;stroke-width:2.6}
+#depmap.lit .node{opacity:.35}
+#depmap.lit .node.on{opacity:1}
+#depmap .node.lit-self rect{filter:drop-shadow(0 0 7px var(--role))}
+.cardgrid{display:grid;gap:1.1rem;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.atlas-card{background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--role,var(--accent));
+  border-radius:var(--radius);padding:1.1rem 1.2rem;display:flex;flex-direction:column;transition:transform .12s, border-color .12s}
+.atlas-card:hover{transform:translateY(-2px);border-color:var(--role,var(--accent))}
+.atlas-card h3{margin:0 0 .15rem;color:var(--ink);font-size:1.12rem}
+.atlas-card h3 a{color:var(--ink)}
+.atlas-card h3 a:hover{color:var(--role,var(--accent));text-decoration:none}
+.atlas-card .blurb{color:var(--muted);font-size:.92rem;margin:.35rem 0 .7rem;flex:1}
+.atlas-card .pills{display:flex;flex-wrap:wrap;gap:.35rem}
+.atlas-card .pill{border-color:var(--line)}
+.atlas-card .pill::before{content:"▸ ";color:var(--role,var(--accent));opacity:.8}
+.section-tag{font-family:var(--mono);font-size:.75rem;color:var(--role);letter-spacing:.04em;text-transform:uppercase}
+@media(max-width:560px){#depmap svg{min-width:560px}}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph & Laplacian Construction</a><a href="./linkage.html">Linkage & NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<header>
+  <span class="pill">Interactive · Offline · Single-file explainers</span>
+  <h1>The Clustering Atlas</h1>
+  <p class="lede">A hands-on tour of how <code>clustering-tfjs</code> works under the hood. Each page is a live, offline explainer — play with the algorithm in your browser, read the math, and jump straight to the exact lines of source that implement it. Start with an estimator you care about, then follow the links down into the numeric engines that power it.</p>
+  <div class="hero-tags">
+    <span class="pill">4 estimators</span>
+    <span class="pill">4 numeric engines</span>
+    <span class="pill">3 tooling modules</span>
+    <span class="pill">30+ live canvas demos</span>
+  </div>
+</header>
+
+<h2 id="map">The dependency map</h2>
+<p class="muted" style="max-width:62ch">The four user-facing estimators (green) are assembled from shared numeric engines (blue), and every estimator is wrapped by the same tooling (amber) for reproducibility and choosing&nbsp;k. <strong>Hover any box</strong> to trace its connections; <strong>click</strong> to open that explainer. Arrows point from a building block toward what consumes it.</p>
+
+<div class="demo" id="depmap">
+  <svg viewBox="0 0 880 540" role="img" aria-label="Dependency map: numeric engines and tooling feed the four clustering estimators">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#5a6675"></path>
+      </marker>
+    </defs>
+
+    <!-- column band labels -->
+    <text x="135" y="30" fill="var(--c1)" font-family="var(--mono)" font-size="11" letter-spacing="1">NUMERICS</text>
+    <text x="450" y="30" fill="var(--c2)" font-family="var(--mono)" font-size="11" letter-spacing="1">ESTIMATORS</text>
+    <text x="730" y="30" fill="var(--c4)" font-family="var(--mono)" font-size="11" letter-spacing="1">TOOLING</text>
+
+    <!-- EDGES (drawn first, under nodes). class edge + data attrs for lighting -->
+    <g id="edges" stroke-linecap="round">
+      <!-- distance -> kmeans, agglomerative, graph, validation -->
+      <path class="edge" data-a="distance" data-b="kmeans"        d="M250,90 C340,90 360,150 432,166"></path>
+      <path class="edge" data-a="distance" data-b="agglomerative" d="M250,98 C340,140 360,320 432,338"></path>
+      <path class="edge" data-a="distance" data-b="graph"         d="M170,118 C170,180 170,210 150,232"></path>
+      <path class="edge" data-a="distance" data-b="validation"    d="M250,84 C520,40 700,300 700,398"></path>
+      <!-- graph/laplacian -> spectral -->
+      <path class="edge" data-a="graph"     data-b="spectral"     d="M250,250 C350,250 360,250 432,250"></path>
+      <!-- eigen -> spectral (direct + via laplacian) -->
+      <path class="edge" data-a="eigen"     data-b="spectral"     d="M250,330 C350,300 360,270 432,258"></path>
+      <path class="edge" data-a="eigen"     data-b="graph"        d="M195,322 C170,300 165,290 150,272"></path>
+      <!-- linkage -> agglomerative -->
+      <path class="edge" data-a="linkage"   data-b="agglomerative" d="M250,420 C350,400 360,360 432,346"></path>
+      <!-- agglomerative -> som (macro clustering of neuron prototypes) -->
+      <path class="edge" data-a="agglomerative" data-b="som"      d="M540,360 C580,400 540,420 532,438"></path>
+      <!-- random -> kmeans, som, spectral -->
+      <path class="edge" data-a="random"  data-b="kmeans"   d="M730,470 C600,470 520,220 532,182"></path>
+      <path class="edge" data-a="random"  data-b="som"      d="M730,470 C650,470 580,460 532,452"></path>
+      <path class="edge" data-a="random"  data-b="spectral" d="M730,470 C560,490 470,300 470,274"></path>
+      <!-- model-selection -> all estimators -->
+      <path class="edge" data-a="model-selection" data-b="kmeans"        d="M730,150 C640,150 560,166 552,166"></path>
+      <path class="edge" data-a="model-selection" data-b="spectral"      d="M730,158 C640,230 560,250 552,250"></path>
+      <path class="edge" data-a="model-selection" data-b="agglomerative" d="M730,162 C640,300 560,338 552,338"></path>
+      <path class="edge" data-a="model-selection" data-b="som"           d="M730,166 C640,420 560,442 552,442"></path>
+      <!-- validation -> model-selection -->
+      <path class="edge" data-a="validation" data-b="model-selection" d="M700,398 C700,320 700,250 700,182"></path>
+    </g>
+
+    <!-- NODES -->
+    <g id="nodes">
+      <!-- numerics (blue) -->
+      <a class="node role-num" data-id="distance" href="./distance.html">
+        <rect x="90" y="68" width="160" height="50" rx="10" fill="#13243a" stroke="var(--c1)" stroke-width="1.4"></rect>
+        <text x="170" y="90" text-anchor="middle" font-size="13">Pairwise Distance</text>
+        <text class="sub" x="170" y="106" text-anchor="middle">distance/</text>
+      </a>
+      <a class="node role-num" data-id="graph" href="./graph.html">
+        <rect x="70" y="226" width="160" height="50" rx="10" fill="#13243a" stroke="var(--c1)" stroke-width="1.4"></rect>
+        <text x="150" y="248" text-anchor="middle" font-size="13">Graph &amp; Laplacian</text>
+        <text class="sub" x="150" y="264" text-anchor="middle">graph/</text>
+      </a>
+      <a class="node role-num" data-id="eigen" href="./eigen.html">
+        <rect x="90" y="306" width="160" height="50" rx="10" fill="#13243a" stroke="var(--c1)" stroke-width="1.4"></rect>
+        <text x="170" y="328" text-anchor="middle" font-size="13">Eigendecomposition</text>
+        <text class="sub" x="170" y="344" text-anchor="middle">eigen/</text>
+      </a>
+      <a class="node role-num" data-id="linkage" href="./linkage.html">
+        <rect x="90" y="396" width="160" height="50" rx="10" fill="#13243a" stroke="var(--c1)" stroke-width="1.4"></rect>
+        <text x="170" y="418" text-anchor="middle" font-size="13">Linkage / NN-Chain</text>
+        <text class="sub" x="170" y="434" text-anchor="middle">clustering/linkage</text>
+      </a>
+
+      <!-- estimators (green) -->
+      <a class="node role-est" data-id="kmeans" href="./kmeans.html">
+        <rect x="432" y="150" width="120" height="50" rx="10" fill="#16291a" stroke="var(--c2)" stroke-width="1.6"></rect>
+        <text x="492" y="172" text-anchor="middle" font-size="13">K-Means</text>
+        <text class="sub" x="492" y="188" text-anchor="middle">kmeans.ts</text>
+      </a>
+      <a class="node role-est" data-id="spectral" href="./spectral.html">
+        <rect x="432" y="226" width="120" height="50" rx="10" fill="#16291a" stroke="var(--c2)" stroke-width="1.6"></rect>
+        <text x="492" y="248" text-anchor="middle" font-size="13">Spectral</text>
+        <text class="sub" x="492" y="264" text-anchor="middle">spectral.ts</text>
+      </a>
+      <a class="node role-est" data-id="agglomerative" href="./agglomerative.html">
+        <rect x="432" y="314" width="120" height="50" rx="10" fill="#16291a" stroke="var(--c2)" stroke-width="1.6"></rect>
+        <text x="492" y="336" text-anchor="middle" font-size="13">Agglomerative</text>
+        <text class="sub" x="492" y="352" text-anchor="middle">agglomerative.ts</text>
+      </a>
+      <a class="node role-est" data-id="som" href="./som.html">
+        <rect x="432" y="418" width="120" height="50" rx="10" fill="#16291a" stroke="var(--c2)" stroke-width="1.6"></rect>
+        <text x="492" y="440" text-anchor="middle" font-size="13">SOM</text>
+        <text class="sub" x="492" y="456" text-anchor="middle">som.ts</text>
+      </a>
+
+      <!-- tooling (amber) -->
+      <a class="node role-tool" data-id="model-selection" href="./model-selection.html">
+        <rect x="730" y="132" width="150" height="50" rx="10" fill="#2b2410" stroke="var(--c4)" stroke-width="1.4"></rect>
+        <text x="805" y="154" text-anchor="middle" font-size="13">Choosing k</text>
+        <text class="sub" x="805" y="170" text-anchor="middle">model_selection/</text>
+      </a>
+      <a class="node role-tool" data-id="validation" href="./validation.html">
+        <rect x="630" y="398" width="140" height="50" rx="10" fill="#2b2410" stroke="var(--c4)" stroke-width="1.4"></rect>
+        <text x="700" y="420" text-anchor="middle" font-size="13">Validation</text>
+        <text class="sub" x="700" y="436" text-anchor="middle">validation/</text>
+      </a>
+      <a class="node role-tool" data-id="random" href="./random.html">
+        <rect x="730" y="446" width="150" height="50" rx="10" fill="#2b2410" stroke="var(--c4)" stroke-width="1.4"></rect>
+        <text x="805" y="468" text-anchor="middle" font-size="13">Deterministic RNG</text>
+        <text class="sub" x="805" y="484" text-anchor="middle">random/ (MT19937)</text>
+      </a>
+    </g>
+  </svg>
+  <div class="maplegend">
+    <span class="key"><span class="dot" style="background:var(--c2)"></span>Estimator — user-facing algorithm</span>
+    <span class="key"><span class="dot" style="background:var(--c1)"></span>Numerics — constituent engine</span>
+    <span class="key"><span class="dot" style="background:var(--c4)"></span>Tooling — reproducibility &amp; selection</span>
+    <span class="key muted">Arrow = "feeds into / is used by"</span>
+  </div>
+</div>
+
+<div class="note">
+  <strong>How to read this atlas.</strong> Pick an <span style="color:var(--c2)">estimator</span> that matches your problem and read its explainer top-to-bottom — intuition, then the live demos, then the math. When a step mentions a building block (a distance matrix, an eigensolve, a Lance-Williams update, a seeded RNG), follow the link <em>down</em> into that <span style="color:var(--c1)">numerics</span> page to see exactly how it is computed. Finish with the <span style="color:var(--c4)">tooling</span> pages — Choosing&nbsp;k, Validation, and the deterministic RNG — which explain how results are scored, ranked, and made byte-for-byte reproducible across all four estimators.
+</div>
+
+<h2 id="estimators"><span class="section-tag role-est">Estimators</span><br>User-facing clustering algorithms</h2>
+<p class="muted" style="max-width:62ch">The four algorithms you call directly. Each <code>fit</code>s a dataset and returns labels.</p>
+<div class="cardgrid" id="grid-est"></div>
+
+<h2 id="numerics"><span class="section-tag role-num">Numerics</span><br>The engines underneath</h2>
+<p class="muted" style="max-width:62ch">Shared computational kernels the estimators are built from. These are where the floating-point parity with scikit-learn/scipy is won.</p>
+<div class="cardgrid" id="grid-num"></div>
+
+<h2 id="tooling"><span class="section-tag role-tool">Tooling</span><br>Selection, scoring &amp; reproducibility</h2>
+<p class="muted" style="max-width:62ch">Cross-cutting modules that wrap every estimator: how to pick the number of clusters, how to score cluster quality, and how a single seed reproduces identical results.</p>
+<div class="cardgrid" id="grid-tool"></div>
+
+<footer>
+  <p><strong>◆ Clustering Atlas</strong> — interactive companion docs for <code>clustering-tfjs</code>. Every page is a self-contained, fully-offline HTML file: vanilla JS, canvas and SVG only, no external libraries or fonts. View the source of any page to read its demos.</p>
+  <p class="muted">Generated from the library source in <code>src/</code>. Dependency edges verified against the import graph: <code>distance/</code> → KMeans · Graph · Validation; <code>graph/</code> + <code>eigen/</code> → Spectral; <code>linkage</code> → Agglomerative → SOM; <code>random/</code> → KMeans · SOM · Spectral; Validation → Choosing&nbsp;k → all estimators.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---- page registry (matches the dependency-map node ids) ----
+  var PAGES = {
+    kmeans:{title:"K-Means Clustering (Lloyd + k-means++)",file:"./kmeans.html",
+      blurb:"Lloyd's iteration and greedy k-means++ seeding, restarted n_init times and kept by lowest inertia, with three live canvas demos and exact references into src/clustering/kmeans.ts.",
+      pills:["Lloyd iteration play-through","k-means++ seeding probabilities","n_init restart tournament"]},
+    spectral:{title:"Spectral Clustering",file:"./spectral.html",
+      blurb:"Build an affinity graph, take the smallest eigenvectors of the normalized Laplacian as an embedding, and run k-means on it — with live demos of the affinity dial, the raw-to-embedding morph, and the connected-components shortcut.",
+      pills:["Affinity graph gamma / k dial","Raw → spectral embedding morph","Connected-components vs eigensolve"]},
+    agglomerative:{title:"Agglomerative Clustering",file:"./agglomerative.html",
+      blurb:"Bottom-up hierarchical clustering: watch a Ward dendrogram grow merge-by-merge and get cut, compare how each linkage rule measures “closest”, and step through the nearest-neighbor-chain engine with live Lance-Williams updates.",
+      pills:["Dendrogram grow-and-cut","Linkage rule comparison","NN-chain walk"]},
+    som:{title:"Self-Organizing Maps (SOM)",file:"./som.html",
+      blurb:"Watch a neuron mesh unfold over data via competitive learning, explore the gaussian/bubble/mexican-hat kernels and their decay schedules, read structure off a live U-matrix, and probe how any sample finds its Best-Matching Unit.",
+      pills:["Live training mesh","Kernel + decay explorer","U-matrix + macro-clusters","Sample probe & BMU"]},
+    eigen:{title:"Eigendecomposition Engine",file:"./eigen.html",
+      blurb:"A size-adaptive symmetric eigensolver that extracts the k smallest eigenpairs of a normalized graph Laplacian — Jacobi for small matrices, Lanczos for large ones — then deterministically orders and sign-fixes them to match scikit-learn.",
+      pills:["Jacobi off-diagonal annihilation","Lanczos Krylov tridiagonalization","Wilkinson shift convergence race"]},
+    graph:{title:"Graph & Laplacian Construction",file:"./graph.html",
+      blurb:"How a point cloud becomes a weighted similarity graph (RBF or kNN) encoded as a symmetric normalized Laplacian whose smallest eigenvectors reveal cluster structure.",
+      pills:["RBF gamma sweep","kNN scan: mutual vs one-sided","Components & the zero eigenspace"]},
+    linkage:{title:"Linkage & NN-Chain Merge Engine",file:"./linkage.html",
+      blurb:"The O(n²) nearest-neighbor-chain agglomerative engine: how reciprocal nearest neighbors are merged via the Lance-Williams recurrence, and why per-term Ward arithmetic reproduces scipy/sklearn dendrograms bit-for-bit, ties included.",
+      pills:["Chain Walk Animator","Lance-Williams Spotlight","Ward ULP Tie-Flip"]},
+    distance:{title:"Pairwise Distance Matrix",file:"./distance.html",
+      blurb:"How the Gram-matrix identity avoids the (n,n,d) cube for Euclidean, why float32 round-off forces a clamp before sqrt, and how Manhattan/cosine/symmetrize/zero-diagonal all return a clean symmetric matrix.",
+      pills:["Identity-vs-cube memory explorer","Metric morph scatter","Why-we-clamp number line","Symmetrize & zero-diagonal"]},
+    "model-selection":{title:"Choosing k (Model Selection)",file:"./model-selection.html",
+      blurb:"How clustering-tfjs picks the number of clusters k: sweep candidate k values, score each with normalized validation metrics or a Kneedle inertia-elbow detector, and rank descending to find the winner.",
+      pills:["WSS elbow, chord & difference curve","Live k-sweep ranking board","Normalization equalizer"]},
+    validation:{title:"Validation Metrics",file:"./validation.html",
+      blurb:"The five cluster-quality scores: three internal metrics (silhouette, Davies-Bouldin, Calinski-Harabasz) that judge geometry alone, and two external metrics (ARI, NMI) built from a contingency table against ground truth.",
+      pills:["Silhouette dissection","Davies-Bouldin ratios","Calinski-Harabasz tug-of-war","Contingency → ARI & NMI"]},
+    random:{title:"Deterministic RNG (Mersenne Twister MT19937)",file:"./random.html",
+      blurb:"The MT19937 generator that byte-for-byte clones NumPy's legacy RandomState — animating the 624-word state twist, the four-stage tempering bit-pipeline, unbiased rejection sampling, and how a single seed reproduces identical k-means++ centers.",
+      pills:["Same seed → same stream","624-word state + twist","Temper bit-pipeline","Rejection sampling","Seed → same clusters"]}
+  };
+
+  var GROUPS = {
+    "grid-est":["kmeans","spectral","agglomerative","som"],
+    "grid-num":["eigen","graph","linkage","distance"],
+    "grid-tool":["model-selection","validation","random"]
+  };
+
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+  function buildCard(id){
+    var p=PAGES[id];
+    var pills=p.pills.map(function(t){return '<span class="pill">'+esc(t)+'</span>';}).join("");
+    return '<article class="atlas-card">'
+      +'<h3><a href="'+p.file+'">'+esc(p.title)+'</a></h3>'
+      +'<p class="blurb">'+esc(p.blurb)+'</p>'
+      +'<div class="pills">'+pills+'</div>'
+      +'</article>';
+  }
+
+  Object.keys(GROUPS).forEach(function(gid){
+    var el=document.getElementById(gid);
+    if(!el)return;
+    el.innerHTML=GROUPS[gid].map(buildCard).join("");
+  });
+
+  // ---- dependency-map hover lighting ----
+  var map=document.getElementById("depmap");
+  var edges=Array.prototype.slice.call(map.querySelectorAll(".edge"));
+  var nodes=Array.prototype.slice.call(map.querySelectorAll(".node"));
+
+  // build adjacency: for a hovered node, which edges + neighbour nodes light up
+  function lightFor(id){
+    map.classList.add("lit");
+    var neigh={};
+    neigh[id]=true;
+    edges.forEach(function(e){
+      var a=e.getAttribute("data-a"), b=e.getAttribute("data-b");
+      if(a===id||b===id){ e.classList.add("on"); neigh[a]=true; neigh[b]=true; }
+    });
+    nodes.forEach(function(n){
+      var nid=n.getAttribute("data-id");
+      if(neigh[nid]) n.classList.add("on");
+      if(nid===id) n.classList.add("lit-self");
+    });
+  }
+  function clearLight(){
+    map.classList.remove("lit");
+    edges.forEach(function(e){e.classList.remove("on");});
+    nodes.forEach(function(n){n.classList.remove("on");n.classList.remove("lit-self");});
+  }
+
+  nodes.forEach(function(n){
+    var id=n.getAttribute("data-id");
+    n.addEventListener("mouseenter",function(){lightFor(id);});
+    n.addEventListener("mouseleave",clearLight);
+    n.addEventListener("focus",function(){lightFor(id);});
+    n.addEventListener("blur",clearLight);
+  });
+})();
+</script>
+</body>
+</html>

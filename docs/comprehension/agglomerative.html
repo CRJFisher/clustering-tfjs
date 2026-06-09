@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agglomerative Clustering — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.readout{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-top:.6rem;line-height:1.7}
+.readout b{color:var(--ink)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;color:var(--muted);border:0;border-radius:0;padding:.4rem .8rem;font-weight:600}
+.seg button.on{background:var(--accent);color:#06121f}
+.lbl{font-family:var(--mono);font-size:.78rem;color:var(--muted)}
+.swatch{display:inline-block;width:.8rem;height:.8rem;border-radius:3px;vertical-align:-1px;margin-right:.25rem}
+.flex2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}
+@media(max-width:680px){.flex2{grid-template-columns:1fr}}
+.prevnext{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html" class="active">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Agglomerative Clustering</h1>
+<p class="lede">Bottom-up hierarchical clustering that repeatedly merges the two closest clusters via a nearest-neighbor-chain engine with Lance&ndash;Williams distance updates, then cuts the resulting merge tree by a target cluster count or a distance threshold.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Start with every sample as its own cluster &mdash; <code>n</code> singletons. Repeatedly find the two clusters that are <em>closest</em> under a chosen linkage rule, fuse them into one, and record how far apart they were at the moment they merged. Do this <code>n&minus;1</code> times and you get a full binary <strong>merge tree</strong> (a dendrogram): its leaves are the original points and its internal nodes are merges, each tagged with a <strong>merge height</strong> (the distance).</p>
+<p>To get a flat partition you <strong>cut</strong> the tree. Either stop after enough merges that exactly <code>n_clusters</code> groups remain, or stop merging once the next merge would be at or above a <code>distance_threshold</code>. One tree, many possible partitions.</p>
+<p>The subtle part is the word "closest". The distance between two single points is obvious, but the distance between two <em>groups</em> needs a <strong>linkage rule</strong>: <span class="lbl" style="color:var(--c2)">single</span> (closest cross-pair), <span class="lbl" style="color:var(--c4)">complete</span> (farthest cross-pair), <span class="lbl" style="color:var(--c5)">average</span> (mean over all cross-pairs), or <span class="lbl" style="color:var(--c1)">Ward</span> (the increase in within-cluster variance from merging).</p>
+<p>The clever trick: you never recompute group distances from scratch. When clusters <code>i</code> and <code>j</code> merge into <code>t</code>, the distance from <code>t</code> to any other cluster <code>k</code> is a fixed algebraic combination of the already-known <code>D(i,k)</code>, <code>D(j,k)</code>, and <code>D(i,j)</code>. That recurrence is the <strong>Lance&ndash;Williams formula</strong>, and all four linkages are special cases of it.</p>
+<p>A naive engine rescans the shrinking distance matrix on every merge. This implementation instead walks a <strong>nearest-neighbor chain</strong>: it follows "who is whose nearest neighbor" until it hits a <em>reciprocal pair</em> (two clusters that are each other's nearest neighbor), which is provably a safe merge for "reducible" linkages (single, complete, average, Ward). That guarantees O(n&sup2;) time. Because chain-discovery order is not a valid dendrogram order, the merges are sorted by distance before being handed back for cutting.</p>
+<div class="note">A second obsession of this codebase is <strong>exact scikit-learn parity</strong>. Distances are computed in <strong>float64</strong> (not the tfjs float32 backend), and the Ward update is arranged to round bit-identically to scipy &mdash; so even exactly-tied merge distances on degenerate data (integer grids, duplicate points) resolve the same way sklearn resolves them.</div>
+
+<h2 id="how">How it works</h2>
+<p>The pipeline inside <code>fit()</code> (<code>agglomerative.ts:103</code>) runs these stages in order:</p>
+<ol class="steps">
+<li><b>Validate params.</b> Enforce exactly one of <code>n_clusters</code> / <code>distance_threshold</code> (XOR), <code>n_clusters</code> a positive integer, <code>distance_threshold &gt; 0</code>, a valid <code>linkage</code> and <code>metric</code>, and that Ward requires euclidean. <span class="pill">:220&ndash;260</span></li>
+<li><b>Build the float64 distance matrix D.</b> For <code>precomputed</code>, validate square / symmetric / zero-diagonal and copy into a flat row-major <code>Float64Array</code>. Otherwise materialize the coordinates and compute the full <code>n&times;n</code> pairwise matrix in float64, computing the upper triangle and mirroring it. <span class="pill">:110&ndash;141, :269&ndash;329</span></li>
+<li><b>Guard sample count &amp; trivial case.</b> Throw if <code>n_clusters &gt; n_samples</code> (only in <code>n_clusters</code> mode). If <code>n_samples === 1</code>, short-circuit to <code>labels_=[0]</code>, empty <code>children_</code>/<code>distances_</code>, <code>n_leaves_=1</code>. <span class="pill">:143&ndash;154</span></li>
+<li><b>Build the full merge tree with NN-chain.</b> <code>nn_chain_cluster(D, n_samples, linkage)</code> keeps an active-slot flag array, per-slot cluster sizes, and an int chain. It extends the chain to the current nearest neighbor (preferring the previous chain element on ties) until a reciprocal pair appears. <span class="pill">linkage.ts:93&ndash;152</span></li>
+<li><b>Merge &amp; Lance&ndash;Williams update.</b> On a reciprocal merge: survivor = max slot, removed = min slot; deactivate removed; for every other active cluster <code>k</code> recompute <code>D(survivor,k)</code> via the linkage recurrence and write both symmetric entries; set the survivor's size; push a merge record. <span class="pill">linkage.ts:154&ndash;193</span></li>
+<li><b>Sort merges by distance.</b> NN-chain returns <code>merges.sort()</code> ascending by distance, because discovery order is not a valid dendrogram cut order. <span class="pill">linkage.ts:195</span></li>
+<li><b>Cut the tree.</b> With <code>distance_threshold</code>: keep merges with <code>distance &lt; threshold</code> (filter). Otherwise: keep the first <code>n_samples &minus; n_clusters</code> merges (slice). <span class="pill">:159&ndash;161</span></li>
+<li><b>Build sklearn-style children_.</b> <code>build_children</code> replays kept merges through a union-find over <code>2n&minus;1</code> nodes, emitting <code>[min,max]</code> node ids; leaves are <code>0..n&minus;1</code> and merge <code>m</code> creates internal node <code>n+m</code>. <span class="pill">:335&ndash;365</span></li>
+<li><b>Extract flat labels via union-find.</b> A second union-find over <code>n</code> slots replays every kept merge, then each sample's root is mapped to a contiguous label <code>0..n_clusters&minus;1</code> in first-seen order. <span class="pill">:168&ndash;202</span></li>
+</ol>
+
+<h2 id="dendro">Try it &mdash; the dendrogram grows, then gets cut</h2>
+<p>Below, 12 hardcoded 2D points are clustered with Ward linkage in float64 &mdash; exactly the pipeline above. <b>Step</b> through merges to watch the chain converge on a reciprocal pair, fuse it, and draw a horizontal bracket in the dendrogram at <code>height = merge distance</code>. Then drag the <b>cut line</b> (a <code>distance_threshold</code>) or set <code>n_clusters</code>: clusters below the line recolor in both the scatter and the dendrogram, and the live cluster count updates.</p>
+<div class="demo">
+  <div class="flex2">
+    <canvas id="scatter" width="440" height="360" aria-label="2D scatter of points colored by cluster"></canvas>
+    <canvas id="dendro" width="440" height="360" aria-label="Dendrogram with movable cut line"></canvas>
+  </div>
+  <div class="controls">
+    <button id="d_step">Step merge ▶</button>
+    <button id="d_play" class="ghost">Auto-play</button>
+    <button id="d_reset" class="ghost">Reset</button>
+    <span class="lbl">cut mode:</span>
+    <span class="seg" id="cut_mode">
+      <button data-m="thr" class="on">distance_threshold</button>
+      <button data-m="k">n_clusters</button>
+    </span>
+  </div>
+  <div class="controls" id="thr_ctrl">
+    <span class="lbl">distance_threshold</span>
+    <input type="range" id="thr" min="0" max="100" value="55" style="flex:1;min-width:160px">
+    <span class="lbl" id="thr_val">&mdash;</span>
+  </div>
+  <div class="controls" id="k_ctrl" style="display:none">
+    <span class="lbl">n_clusters</span>
+    <input type="range" id="kk" min="1" max="8" value="3" style="flex:1;min-width:160px">
+    <span class="lbl" id="kk_val">3</span>
+  </div>
+  <div class="readout" id="d_read">Merges performed: <b>0</b> / 11.</div>
+</div>
+
+<h2 id="linkagecmp">Try it &mdash; how each linkage measures "closest"</h2>
+<p>Two small clusters of points sit side by side. The highlighted measure is the inter-cluster distance each linkage would use to decide a merge. Toggle the rule and watch which edge or quantity is selected.</p>
+<div class="demo">
+  <canvas id="link" width="880" height="320" aria-label="Two clusters showing the inter-cluster distance per linkage"></canvas>
+  <div class="controls">
+    <span class="seg" id="link_mode">
+      <button data-l="single" class="on">single</button>
+      <button data-l="complete">complete</button>
+      <button data-l="average">average</button>
+      <button data-l="ward">ward</button>
+    </span>
+  </div>
+  <div class="readout" id="link_read">&mdash;</div>
+</div>
+<p class="muted"><span class="swatch" style="background:var(--c2)"></span>single = the single <em>closest</em> cross-pair edge &nbsp; <span class="swatch" style="background:var(--c4)"></span>complete = the <em>farthest</em> cross-pair edge &nbsp; <span class="swatch" style="background:var(--c5)"></span>average = mean over all cross edges &nbsp; <span class="swatch" style="background:var(--c1)"></span>ward = change in within-cluster variance (shaded spread).</p>
+
+<h2 id="chain">Try it &mdash; the NN-chain walk</h2>
+<p>This is the engine itself. The chain (an array of cluster slots) hops from each cluster to its current nearest neighbor. When the tip and the previous element are <em>each other's</em> nearest neighbor &mdash; a reciprocal pair &mdash; it lights up <span style="color:var(--c2)">green</span>, the pair merges, and both pop off the chain. Step through it; the readout narrates each chain extension, reciprocal detection, and the in-place Lance&ndash;Williams row update.</p>
+<div class="demo">
+  <canvas id="chain" width="880" height="340" aria-label="NN-chain walking from cluster to nearest neighbor"></canvas>
+  <div class="controls">
+    <button id="c_step">Step ▶</button>
+    <button id="c_play" class="ghost">Auto-play</button>
+    <button id="c_reset" class="ghost">Reset</button>
+  </div>
+  <div class="readout" id="c_read">&mdash;</div>
+</div>
+
+<h2 id="math">The math</h2>
+<p>Pairwise distances are computed in float64 over the upper triangle and mirrored (<code>agglomerative.ts:269&ndash;329</code>). Here <code>x_i[k]</code> is the <code>k</code>-th feature of sample <code>i</code>.</p>
+
+<div class="eq">D(i,j) = &radic;( &Sigma;<sub>k</sub> (x<sub>i</sub>[k] &minus; x<sub>j</sub>[k])&sup2; )</div>
+<p><b>Euclidean</b> (<code>metric='euclidean'</code>, the default). Sum the squared per-feature differences, take the square root. <span class="pill">:277&ndash;291</span></p>
+
+<div class="eq">D(i,j) = &Sigma;<sub>k</sub> |x<sub>i</sub>[k] &minus; x<sub>j</sub>[k]|</div>
+<p><b>Manhattan</b> (L1, <code>metric='manhattan'</code>). Sum the absolute per-feature differences. <span class="pill">:292&ndash;304</span></p>
+
+<div class="eq">D(i,j) = 1 &minus; (x<sub>i</sub> &middot; x<sub>j</sub>) / (&Vert;x<sub>i</sub>&Vert; &middot; &Vert;x<sub>j</sub>&Vert;) ;&nbsp;&nbsp; = 0 if either norm is 0</div>
+<p><b>Cosine</b> (<code>metric='cosine'</code>). One minus the cosine similarity. A zero-norm vector defines the distance as <code>0</code> to avoid dividing by zero. <span class="pill">:305&ndash;325</span></p>
+
+<h3>The four Lance&ndash;Williams updates</h3>
+<p>When clusters <code>i</code> and <code>j</code> (sizes <code>n_i</code>, <code>n_j</code>) merge into <code>t</code>, the distance from <code>t</code> to another cluster <code>k</code> (size <code>n_k</code>) is recomputed from the three known distances <code>D(i,k)</code>, <code>D(j,k)</code>, <code>D(i,j)</code> &mdash; never from raw points (<code>linkage.ts:43&ndash;78</code>).</p>
+
+<div class="eq">single&nbsp;&nbsp;&nbsp; D(t,k) &larr; min( D(i,k), D(j,k) )</div>
+<div class="eq">complete&nbsp; D(t,k) &larr; max( D(i,k), D(j,k) )</div>
+<div class="eq">average&nbsp;&nbsp; D(t,k) &larr; ( n<sub>i</sub>&middot;D(i,k) + n<sub>j</sub>&middot;D(j,k) ) / ( n<sub>i</sub> + n<sub>j</sub> )</div>
+<div class="eq">ward&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; D(t,k) &larr; &radic;( max( (n<sub>i</sub>+n<sub>k</sub>)&middot;t&middot;D(i,k)&sup2; + (n<sub>j</sub>+n<sub>k</sub>)&middot;t&middot;D(j,k)&sup2; &minus; n<sub>k</sub>&middot;t&middot;D(i,j)&sup2; , 0 ) ),&nbsp;&nbsp; t = 1/(n<sub>i</sub>+n<sub>j</sub>+n<sub>k</sub>)</div>
+<p><b>single</b> tracks the closest pair (loose chains), <b>complete</b> the farthest pair (compact balls), <b>average</b> (UPGMA) is the size-weighted mean. <b>Ward</b> minimizes the increase in within-cluster variance. Crucially, the factor <code>t = 1/(n_i+n_j+n_k)</code> is <em>distributed into each term</em> rather than dividing a summed numerator once. The two forms are algebraically identical but round differently in IEEE-754 &mdash; summing first and dividing last can shift the result by one ULP, which would flip exact distance ties on symmetric data. This arrangement is bit-identical to scipy's <code>_ward</code>. The argument is clamped to <code>0</code> before the square root. <span class="pill">linkage.ts:59&ndash;76</span></p>
+
+<h3>Cutting and node ids</h3>
+<div class="eq">merges_kept = all_merges[ 0 : n_samples &minus; n_clusters ]</div>
+<p><b>n_clusters cut.</b> Keep exactly enough of the distance-sorted merges to leave <code>n_clusters</code> groups. <span class="pill">:161</span></p>
+
+<div class="eq">merges_kept = { m &isin; all_merges : m.distance &lt; distance_threshold }</div>
+<p><b>distance_threshold cut.</b> Strict less-than: merges at or above the threshold are not applied; the cluster count is data-determined. <span class="pill">:160</span></p>
+
+<div class="eq">node( merge m ) = n_samples + m,&nbsp;&nbsp; m = 0, 1, 2, &hellip;</div>
+<p><b>Internal node id.</b> The sklearn/scipy <code>children_</code> convention: leaves are <code>0..n&minus;1</code>, and the <code>m</code>-th merge creates internal node <code>n+m</code>. Each row is emitted as <code>[min,max]</code>. <span class="pill">:353&ndash;361</span></p>
+
+<h2 id="code">Inside the code</h2>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>agglomerative.ts:31</code></td><td><code>AgglomerativeClustering</code> class implementing <code>BaseClustering&lt;AgglomerativeClusteringParams&gt;</code></td></tr>
+<tr><td><code>agglomerative.ts:103</code></td><td><code>fit()</code> &mdash; orchestrates distance-matrix build, NN-chain, cut, children + label extraction</td></tr>
+<tr><td><code>agglomerative.ts:159&ndash;161</code></td><td>Tree cut: <code>distance_threshold</code> filter vs <code>n_clusters</code> slice</td></tr>
+<tr><td><code>agglomerative.ts:168&ndash;202</code></td><td>Union-find label extraction (replay merges, map roots to contiguous labels <code>0..k&minus;1</code>)</td></tr>
+<tr><td><code>agglomerative.ts:212</code></td><td><code>fit_predict()</code> &mdash; fit then return <code>labels_</code></td></tr>
+<tr><td><code>agglomerative.ts:220&ndash;260</code></td><td><code>validate_params()</code> &mdash; XOR criterion, integer/positivity checks, ward+euclidean constraint</td></tr>
+<tr><td><code>agglomerative.ts:269&ndash;329</code></td><td><code>compute_distance_matrix()</code> &mdash; float64 euclidean/manhattan/cosine, upper-triangle + mirror</td></tr>
+<tr><td><code>agglomerative.ts:335&ndash;365</code></td><td><code>build_children()</code> &mdash; union-find over <code>2n&minus;1</code> nodes producing sklearn-style <code>[min,max]</code> node ids</td></tr>
+<tr><td><code>agglomerative.ts:371&ndash;400</code></td><td><code>validate_precomputed()</code> &mdash; square, symmetric (1e-8), zero-diagonal checks</td></tr>
+<tr><td><code>linkage.ts:43&ndash;78</code></td><td><code>lance_williams()</code> &mdash; the four linkage recurrences incl. ULP-stable Ward form</td></tr>
+<tr><td><code>linkage.ts:93&ndash;196</code></td><td><code>nn_chain_cluster()</code> &mdash; NN-chain engine, in-place D updates, merges sorted by distance</td></tr>
+<tr><td><code>linkage.ts:28&ndash;37</code></td><td><code>MergeRecord</code> interface (<code>cluster_a</code>, <code>cluster_b</code>, <code>distance</code>, <code>new_size</code>)</td></tr>
+<tr><td><code>types.ts:174&ndash;201</code></td><td><code>AgglomerativeClusteringParams</code> interface (<code>n_clusters</code>, <code>distance_threshold</code>, <code>linkage</code>, <code>metric</code>)</td></tr>
+</tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>n_clusters</code></td><td>Target number of flat clusters. Mutually exclusive with <code>distance_threshold</code> &mdash; provide exactly one. Positive integer &ge; 1. Cuts the tree after <code>n_samples &minus; n_clusters</code> merges. <span class="pill">types.ts:179</span></td></tr>
+<tr><td><code>distance_threshold</code></td><td>Linkage distance at or above which clusters are not merged. Mutually exclusive with <code>n_clusters</code>. Must be <code>&gt; 0</code>. Resulting cluster count is data-determined; cut uses strict <code>distance &lt; threshold</code>. <span class="pill">types.ts:186</span></td></tr>
+<tr><td><code>linkage</code></td><td>Merge criterion: <code>'ward'</code> (default), <code>'complete'</code>, <code>'average'</code>, or <code>'single'</code>. Selects the Lance&ndash;Williams branch. <span class="pill">types.ts:191</span></td></tr>
+<tr><td><code>metric</code></td><td>Distance metric: <code>'euclidean'</code> (default), <code>'manhattan'</code>, <code>'cosine'</code>, or <code>'precomputed'</code>. <code>'precomputed'</code> passes a square symmetric zero-diagonal matrix directly to <code>fit</code>; incompatible with <code>linkage='ward'</code>. <span class="pill">types.ts:200</span></td></tr>
+<tr><td><code>random_state</code></td><td>Inherited from <code>CoreClusteringParams</code>. Present in the type but unused &mdash; agglomerative clustering is deterministic. <span class="pill">types.ts:34</span></td></tr>
+</tbody>
+</table>
+
+<h2 id="edges">Edge cases &amp; scikit-learn parity</h2>
+<div class="card">
+<ul>
+<li><b>Single sample (n=1):</b> short-circuits to <code>labels_=[0]</code>, empty <code>children_</code>/<code>distances_</code>, <code>n_leaves_=1</code>. <span class="pill">:148&ndash;154</span></li>
+<li><b>XOR on stopping criterion:</b> providing both or neither of <code>n_clusters</code> and <code>distance_threshold</code> throws <em>"Provide exactly one&hellip;"</em>. <span class="pill">:231&ndash;235</span></li>
+<li><b>Ward requires euclidean:</b> any other metric throws. <span class="pill">:257&ndash;259</span></li>
+<li><b>n_clusters &gt; n_samples throws</b> &mdash; but only in <code>n_clusters</code> mode; threshold mode skips this check. <span class="pill">:143&ndash;145</span></li>
+<li><b>Float64 distance computation is deliberate:</b> matching sklearn's float64 precision (rather than the tfjs float32 backend) is what makes ward/complete/average ties resolve identically to sklearn on degenerate data like integer grids and duplicate points. <span class="pill">:124&ndash;141</span></li>
+<li><b>Ward distributes the factor per-term</b> to match scipy's <code>_ward</code> bit-for-bit; the algebraically-identical "sum then divide" form can shift one ULP and flip tied merges. <span class="pill">linkage.ts:59&ndash;76</span></li>
+<li><b>Single-linkage parity caveat:</b> it produces a correct single-linkage tree, but tie-breaking among equally valid merge orders can differ from sklearn/scipy; partitions agree only when there are no exactly-tied distances. <span class="pill">:25&ndash;29</span></li>
+<li><b>NN-chain tie rule:</b> on distance ties it prefers the previous chain element to avoid cycles, matching scipy's strict-inequality NN-chain. <span class="pill">linkage.ts:126&ndash;134</span></li>
+<li><b>Merge discovery order is NOT a valid cut order:</b> merges must be sorted by distance before cutting. <span class="pill">linkage.ts:85&ndash;87, :195</span></li>
+<li><b>Precomputed matrix</b> is validated for square shape, symmetry within <code>1e-8</code>, and zero diagonal within <code>1e-8</code>. <span class="pill">:371&ndash;400</span></li>
+<li><b>Cosine with a zero-norm vector</b> defines distance as <code>0</code> to avoid divide-by-zero. <span class="pill">:321</span></li>
+</ul>
+</div>
+<div class="note"><b>The parity promise.</b> Ward, complete, and average linkage reproduce scikit-learn's partitions exactly, ties included, via: (1) float64 pairwise distances matching <code>pairwise_distances</code>; (2) the ULP-stable Ward update; (3) scipy's strict-inequality NN-chain tie rule; (4) sorting merges by distance; and (5) emitting <code>children_</code> with leaves <code>0..n&minus;1</code> and node <code>n+m</code> per merge as <code>[min,max]</code>. Single linkage matches only when no exactly-tied distances exist.</div>
+
+<footer>
+<div class="prevnext">
+<span>&larr; <a href="./spectral.html">Spectral Clustering</a></span>
+<span><a href="./index.html">◆ Clustering Atlas index</a></span>
+<span><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a> &rarr;</span>
+</div>
+<p class="muted" style="margin-top:1rem">Source of truth: <code>src/clustering/agglomerative.ts</code>, <code>src/clustering/linkage.ts</code>, <code>src/clustering/types.ts</code>. All demos run the real Ward/Lance&ndash;Williams NN-chain in float64, in your browser.</p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+const COLORS = ["#58a6ff","#7ee787","#ff7b9c","#f0b429","#bc8cff","#39d0d8","#ff9e64","#9aa7b4"];
+
+/* ============================================================
+   Core algorithm — a faithful port of linkage.ts / agglomerative.ts
+   ============================================================ */
+function compute_distance_matrix(data, metric){
+  const n = data.length, dim = data[0].length;
+  const D = new Float64Array(n*n);
+  if(metric === "euclidean"){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      let s=0; for(let k=0;k<dim;k++){const d=data[i][k]-data[j][k]; s+=d*d;}
+      const v=Math.sqrt(s); D[i*n+j]=v; D[j*n+i]=v;
+    }
+  } else if(metric === "manhattan"){
+    for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
+      let s=0; for(let k=0;k<dim;k++) s+=Math.abs(data[i][k]-data[j][k]);
+      D[i*n+j]=s; D[j*n+i]=s;
+    }
+  }
+  return D;
+}
+function lance_williams(dik,djk,dij,ni,nj,nk,linkage){
+  switch(linkage){
+    case "single": return Math.min(dik,djk);
+    case "complete": return Math.max(dik,djk);
+    case "average": return (ni*dik+nj*djk)/(ni+nj);
+    case "ward": {
+      const t = 1/(ni+nj+nk);
+      return Math.sqrt(Math.max((ni+nk)*t*dik*dik + (nj+nk)*t*djk*djk - nk*t*dij*dij, 0));
+    }
+  }
+}
+// Full NN-chain; returns merges sorted by distance.
+function nn_chain_cluster(D0, n, linkage){
+  const D = D0.slice();
+  const active = new Uint8Array(n); active.fill(1);
+  const sizes = new Float64Array(n); sizes.fill(1);
+  const chain = new Int32Array(n); let clen = 0;
+  const merges = [];
+  while(merges.length < n-1){
+    if(clen===0){ for(let i=0;i<n;i++) if(active[i]){chain[0]=i;clen=1;break;} }
+    let x=-1,y=-1,md=Infinity;
+    while(true){
+      x = chain[clen-1];
+      if(clen>1){ y=chain[clen-2]; md=D[x*n+y]; } else { y=-1; md=Infinity; }
+      const row=x*n;
+      for(let i=0;i<n;i++){ if(!active[i]||i===x) continue; const d=D[row+i]; if(d<md){md=d;y=i;} }
+      if(clen>1 && y===chain[clen-2]) break;
+      chain[clen]=y; clen++;
+    }
+    clen -= 2;
+    const lower=Math.min(x,y), higher=Math.max(x,y);
+    const removed=lower, survivor=higher;
+    const ni=sizes[removed], nj=sizes[survivor], ns=ni+nj;
+    active[removed]=0; sizes[removed]=0;
+    for(let k=0;k<n;k++){ if(!active[k]||k===survivor) continue;
+      const nd=lance_williams(D[removed*n+k],D[survivor*n+k],md,ni,nj,sizes[k],linkage);
+      D[survivor*n+k]=nd; D[k*n+survivor]=nd;
+    }
+    sizes[survivor]=ns;
+    merges.push({cluster_a:lower,cluster_b:higher,distance:md,new_size:ns,order:merges.length});
+  }
+  merges.sort((a,b)=>a.distance-b.distance);
+  return merges;
+}
+// Replay kept merges -> contiguous labels 0..k-1 (union-find, as in fit()).
+function labels_from_merges(merges, n){
+  const parent = new Int32Array(n); for(let i=0;i<n;i++) parent[i]=i;
+  function find(x){ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; }
+  for(const m of merges){ const ra=find(m.cluster_a), rb=find(m.cluster_b); parent[rb]=ra; }
+  const labels=new Array(n); const map=new Map(); let nl=0;
+  for(let i=0;i<n;i++){ const r=find(i); if(!map.has(r)) map.set(r,nl++); labels[i]=map.get(r); }
+  return labels;
+}
+
+function escapeHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+/* ============================================================
+   DEMO 1 — Dendrogram grows then gets cut
+   ============================================================ */
+(function(){
+  // 12 hardcoded 2D points (3 loose blobs), in a 0..10 box.
+  const PTS = [
+    [1.2,1.5],[1.8,2.2],[2.4,1.1],[1.0,2.8],   // blob A (bottom-left)
+    [7.8,1.8],[8.6,2.6],[7.2,2.9],[8.9,1.3],   // blob B (bottom-right)
+    [4.2,8.2],[5.1,8.9],[3.6,7.6],[4.8,7.4]    // blob C (top-center)
+  ];
+  const n = PTS.length;
+  const D0 = compute_distance_matrix(PTS, "euclidean");
+  const allMerges = nn_chain_cluster(D0, n, "ward"); // sorted by distance
+  const maxDist = allMerges[allMerges.length-1].distance;
+
+  const scC = document.getElementById("scatter"), scx = scC.getContext("2d");
+  const dnC = document.getElementById("dendro"),  dnx = dnC.getContext("2d");
+  const readEl = document.getElementById("d_read");
+  const thrR = document.getElementById("thr"), thrV = document.getElementById("thr_val");
+  const kkR = document.getElementById("kk"),  kkV = document.getElementById("kk_val");
+  const thrCtrl = document.getElementById("thr_ctrl"), kCtrl = document.getElementById("k_ctrl");
+
+  let stepShown = 0;       // how many merges revealed in the animation
+  let mode = "thr";        // "thr" or "k"
+  let playing = false, raf = null, lastT = 0;
+
+  // --- dendrogram layout: assign each leaf an x position via in-order of merge tree ---
+  // Build children to get the leaf ordering and node heights.
+  function buildLayout(merges){
+    // union-find producing node ids 0..2n-2
+    const parent = new Int32Array(2*n-1); for(let i=0;i<parent.length;i++) parent[i]=i;
+    function find(x){ while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];} return x;}
+    const node = {}; // id -> {left,right,height,leaves:[],x}
+    for(let i=0;i<n;i++) node[i]={leaf:true,id:i,leaves:[i]};
+    let next=n;
+    const order=[];
+    for(const m of merges){
+      const l=find(m.cluster_a), r=find(m.cluster_b);
+      const id=next++;
+      node[id]={leaf:false,id,left:l,right:r,height:m.distance,
+                leaves:node[l].leaves.concat(node[r].leaves)};
+      order.push(id);
+      parent[l]=id; parent[r]=id;
+    }
+    return {node, order, root: next-1};
+  }
+  // Stable leaf x ordering from the FULL tree (so positions don't jump as we step).
+  const fullLayout = buildLayout(allMerges);
+  const leafX = {}; // sample -> column index
+  fullLayout.node[fullLayout.root].leaves.forEach((s,i)=>{ leafX[s]=i; });
+
+  function currentCutMerges(){
+    if(mode==="thr"){
+      const thr = parseFloat(thrR.value)/100*maxDist*1.05;
+      return {kept: allMerges.filter(m=>m.distance<thr), thr};
+    } else {
+      const k = parseInt(kkR.value,10);
+      return {kept: allMerges.slice(0, n-k), thr:null, k};
+    }
+  }
+
+  function drawScatter(labels){
+    const w=scC.width,h=scC.height,pad=34;
+    scx.clearRect(0,0,w,h);
+    scx.fillStyle="#0a0e14"; scx.fillRect(0,0,w,h);
+    const sx=v=>pad+(v/10)*(w-2*pad), sy=v=>h-pad-(v/10)*(h-2*pad);
+    // title
+    scx.fillStyle="#9aa7b4"; scx.font="12px ui-monospace,monospace";
+    scx.fillText("data points — colored by current cut", 10, 18);
+    for(let i=0;i<n;i++){
+      const c = labels ? COLORS[labels[i]%COLORS.length] : "#5b6675";
+      scx.beginPath(); scx.arc(sx(PTS[i][0]),sy(PTS[i][1]),7,0,7);
+      scx.fillStyle=c; scx.fill();
+      scx.lineWidth=1.5; scx.strokeStyle="#0a0e14"; scx.stroke();
+      scx.fillStyle="#0a0e14"; scx.font="bold 9px ui-monospace,monospace";
+      scx.fillText(i, sx(PTS[i][0])-3, sy(PTS[i][1])+3);
+    }
+  }
+
+  function drawDendro(){
+    const w=dnC.width,h=dnC.height, padL=12, padR=14, padT=24, padB=24;
+    dnx.clearRect(0,0,w,h);
+    dnx.fillStyle="#0a0e14"; dnx.fillRect(0,0,w,h);
+    dnx.fillStyle="#9aa7b4"; dnx.font="12px ui-monospace,monospace";
+    dnx.fillText("dendrogram — y = merge distance", 10, 16);
+
+    const colW = (w-padL-padR)/n;
+    const xOf = col => padL + colW*(col+0.5);
+    const top = maxDist*1.08;
+    const yOf = d => (h-padB) - (d/top)*(h-padT-padB);
+
+    // baseline + leaf labels
+    dnx.strokeStyle="#2b333d"; dnx.lineWidth=1;
+    for(let i=0;i<n;i++){
+      const x=xOf(leafX[i]);
+      dnx.fillStyle="#5b6675"; dnx.font="9px ui-monospace,monospace";
+      dnx.fillText(i, x-3, h-8);
+    }
+
+    // We draw revealed merges. Each node has an x = mean of its leaf columns, y=height.
+    // Track node x-position as we replay revealed merges.
+    const parent=new Int32Array(2*n-1); for(let i=0;i<parent.length;i++)parent[i]=i;
+    function find(x){while(parent[x]!==x){parent[x]=parent[parent[x]];x=parent[x];}return x;}
+    const nodeX={}, nodeY={};
+    for(let i=0;i<n;i++){ nodeX[i]=xOf(leafX[i]); nodeY[i]=h-padB; }
+    let next=n;
+
+    const cut = currentCutMerges();
+    const keptSet = new Set(cut.kept.map(m=>m.order));
+
+    for(let s=0;s<stepShown;s++){
+      const m=allMerges[s];
+      const l=find(m.cluster_a), r=find(m.cluster_b);
+      const id=next++;
+      const xl=nodeX[l], xr=nodeX[r], yl=nodeY[l], yr=nodeY[r];
+      const ym=yOf(m.distance);
+      const xm=(xl+xr)/2;
+      // color: if this merge is part of the kept cut (below cut), keep neutral;
+      // a merge that is "cut" (NOT applied) is drawn dimmer.
+      const applied = keptSet.has(m.order);
+      dnx.strokeStyle = applied ? "#7ee787" : "#3a4654";
+      dnx.lineWidth = applied ? 2 : 1.4;
+      dnx.beginPath();
+      dnx.moveTo(xl,yl); dnx.lineTo(xl,ym); dnx.lineTo(xr,ym); dnx.lineTo(xr,yr);
+      dnx.stroke();
+      nodeX[id]=xm; nodeY[id]=ym;
+      parent[l]=id; parent[r]=id;
+    }
+
+    // cut line
+    if(mode==="thr"){
+      const cy=yOf(cut.thr);
+      dnx.strokeStyle="#f0b429"; dnx.lineWidth=1.5; dnx.setLineDash([6,4]);
+      dnx.beginPath(); dnx.moveTo(padL,cy); dnx.lineTo(w-padR,cy); dnx.stroke();
+      dnx.setLineDash([]);
+      dnx.fillStyle="#f0b429"; dnx.font="11px ui-monospace,monospace";
+      dnx.fillText("threshold "+cut.thr.toFixed(2), padL+4, cy-4);
+    } else {
+      // for n_clusters mode, the cut sits just above the (n-k)-th merge height
+      const kept=cut.kept;
+      let cd;
+      if(kept.length===0) cd = 0;
+      else if(kept.length>=allMerges.length) cd = top;
+      else cd = (allMerges[kept.length-1].distance + allMerges[kept.length].distance)/2;
+      const cy=yOf(cd);
+      dnx.strokeStyle="#f0b429"; dnx.lineWidth=1.5; dnx.setLineDash([6,4]);
+      dnx.beginPath(); dnx.moveTo(padL,cy); dnx.lineTo(w-padR,cy); dnx.stroke();
+      dnx.setLineDash([]);
+      dnx.fillStyle="#f0b429"; dnx.font="11px ui-monospace,monospace";
+      dnx.fillText("cut for k="+cut.k, padL+4, cy-4);
+    }
+  }
+
+  function render(){
+    const cut = currentCutMerges();
+    // labels reflect ONLY merges that are both revealed AND kept by the cut
+    const revealedKept = cut.kept.filter(m=>m.order < stepShown);
+    const labels = labels_from_merges(revealedKept, n);
+    const nClusters = new Set(labels).size;
+    drawScatter(labels);
+    drawDendro();
+    if(mode==="thr"){
+      thrV.textContent = "= "+cut.thr.toFixed(2);
+      readEl.innerHTML = "Merges revealed: <b>"+stepShown+"</b> / "+(n-1)+
+        ". Cut keeps merges with <b>distance &lt; "+cut.thr.toFixed(2)+"</b> → "+
+        "<b style='color:#7ee787'>"+nClusters+" clusters</b> among the revealed merges.";
+    } else {
+      kkV.textContent = cut.k;
+      readEl.innerHTML = "Merges revealed: <b>"+stepShown+"</b> / "+(n-1)+
+        ". n_clusters="+cut.k+" → keep the first <b>"+(n-cut.k)+"</b> distance-sorted merges → "+
+        "<b style='color:#7ee787'>"+nClusters+" clusters</b> among the revealed merges.";
+    }
+  }
+
+  function step(){ if(stepShown < n-1){ stepShown++; render(); } if(stepShown>=n-1) stopPlay(); }
+  function loop(t){ if(!playing) return; if(t-lastT>620){ lastT=t; step(); } raf=requestAnimationFrame(loop); }
+  function startPlay(){ if(stepShown>=n-1) stepShown=0; playing=true; document.getElementById("d_play").textContent="Pause"; lastT=0; raf=requestAnimationFrame(loop); }
+  function stopPlay(){ playing=false; document.getElementById("d_play").textContent="Auto-play"; if(raf) cancelAnimationFrame(raf); }
+
+  document.getElementById("d_step").onclick=()=>{stopPlay();step();};
+  document.getElementById("d_play").onclick=()=>{ playing?stopPlay():startPlay(); };
+  document.getElementById("d_reset").onclick=()=>{ stopPlay(); stepShown=0; render(); };
+  thrR.oninput=render; kkR.oninput=render;
+  document.querySelectorAll("#cut_mode button").forEach(b=>{
+    b.onclick=()=>{
+      document.querySelectorAll("#cut_mode button").forEach(x=>x.classList.remove("on"));
+      b.classList.add("on"); mode=b.dataset.m;
+      thrCtrl.style.display = mode==="thr"?"flex":"none";
+      kCtrl.style.display = mode==="k"?"flex":"none";
+      render();
+    };
+  });
+  render();
+})();
+
+/* ============================================================
+   DEMO 2 — Linkage rule comparison
+   ============================================================ */
+(function(){
+  const A = [[1.4,2.2],[2.0,3.1],[1.1,3.6],[2.4,2.5],[1.7,1.6]];
+  const B = [[6.0,5.2],[6.8,4.4],[7.3,5.6],[6.4,6.1],[7.0,4.9]];
+  const C = document.getElementById("link"), x = C.getContext("2d");
+  const readEl = document.getElementById("link_read");
+  let linkage = "single";
+  const W=C.width,H=C.height,pad=40;
+  const sx=v=>pad+(v/8)*(W-2*pad), sy=v=>H-pad-(v/7)*(H-2*pad);
+
+  function centroid(g){ let cx=0,cy=0; g.forEach(p=>{cx+=p[0];cy+=p[1];}); return [cx/g.length, cy/g.length]; }
+  function dist(p,q){ return Math.hypot(p[0]-q[0],p[1]-q[1]); }
+
+  function draw(){
+    x.clearRect(0,0,W,H); x.fillStyle="#0a0e14"; x.fillRect(0,0,W,H);
+    x.fillStyle="#9aa7b4"; x.font="12px ui-monospace,monospace";
+    x.fillText("cluster A", sx(1.6), 24); x.fillText("cluster B", sx(6.6), 24);
+
+    // compute all cross-pair distances
+    let minD=Infinity,maxD=-Infinity,minPair=null,maxPair=null,sum=0,cnt=0;
+    for(let i=0;i<A.length;i++)for(let j=0;j<B.length;j++){
+      const d=dist(A[i],B[j]); sum+=d; cnt++;
+      if(d<minD){minD=d;minPair=[i,j];}
+      if(d>maxD){maxD=d;maxPair=[i,j];}
+    }
+    const avg=sum/cnt;
+
+    // edges (faint for average)
+    if(linkage==="average"){
+      x.strokeStyle="rgba(188,140,255,.35)"; x.lineWidth=1;
+      for(let i=0;i<A.length;i++)for(let j=0;j<B.length;j++){
+        x.beginPath(); x.moveTo(sx(A[i][0]),sy(A[i][1])); x.lineTo(sx(B[j][0]),sy(B[j][1])); x.stroke();
+      }
+    }
+    if(linkage==="single"){
+      const[i,j]=minPair; x.strokeStyle="#7ee787"; x.lineWidth=3;
+      x.beginPath(); x.moveTo(sx(A[i][0]),sy(A[i][1])); x.lineTo(sx(B[j][0]),sy(B[j][1])); x.stroke();
+    }
+    if(linkage==="complete"){
+      const[i,j]=maxPair; x.strokeStyle="#f0b429"; x.lineWidth=3;
+      x.beginPath(); x.moveTo(sx(A[i][0]),sy(A[i][1])); x.lineTo(sx(B[j][0]),sy(B[j][1])); x.stroke();
+    }
+    if(linkage==="ward"){
+      // show within-spread shading (variance) for each group + centroid link
+      [A,B].forEach((g,gi)=>{
+        const c=centroid(g);
+        let vr=0; g.forEach(p=>{vr+=dist(p,c)*dist(p,c);}); vr=Math.sqrt(vr/g.length);
+        x.fillStyle = gi===0 ? "rgba(88,166,255,.12)":"rgba(57,208,216,.12)";
+        x.beginPath(); x.arc(sx(c[0]),sy(c[1]), (vr/8)*(W-2*pad), 0, 7); x.fill();
+        x.strokeStyle = gi===0?"#58a6ff":"#39d0d8"; x.lineWidth=1.5;
+        x.beginPath(); x.arc(sx(c[0]),sy(c[1]), (vr/8)*(W-2*pad), 0, 7); x.stroke();
+      });
+      const ca=centroid(A), cb=centroid(B);
+      x.strokeStyle="#58a6ff"; x.lineWidth=2.5; x.setLineDash([5,4]);
+      x.beginPath(); x.moveTo(sx(ca[0]),sy(ca[1])); x.lineTo(sx(cb[0]),sy(cb[1])); x.stroke(); x.setLineDash([]);
+    }
+
+    // points
+    function pts(g,color){ g.forEach(p=>{ x.beginPath(); x.arc(sx(p[0]),sy(p[1]),6,0,7); x.fillStyle=color; x.fill(); x.strokeStyle="#0a0e14"; x.lineWidth=1.5; x.stroke(); }); }
+    pts(A,"#58a6ff"); pts(B,"#39d0d8");
+
+    let msg="";
+    if(linkage==="single") msg="<b style='color:#7ee787'>single</b>: D(A,B) = the single CLOSEST cross-pair = <b>"+minD.toFixed(3)+"</b>. Loose, chain-like clusters.";
+    else if(linkage==="complete") msg="<b style='color:#f0b429'>complete</b>: D(A,B) = the FARTHEST cross-pair = <b>"+maxD.toFixed(3)+"</b>. Compact, ball-like clusters.";
+    else if(linkage==="average") msg="<b style='color:#bc8cff'>average</b> (UPGMA): mean over ALL "+cnt+" cross edges = <b>"+avg.toFixed(3)+"</b>. Size-weighted in the recurrence.";
+    else msg="<b style='color:#58a6ff'>ward</b>: merges to minimize the INCREASE in within-cluster variance (shaded spread); the default linkage, euclidean only.";
+    readEl.innerHTML = msg;
+  }
+  document.querySelectorAll("#link_mode button").forEach(b=>{
+    b.onclick=()=>{ document.querySelectorAll("#link_mode button").forEach(z=>z.classList.remove("on")); b.classList.add("on"); linkage=b.dataset.l; draw(); };
+  });
+  draw();
+})();
+
+/* ============================================================
+   DEMO 3 — NN-chain walk (instrumented)
+   ============================================================ */
+(function(){
+  // 7 points in a 0..10 box; Ward linkage.
+  const PTS = [[1.5,2.0],[2.6,2.4],[5.0,5.5],[5.8,4.6],[8.5,2.2],[9.0,3.1],[4.6,8.5]];
+  const n0 = PTS.length;
+  const linkage = "ward";
+
+  // Build an instrumented trace of the NN-chain so we can step through events.
+  function trace(){
+    const D = compute_distance_matrix(PTS,"euclidean");
+    const n=n0;
+    const active=new Uint8Array(n); active.fill(1);
+    const sizes=new Float64Array(n); sizes.fill(1);
+    const chain=new Int32Array(n); let clen=0;
+    const events=[]; let merges=0;
+    // each slot keeps a "representative" point for drawing (its own coords; merged keep survivor coords)
+    while(merges<n-1){
+      if(clen===0){ for(let i=0;i<n;i++) if(active[i]){chain[0]=i;clen=1;
+        events.push({type:"start",chain:chain.slice(0,clen).join(","),slot:i}); break;} }
+      let x=-1,y=-1,md=Infinity;
+      while(true){
+        x=chain[clen-1];
+        if(clen>1){ y=chain[clen-2]; md=D[x*n+y]; } else { y=-1; md=Infinity; }
+        const row=x*n;
+        for(let i=0;i<n;i++){ if(!active[i]||i===x) continue; const d=D[row+i]; if(d<md){md=d;y=i;} }
+        if(clen>1 && y===chain[clen-2]){
+          events.push({type:"reciprocal",x,y,md,chain:Array.from(chain.slice(0,clen))});
+          break;
+        }
+        chain[clen]=y; clen++;
+        events.push({type:"extend",from:x,to:y,md,chain:Array.from(chain.slice(0,clen))});
+      }
+      clen-=2;
+      const lower=Math.min(x,y),higher=Math.max(x,y),removed=lower,survivor=higher;
+      const ni=sizes[removed],nj=sizes[survivor];
+      active[removed]=0; sizes[removed]=0;
+      const updated=[];
+      for(let k=0;k<n;k++){ if(!active[k]||k===survivor) continue;
+        const nd=lance_williams(D[removed*n+k],D[survivor*n+k],md,ni,nj,sizes[k],linkage);
+        D[survivor*n+k]=nd; D[k*n+survivor]=nd; updated.push(k);
+      }
+      sizes[survivor]=ni+nj;
+      merges++;
+      events.push({type:"merge",removed,survivor,md,updated:updated.slice(),
+        chain:Array.from(chain.slice(0,clen)), active:Array.from(active)});
+    }
+    return events;
+  }
+  const EVENTS = trace();
+
+  const C=document.getElementById("chain"), x=C.getContext("2d");
+  const readEl=document.getElementById("c_read");
+  const W=C.width,H=C.height,pad=46;
+  const sx=v=>pad+(v/10)*(W-2*pad), sy=v=>H-pad-(v/10)*(H-2*pad);
+  let idx=-1, playing=false, raf=null, lastT=0;
+
+  // active-state reconstruction: which slots are alive at event i
+  function aliveAt(i){
+    const a=new Uint8Array(n0); a.fill(1);
+    for(let e=0;e<=i;e++){ if(EVENTS[e].type==="merge") a[EVENTS[e].removed]=0; }
+    return a;
+  }
+
+  function draw(){
+    x.clearRect(0,0,W,H); x.fillStyle="#0a0e14"; x.fillRect(0,0,W,H);
+    x.fillStyle="#9aa7b4"; x.font="12px ui-monospace,monospace";
+    x.fillText("clusters (slots) + nearest-neighbor chain", 10, 18);
+
+    const ev = idx>=0 ? EVENTS[idx] : null;
+    const alive = idx>=0 ? aliveAt(idx) : (function(){const a=new Uint8Array(n0);a.fill(1);return a;})();
+    const chainArr = ev && ev.chain ? ev.chain : [];
+
+    // chain edges
+    if(chainArr.length>1){
+      x.strokeStyle="#58a6ff"; x.lineWidth=2.5;
+      for(let i=0;i<chainArr.length-1;i++){
+        const a=chainArr[i], b=chainArr[i+1];
+        x.beginPath(); x.moveTo(sx(PTS[a][0]),sy(PTS[a][1])); x.lineTo(sx(PTS[b][0]),sy(PTS[b][1])); x.stroke();
+        // arrowhead
+        const ang=Math.atan2(sy(PTS[b][1])-sy(PTS[a][1]), sx(PTS[b][0])-sx(PTS[a][0]));
+        const hx=sx(PTS[b][0]), hy=sy(PTS[b][1]);
+        x.fillStyle="#58a6ff"; x.beginPath();
+        x.moveTo(hx-14*Math.cos(ang-0.4)+10*Math.cos(ang), hy-14*Math.sin(ang-0.4)+10*Math.sin(ang));
+        x.moveTo(hx,hy);
+        x.lineTo(hx-13*Math.cos(ang-0.45), hy-13*Math.sin(ang-0.45));
+        x.lineTo(hx-13*Math.cos(ang+0.45), hy-13*Math.sin(ang+0.45));
+        x.closePath(); x.fill();
+      }
+    }
+
+    // reciprocal highlight edge
+    if(ev && (ev.type==="reciprocal"||ev.type==="merge")){
+      const a = ev.type==="merge" ? ev.removed : ev.x;
+      const b = ev.type==="merge" ? ev.survivor : ev.y;
+      x.strokeStyle="#7ee787"; x.lineWidth=4;
+      x.beginPath(); x.moveTo(sx(PTS[a][0]),sy(PTS[a][1])); x.lineTo(sx(PTS[b][0]),sy(PTS[b][1])); x.stroke();
+    }
+
+    // points
+    for(let i=0;i<n0;i++){
+      const isChainTip = chainArr.length>0 && chainArr[chainArr.length-1]===i;
+      const inChain = chainArr.includes(i);
+      let color = alive[i] ? "#9aa7b4" : "#3a4654";
+      if(inChain) color="#58a6ff";
+      const reciprocal = ev && (ev.type==="reciprocal"||ev.type==="merge") &&
+        (i===(ev.x??ev.removed) || i===(ev.y??ev.survivor));
+      if(reciprocal) color="#7ee787";
+      x.beginPath(); x.arc(sx(PTS[i][0]),sy(PTS[i][1]), inChain?9:7, 0, 7);
+      x.fillStyle=color; x.fill();
+      x.strokeStyle = isChainTip ? "#e6edf3" : "#0a0e14"; x.lineWidth = isChainTip?2.5:1.5; x.stroke();
+      x.fillStyle = alive[i] ? "#0a0e14" : "#7a8696"; x.font="bold 9px ui-monospace,monospace";
+      x.fillText(i, sx(PTS[i][0])-3, sy(PTS[i][1])+3);
+    }
+  }
+
+  function narrate(){
+    if(idx<0){ readEl.innerHTML="Press <b>Step</b>. The chain starts at the first active slot and hops to its nearest neighbor."; return; }
+    const ev=EVENTS[idx];
+    let s="event "+(idx+1)+"/"+EVENTS.length+" — ";
+    if(ev.type==="start") s+="<b style='color:#58a6ff'>start chain</b> at slot <b>"+ev.slot+"</b>. chain = ["+ev.chain+"]";
+    else if(ev.type==="extend") s+="<b style='color:#58a6ff'>extend</b>: slot "+ev.from+"'s nearest neighbor is <b>"+ev.to+"</b> (d="+ev.md.toFixed(3)+"). chain = ["+ev.chain.join(",")+"]";
+    else if(ev.type==="reciprocal") s+="<b style='color:#7ee787'>reciprocal pair found</b>: "+ev.x+" ↔ "+ev.y+" are each other's nearest neighbor (d="+ev.md.toFixed(3)+"). Safe to merge.";
+    else if(ev.type==="merge") s+="<b style='color:#7ee787'>merge</b>: survivor=max("+ev.removed+","+ev.survivor+")=<b>"+ev.survivor+"</b>, removed=<b>"+ev.removed+"</b>, distance="+ev.md.toFixed(3)+". Lance–Williams updated D(survivor,k) for k = {"+ev.updated.join(",")+"}; both clusters pop off the chain.";
+    readEl.innerHTML=s;
+  }
+
+  function step(){ if(idx<EVENTS.length-1){ idx++; draw(); narrate(); } if(idx>=EVENTS.length-1) stopPlay(); }
+  function loop(t){ if(!playing) return; if(t-lastT>900){ lastT=t; step(); } raf=requestAnimationFrame(loop); }
+  function startPlay(){ if(idx>=EVENTS.length-1) idx=-1; playing=true; document.getElementById("c_play").textContent="Pause"; lastT=0; raf=requestAnimationFrame(loop); }
+  function stopPlay(){ playing=false; document.getElementById("c_play").textContent="Auto-play"; if(raf) cancelAnimationFrame(raf); }
+
+  document.getElementById("c_step").onclick=()=>{stopPlay();step();};
+  document.getElementById("c_play").onclick=()=>{ playing?stopPlay():startPlay(); };
+  document.getElementById("c_reset").onclick=()=>{ stopPlay(); idx=-1; draw(); narrate(); };
+  draw(); narrate();
+})();
+</script>
+</body>
+</html>

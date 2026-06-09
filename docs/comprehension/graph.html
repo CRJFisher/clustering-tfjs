@@ -1,0 +1,604 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graph &amp; Laplacian Construction — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.readout{font-family:var(--mono);font-size:.82rem;color:var(--muted);margin-left:.4rem}
+.readout b{color:var(--accent2)}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.swatch{width:14px;height:14px;border-radius:3px;display:inline-block}
+.swatch.line{height:3px;width:22px;border-radius:2px}
+.swatch.dash{height:0;width:22px;border-top:3px dashed currentColor}
+.ctl-label{font-family:var(--mono);font-size:.8rem;color:var(--muted);display:inline-flex;align-items:center;gap:.4rem}
+.demo .row{display:flex;flex-wrap:wrap;gap:1rem}
+.demo .row > div{flex:1 1 280px}
+.tag{font-family:var(--mono);font-size:.72rem;padding:.05rem .45rem;border-radius:4px;background:var(--panel);border:1px solid var(--line);color:var(--muted)}
+.csr pre{margin:.4rem 0 0}
+.eigbars{display:flex;align-items:flex-end;gap:6px;height:90px}
+.prevnext{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+.flowsmall{font-family:var(--mono);font-size:.78rem}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a class="active" href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Graph &amp; Laplacian Construction</h1>
+<p class="lede">Turn a point cloud into a weighted similarity graph, then encode that graph as a normalized Laplacian whose smallest eigenvectors reveal cluster structure.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Spectral clustering does not cluster points directly &mdash; it clusters a <em>graph</em> built from the points. The first job of this module is to decide <strong>who is connected to whom, and how strongly.</strong> Two strategies are offered.</p>
+<p>The <strong>RBF (Gaussian) kernel</strong> connects <em>every</em> pair with a weight that decays smoothly with squared distance, so nearby points are strongly linked and far points are nearly &mdash; but never exactly &mdash; zero. The <strong>k-nearest-neighbor (kNN) graph</strong> instead connects each point only to its <span class="pill">k</span> closest neighbors with weight 1, producing a <em>sparse</em> graph that respects local manifold structure. Either way the output is a symmetric affinity matrix <code>A</code>, where <code>A[i,j]</code> is the edge weight between sample <em>i</em> and <em>j</em>.</p>
+<p>The kNN graph has a subtlety: &ldquo;<em>i</em> is a neighbor of <em>j</em>&rdquo; is not symmetric. If I pick my k nearest friends, one of them might not count me among theirs. This code resolves the asymmetry by averaging <code>A</code> with its transpose, <code>A &larr; 0.5&middot;(A + A&#7488;)</code>. The arithmetic falls out cleanly: each directed edge contributes <strong>0.5</strong>, so a mutual edge sums to <strong>1.0</strong> while a one-sided edge stays at <strong>0.5</strong>. This is the &ldquo;inclusive&rdquo; symmetrization sklearn uses for connectivity graphs &mdash; as opposed to &ldquo;mutual&rdquo; kNN, which would keep only edges present in both directions.</p>
+<p>Once you have <code>A</code>, the <strong>Laplacian</strong> re-expresses the graph in a form whose <em>spectrum</em> (eigenvalues/eigenvectors) encodes connectivity. The <em>degree</em> of a node is the total weight attached to it; the degree matrix <code>D</code> is diagonal. The symmetric normalized Laplacian <code>L = I &minus; D&#8315;&#185;&#8260;&#178; A D&#8315;&#185;&#8260;&#178;</code> is the workhorse. Its eigenvalues live in <code>[0, 2]</code>, and the number of <em>zero</em> eigenvalues equals the number of connected components of the graph. The eigenvectors for those near-zero eigenvalues are (almost) constant within each component &mdash; exactly the indicator structure you want for clustering.</p>
+<p>That last fact drives the connected-components machinery. If the graph is disconnected, the iterative eigensolver can produce noisy, near-degenerate eigenvectors for the zero block. So the code detects components explicitly via graph traversal (<strong>BFS</strong>) and, when the graph is split, synthesizes clean component-indicator vectors directly instead of trusting the solver. The sparse <strong>CSR</strong> representation exists so all of this can run on large graphs without ever materializing an <code>n&times;n</code> dense matrix.</p>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><strong>Choose an affinity mode.</strong> <code>compute_affinity_matrix</code> dispatches on the option: <code>'rbf'</code> calls <code>compute_rbf_affinity</code>; <code>'nearest_neighbors'</code> calls <code>compute_knn_affinity</code> with <code>include_self=true</code>.</li>
+  <li><strong>RBF path &mdash; squared distances to kernel.</strong> Compute pairwise Euclidean distances, square them, multiply by <code>&minus;gamma</code>, and exponentiate: <code>A = exp(&minus;&gamma&middot;&#8214;x_i&minus;x_j&#8214;&sup2;)</code>. <code>gamma</code> defaults to <code>1/n_features</code>.</li>
+  <li><strong>RBF path &mdash; enforce exact symmetry and unit diagonal.</strong> <code>sym = 0.5&middot;(A + A&#7488;)</code> removes numerical asymmetry, then the diagonal is forced to exactly 1 via <code>sym&middot;(1&minus;I) + I</code>.</li>
+  <li><strong>kNN path &mdash; block-wise distance scan.</strong> <code>compute_sparse_knn_affinity</code> processes rows in blocks of <code>BLOCK_SIZE=1024</code>, computing squared distances with the identity <code>&#8214;x&minus;y&#8214;&sup2; = &#8214;x&#8214;&sup2;+&#8214;y&#8214;&sup2;&minus;2&middot;x&#7488;y</code> to keep peak memory at <code>O(b&middot;n)</code> instead of <code>O(n&sup2;)</code>.</li>
+  <li><strong>kNN path &mdash; top-k selection with tie-breaking.</strong> For each row it negates squared distances and calls <code>tf.topk</code> (<code>k</code> if <code>include_self</code> else <code>k+1</code>). Returned indices are sorted ascending so equal-distance ties resolve toward the <em>lower</em> index, mirroring NumPy.</li>
+  <li><strong>kNN path &mdash; self handling and symmetrization.</strong> <code>add_symmetrised_edge</code> sets self-loops to weight 1; for <code>i&ne;j</code> it adds 0.5 to both <code>(i,j)</code> and <code>(j,i)</code>. Mutual neighbors accumulate to 1.0, one-sided edges stay at 0.5. The result is assembled into CSR via <code>sparse_matrix_from_row_maps</code>.</li>
+  <li><strong>Build the degree vector.</strong> <code>degree_vector</code> computes <code>deg[i] = &Sigma;_j A[i,j]</code> by summing along axis 1, after validating the matrix is square.</li>
+  <li><strong>Zero the diagonal before normalization.</strong> <code>normalised_laplacian</code> first masks out <code>A</code>'s diagonal (<code>A_no_diag = A&middot;(1&minus;I)</code>), matching scipy's rule that input diagonal entries are ignored for normalization.</li>
+  <li><strong>Compute the symmetric normalized Laplacian.</strong> <code>inv_sqrt = deg&#8315;&#185;&#8260;&#178;</code> with isolated nodes (<code>deg=0</code>) set to 1; <code>scaling = inv_sqrt &otimes; inv_sqrt</code>; <code>L = I &minus; A_no_diag&middot;scaling</code>. The diagonal of <code>L</code> is exactly 1 for non-isolated nodes.</li>
+  <li><strong>Detect connected components.</strong> <code>detect_connected_components</code> runs BFS over the affinity matrix, treating <code>A[i,j] &gt; tolerance</code> (default <code>1e-2</code>) as an edge, and labels each node with its component id.</li>
+  <li><strong>Substitute clean indicators when disconnected.</strong> If <code>num_components &gt; 1</code>, <code>create_component_indicators</code> builds an <code>n &times; min(num_components, n_clusters)</code> matrix where node <em>i</em> in component <em>c</em> gets value <code>1/&radic;size_c</code> &mdash; instead of relying on the eigensolver for the degenerate zero block.</li>
+  <li><strong>Solve the eigenproblem.</strong> For connected graphs the smallest eigenvectors of <code>L</code> are extracted (<code>smallest_eigenvectors</code>; Jacobi for small dense, Lanczos for large). The sparse path uses <code>sparse_normalised_laplacian_operator</code> as a matrix-free operator for Lanczos.</li>
+</ol>
+
+<!-- ===================== DEMO 1: RBF gamma sweep ===================== -->
+<h3>Try it &mdash; RBF kernel: the gamma sweep</h3>
+<p>Below, ~28 scattered 2D points are connected by <em>every</em> pairwise edge, drawn with opacity proportional to <code>A[i,j]=exp(&minus;&gamma&middot;d&sup2;)</code>. The right panel is the live <code>n&times;n</code> affinity heatmap. Slide <code>&gamma;</code>: large values sharpen the matrix toward a near-identity (only the closest neighbors survive); small values soften it toward all-ones (everything connects). Hover a point to spotlight its row.</p>
+<div class="demo" id="d1">
+  <div class="row">
+    <div><canvas id="d1graph" width="440" height="360" aria-label="RBF similarity graph"></canvas></div>
+    <div><canvas id="d1heat" width="360" height="360" aria-label="Affinity heatmap"></canvas></div>
+  </div>
+  <div class="controls">
+    <label class="ctl-label">&gamma; <input id="d1gamma" type="range" min="-3" max="2.2" step="0.01" value="-0.30" style="width:200px"></label>
+    <span class="readout" id="d1read"></span>
+    <button class="ghost" id="d1def">reset to default 1/n_features</button>
+  </div>
+  <div class="legend">
+    <span><span class="swatch line" style="color:var(--accent)"></span>strong edge (large A[i,j])</span>
+    <span><span class="swatch" style="background:#0a0e14;border:1px solid var(--line)"></span>0</span>
+    <span><span class="swatch" style="background:var(--accent2)"></span>1 (heatmap)</span>
+  </div>
+</div>
+
+<!-- ===================== DEMO 2: kNN mutual vs one-sided ===================== -->
+<h3>Try it &mdash; kNN graph: mutual vs one-sided edges</h3>
+<p>The same points, now connected only to their <code>k</code> nearest neighbors. <strong>Step</strong> the block scan one row at a time: the current row's <code>tf.topk</code> selection is highlighted, then its <code>+0.5/+0.5</code> symmetrization writes land in the row-map &rarr; CSR panel on the right. <span style="color:var(--accent2)">Solid</span> edges are <em>mutual</em> (weight 1.0); <span style="color:var(--warn)">dashed</span> edges are <em>one-sided</em> (weight 0.5).</p>
+<div class="demo" id="d2">
+  <div class="row">
+    <div><canvas id="d2graph" width="440" height="360" aria-label="kNN graph"></canvas></div>
+    <div class="csr">
+      <div class="muted flowsmall">Building CSR for node <b id="d2curnode" style="color:var(--accent2)">&mdash;</b></div>
+      <pre id="d2csr" style="height:330px;margin-top:.5rem">click Step</pre>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="ctl-label">k <input id="d2k" type="range" min="1" max="6" step="1" value="3" style="width:130px"><b id="d2kval" class="readout">3</b></label>
+    <label class="ctl-label"><input id="d2self" type="checkbox" checked> include_self</label>
+    <button id="d2step">Step row &#9654;</button>
+    <button class="ghost" id="d2play">Auto-scan</button>
+    <button class="ghost" id="d2reset">Reset</button>
+    <span class="readout" id="d2read"></span>
+  </div>
+  <div class="legend">
+    <span><span class="swatch line" style="color:var(--accent2)"></span>mutual edge — 1.0</span>
+    <span><span class="swatch dash" style="color:var(--warn)"></span>one-sided edge — 0.5</span>
+    <span><span class="swatch" style="background:var(--accent)"></span>current row</span>
+    <span><span class="swatch" style="background:var(--pink)"></span>its k neighbors</span>
+  </div>
+</div>
+
+<h2 id="math">The math</h2>
+
+<div class="eq">A[i,j] = exp(&minus;&gamma; &middot; &#8214;x<sub>i</sub> &minus; x<sub>j</sub>&#8214;&sup2;)</div>
+<p><strong>RBF / Gaussian kernel.</strong> The edge weight decays with the <em>squared</em> Euclidean distance between samples <em>i</em> and <em>j</em>. <code>&gamma;</code> (gamma) is the kernel width &mdash; large <code>&gamma;</code> means a fast decay (only very close points connect), small <code>&gamma;</code> means a slow decay (almost everything connects). It defaults to <code>1/n_features</code>. Because the distance is 0 on the diagonal, <code>exp(0)=1</code>, so the diagonal is naturally 1 (and is forced to exactly 1 afterwards).</p>
+
+<div class="eq">&#8214;x &minus; y&#8214;&sup2; = &#8214;x&#8214;&sup2; + &#8214;y&#8214;&sup2; &minus; 2 &middot; x&#7488;y</div>
+<p><strong>Squared-distance identity.</strong> Rather than form the full <code>n&times;n</code> distance matrix, the kNN block scan computes squared distances for a block of rows via one matrix multiply (<code>x&#7488;y</code>) plus cached row norms (<code>&#8214;x&#8214;&sup2;</code>, <code>&#8214;y&#8214;&sup2;</code>). This avoids both the <code>O(n&sup2;)</code> materialization and the <code>sqrt</code> &mdash; squared distances preserve neighbor ordering, which is all <code>tf.topk</code> needs.</p>
+
+<div class="eq">A &larr; 0.5 &middot; (A + A&#7488;)</div>
+<p><strong>kNN symmetrization (inclusive).</strong> The directed kNN graph is symmetrized so each directed edge contributes <code>0.5</code>. A <em>mutual</em> pair (both list each other) sums to <code>0.5 + 0.5 = 1.0</code>; a <em>one-sided</em> pair keeps a single <code>0.5</code>. Self-loops are set to 1. In code this is done incrementally inside <code>add_symmetrised_edge</code> rather than as a literal transpose.</p>
+
+<div class="eq">deg[i] = &Sigma;<sub>j</sub> A[i,j], &nbsp;&nbsp; D = diag(deg)</div>
+<p><strong>Degree.</strong> The degree of node <em>i</em> is the total edge weight incident on it &mdash; an axis-1 row sum. The diagonal degree matrix <code>D</code> stacks these on its diagonal.</p>
+
+<div class="eq">L = I &minus; D<sup>&minus;1/2</sup> &middot; A &middot; D<sup>&minus;1/2</sup></div>
+<p><strong>Symmetric normalized Laplacian.</strong> The core operator. <code>D&#8315;&#185;&#8260;&#178; A D&#8315;&#185;&#8260;&#178;</code> rescales every edge by <code>1/&radic;(deg_i &middot; deg_j)</code>, and subtracting from <code>I</code> places the result in <code>[0,2]</code>. The eigenvectors of the <em>smallest</em> eigenvalues carry the cluster structure. Crucially, <code>A</code>'s diagonal is zeroed first, so <code>L</code>'s diagonal is exactly 1 for every non-isolated node.</p>
+
+<div class="eq">d<sub>i</sub><sup>&minus;1/2</sup> &larr; 1 if deg[i] = 0, &nbsp; else deg[i]<sup>&minus;1/2</sup></div>
+<p><strong>Isolated-node guard.</strong> A node with no connections has degree 0, which would make <code>D&#8315;&#185;&#8260;&#178;</code> divide by zero. Setting <code>d&#8315;&#185;&#8260;&#178; = 1</code> for those nodes leaves their row and column of <code>L</code> equal to the identity &mdash; a harmless isolated 1 on the diagonal.</p>
+
+<div class="eq">(L v)[i] = v[i] &minus; &Sigma;<sub>j&ne;i</sub> A[i,j] &middot; d<sub>i</sub><sup>&minus;1/2</sup> &middot; d<sub>j</sub><sup>&minus;1/2</sup> &middot; v[j]</div>
+<p><strong>Sparse matvec for L.</strong> The matrix-free product used by the Lanczos solver. It never forms <code>L</code> explicitly &mdash; it walks the CSR rows of <code>A</code>, skipping the diagonal term (<code>col == row</code>), and applies the <code>D&#8315;&#185;&#8260;&#178;</code> scaling on the fly. This is what lets large graphs be solved without an <code>n&times;n</code> matrix in memory.</p>
+
+<div class="eq">num_components = #{ &lambda;<sub>k</sub> &asymp; 0 }</div>
+<p><strong>Component count via spectrum.</strong> The multiplicity of eigenvalue 0 of <code>L</code> equals the number of connected components. Here it is detected directly by BFS (cheaper and more robust than counting noisy near-zero eigenvalues).</p>
+
+<div class="eq">f<sub>c</sub>[i] = 1/&radic;|component<sub>c</sub>| &nbsp; if node i &isin; component c, &nbsp; else 0</div>
+<p><strong>Component indicator value.</strong> When the graph splits, these clean normalized indicator vectors are substituted for the degenerate near-zero eigenvectors. Each node in component <em>c</em> gets <code>1/&radic;(size_c)</code> in column <em>c</em>; the <code>1/&radic;size</code> factor matches the unit-norm normalization the eigensolver would have produced.</p>
+
+<!-- ===================== DEMO 3: components & eigenvalues ===================== -->
+<h3>Try it &mdash; connected components &amp; the zero eigenspace</h3>
+<p>Two clearly separated blobs, joined (or not) by a weak <em>bridge</em> edge. The connectivity <strong>tolerance</strong> slider (default <code>1e-2</code>) decides whether that bridge counts as an edge during BFS. Watch the component coloring flip between 1 and 2, the sorted Laplacian eigenvalue bars gain or lose a second near-zero value, and the clean <code>1/&radic;size</code> indicator vectors appear when the graph is disconnected.</p>
+<div class="demo" id="d3">
+  <div class="row">
+    <div><canvas id="d3graph" width="440" height="320" aria-label="Two-blob graph with bridge"></canvas></div>
+    <div>
+      <div class="muted flowsmall">Sorted Laplacian eigenvalues &lambda; (zeros = #components)</div>
+      <canvas id="d3eig" width="360" height="150" aria-label="Eigenvalue spectrum" style="margin-top:.4rem"></canvas>
+      <div class="muted flowsmall" style="margin-top:.7rem">Substituted indicator columns f<sub>c</sub>[i] = 1/&radic;size</div>
+      <canvas id="d3ind" width="360" height="120" aria-label="Indicator vectors" style="margin-top:.4rem"></canvas>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="ctl-label">bridge strength <input id="d3bridge" type="range" min="0" max="0.4" step="0.005" value="0.06" style="width:170px"></label>
+    <label class="ctl-label">tolerance <input id="d3tol" type="range" min="0.001" max="0.3" step="0.001" value="0.01" style="width:170px"></label>
+    <span class="readout" id="d3read"></span>
+  </div>
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--c1)"></span>component 0</span>
+    <span><span class="swatch" style="background:var(--c3)"></span>component 1</span>
+    <span><span class="swatch line" style="color:var(--warn)"></span>bridge edge</span>
+  </div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>affinity.ts:21 compute_rbf_affinity</code></td><td>Dense RBF/Gaussian kernel <code>A=exp(&minus;&gamma;&middot;d&sup2;)</code> with forced symmetry and unit diagonal.</td></tr>
+<tr><td><code>affinity.ts:63 compute_knn_affinity</code></td><td>Dense kNN wrapper: builds the sparse kNN graph then densifies via <code>sparse_to_dense_tensor</code>.</td></tr>
+<tr><td><code>affinity.ts:79 compute_sparse_knn_affinity</code></td><td>Core block-wise kNN builder: distance identity, <code>tf.topk</code>, tie-breaking, 0.5/1.0 symmetrization, CSR output.</td></tr>
+<tr><td><code>affinity.ts:122 add_symmetrised_edge</code></td><td>Local closure implementing the inclusive symmetrization (self=1, each directed edge +0.5).</td></tr>
+<tr><td><code>affinity.ts:196 compute_affinity_matrix</code></td><td>Dispatcher selecting <code>rbf</code> vs <code>nearest_neighbors</code> based on options.</td></tr>
+<tr><td><code>laplacian.ts:19 degree_vector</code></td><td>Row-sum degree vector <code>deg[i]=&Sigma;_j A[i,j]</code>.</td></tr>
+<tr><td><code>laplacian.ts:46 normalised_laplacian</code></td><td>Builds <code>L = I &minus; D&#8315;&#185;&#8260;&#178;AD&#8315;&#185;&#8260;&#178;</code>; zeroes A's diagonal, guards isolated nodes, optional <code>return_diag</code>.</td></tr>
+<tr><td><code>laplacian.ts:105 sparse_normalised_laplacian_operator</code></td><td>Matrix-free CSR operator (<code>matvec</code>) of the normalized Laplacian for Lanczos.</td></tr>
+<tr><td><code>laplacian.ts:176 jacobi_eigen_decomposition</code></td><td>Pure-JS symmetric Jacobi eigensolver with near-diagonal fast-path and negative-eigenvalue clamping.</td></tr>
+<tr><td><code>laplacian.ts:377 smallest_eigenvectors</code></td><td>Convenience wrapper returning the k smallest eigenvectors as a tensor (delegates to solver selection).</td></tr>
+<tr><td><code>connected_components.ts:17 detect_connected_components</code></td><td>Dense BFS over the affinity matrix counting/labeling connected components.</td></tr>
+<tr><td><code>connected_components.ts:69 detect_sparse_connected_components</code></td><td>CSR BFS variant using <code>indptr</code>/<code>indices</code> traversal (index-based queue walk).</td></tr>
+<tr><td><code>connected_components.ts:127 check_graph_connectivity</code></td><td>Warns (sklearn-style) when the graph is not fully connected.</td></tr>
+<tr><td><code>component_indicators.ts:15 create_component_indicators</code></td><td>Builds normalized <code>1/&radic;size</code> indicator vectors for disconnected graphs.</td></tr>
+<tr><td><code>sparse.ts:3 SparseMatrix</code></td><td>CSR struct: <code>rows</code>, <code>cols</code>, <code>indptr</code>, <code>indices</code>, <code>data</code>.</td></tr>
+<tr><td><code>sparse.ts:19 sparse_matrix_from_row_maps</code></td><td>Assembles CSR from per-row column&rarr;value maps, sorting columns ascending.</td></tr>
+<tr><td><code>sparse.ts:79 sparse_row_sums</code></td><td>Row sums with optional <code>ignore_diagonal</code> &mdash; the sparse degree computation.</td></tr>
+<tr><td><code>sparse.ts:98 sparse_matvec</code></td><td>Generic sparse matrix-vector product used by the Laplacian operator and solvers.</td></tr>
+</tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>affinity</code></td><td>Selects the similarity construction: <code>'rbf'</code> (dense Gaussian kernel) or <code>'nearest_neighbors'</code> (sparse kNN connectivity graph). Dispatched in <code>compute_affinity_matrix</code>.</td></tr>
+<tr><td><code>gamma</code></td><td>RBF kernel width in <code>A=exp(&minus;&gamma;&middot;d&sup2;)</code>. Defaults to <code>1.0/n_features</code> to match sklearn's <code>SpectralClustering</code> default.</td></tr>
+<tr><td><code>n_neighbors / k</code></td><td>Number of nearest neighbors connected per sample in the kNN graph. Must be a positive integer and strictly less than <code>n_samples</code>.</td></tr>
+<tr><td><code>include_self</code></td><td>kNN flag (default <code>true</code>): when true the k neighbors include the point itself (self-loop weight 1); when false, <code>k+1</code> are fetched and the self index is filtered out to leave exactly k true neighbors.</td></tr>
+<tr><td><code>return_diag</code></td><td><code>normalised_laplacian</code> flag: when true, also returns <code>sqrt_degrees</code> (actually <code>D&#8315;&#185;&#8260;&#178; = inv_sqrt</code>) needed to recover original-scale eigenvectors after solving.</td></tr>
+<tr><td><code>tolerance</code> (components)</td><td><code>detect_connected_components</code> edge threshold (default <code>1e-2</code>): <code>A[i,j] &gt; tolerance</code> counts as a graph edge during BFS.</td></tr>
+<tr><td><code>tolerance / max_iterations</code> (Jacobi)</td><td><code>jacobi_eigen_decomposition</code> convergence controls (default <code>1e-12</code> and <code>2000</code>): off-diagonal norm threshold and iteration cap.</td></tr>
+<tr><td><code>max_indicators</code></td><td><code>create_component_indicators</code> cap on indicator vectors produced, usually <code>n_clusters</code>; output width is <code>min(num_components, max_indicators)</code>.</td></tr>
+<tr><td><code>BLOCK_SIZE</code></td><td>Internal kNN row-block size (<code>1024</code>) trading peak memory <code>O(b&middot;n)</code> against BLAS throughput; not user-facing.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<div class="card">
+<h3 style="margin-top:.2rem">Edge cases</h3>
+<ul>
+<li><strong>Isolated vertices (degree 0):</strong> <code>inv_sqrt</code> is set to 1 rather than dividing by zero, leaving that node's <code>L</code> row/column equal to the identity (<code>laplacian.ts:62-66</code>).</li>
+<li><strong>Diagonal of A is zeroed before normalization</strong> to match scipy/sklearn: input diagonal entries are ignored and replaced with zeros for normalization (<code>laplacian.ts:53-57</code>). This makes <code>L</code>'s diagonal exactly 1 for connected nodes.</li>
+<li><strong>kNN tie-breaking:</strong> indices from <code>tf.topk</code> are sorted ascending so equal-distance neighbors resolve toward the lower index, mirroring NumPy/sklearn determinism (<code>affinity.ts:160-168</code>).</li>
+<li><strong>include_self=false:</strong> fetches <code>k+1</code> neighbors then filters the self index, guaranteeing exactly k genuine neighbors even when self is the nearest point (<code>affinity.ts:157, 176</code>).</li>
+<li><strong>RBF affinity is never exactly sparse:</strong> far pairs are tiny but nonzero, so the diagonal is explicitly re-forced to 1 and symmetry re-imposed by averaging with the transpose to kill numerical drift (<code>affinity.ts:42-46</code>).</li>
+<li><strong>Disconnected graphs:</strong> rather than trusting the eigensolver on the degenerate zero eigenspace, components are found by BFS and replaced with clean <code>1/&radic;size</code> indicator vectors (<code>component_indicators.ts</code>), avoiding noisy embeddings.</li>
+<li><strong>Jacobi fast-path:</strong> a near-diagonal matrix (common for disconnected normalized Laplacians) skips all rotations and returns the diagonal directly (<code>laplacian.ts:210-219</code>); tiny negative eigenvalues from numerical noise are clamped to 0.</li>
+<li><strong>Input validation:</strong> <code>k</code> must be an integer in <code>[1, n_samples)</code>; <code>n_samples=0</code> throws; affinity/Laplacian inputs must be square (<code>affinity.ts:84-98</code>, <code>laplacian.ts:20</code>).</li>
+<li><strong>Sparse component detection</strong> uses an index-based queue walk (<code>queue_idx</code>, no <code>shift</code>) over CSR rows &mdash; same BFS semantics as the dense version but without dense materialization (<code>connected_components.ts:69</code>).</li>
+</ul>
+</div>
+<div class="note">
+<strong>scikit-learn / scipy parity.</strong> Several choices mirror the reference exactly: (1) RBF <code>gamma</code> defaults to <code>1/n_features</code>, the sklearn <code>SpectralClustering</code> default. (2) kNN graphs are symmetrized as <code>0.5&middot;(A+A&#7488;)</code> &mdash; sklearn's &ldquo;inclusive&rdquo; connectivity convention &mdash; giving mutual edges weight 1.0 and asymmetric edges 0.5. (3) The diagonal of <code>A</code> is zeroed before degree/normalization, matching <code>scipy.sparse.csgraph.laplacian</code>'s documented behavior. (4) Isolated nodes get <code>D&#8315;&#185;&#8260;&#178;=1</code>, the same graceful handling scipy uses. (5) kNN ties break toward the lower index to match NumPy <code>argsort</code>/<code>argpartition</code> ordering. (6) The symmetric form <code>L = I &minus; D&#8315;&#185;&#8260;&#178;AD&#8315;&#185;&#8260;&#178;</code> matches sklearn's <code>spectral_embedding(norm_laplacian=True)</code>. (7) Disconnected graphs substitute normalized component indicators, mimicking what sklearn's shift-invert ARPACK path yields for the zero eigenspace.
+</div>
+
+<footer>
+<div class="prevnext">
+  <span>&larr; <a href="./eigen.html">Eigendecomposition Engine</a></span>
+  <span><a href="./index.html">◆ Clustering Atlas index</a></span>
+  <span><a href="./spectral.html">Spectral Clustering</a> &rarr;</span>
+</div>
+<p style="margin-top:1rem">Source: <code>src/graph/affinity.ts</code>, <code>laplacian.ts</code>, <code>connected_components.ts</code>, <code>component_indicators.ts</code>, <code>sparse.ts</code>. Built as an offline, dependency-free explainer.</p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+/* ---------- shared synthetic point cloud (two loose blobs) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return ((t^t>>>14)>>>0)/4294967296;};}
+function gen(seed){
+  var r=mulberry32(seed),pts=[];
+  // blob A around (0.30,0.40); blob B around (0.72,0.62)
+  var cents=[[0.30,0.40],[0.72,0.62]];
+  for(var c=0;c<2;c++){
+    for(var i=0;i<14;i++){
+      var ang=r()*Math.PI*2, rad=Math.pow(r(),0.7)*0.12;
+      pts.push([cents[c][0]+Math.cos(ang)*rad,cents[c][1]+Math.sin(ang)*rad*0.9, c]);
+    }
+  }
+  return pts;
+}
+var PTS=gen(7);            // [x,y,trueBlob] in [0,1]
+var N=PTS.length;
+// precompute squared distances (in unit space)
+var D2=[];for(var i=0;i<N;i++){D2[i]=[];for(var j=0;j<N;j++){var dx=PTS[i][0]-PTS[j][0],dy=PTS[i][1]-PTS[j][1];D2[i][j]=dx*dx+dy*dy;}}
+var CSS=getComputedStyle(document.documentElement);
+var COL={accent:CSS.getPropertyValue('--accent').trim(),accent2:CSS.getPropertyValue('--accent2').trim(),
+  warn:CSS.getPropertyValue('--warn').trim(),pink:CSS.getPropertyValue('--pink').trim(),
+  c1:CSS.getPropertyValue('--c1').trim(),c3:CSS.getPropertyValue('--c3').trim(),
+  line:CSS.getPropertyValue('--line').trim(),muted:CSS.getPropertyValue('--muted').trim()};
+function px(canvas,x){return x*canvas.width;}
+function py(canvas,y){return (1-y)*canvas.height;}
+
+/* ===================================================================== */
+/* DEMO 1 — RBF gamma sweep                                              */
+/* ===================================================================== */
+(function(){
+  var gc=document.getElementById('d1graph'),gx=gc.getContext('2d');
+  var hc=document.getElementById('d1heat'),hx=hc.getContext('2d');
+  var sl=document.getElementById('d1gamma'),read=document.getElementById('d1read'),def=document.getElementById('d1def');
+  // gamma slider is log10; gamma = 10^value. Default = 1/n_features. Here points are 2D -> default 1/2=0.5.
+  var DEFAULT_GAMMA=1/2;
+  var hover=-1;
+  function gamma(){return Math.pow(10,parseFloat(sl.value));}
+  // NOTE: distances above are in unit [0,1] space; scale gamma so the sweep is visually meaningful.
+  // Effective weight uses a distance scale factor so points span a reasonable range.
+  var SCALE=40; // maps unit-sq-dist into a perceptual range
+  function A(i,j){return Math.exp(-gamma()*SCALE*D2[i][j]);}
+  function draw(){
+    var g=gamma();
+    read.innerHTML='&gamma; = <b>'+g.toFixed(3)+'</b> &nbsp; (default 1/n_features = <b>'+DEFAULT_GAMMA.toFixed(3)+'</b>)';
+    // graph
+    gx.clearRect(0,0,gc.width,gc.height);
+    for(var i=0;i<N;i++){for(var j=i+1;j<N;j++){
+      var w=A(i,j); if(w<0.03)continue;
+      if(hover>=0 && i!==hover && j!==hover) continue;
+      gx.strokeStyle='rgba(88,166,255,'+(w*0.9).toFixed(3)+')';
+      gx.lineWidth=0.4+w*2.6;
+      gx.beginPath();gx.moveTo(px(gc,PTS[i][0]),py(gc,PTS[i][1]));gx.lineTo(px(gc,PTS[j][0]),py(gc,PTS[j][1]));gx.stroke();
+    }}
+    for(var i=0;i<N;i++){
+      gx.beginPath();gx.arc(px(gc,PTS[i][0]),py(gc,PTS[i][1]),i===hover?7:4.5,0,7);
+      gx.fillStyle=i===hover?COL.accent2:'#dfe7ef';gx.fill();
+      if(i===hover){gx.lineWidth=2;gx.strokeStyle=COL.accent2;gx.stroke();}
+    }
+    // heatmap
+    hx.clearRect(0,0,hc.width,hc.height);
+    var cell=hc.width/N;
+    for(var i=0;i<N;i++){for(var j=0;j<N;j++){
+      var w=(i===j)?1:A(i,j);
+      // green ramp on near-black
+      var t=Math.max(0,Math.min(1,w));
+      var r=Math.round(10+t*0+t*116), gg=Math.round(14+t*217), b=Math.round(20+t*115);
+      hx.fillStyle='rgb('+r+','+gg+','+b+')';
+      hx.fillRect(j*cell,i*cell,cell+0.6,cell+0.6);
+    }}
+    if(hover>=0){hx.strokeStyle=COL.accent2;hx.lineWidth=2;hx.strokeRect(0,hover*cell,hc.width,cell);}
+  }
+  gc.addEventListener('mousemove',function(e){
+    var rct=gc.getBoundingClientRect(),mx=(e.clientX-rct.left)/rct.width,my=1-(e.clientY-rct.top)/rct.height;
+    var best=-1,bd=1e9;for(var i=0;i<N;i++){var dx=PTS[i][0]-mx,dy=PTS[i][1]-my,d=dx*dx+dy*dy;if(d<bd){bd=d;best=i;}}
+    hover=bd<0.004?best:-1;draw();
+  });
+  gc.addEventListener('mouseleave',function(){hover=-1;draw();});
+  sl.addEventListener('input',draw);
+  def.addEventListener('click',function(){sl.value=Math.log10(DEFAULT_GAMMA);draw();});
+  draw();
+})();
+
+/* ===================================================================== */
+/* DEMO 2 — kNN scan, mutual vs one-sided                                */
+/* ===================================================================== */
+(function(){
+  var gc=document.getElementById('d2graph'),gx=gc.getContext('2d');
+  var sl=document.getElementById('d2k'),kval=document.getElementById('d2kval'),selfCb=document.getElementById('d2self');
+  var stepB=document.getElementById('d2step'),playB=document.getElementById('d2play'),resetB=document.getElementById('d2reset');
+  var read=document.getElementById('d2read'),csrPre=document.getElementById('d2csr'),curNode=document.getElementById('d2curnode');
+  var processed=0;           // rows scanned so far
+  var rowMaps;               // Array of Map(col->weight)
+  var lastNeighbors=[];      // for highlight
+  var playing=false,raf=null,lastT=0;
+
+  function kNeighbors(i){
+    // sort all by distance, tie-break by index
+    var order=[];for(var j=0;j<N;j++)order.push(j);
+    order.sort(function(a,b){var d=D2[i][a]-D2[i][b];return d!==0?d:a-b;});
+    var k=parseInt(sl.value),inc=selfCb.checked;
+    if(inc){return order.slice(0,k);} // includes self (dist 0)
+    return order.filter(function(x){return x!==i;}).slice(0,k);
+  }
+  function addEdge(maps,row,col){
+    if(row===col){maps[row].set(col,1);return;}
+    maps[row].set(col,(maps[row].get(col)||0)+0.5);
+    maps[col].set(row,(maps[col].get(row)||0)+0.5);
+  }
+  function reset(){
+    processed=0;lastNeighbors=[];
+    rowMaps=[];for(var i=0;i<N;i++)rowMaps.push(new Map());
+    stop();render();
+  }
+  function stepRow(){
+    if(processed>=N){stop();return;}
+    var i=processed;lastNeighbors=kNeighbors(i);
+    for(var t=0;t<lastNeighbors.length;t++)addEdge(rowMaps,i,lastNeighbors[t]);
+    processed++;render();
+  }
+  function buildCSR(){
+    // assemble CSR up to processed rows; sort cols ascending
+    var indptr=[0],indices=[],data=[],nnz=0;
+    for(var i=0;i<N;i++){
+      var entries=Array.from(rowMaps[i].entries()).sort(function(a,b){return a[0]-b[0];});
+      for(var e=0;e<entries.length;e++){indices.push(entries[e][0]);data.push(entries[e][1]);}
+      nnz+=entries.length;indptr.push(nnz);
+    }
+    return {indptr:indptr,indices:indices,data:data};
+  }
+  function fmt(arr){return '['+arr.join(', ')+']';}
+  function render(){
+    kval.textContent=sl.value;
+    gx.clearRect(0,0,gc.width,gc.height);
+    // edges from accumulated rowMaps (undirected, draw each pair once)
+    for(var i=0;i<N;i++){
+      rowMaps[i].forEach(function(w,j){
+        if(j<=i)return; // draw once
+        var x1=px(gc,PTS[i][0]),y1=py(gc,PTS[i][1]),x2=px(gc,PTS[j][0]),y2=py(gc,PTS[j][1]);
+        gx.beginPath();gx.moveTo(x1,y1);gx.lineTo(x2,y2);
+        if(w>=0.99){gx.strokeStyle=COL.accent2;gx.lineWidth=2.4;gx.setLineDash([]);}
+        else{gx.strokeStyle=COL.warn;gx.lineWidth=1.6;gx.setLineDash([5,4]);}
+        gx.stroke();gx.setLineDash([]);
+      });
+    }
+    // current row highlight lines to its neighbors
+    if(processed>0 && processed<=N && lastNeighbors.length){
+      var i=processed-1;
+      for(var t=0;t<lastNeighbors.length;t++){var j=lastNeighbors[t];if(j===i)continue;
+        gx.strokeStyle='rgba(255,123,156,.55)';gx.lineWidth=1;
+        gx.beginPath();gx.moveTo(px(gc,PTS[i][0]),py(gc,PTS[i][1]));gx.lineTo(px(gc,PTS[j][0]),py(gc,PTS[j][1]));gx.stroke();
+      }
+    }
+    // nodes
+    for(var i=0;i<N;i++){
+      var cur=(processed>0&&i===processed-1);
+      var isNb=(processed>0&&lastNeighbors.indexOf(i)>=0&&i!==processed-1);
+      gx.beginPath();gx.arc(px(gc,PTS[i][0]),py(gc,PTS[i][1]),cur?7:(isNb?6:4.5),0,7);
+      gx.fillStyle=cur?COL.accent:(isNb?COL.pink:'#cfd7df');gx.fill();
+      if(cur||isNb){gx.lineWidth=1.5;gx.strokeStyle=cur?COL.accent:COL.pink;gx.stroke();}
+    }
+    // CSR panel
+    curNode.textContent=processed===0?'—':(processed<=N?(processed-1):'done');
+    var csr=buildCSR();
+    var self=selfCb.checked, k=parseInt(sl.value);
+    var head='// scanned '+processed+' / '+N+' rows  (k='+k+', include_self='+(self?'true':'false')+')\n';
+    if(processed>0&&processed<=N){
+      var i=processed-1;
+      head+='// row '+i+'  tf.topk -> '+(self?'k':'k+1')+' indices, sorted asc:\n//   '+fmt(kNeighbors(i))+'\n';
+      head+='// each i!=j edge writes +0.5 to (i,j) and (j,i)\n';
+    }
+    csrPre.textContent=head+'\nindptr  = '+fmt(csr.indptr)+'\nindices = '+fmt(csr.indices)+'\ndata    = '+fmt(csr.data.map(function(d){return d;}));
+    // tally mutual/one-sided over fully-scanned graph
+    var mut=0,one=0;
+    for(var i=0;i<N;i++)rowMaps[i].forEach(function(w,j){if(j>i){if(w>=0.99)mut++;else one++;}});
+    read.innerHTML='mutual (1.0): <b>'+mut+'</b> &nbsp; one-sided (0.5): <b>'+one+'</b>';
+    stepB.disabled=(processed>=N);
+  }
+  function stop(){playing=false;playB.textContent='Auto-scan';playB.classList.add('ghost');if(raf)cancelAnimationFrame(raf);raf=null;}
+  function loop(t){
+    if(!playing)return;
+    if(t-lastT>420){stepRow();lastT=t;if(processed>=N){stop();return;}}
+    raf=requestAnimationFrame(loop);
+  }
+  stepB.addEventListener('click',stepRow);
+  playB.addEventListener('click',function(){
+    if(playing){stop();return;}
+    if(processed>=N)reset();
+    playing=true;playB.textContent='Pause';playB.classList.remove('ghost');lastT=performance.now();raf=requestAnimationFrame(loop);
+  });
+  resetB.addEventListener('click',reset);
+  sl.addEventListener('input',reset);
+  selfCb.addEventListener('change',reset);
+  reset();
+})();
+
+/* ===================================================================== */
+/* DEMO 3 — components, eigenvalues, indicators                          */
+/* ===================================================================== */
+(function(){
+  var gc=document.getElementById('d3graph'),gx=gc.getContext('2d');
+  var ec=document.getElementById('d3eig'),ex=ec.getContext('2d');
+  var ic=document.getElementById('d3ind'),ix=ic.getContext('2d');
+  var brSl=document.getElementById('d3bridge'),tolSl=document.getElementById('d3tol'),read=document.getElementById('d3read');
+
+  // Build a kNN-like graph (k=3) on PTS but with a single tunable bridge edge between the two blobs.
+  // Find the closest cross-blob pair to serve as the bridge.
+  var bi=-1,bj=-1,bd=1e9;
+  for(var i=0;i<N;i++)for(var j=0;j<N;j++){if(PTS[i][2]!==PTS[j][2]&&D2[i][j]<bd){bd=D2[i][j];bi=i;bj=j;}}
+
+  function baseEdges(){
+    // symmetric k=3 within-graph edges, weight 1 (intra-blob connectivity)
+    var maps=[];for(var i=0;i<N;i++)maps.push(new Map());
+    for(var i=0;i<N;i++){
+      var order=[];for(var j=0;j<N;j++)if(j!==i)order.push(j);
+      order.sort(function(a,b){var d=D2[i][a]-D2[i][b];return d!==0?d:a-b;});
+      var nb=order.slice(0,3);
+      for(var t=0;t<nb.length;t++){var j=nb[t];
+        // only keep intra-blob to guarantee two clean components unless bridge added
+        if(PTS[i][2]!==PTS[j][2])continue;
+        maps[i].set(j,1);maps[j].set(i,1);
+      }
+    }
+    return maps;
+  }
+  // dense affinity from maps + bridge
+  function affinity(){
+    var maps=baseEdges();
+    var br=parseFloat(brSl.value);
+    if(br>0){maps[bi].set(bj,br);maps[bj].set(bi,br);}
+    var A=[];for(var i=0;i<N;i++){A[i]=new Array(N).fill(0);}
+    for(var i=0;i<N;i++)maps[i].forEach(function(w,j){A[i][j]=w;});
+    return A;
+  }
+  // BFS components with tolerance
+  function components(A,tol){
+    var lab=new Int32Array(N).fill(-1),c=0;
+    for(var s=0;s<N;s++){if(lab[s]!==-1)continue;var q=[s];lab[s]=c;
+      for(var qi=0;qi<q.length;qi++){var node=q[qi];
+        for(var nb=0;nb<N;nb++){if(nb!==node&&lab[nb]===-1&&A[node][nb]>tol){lab[nb]=c;q.push(nb);}}
+      }c++;}
+    return {labels:lab,num:c};
+  }
+  // normalized Laplacian L = I - D^-1/2 A D^-1/2 (zero diagonal first)
+  function laplacian(A){
+    var deg=new Array(N).fill(0);
+    for(var i=0;i<N;i++)for(var j=0;j<N;j++){if(i!==j)deg[i]+=A[i][j];}
+    var inv=deg.map(function(d){return d===0?1:Math.pow(d,-0.5);});
+    var L=[];for(var i=0;i<N;i++){L[i]=new Array(N);for(var j=0;j<N;j++){
+      var a=(i===j)?0:A[i][j];var v=(i===j?1:0)-a*inv[i]*inv[j];L[i][j]=v;}}
+    return L;
+  }
+  // symmetric eigenvalues via Jacobi (values only, small n) — mirrors jacobi_eigen_decomposition
+  function eigvals(M){
+    var n=M.length,A=M.map(function(r){return r.slice();});
+    for(var sweep=0;sweep<60;sweep++){
+      var off=0,p=0,q=1,mx=0;
+      for(var i=0;i<n;i++)for(var j=i+1;j<n;j++){var v=Math.abs(A[i][j]);off+=v*v;if(v>mx){mx=v;p=i;q=j;}}
+      if(Math.sqrt(off)<1e-9)break;if(mx<1e-12)break;
+      var app=A[p][p],aqq=A[q][q],apq=A[p][q];
+      var tau=(aqq-app)/(2*apq);var t=(tau===0)?1:Math.sign(tau)/(Math.abs(tau)+Math.sqrt(1+tau*tau));
+      var c=1/Math.sqrt(1+t*t),s=t*c;
+      for(var k=0;k<n;k++){var apk=A[p][k],aqk=A[q][k];A[p][k]=apk*c-aqk*s;A[q][k]=apk*s+aqk*c;}
+      for(var k=0;k<n;k++){var akp=A[k][p],akq=A[k][q];A[k][p]=akp*c-akq*s;A[k][q]=akp*s+akq*c;}
+      A[p][p]=app*c*c-2*apq*c*s+aqq*s*s;A[q][q]=app*s*s+2*apq*c*s+aqq*c*c;A[p][q]=A[q][p]=0;
+    }
+    var ev=[];for(var i=0;i<n;i++)ev.push(A[i][i]<0&&A[i][i]>-1e-9?0:A[i][i]);
+    ev.sort(function(a,b){return a-b;});return ev;
+  }
+
+  function draw(){
+    var A=affinity(),tol=parseFloat(tolSl.value),br=parseFloat(brSl.value);
+    var comp=components(A,tol);
+    var palette=[COL.c1,COL.c3,COL.warn,COL.accent2];
+    // graph
+    gx.clearRect(0,0,gc.width,gc.height);
+    for(var i=0;i<N;i++)for(var j=i+1;j<N;j++){var w=A[i][j];if(w<=0)continue;
+      var isBridge=((i===bi&&j===bj)||(i===bj&&j===bi));
+      gx.beginPath();gx.moveTo(px(gc,PTS[i][0]),py(gc,PTS[i][1]));gx.lineTo(px(gc,PTS[j][0]),py(gc,PTS[j][1]));
+      if(isBridge){gx.strokeStyle=(w>tol)?COL.warn:'rgba(240,180,41,.3)';gx.lineWidth=w>tol?2.6:1.4;gx.setLineDash(w>tol?[]:[4,4]);}
+      else{gx.strokeStyle='rgba(154,167,180,.35)';gx.lineWidth=1.3;gx.setLineDash([]);}
+      gx.stroke();gx.setLineDash([]);
+    }
+    for(var i=0;i<N;i++){gx.beginPath();gx.arc(px(gc,PTS[i][0]),py(gc,PTS[i][1]),5,0,7);
+      gx.fillStyle=palette[comp.labels[i]%palette.length];gx.fill();}
+    // eigenvalues
+    var L=laplacian(A),ev=eigvals(L);
+    ex.clearRect(0,0,ec.width,ec.height);
+    var bw=ec.width/N,maxv=2;
+    for(var i=0;i<N;i++){
+      var h=(ev[i]/maxv)*(ec.height-18);
+      var nearZero=ev[i]<0.02;
+      ex.fillStyle=nearZero?COL.accent2:COL.muted;
+      ex.fillRect(i*bw+1,ec.height-h-14,bw-2,h);
+    }
+    ex.fillStyle=COL.muted;ex.font='10px ui-monospace,monospace';
+    ex.fillText('λ₀='+ev[0].toFixed(3)+'  λ₁='+ev[1].toFixed(3),4,ec.height-2);
+    // count near-zero eigenvalues
+    var zeros=ev.filter(function(v){return v<0.02;}).length;
+    // indicator vectors (only meaningful when disconnected)
+    ix.clearRect(0,0,ic.width,ic.height);
+    if(comp.num>1){
+      var sizes=new Array(comp.num).fill(0);for(var i=0;i<N;i++)sizes[comp.labels[i]]++;
+      var colW=ic.width/comp.num;
+      for(var cc=0;cc<comp.num;cc++){
+        var val=1/Math.sqrt(sizes[cc]);
+        ix.fillStyle=palette[cc%palette.length];
+        var barH=(val/0.6)*(ic.height-30);
+        ix.fillRect(cc*colW+colW*0.25,ic.height-barH-16,colW*0.5,barH);
+        ix.fillStyle=COL.muted;ix.font='11px ui-monospace,monospace';
+        ix.fillText('f'+cc+' = '+val.toFixed(3),cc*colW+6,ic.height-2);
+      }
+    }else{
+      ix.fillStyle=COL.muted;ix.font='12px ui-monospace,monospace';
+      ix.fillText('graph is connected — solver eigenvectors used (no substitution)',8,ic.height/2);
+    }
+    read.innerHTML='components: <b>'+comp.num+'</b> &nbsp; near-zero λ: <b>'+zeros+'</b> &nbsp; bridge '+(br>tol?'<b style="color:'+COL.accent2+'">counts</b> (w='+br.toFixed(3)+' &gt; tol='+tol.toFixed(3)+')':'<b style="color:'+COL.warn+'">ignored</b> (w='+br.toFixed(3)+' ≤ tol='+tol.toFixed(3)+')');
+  }
+  brSl.addEventListener('input',draw);
+  tolSl.addEventListener('input',draw);
+  draw();
+})();
+
+})();
+</script>
+</body>
+</html>

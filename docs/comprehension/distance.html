@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pairwise Distance · Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.readout{font-family:var(--mono);font-size:.85rem;color:var(--muted)}
+.readout b{color:var(--ink)}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.legend i{width:.85rem;height:.85rem;border-radius:3px;display:inline-block}
+.bignum{font-family:var(--mono);font-size:1.4rem;font-weight:700}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;color:var(--muted);border:0;border-radius:0;font-weight:600;padding:.4rem .8rem}
+.seg button.on{background:var(--accent);color:#06121f}
+label.fld{display:inline-flex;flex-direction:column;gap:.2rem;font-size:.8rem;color:var(--muted);font-family:var(--mono)}
+.hl{outline:2px solid var(--warn);outline-offset:2px}
+.flag{font-family:var(--mono);font-size:.8rem;padding:.15rem .5rem;border-radius:6px}
+.flag.ok{background:rgba(126,231,135,.13);color:var(--accent2)}
+.flag.bad{background:rgba(255,123,156,.13);color:var(--pink)}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph & Laplacian Construction</a><a href="./linkage.html">Linkage & NN-Chain Merge Engine</a><a href="./distance.html" class="active">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Pairwise Distance Matrix</h1>
+<p class="lede">Computes the full <code>(n,n)</code> distance matrix between every pair of input rows — using a vectorized Gram-matrix identity for Euclidean, broadcasted reductions for Manhattan and cosine, all inside memory-managed TensorFlow.js tidy scopes.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>You have <b>n</b> data points, each a row in a matrix of <b>d</b> features. Agglomerative linkage, spectral affinity, and k-medoids all need to know how far apart every pair of points is — an <code>(n,n)</code> symmetric table where entry <code>D[i,j]</code> is the distance from point <i>i</i> to point <i>j</i>.</p>
+<p>The naive way builds an <code>(n,n,d)</code> cube — broadcast the points into every pairing, then reduce over the feature axis. That cube is enormous: for n=10,000 points in d=100 dimensions it is <b>10 billion floats</b> (40 GB in float32). The whole trick is to never build that cube for the common Euclidean case.</p>
+<p>The key insight is algebraic. The squared Euclidean distance <code>‖x − y‖²</code> expands to <code>‖x‖² + ‖y‖² − 2·xᵀy</code>. The cross term <code>xᵀy</code> for all pairs is exactly the <b>Gram matrix</b> <code>G = X·Xᵀ</code> — a single <code>(n,n)</code> matrix multiply that hardware loves. The norm terms <code>‖x‖²</code> are just a length-n vector. So the entire squared-distance matrix is one matmul plus a row-vector plus a column-vector, broadcast and subtracted. No <code>(n,n,d)</code> cube ever exists.</p>
+<p>There is a catch to internalize: that identity is exact in real arithmetic but <b>not in float32</b>. When two points are identical or very close, <code>‖x‖² + ‖y‖² − 2·xᵀy</code> can come out as a tiny <i>negative</i> number from rounding, and the square root of a negative is <code>NaN</code>. So the code clamps the squared matrix to a floor of zero before taking the root. It then re-symmetrizes (averages <code>D</code> with <code>Dᵀ</code>) and zeroes the diagonal, because round-off can leave both imperfect — and downstream code assumes a clean symmetric zero-diagonal matrix.</p>
+<p>For <b>Manhattan</b> and <b>cosine</b> there is no Gram shortcut, so the code falls back to the honest broadcast: expand to <code>(n,1,d)</code> and <code>(1,n,d)</code>, let broadcasting form the implicit <code>(n,n,d)</code> comparison, and reduce over <code>d</code>. Those paths get the same symmetrize-and-zero-diagonal cleanup, so all three metrics return matrices of identical structure.</p>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+<li><b>Dispatch on metric.</b> <code>pairwise_distance_matrix</code> switches on the metric string (<code>'euclidean'</code> default, <code>'manhattan'</code>, <code>'cosine'</code>); unknown metrics throw. Euclidean delegates to the specialized <code>pairwise_euclidean_matrix</code>; the other two are handled inline.</li>
+<li><b>Euclidean — squared norms.</b> <code>squared_norms = points.square().sum(1).reshape([-1,1])</code> — the per-row <code>‖xᵢ‖²</code> as an <code>(n,1)</code> column vector.</li>
+<li><b>Euclidean — Gram matrix.</b> <code>gram = points.matMul(points.transpose())</code> — the <code>(n,n)</code> matrix of all pairwise dot products <code>xᵢᵀxⱼ</code>.</li>
+<li><b>Euclidean — apply the identity.</b> <code>distances_squared = squared_norms + squared_normsᵀ − 2·gram</code>. Broadcasting adds the column vector and its row-vector transpose, then subtracting <code>2·gram</code> completes <code>‖xᵢ − xⱼ‖²</code>.</li>
+<li><b>Euclidean — clamp to zero.</b> <code>tf.maximum(distances_squared, 0)</code> with a float32 scalar zero removes the tiny negatives from round-off so the next <code>sqrt</code> never returns <code>NaN</code>.</li>
+<li><b>Euclidean — square root.</b> <code>clamped.sqrt()</code> converts squared distances to actual ℓ2 distances.</li>
+<li><b>Manhattan / cosine — broadcast path.</b> <code>expandDims(1)</code> → <code>(n,1,d)</code> and <code>expandDims(0)</code> → <code>(1,n,d)</code>. Manhattan is <code>a.sub(b).abs().sum(-1)</code>; cosine is <code>1 − (a·b)/(‖a‖‖b‖+1e-8)</code>. Broadcasting produces the <code>(n,n)</code> result over the last axis.</li>
+<li><b>Symmetrize.</b> Every metric computes <code>dist_sym = (dist + distᵀ)/2</code> to wipe out asymmetric float round-off, guaranteeing <code>D[i,j] == D[j,i]</code> exactly.</li>
+<li><b>Zero the diagonal.</b> Build <code>mask = ones(n,n) − eye(n)</code> and multiply elementwise, forcing the self-distance diagonal to exactly 0 regardless of accumulated error.</li>
+<li><b>Memory management.</b> Every path is wrapped in <code>tf.tidy</code> so all intermediates — gram, norms, masks, the broadcast temporaries — are disposed immediately, leaving only the returned <code>(n,n)</code> Tensor2D.</li>
+</ol>
+
+<h2 id="trymemory">Try it · the identity vs the cube</h2>
+<p>The Gram identity computes the same <code>D²</code> as the naive broadcast cube, but the cube materializes an <code>(n,n,d)</code> tensor of floats while the identity never holds more than an <code>(n,n)</code> matrix. Drag <b>n</b> and <b>d</b> and watch the memory counters diverge.</p>
+
+<div class="demo">
+  <div class="controls">
+    <label class="fld">n (points) <input id="m_n" type="range" min="50" max="10000" step="50" value="2000"></label>
+    <label class="fld">d (features) <input id="m_d" type="range" min="2" max="512" step="2" value="100"></label>
+    <span class="seg" id="m_mode">
+      <button data-mode="gram" class="on">Gram identity</button>
+      <button data-mode="cube">Naive cube</button>
+    </span>
+  </div>
+  <canvas id="m_canvas" width="900" height="320"></canvas>
+  <div class="readout" id="m_read"></div>
+  <div class="legend">
+    <span><i style="background:var(--c1)"></i> peak resident floats</span>
+    <span><i style="background:var(--c4)"></i> (n,n,d) cube — only the naive path</span>
+  </div>
+</div>
+
+<h2 id="math">The math</h2>
+
+<h3>Squared Euclidean identity</h3>
+<div class="eq" id="eq-id">‖xᵢ − xⱼ‖² = ‖xᵢ‖² + ‖xⱼ‖² − 2·xᵢᵀxⱼ</div>
+<p>Expanding the square of a difference splits a distance computation into <i>norm terms</i> that depend on a single point and a <i>cross term</i> <code>xᵢᵀxⱼ</code> that couples the pair. The cross term is the only thing that needs every pairing — and it is precisely a matrix multiply.</p>
+
+<h3>Matrix form</h3>
+<div class="eq">D² = s·1ᵀ + 1·sᵀ − 2·G,&nbsp;&nbsp;where&nbsp;s = diag(X·Xᵀ),&nbsp;G = X·Xᵀ</div>
+<p><code>s</code> is the column of squared row-norms <code>‖xᵢ‖²</code>; <code>G</code> is the Gram matrix. <code>s·1ᵀ</code> broadcasts <code>s</code> across every column (the <code>‖xᵢ‖²</code> contribution), <code>1·sᵀ</code> broadcasts it across every row (the <code>‖xⱼ‖²</code> contribution). In the code, <code>s·1ᵀ</code> and <code>1·sᵀ</code> are just <code>squared_norms</code> and <code>squared_norms.transpose()</code> added together by broadcast.</p>
+
+<h3>Squared row norm</h3>
+<div class="eq">sᵢ = ‖xᵢ‖² = Σₖ xᵢₖ²</div>
+<p>Each <code>sᵢ</code> is the sum of squared features for row <i>i</i> — computed as <code>points.square().sum(1)</code> and reshaped to <code>(n,1)</code> so broadcasting forms both the row and column contributions from the same vector.</p>
+
+<h3>Numerical clamp</h3>
+<div class="eq" id="eq-clamp">D²_clamped ← max(D², 0)</div>
+<p>Float32 round-off can make <code>D²</code> slightly negative for near-identical points; clamping to 0 prevents <code>NaN</code> from <code>sqrt</code>. Note this guard only matters on the Euclidean path — Manhattan and cosine compute differences directly and never subtract a cross term.</p>
+
+<h3>Euclidean distance</h3>
+<div class="eq" id="eq-euclid">Dᵢⱼ = √( max( ‖xᵢ‖² + ‖xⱼ‖² − 2·xᵢᵀxⱼ , 0 ) )</div>
+<p>The final per-entry value, after clamping and square root.</p>
+
+<h3>Manhattan (ℓ1)</h3>
+<div class="eq" id="eq-manh">Dᵢⱼ = Σₖ |xᵢₖ − xⱼₖ|</div>
+<p>Sum of absolute coordinate differences, via <code>a.sub(b).abs().sum(-1)</code> over the broadcast <code>(n,n,d)</code> tensor.</p>
+
+<h3>Cosine distance</h3>
+<div class="eq" id="eq-cos">Dᵢⱼ = 1 − (xᵢ·xⱼ) / (‖xᵢ‖·‖xⱼ‖ + ε),&nbsp;&nbsp;ε = 1e-8</div>
+<p>One minus cosine similarity. The <code>ε</code> in the denominator guards against division by zero for zero-vectors, so a zero row yields a finite distance ≈ 1 rather than <code>NaN</code>/<code>Inf</code>.</p>
+
+<h3>Symmetrization + diagonal</h3>
+<div class="eq">D ← ( (D + Dᵀ)/2 ) ⊙ (1 − I)</div>
+<p>Average with the transpose to enforce exact symmetry, then multiply by <code>(ones − identity)</code> elementwise to zero the self-distance diagonal. Downstream symmetric-matrix consumers (linkage, spectral affinity) rely on this being bit-exact.</p>
+
+<h2 id="trymetric">Try it · metric morph</h2>
+<p>Each metric draws a different geometry of "near". Drag the <span style="color:var(--c4)">amber anchor</span> point and switch the metric: every other point is colored by its distance to the anchor, and the iso-distance contours redraw. Euclidean gives circles, Manhattan gives diamonds, cosine gives wedges radiating from the origin. The matching formula above highlights.</p>
+
+<div class="demo">
+  <div class="controls">
+    <span class="seg" id="mm_metric">
+      <button data-metric="euclidean" class="on">euclidean</button>
+      <button data-metric="manhattan">manhattan</button>
+      <button data-metric="cosine">cosine</button>
+    </span>
+    <span class="readout" id="mm_read"></span>
+  </div>
+  <canvas id="mm_canvas" width="900" height="460"></canvas>
+  <div class="legend">
+    <span><i style="background:var(--c4)"></i> anchor (drag me)</span>
+    <span><i style="background:var(--c2)"></i> near</span>
+    <span><i style="background:var(--c3)"></i> far</span>
+    <span class="muted">contours = equal distance to the anchor</span>
+  </div>
+</div>
+
+<h2 id="tryclamp">Try it · why we clamp</h2>
+<p>Slide two points toward each other. The raw identity computes <code>D² = ‖x‖²+‖y‖²−2·xᵀy</code> in float32; as the points coincide, that value dips just below zero (a rounding artifact). Without the clamp, <code>sqrt</code> of a negative is <code>NaN</code> and it poisons the matrix. Toggle <b>enable clamp</b> to snap the negative to a clean 0.</p>
+
+<div class="demo">
+  <div class="controls">
+    <label class="fld">separation <input id="cl_sep" type="range" min="0" max="100" step="1" value="40"></label>
+    <label style="display:inline-flex;align-items:center;gap:.4rem;font-size:.85rem">
+      <input id="cl_clamp" type="checkbox" checked> enable clamp <code>max(D²,0)</code>
+    </label>
+    <span class="seg"><button id="cl_play">▶ approach</button></span>
+  </div>
+  <canvas id="cl_canvas" width="900" height="300"></canvas>
+  <div class="readout" id="cl_read"></div>
+</div>
+
+<h2 id="tryclean">Try it · symmetrize &amp; zero the diagonal</h2>
+<p>A raw <code>D</code> straight from matmul carries bit-level asymmetry (<code>D[i,j] ≠ D[j,i]</code>) and a nonzero diagonal. Step <b>1</b> averages with the transpose — every mirrored pair fuses to one value. Step <b>2</b> multiplies by <code>(ones − I)</code> — the diagonal snaps to black zeros. Hover any cell to read its value and its mirror.</p>
+
+<div class="demo">
+  <div class="controls">
+    <span class="seg"><button id="sy_play">▶ run cleanup</button></span>
+    <button class="ghost" id="sy_reset">reset</button>
+    <span class="readout" id="sy_stage">stage: <b>raw D</b> — asymmetric, noisy diagonal</span>
+  </div>
+  <canvas id="sy_canvas" width="900" height="380"></canvas>
+  <div class="readout" id="sy_read">hover a cell&hellip;</div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>pairwise_distance.ts:9</code></td><td><code>pairwise_euclidean_matrix</code> — optimized Euclidean entry point using the Gram-matrix identity</td></tr>
+<tr><td><code>pairwise_distance.ts:11</code></td><td><code>squared_norms = points.square().sum(1).reshape([-1,1])</code> — the <code>(n,1)</code> <code>‖xᵢ‖²</code> vector</td></tr>
+<tr><td><code>pairwise_distance.ts:12</code></td><td><code>gram = points.matMul(points.transpose())</code> — the <code>(n,n)</code> dot-product matrix</td></tr>
+<tr><td><code>pairwise_distance.ts:14-16</code></td><td><code>distances_squared = norms + normsᵀ − 2·gram</code> — applies the identity by broadcasting</td></tr>
+<tr><td><code>pairwise_distance.ts:18-19</code></td><td><code>tf.maximum(distances_squared, zero)</code> — float32 clamp preventing <code>NaN</code> from <code>sqrt</code></td></tr>
+<tr><td><code>pairwise_distance.ts:21</code></td><td><code>distances_squared_clamped.sqrt()</code> — squared distances → ℓ2 distances</td></tr>
+<tr><td><code>pairwise_distance.ts:23-26</code></td><td>symmetrize <code>(D+Dᵀ)/2</code> then zero diagonal via <code>ones−eye</code> mask</td></tr>
+<tr><td><code>pairwise_distance.ts:45</code></td><td><code>pairwise_distance_matrix</code> — public dispatcher selecting metric implementation</td></tr>
+<tr><td><code>pairwise_distance.ts:54-64</code></td><td>Manhattan path — <code>expandDims</code> broadcast <code>(n,1,d)</code>/<code>(1,n,d)</code> then <code>manhattan_distance</code> + cleanup</td></tr>
+<tr><td><code>pairwise_distance.ts:66-77</code></td><td>Cosine path — broadcast then <code>cosine_distance</code> + symmetrize/diagonal cleanup</td></tr>
+<tr><td><code>pairwise_distance.ts:79-80</code></td><td>default branch throws on unsupported metric</td></tr>
+<tr><td><code>tensor_ops.ts:58</code></td><td><code>manhattan_distance</code> — <code>a.sub(b).abs().sum(-1)</code> over the last axis</td></tr>
+<tr><td><code>tensor_ops.ts:66</code></td><td><code>cosine_distance</code> — <code>1 − dot/(‖a‖‖b‖+1e-8)</code>, holds the epsilon guard</td></tr>
+</tbody>
+</table>
+
+<pre id="codeblock"></pre>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>points</code></td><td>Input <code>tf.Tensor2D</code> of shape <code>(n, d)</code>: n rows (samples), d columns (features). Distances are computed <b>between rows</b>.</td></tr>
+<tr><td><code>metric</code></td><td>Distance metric string, default <code>'euclidean'</code>. Allowed: <code>'euclidean'</code> (ℓ2, optimized Gram path), <code>'manhattan'</code> (ℓ1), <code>'cosine'</code> (1 − cosine similarity). Any other value throws <code>"Unsupported metric"</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<table>
+<thead><tr><th>Case</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td>Near-identical / identical points</td><td>The identity <code>‖x‖²+‖y‖²−2xᵀy</code> can be a tiny negative float32; <code>tf.maximum(·,0)</code> clamps it so <code>sqrt</code> never yields <code>NaN</code>. Only the Euclidean path needs this — Manhattan/cosine compute differences directly.</td></tr>
+<tr><td>Self-distance</td><td>The diagonal is explicitly forced to exactly 0 via the <code>(ones − eye)</code> mask, not left to whatever round-off the formula produced.</td></tr>
+<tr><td>Asymmetry from round-off</td><td>Matmul and reductions can yield <code>D[i,j] ≠ D[j,i]</code> at the bit level; <code>(D + Dᵀ)/2</code> restores exact symmetry, which downstream symmetric-matrix consumers (linkage, spectral affinity) rely on.</td></tr>
+<tr><td>Cosine zero-vectors</td><td>A <code>1e-8</code> epsilon is added to the denominator <code>‖a‖·‖b‖</code> so a zero row yields a finite distance ≈ 1 rather than <code>NaN</code>/<code>Inf</code>.</td></tr>
+<tr><td>Memory blow-up</td><td>Euclidean avoids the <code>(n,n,d)</code> intermediate, but Manhattan and cosine still materialize it via <code>expandDims</code> broadcasting — markedly more memory-hungry for large n·d.</td></tr>
+<tr><td>float32 precision</td><td>All computation is float32 (the clamp scalar is explicitly typed <code>'float32'</code>), so absolute distances carry single-precision error — the baseline for any sklearn comparison.</td></tr>
+<tr><td>tidy scoping</td><td>Results are returned out of <code>tf.tidy</code>, so the caller owns and must dispose the returned <code>(n,n)</code> tensor; all intermediates are auto-disposed.</td></tr>
+</tbody>
+</table>
+
+<div class="note">
+<b>scikit-learn parity.</b> The Euclidean path mirrors <code>sklearn.metrics.pairwise.euclidean_distances</code>, which uses the identical <code>‖x‖²+‖y‖²−2xᵀy</code> expansion and the same <code>np.maximum(dist, 0)</code> clamp on the squared distances before <code>sqrt</code> — the clamp here is a faithful reproduction of sklearn's numerical guard, not an ad-hoc fix. Cosine matches <code>1 − cosine_similarity</code>; sklearn's <code>cosine_distances</code> adds no epsilon and relies on normalized vectors, so the <code>1e-8</code> epsilon is a small deliberate deviation for zero-vector robustness. Manhattan matches <code>manhattan_distances</code> (ℓ1). The explicit symmetrize and zero-diagonal steps go slightly beyond sklearn (which trusts its symmetric formulation) but produce results that are bit-stable and equal-or-cleaner — which matters because the repo's agglomerative and spectral code demands exact tie-breaking parity and a perfectly symmetric, zero-diagonal <code>D</code>.</div>
+
+<footer>
+<p><b>Connects to:</b>
+<a href="./agglomerative.html">Agglomerative Clustering</a> ·
+<a href="./spectral.html">Spectral Clustering</a> ·
+<a href="./linkage.html">Linkage &amp; NN-Chain Merge</a> ·
+<a href="./graph.html">Graph &amp; Laplacian</a> ·
+<a href="./kmeans.html">K-Means</a> ·
+<a href="./som.html">SOM</a></p>
+<p>← Prev: <a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a> &nbsp;|&nbsp; Next: <a href="./model-selection.html">Choosing k (Model Selection)</a> &nbsp;|&nbsp; <a href="./index.html">◆ Back to index</a></p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+
+/* ---------- shared helpers ---------- */
+const CSS = getComputedStyle(document.documentElement);
+const COL = {
+  c1: CSS.getPropertyValue('--c1').trim() || '#58a6ff',
+  c2: CSS.getPropertyValue('--c2').trim() || '#7ee787',
+  c3: CSS.getPropertyValue('--c3').trim() || '#ff7b9c',
+  c4: CSS.getPropertyValue('--c4').trim() || '#f0b429',
+  c5: CSS.getPropertyValue('--c5').trim() || '#bc8cff',
+  c6: CSS.getPropertyValue('--c6').trim() || '#39d0d8',
+  ink: CSS.getPropertyValue('--ink').trim() || '#e6edf3',
+  muted: CSS.getPropertyValue('--muted').trim() || '#9aa7b4',
+  line: CSS.getPropertyValue('--line').trim() || '#2b333d',
+  bg: '#0a0e14'
+};
+// keep canvases sharp on hi-dpi
+function fitCanvas(cv){
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = cv.clientWidth || cv.width;
+  const ratio = cv.height / cv.width;
+  const cssH = cssW * ratio;
+  cv.width = Math.round(cssW * dpr);
+  cv.height = Math.round(cssH * dpr);
+  const ctx = cv.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  cv.__w = cssW; cv.__h = cssH;
+  return ctx;
+}
+function fmtFloats(n){
+  if(n >= 1e9) return (n/1e9).toFixed(2)+' B';
+  if(n >= 1e6) return (n/1e6).toFixed(2)+' M';
+  if(n >= 1e3) return (n/1e3).toFixed(1)+' K';
+  return n.toFixed(0);
+}
+function fmtBytes(floats){
+  const b = floats * 4; // float32
+  if(b >= 1e9) return (b/1e9).toFixed(2)+' GB';
+  if(b >= 1e6) return (b/1e6).toFixed(1)+' MB';
+  if(b >= 1e3) return (b/1e3).toFixed(1)+' KB';
+  return b.toFixed(0)+' B';
+}
+
+/* ======================================================================
+   DEMO 1 — identity vs cube : memory + assembly
+   ====================================================================== */
+(function(){
+  const cv = document.getElementById('m_canvas');
+  const read = document.getElementById('m_read');
+  const sn = document.getElementById('m_n'), sd = document.getElementById('m_d');
+  const modeBtns = document.querySelectorAll('#m_mode button');
+  let mode = 'gram';
+  let ctx, t0 = performance.now();
+
+  modeBtns.forEach(b=>b.addEventListener('click',()=>{
+    modeBtns.forEach(x=>x.classList.remove('on'));
+    b.classList.add('on'); mode = b.dataset.mode;
+  }));
+  [sn,sd].forEach(s=>s.addEventListener('input',()=>{}));
+
+  function draw(now){
+    const W = cv.__w, H = cv.__h;
+    ctx.clearRect(0,0,W,H);
+    const n = +sn.value, d = +sd.value;
+
+    // resident-float accounting
+    const grbefore = n*n /*D*/ + n*n /*G*/ + n /*s*/;       // ~ 2n^2
+    const cube = n*n*d;                                       // the (n,n,d) cube
+    const cubeTotal = cube + n*n + n*d;                       // cube + result + input
+    const peakGram = 2*n*n + n;
+    const peakCube = cubeTotal;
+
+    // ---- left: schematic of the data structures ----
+    const padL = 28, top = 36;
+    ctx.font = '13px ui-monospace,monospace';
+    ctx.textBaseline = 'top';
+
+    // matrix X
+    ctx.fillStyle = COL.muted;
+    ctx.fillText('X  (n × d)', padL, top-22);
+    const xw = 70, xh = 150;
+    ctx.fillStyle = '#11161d'; ctx.strokeStyle = COL.line;
+    ctx.fillRect(padL, top, xw, xh); ctx.strokeRect(padL, top, xw, xh);
+    ctx.fillStyle = COL.c1; ctx.globalAlpha = .8;
+    for(let r=0;r<Math.min(n,14);r++){
+      ctx.fillRect(padL+4, top+4 + r*(xh-8)/14, xw-8, (xh-8)/14 - 2);
+    }
+    ctx.globalAlpha = 1;
+
+    if(mode==='gram'){
+      // arrow -> G (n,n) and s (n,1)
+      const gx = padL+xw+70, gy = top, gs = 150;
+      ctx.fillStyle = COL.muted; ctx.fillText('G = X·Xᵀ  (n × n)', gx, gy-22);
+      ctx.fillStyle = '#11161d'; ctx.strokeStyle = COL.c2;
+      ctx.fillRect(gx, gy, gs, gs); ctx.strokeRect(gx, gy, gs, gs);
+      // checker gram
+      const cells = 12, cw = gs/cells;
+      for(let i=0;i<cells;i++)for(let j=0;j<cells;j++){
+        const v = 0.5 + 0.5*Math.cos((i*j)*0.7);
+        ctx.fillStyle = COL.c2; ctx.globalAlpha = 0.12 + 0.5*v;
+        ctx.fillRect(gx+j*cw+1, gy+i*cw+1, cw-2, cw-2);
+      }
+      ctx.globalAlpha=1;
+      // s vector
+      const sx = gx+gs+50;
+      ctx.fillStyle = COL.muted; ctx.fillText('s = ‖xᵢ‖²  (n × 1)', sx, gy-22);
+      ctx.fillStyle='#11161d'; ctx.strokeStyle=COL.c4;
+      ctx.fillRect(sx, gy, 26, gs); ctx.strokeRect(sx, gy, 26, gs);
+      for(let i=0;i<cells;i++){
+        ctx.fillStyle=COL.c4; ctx.globalAlpha=0.2+0.6*Math.abs(Math.sin(i*0.9));
+        ctx.fillRect(sx+2, gy+i*cw+1, 22, cw-2);
+      }
+      ctx.globalAlpha=1;
+      // formula
+      ctx.fillStyle = COL.ink; ctx.font='14px ui-monospace,monospace';
+      ctx.fillText('D² = s·1ᵀ + 1·sᵀ − 2·G', padL, top+xh+34);
+      ctx.fillStyle = COL.c2;
+      ctx.fillText('peak resident: ~2n²  →  flat (n,n) matmul', padL, top+xh+58);
+      // bar
+      drawBar(ctx, padL, top+xh+86, W-padL-28, peakGram, peakCube, COL.c1);
+    } else {
+      // the cube as an isometric block
+      const bx = padL+xw+90, by = top+10;
+      const bw = 150, bh = 120, depthX = 60, depthY = -38;
+      // back face
+      ctx.fillStyle='rgba(240,180,41,0.10)'; ctx.strokeStyle=COL.c4;
+      ctx.beginPath();
+      ctx.moveTo(bx+depthX, by+depthY);
+      ctx.lineTo(bx+depthX+bw, by+depthY);
+      ctx.lineTo(bx+depthX+bw, by+depthY+bh);
+      ctx.lineTo(bx+depthX, by+depthY+bh);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // connectors
+      ctx.beginPath();
+      ctx.moveTo(bx,by); ctx.lineTo(bx+depthX,by+depthY);
+      ctx.moveTo(bx+bw,by); ctx.lineTo(bx+depthX+bw,by+depthY);
+      ctx.moveTo(bx,by+bh); ctx.lineTo(bx+depthX,by+depthY+bh);
+      ctx.moveTo(bx+bw,by+bh); ctx.lineTo(bx+depthX+bw,by+depthY+bh);
+      ctx.stroke();
+      // front face (pulsing)
+      const puls = 0.16 + 0.10*Math.sin(now/400);
+      ctx.fillStyle=`rgba(240,180,41,${puls})`; ctx.strokeStyle=COL.c4;
+      ctx.fillRect(bx,by,bw,bh); ctx.strokeRect(bx,by,bw,bh);
+      ctx.fillStyle=COL.muted; ctx.font='13px ui-monospace,monospace';
+      ctx.fillText('(n × n × d) cube', bx, by-22);
+      ctx.fillStyle=COL.c4;
+      ctx.fillText('every pair × every feature', bx, by+bh+10);
+      ctx.fillStyle = COL.ink; ctx.font='14px ui-monospace,monospace';
+      ctx.fillText('Dᵢⱼ = reduce over d  (expensive temp!)', padL, top+xh+34);
+      ctx.fillStyle = COL.c4;
+      ctx.fillText('peak resident: n²·d  →  scales with features', padL, top+xh+58);
+      drawBar(ctx, padL, top+xh+86, W-padL-28, peakCube, peakCube, COL.c4);
+    }
+
+    const peak = mode==='gram'? peakGram : peakCube;
+    read.innerHTML = `n = <b>${n.toLocaleString()}</b> &nbsp; d = <b>${d}</b> &nbsp;|&nbsp; `+
+      `peak resident floats: <b>${fmtFloats(peak)}</b> (<b>${fmtBytes(peak)}</b>) &nbsp;|&nbsp; `+
+      `the cube alone would be <b style="color:${COL.c4}">${fmtFloats(cube)}</b> floats (<b>${fmtBytes(cube)}</b>) — `+
+      (mode==='gram' ? `the Gram path <b style="color:${COL.c2}">never builds it</b>.`
+                     : `materialized by <code>expandDims</code>.`);
+
+    requestAnimationFrame(draw);
+  }
+
+  function drawBar(ctx, x, y, w, val, ref, color){
+    // log-scale bar relative to a fixed huge reference so both modes are comparable
+    const maxRef = 10000*10000*512; // worst-case cube
+    const frac = Math.max(0.004, Math.log10(val+1)/Math.log10(maxRef+1));
+    ctx.fillStyle = '#11161d'; ctx.strokeStyle=COL.line;
+    ctx.fillRect(x,y,w,18); ctx.strokeRect(x,y,w,18);
+    ctx.fillStyle = color; ctx.fillRect(x+2,y+2,(w-4)*frac,14);
+    ctx.fillStyle = COL.muted; ctx.font='11px ui-monospace,monospace'; ctx.textBaseline='middle';
+    ctx.fillText('log-scale peak memory', x+6, y+9);
+    ctx.textBaseline='top';
+  }
+
+  function init(){ ctx = fitCanvas(cv); requestAnimationFrame(draw); }
+  window.addEventListener('resize', ()=>{ ctx = fitCanvas(cv); });
+  init();
+})();
+
+/* ======================================================================
+   DEMO 2 — metric morph
+   ====================================================================== */
+(function(){
+  const cv = document.getElementById('mm_canvas');
+  const read = document.getElementById('mm_read');
+  const btns = document.querySelectorAll('#mm_metric button');
+  let metric = 'euclidean', ctx;
+  // fixed scatter (data-space coords in [-1,1])
+  const PTS = (function(){
+    let seed = 7;
+    const rnd = ()=>{ seed = (seed*1103515245+12345)&0x7fffffff; return seed/0x7fffffff; };
+    const a=[];
+    for(let i=0;i<22;i++) a.push([ (rnd()*2-1)*0.92, (rnd()*2-1)*0.92 ]);
+    return a;
+  })();
+  let anchor = [0.32, -0.18];
+  let dragging = false;
+
+  const eqMap = { euclidean:'eq-euclid', manhattan:'eq-manh', cosine:'eq-cos' };
+  function highlightEq(){
+    Object.values(eqMap).forEach(id=>document.getElementById(id).classList.remove('hl'));
+    document.getElementById(eqMap[metric]).classList.add('hl');
+  }
+
+  btns.forEach(b=>b.addEventListener('click',()=>{
+    btns.forEach(x=>x.classList.remove('on')); b.classList.add('on');
+    metric = b.dataset.metric; highlightEq();
+  }));
+  highlightEq();
+
+  function dist(p,q){
+    if(metric==='euclidean') return Math.hypot(p[0]-q[0], p[1]-q[1]);
+    if(metric==='manhattan') return Math.abs(p[0]-q[0])+Math.abs(p[1]-q[1]);
+    // cosine: 1 - (p·q)/(|p||q|+eps)
+    const dot = p[0]*q[0]+p[1]*q[1];
+    const denom = Math.hypot(p[0],p[1])*Math.hypot(q[0],q[1]) + 1e-8;
+    return 1 - dot/denom;
+  }
+
+  // map data [-1,1] -> canvas
+  function toScreen(p,W,H){
+    const m = 30, sz = Math.min(W,H)-2*m;
+    const cx = W/2, cy = H/2;
+    return [ cx + p[0]*sz/2, cy - p[1]*sz/2 ];
+  }
+  function toData(sx,sy,W,H){
+    const sz = Math.min(W,H)-60;
+    return [ (sx - W/2)/(sz/2), -(sy - H/2)/(sz/2) ];
+  }
+
+  function colorFor(t){ // t in [0,1] near->far : green -> pink
+    const g = [126,231,135], p = [255,123,156];
+    const r = Math.round(g[0]+(p[0]-g[0])*t);
+    const gg = Math.round(g[1]+(p[1]-g[1])*t);
+    const b = Math.round(g[2]+(p[2]-g[2])*t);
+    return `rgb(${r},${gg},${b})`;
+  }
+
+  function draw(){
+    const W = cv.__w, H = cv.__h;
+    ctx.clearRect(0,0,W,H);
+
+    // ---- contour field (iso-distance to anchor) via pixel-ish grid ----
+    const step = 10;
+    // find max distance over field for normalization
+    let dmax = 0;
+    for(let sx=0;sx<W;sx+=step) for(let sy=0;sy<H;sy+=step){
+      const p = toData(sx,sy,W,H); const dv = dist(p,anchor);
+      if(dv>dmax) dmax=dv;
+    }
+    if(dmax<=0) dmax=1;
+    // draw filled contour bands
+    const bands = 7;
+    for(let sx=0;sx<W;sx+=step) for(let sy=0;sy<H;sy+=step){
+      const p = toData(sx,sy,W,H);
+      const dv = dist(p,anchor)/dmax;
+      const band = Math.floor(dv*bands)/bands;
+      ctx.fillStyle = colorFor(Math.min(1,band));
+      ctx.globalAlpha = 0.10;
+      ctx.fillRect(sx,sy,step,step);
+    }
+    ctx.globalAlpha = 1;
+    // contour lines (where banded value changes) — draw ring outlines
+    ctx.strokeStyle = 'rgba(230,237,243,0.18)'; ctx.lineWidth=1;
+    for(let k=1;k<bands;k++){
+      const target = (k/bands)*dmax;
+      ctx.beginPath();
+      // marching-ish: sample angles for euclid/cosine, grid for manhattan handled by bands; simple ring trace
+      let first=true;
+      for(let a=0;a<=360;a+=3){
+        // binary search radius along angle for euclid/manhattan; cosine handled separately
+        const ang = a*Math.PI/180;
+        let lo=0, hi=3;
+        for(let it=0;it<24;it++){
+          const mid=(lo+hi)/2;
+          const p=[anchor[0]+Math.cos(ang)*mid, anchor[1]+Math.sin(ang)*mid];
+          if(dist(p,anchor) < target) lo=mid; else hi=mid;
+        }
+        const r=(lo+hi)/2;
+        const p=[anchor[0]+Math.cos(ang)*r, anchor[1]+Math.sin(ang)*r];
+        const s=toScreen(p,W,H);
+        if(first){ctx.moveTo(s[0],s[1]);first=false;} else ctx.lineTo(s[0],s[1]);
+      }
+      ctx.stroke();
+    }
+
+    // origin marker (matters for cosine)
+    const o = toScreen([0,0],W,H);
+    ctx.strokeStyle = COL.line; ctx.beginPath();
+    ctx.moveTo(o[0]-W/2<0?0:o[0]-1000,o[1]); ctx.lineTo(o[0]+1000,o[1]);
+    ctx.moveTo(o[0],0); ctx.lineTo(o[0],H); ctx.stroke();
+    ctx.fillStyle = COL.muted; ctx.font='11px ui-monospace,monospace';
+    ctx.fillText('origin', o[0]+5, o[1]+5);
+
+    // points colored by distance
+    PTS.forEach(p=>{
+      const dv = dist(p,anchor)/dmax;
+      const s = toScreen(p,W,H);
+      ctx.fillStyle = colorFor(Math.min(1,dv));
+      ctx.beginPath(); ctx.arc(s[0],s[1],6,0,7); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.4)'; ctx.stroke();
+    });
+
+    // anchor
+    const as = toScreen(anchor,W,H);
+    ctx.fillStyle = COL.c4;
+    ctx.beginPath(); ctx.arc(as[0],as[1],9,0,7); ctx.fill();
+    ctx.strokeStyle=COL.ink; ctx.lineWidth=2; ctx.stroke(); ctx.lineWidth=1;
+
+    read.innerHTML = `metric = <b>${metric}</b> &nbsp;|&nbsp; anchor = <b>(${anchor[0].toFixed(2)}, ${anchor[1].toFixed(2)})</b> `+
+      `&nbsp;|&nbsp; contours: ${metric==='euclidean'?'circles':metric==='manhattan'?'diamonds':'wedges from origin'}`;
+  }
+
+  // dragging
+  function pos(e){
+    const r = cv.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return [ (t.clientX-r.left)*cv.__w/r.width, (t.clientY-r.top)*cv.__h/r.height ];
+  }
+  function down(e){
+    const [sx,sy]=pos(e); const as=toScreen(anchor,cv.__w,cv.__h);
+    if(Math.hypot(sx-as[0],sy-as[1]) < 22){ dragging=true; e.preventDefault(); }
+  }
+  function move(e){
+    if(!dragging) return;
+    const [sx,sy]=pos(e);
+    let p = toData(sx,sy,cv.__w,cv.__h);
+    p[0]=Math.max(-0.98,Math.min(0.98,p[0])); p[1]=Math.max(-0.98,Math.min(0.98,p[1]));
+    anchor=p; draw(); e.preventDefault();
+  }
+  function up(){ dragging=false; }
+  cv.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+  cv.addEventListener('touchstart',down,{passive:false}); window.addEventListener('touchmove',move,{passive:false}); window.addEventListener('touchend',up);
+
+  function init(){ ctx=fitCanvas(cv); draw(); }
+  window.addEventListener('resize',()=>{ctx=fitCanvas(cv);draw();});
+  init();
+})();
+
+/* ======================================================================
+   DEMO 3 — why we clamp
+   ====================================================================== */
+(function(){
+  const cv = document.getElementById('cl_canvas');
+  const read = document.getElementById('cl_read');
+  const sep = document.getElementById('cl_sep');
+  const clampCb = document.getElementById('cl_clamp');
+  const play = document.getElementById('cl_play');
+  let ctx, anim=false, raf=null;
+
+  function approach(){
+    if(anim){ anim=false; play.textContent='▶ approach'; if(raf)cancelAnimationFrame(raf); return; }
+    anim=true; play.textContent='⏸ pause';
+    const step=()=>{
+      let v=+sep.value; v-=1.2;
+      if(v<=0){ v=0; anim=false; play.textContent='▶ approach'; }
+      sep.value=v; draw();
+      if(anim) raf=requestAnimationFrame(step);
+    };
+    raf=requestAnimationFrame(step);
+  }
+  play.addEventListener('click',approach);
+  sep.addEventListener('input',()=>{ if(!anim) draw(); });
+  clampCb.addEventListener('change',draw);
+
+  // model: two points x,y in 1D feature space; separation drives |x-y|.
+  function compute(){
+    const s = +sep.value/100;           // 0..1
+    const gap = s*1.4;                   // feature gap
+    const x = 0.7, y = 0.7 - gap;        // two scalars (1-D feature each)
+    // exact squared distance
+    const trueSq = (x-y)*(x-y);
+    // simulate the identity in float32 with cancellation:
+    // D2 = x^2 + y^2 - 2xy.  As gap->0, catastrophic cancellation -> tiny negative.
+    // emulate by adding a small rounding error proportional to magnitude when gap is tiny.
+    const xx=x*x, yy=y*y, xy=x*y;
+    let d2 = (xx + yy) - 2*xy;
+    // inject a deterministic float32-ish round error near zero
+    const roundErr = (gap < 0.06) ? -(1 - gap/0.06)*1.2e-7 - 4e-8 : 0;
+    d2 += roundErr;
+    return { x, y, trueSq, d2 };
+  }
+
+  function draw(){
+    const W=cv.__w,H=cv.__h; ctx.clearRect(0,0,W,H);
+    const {x,y,trueSq,d2}=compute();
+    const clamp=clampCb.checked;
+    const used = clamp ? Math.max(d2,0) : d2;
+    const distVal = used<0 ? NaN : Math.sqrt(used);
+
+    // ---- top: two points on a feature line ----
+    const ly = 70, lx0=60, lx1=W-60;
+    ctx.strokeStyle=COL.line; ctx.beginPath(); ctx.moveTo(lx0,ly); ctx.lineTo(lx1,ly); ctx.stroke();
+    ctx.fillStyle=COL.muted; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('feature axis (two scalar points)', lx0, ly-26);
+    const px = lx0 + (x*0.5+0.5)*(lx1-lx0)*0.0 + lx0; // not used directly
+    const map=v=> lx0 + v*(lx1-lx0);
+    const sx=map(x), sy=map(y);
+    [[sx,COL.c1,'x'],[sy,COL.c3,'y']].forEach(([X,c,lab])=>{
+      ctx.fillStyle=c; ctx.beginPath(); ctx.arc(X,ly,8,0,7); ctx.fill();
+      ctx.fillStyle=c; ctx.fillText(lab, X-4, ly+14);
+    });
+
+    // ---- middle: the D² number line near zero ----
+    const ny=185, nx0=60, nx1=W-60, zx=(nx0+nx1)/2;
+    ctx.strokeStyle=COL.line; ctx.beginPath(); ctx.moveTo(nx0,ny); ctx.lineTo(nx1,ny); ctx.stroke();
+    // zero tick
+    ctx.strokeStyle=COL.muted; ctx.beginPath(); ctx.moveTo(zx,ny-12); ctx.lineTo(zx,ny+12); ctx.stroke();
+    ctx.fillStyle=COL.muted; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('0', zx-3, ny+16);
+    ctx.fillText('D²  (zoomed around zero, ×10⁻⁷ scale)', nx0, ny-30);
+    ctx.fillText('negative', nx0, ny+16); ctx.fillText('positive', nx1-56, ny+16);
+    // scale: map d2 within ±3e-7 to ± (width/2)
+    const SCALE=3e-7;
+    const clampX=v=> zx + Math.max(-1,Math.min(1, v/SCALE))*((nx1-nx0)/2 - 10);
+    // raw d2 dot
+    const rawX=clampX(d2);
+    ctx.fillStyle = d2<0 ? COL.c3 : COL.c2;
+    ctx.beginPath(); ctx.arc(rawX,ny,9,0,7); ctx.fill();
+    ctx.strokeStyle=COL.ink; ctx.stroke();
+    ctx.fillStyle = d2<0?COL.c3:COL.c2; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('raw D² = '+d2.toExponential(2), rawX-50, ny-22);
+    // clamped arrow
+    if(clamp && d2<0){
+      const cx2=clampX(0);
+      ctx.strokeStyle=COL.c4; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(rawX,ny-16); ctx.lineTo(cx2,ny-16); ctx.stroke();
+      // arrowhead
+      ctx.beginPath(); ctx.moveTo(cx2,ny-16); ctx.lineTo(cx2-7,ny-20); ctx.lineTo(cx2-7,ny-12); ctx.closePath(); ctx.fillStyle=COL.c4; ctx.fill();
+      ctx.lineWidth=1;
+      ctx.fillStyle=COL.c2; ctx.beginPath(); ctx.arc(cx2,ny,7,0,7); ctx.fill();
+    }
+
+    // ---- bottom: resulting distance / NaN state ----
+    const by=255;
+    let stateHTML;
+    if(isNaN(distVal)){
+      ctx.fillStyle=COL.c3; ctx.font='15px ui-monospace,monospace';
+      ctx.fillText('sqrt(negative) → NaN   ✗   poisons the matrix', 60, by);
+      stateHTML = `gap = <b>${(Math.abs(x-y)).toFixed(4)}</b> &nbsp;|&nbsp; raw D² = <b style="color:${COL.c3}">${d2.toExponential(3)}</b> `+
+        `&nbsp;|&nbsp; <span class="flag bad">D = NaN</span> &nbsp; clamp is OFF`;
+    } else {
+      ctx.fillStyle=COL.c2; ctx.font='15px ui-monospace,monospace';
+      ctx.fillText('D = √max(D²,0) = '+distVal.toFixed(6)+'   ✓   clean', 60, by);
+      const wasNeg = d2<0;
+      stateHTML = `gap = <b>${(Math.abs(x-y)).toFixed(4)}</b> &nbsp;|&nbsp; raw D² = <b style="color:${d2<0?COL.c3:COL.c2}">${d2.toExponential(3)}</b> `+
+        `&nbsp;|&nbsp; <span class="flag ok">D = ${distVal.toFixed(6)}</span>` + (wasNeg? ` &nbsp; (clamp rescued a negative)`:'');
+    }
+    read.innerHTML = stateHTML;
+  }
+
+  function init(){ ctx=fitCanvas(cv); draw(); }
+  window.addEventListener('resize',()=>{ctx=fitCanvas(cv);draw();});
+  init();
+})();
+
+/* ======================================================================
+   DEMO 4 — symmetrize & zero diagonal
+   ====================================================================== */
+(function(){
+  const cv = document.getElementById('sy_canvas');
+  const read = document.getElementById('sy_read');
+  const stageEl = document.getElementById('sy_stage');
+  const play = document.getElementById('sy_play');
+  const reset = document.getElementById('sy_reset');
+  const N = 6;
+  let ctx, raw=[], cur=[], stage=0, animating=false, t=0;
+  let hover=null;
+
+  function genRaw(){
+    // a symmetric-ish "true" D plus injected asymmetry + diagonal noise
+    let seed=42;
+    const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+    const base=[];
+    for(let i=0;i<N;i++){base.push([]);for(let j=0;j<N;j++)base[i].push(0);}
+    for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+      const v = 0.4 + rnd()*3.2;
+      base[i][j]=v; base[j][i]=v;
+    }
+    // corrupt: asymmetry + diagonal noise
+    const r=[];
+    for(let i=0;i<N;i++){r.push([]);for(let j=0;j<N;j++){
+      if(i===j){ r[i].push((rnd()-0.5)*0.4); }       // diagonal noise (should be 0)
+      else { r[i].push(base[i][j] + (rnd()-0.5)*0.9); } // asymmetric jitter
+    }}
+    return r;
+  }
+
+  function reInit(){
+    raw=genRaw(); cur=raw.map(r=>r.slice()); stage=0; animating=false; t=0;
+    play.textContent='▶ run cleanup'; play.disabled=false;
+    stageEl.innerHTML='stage: <b>raw D</b> — asymmetric, noisy diagonal';
+    draw();
+  }
+
+  function symTarget(){
+    const o=[];
+    for(let i=0;i<N;i++){o.push([]);for(let j=0;j<N;j++) o[i].push((raw[i][j]+raw[j][i])/2);}
+    return o;
+  }
+  function diagTarget(s){
+    const o=s.map(r=>r.slice());
+    for(let i=0;i<N;i++) o[i][i]=0;
+    return o;
+  }
+
+  function step(){
+    if(animating) return;
+    if(stage===0){ // -> symmetrize
+      const from=cur.map(r=>r.slice()); const to=symTarget();
+      animate(from,to,()=>{stage=1; stageEl.innerHTML='stage: <b>(D + Dᵀ)/2</b> — symmetric, diagonal still noisy';});
+    } else if(stage===1){ // -> zero diagonal
+      const from=cur.map(r=>r.slice()); const to=diagTarget(symTarget());
+      animate(from,to,()=>{stage=2; stageEl.innerHTML='stage: <b>⊙ (1 − I)</b> — symmetric, zero diagonal ✓'; play.disabled=true;});
+    }
+  }
+  function animate(from,to,done){
+    animating=true; t=0;
+    const run=()=>{
+      t+=0.04; const e=t<1?t:1; const k=1-(1-e)*(1-e);
+      for(let i=0;i<N;i++)for(let j=0;j<N;j++) cur[i][j]=from[i][j]+(to[i][j]-from[i][j])*k;
+      draw();
+      if(t<1) requestAnimationFrame(run); else { cur=to.map(r=>r.slice()); animating=false; draw(); done&&done(); }
+    };
+    requestAnimationFrame(run);
+  }
+  play.addEventListener('click',step);
+  reset.addEventListener('click',reInit);
+
+  // color scale for distance value
+  function cellColor(v,i,j){
+    if(i===j && stage>=2) return '#000';
+    const t=Math.max(0,Math.min(1,v/4));
+    const a=[28,35,45], b=[88,166,255];
+    return `rgb(${Math.round(a[0]+(b[0]-a[0])*t)},${Math.round(a[1]+(b[1]-a[1])*t)},${Math.round(a[2]+(b[2]-a[2])*t)})`;
+  }
+
+  function cellGeom(){
+    const W=cv.__w,H=cv.__h;
+    const size=Math.min(W*0.5, H-40);
+    const ox=(W-size)/2 - 60, oy=20, cw=size/N;
+    return {ox,oy,cw,size};
+  }
+
+  function draw(){
+    const W=cv.__w,H=cv.__h; ctx.clearRect(0,0,W,H);
+    const {ox,oy,cw}=cellGeom();
+    ctx.font='12px ui-monospace,monospace'; ctx.textBaseline='middle'; ctx.textAlign='center';
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){
+      const x=ox+j*cw, y=oy+i*cw, v=cur[i][j];
+      ctx.fillStyle=cellColor(v,i,j); ctx.fillRect(x,y,cw-2,cw-2);
+      // asymmetry highlight pre-stage1
+      if(stage===0 && i!==j){
+        const asym=Math.abs(cur[i][j]-cur[j][i]);
+        if(asym>0.05){ ctx.strokeStyle=COL.c3; ctx.lineWidth=2; ctx.strokeRect(x+1,y+1,cw-4,cw-4); ctx.lineWidth=1; }
+      }
+      if(stage<2 && i===j && Math.abs(v)>0.02){ ctx.strokeStyle=COL.c4; ctx.lineWidth=2; ctx.strokeRect(x+1,y+1,cw-4,cw-4); ctx.lineWidth=1; }
+      ctx.fillStyle = (i===j&&stage>=2)?COL.muted:COL.ink;
+      ctx.fillText((i===j&&stage>=2)?'0':v.toFixed(2), x+cw/2, y+cw/2);
+      if(hover && hover[0]===i && hover[1]===j){ ctx.strokeStyle=COL.c2; ctx.lineWidth=2.5; ctx.strokeRect(x+1,y+1,cw-4,cw-4); ctx.lineWidth=1; }
+    }
+    ctx.textAlign='start';
+    // labels + legend
+    const lx=ox+N*cw+30, ly=oy;
+    ctx.fillStyle=COL.muted; ctx.font='13px ui-monospace,monospace'; ctx.textBaseline='top';
+    const lines = [
+      'D[i,j] = distance(row i, row j)',
+      '',
+      stage>=0?'• raw: D[i,j] ≠ D[j,i]':'',
+      stage>=1?'• after (D+Dᵀ)/2: symmetric':'',
+      stage>=2?'• after ⊙(1−I): diag = 0':'',
+    ];
+    lines.forEach((t,k)=>{
+      ctx.fillStyle = (k===2&&stage<1)?COL.c3 : (k===3&&stage>=1)?COL.c2 : (k===4&&stage>=2)?COL.c2 : COL.muted;
+      ctx.fillText(t, lx, ly+k*22);
+    });
+    ctx.fillStyle=COL.c3; ctx.fillText('▢ red = asymmetric pair', lx, ly+150);
+    ctx.fillStyle=COL.c4; ctx.fillText('▢ amber = nonzero diagonal', lx, ly+172);
+    ctx.textBaseline='middle';
+  }
+
+  function pos(e){
+    const r=cv.getBoundingClientRect();
+    return [ (e.clientX-r.left)*cv.__w/r.width, (e.clientY-r.top)*cv.__h/r.height ];
+  }
+  cv.addEventListener('mousemove',e=>{
+    const [sx,sy]=pos(e); const {ox,oy,cw}=cellGeom();
+    const j=Math.floor((sx-ox)/cw), i=Math.floor((sy-oy)/cw);
+    if(i>=0&&i<N&&j>=0&&j<N){
+      hover=[i,j];
+      read.innerHTML = `cell <b>D[${i},${j}]</b> = <b>${cur[i][j].toFixed(4)}</b> &nbsp;|&nbsp; `+
+        `mirror <b>D[${j},${i}]</b> = <b>${cur[j][i].toFixed(4)}</b> &nbsp;|&nbsp; `+
+        `${Math.abs(cur[i][j]-cur[j][i])<1e-4 ? '<span class="flag ok">symmetric ✓</span>' : '<span class="flag bad">asymmetric</span>'}`;
+    } else { hover=null; read.innerHTML='hover a cell&hellip;'; }
+    draw();
+  });
+  cv.addEventListener('mouseleave',()=>{hover=null;read.innerHTML='hover a cell&hellip;';draw();});
+
+  function init(){ ctx=fitCanvas(cv); reInit(); }
+  window.addEventListener('resize',()=>{ctx=fitCanvas(cv);draw();});
+  init();
+})();
+
+/* ---------- code block (verbatim core) ---------- */
+document.getElementById('codeblock').textContent =
+`// src/distance/pairwise_distance.ts — the Euclidean core
+export function pairwise_euclidean_matrix(points: tf.Tensor2D): tf.Tensor2D {
+  return tf.tidy(() => {
+    const squared_norms = points.square().sum(1).reshape([-1, 1]); // (n,1)
+    const gram = points.matMul(points.transpose());               // (n,n)
+
+    const distances_squared = squared_norms
+      .add(squared_norms.transpose())   // ‖xᵢ‖² + ‖xⱼ‖²
+      .sub(gram.mul(2));                 // − 2·xᵢᵀxⱼ
+
+    const zero = tf.scalar(0, 'float32');
+    const distances_squared_clamped = tf.maximum(distances_squared, zero);
+
+    const dist = distances_squared_clamped.sqrt();
+
+    const dist_sym = dist.add(dist.transpose()).div(2);   // symmetrize
+    const n = dist_sym.shape[0];
+    const mask = tf.ones([n, n], 'float32').sub(tf.eye(n)); // zero diagonal
+    return dist_sym.mul(mask) as tf.Tensor2D;
+  });
+}`;
+</script>
+</body>
+</html>

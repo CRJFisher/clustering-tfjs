@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spectral Clustering — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.readout{font-family:var(--mono);font-size:.82rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:.3rem .9rem;margin-top:.6rem}
+.readout b{color:var(--ink);font-weight:600}
+.ctl-group{display:flex;align-items:center;gap:.45rem;font-size:.85rem;color:var(--muted)}
+.ctl-group label{font-family:var(--mono);font-size:.78rem}
+.badge{display:inline-block;font-family:var(--mono);font-size:.74rem;border-radius:6px;padding:.12rem .5rem;font-weight:700}
+.badge.eig{background:rgba(88,166,255,.18);color:var(--accent);border:1px solid var(--accent)}
+.badge.shortcut{background:rgba(126,231,135,.16);color:var(--accent2);border:1px solid var(--accent2)}
+.legend{display:flex;flex-wrap:wrap;gap:.3rem 1rem;font-size:.78rem;color:var(--muted);margin-top:.5rem}
+.legend i{display:inline-block;width:.8rem;height:.8rem;border-radius:50%;vertical-align:-1px;margin-right:.3rem}
+.split{display:grid;gap:1rem;grid-template-columns:1fr 1fr}
+@media(max-width:680px){.split{grid-template-columns:1fr}}
+.subhead{font-family:var(--mono);font-size:.74rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem}
+.kw{color:#ff7b9c}.str{color:#7ee787}.cm{color:#6b7785}.fn{color:#58a6ff}.num{color:#bc8cff}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html" class="active">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Spectral Clustering</h1>
+<p class="lede">Cluster points by their connectivity in a similarity graph: build an affinity graph, find the smoothest functions on it (the smallest eigenvectors of the normalized Laplacian), and run k-means on that low-dimensional embedding.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Picture the data points as cities and the affinity matrix <code>A</code> as a road network, where the weight <code>A[i,j]</code> says how easy it is to travel between city <em>i</em> and city <em>j</em>. Spectral clustering does not look at <em>where the cities sit</em> in raw feature space (the way k-means does); it looks at <em>how they are connected</em>. Two points can be far apart in Euclidean distance yet belong to the same cluster if a dense chain of intermediate points connects them. That is why spectral clustering separates non-convex shapes — nested rings, two moons — that plain k-means fails on.</p>
+
+<p>The mathematical trick is the <strong>graph Laplacian</strong>. Think of each cluster as a region of the graph that is densely connected inside but only weakly connected to the rest. The <em>smoothest</em> non-trivial functions on the graph — vectors that change very little between strongly connected neighbors — are nearly constant inside each cluster and jump between clusters. Those smooth functions are exactly the eigenvectors of the normalized Laplacian with the <strong>smallest</strong> eigenvalues. Stacking the <code>k</code> smallest eigenvectors as columns gives every point a <code>k</code>-dimensional coordinate (the <em>embedding</em>) in which the tangled clusters become compact, roughly spherical blobs.</p>
+
+<p>Once you are in that embedding space the hard geometric problem has been transformed into an easy one, so a final ordinary <strong>k-means on the embedding rows</strong> recovers the labels. In an ideal block-structured graph with <code>k</code> disconnected components, the smallest <code>k</code> eigenvalues are exactly zero and their eigenvectors are piecewise-constant indicator vectors — so k-means recovers the components perfectly. Real graphs are noisy approximations of that ideal, which is precisely why the method works.</p>
+
+<div class="note">This implementation mirrors scikit-learn's <code>SpectralClustering</code> closely, including a subtle detail: after extracting eigenvectors of the symmetric normalized Laplacian it divides each row by <code>√d_i</code> to recover the random-walk-normalized embedding, and it does <strong>not</strong> L2-row-normalize before k-means. Row normalization is reserved for the <code>discretize</code> assignment, which is not the default here.</p>
+
+<h2 id="howitworks">How it works</h2>
+<p>The whole pipeline lives in <code>SpectralClustering.fit()</code> (<code>src/clustering/spectral.ts</code>). It runs in a fixed sequence:</p>
+<ol class="steps">
+<li><strong>Ingest and guard input.</strong> <code>X</code> is accepted as a <code>tf.Tensor2D</code> or <code>number[][]</code> and cast to <code>float32</code>. Reject <code>n_clusters &gt; n_samples</code>. For non-kNN affinities, reject <code>n_samples &gt; max_samples</code> (default 10000) because the dense affinity needs O(n²) memory; the sparse <code>nearest_neighbors</code> path skips this guard.</li>
+<li><strong>Build the affinity graph <code>A</code>.</strong> Branch on <code>params.affinity</code>. <code>nearest_neighbors</code> takes the sparse CSR path <code>compute_sparse_knn_affinity</code>. Everything else goes through <code>compute_affinity_matrix</code>: <code>rbf</code> → Gaussian kernel; <code>precomputed</code> → validate and use <code>X</code> directly; a callable → call and validate. The default kNN <code>k = max(1, round(log2(n)))</code>.</li>
+<li><strong>Sanity-check affinity.</strong> Sum all entries; if the total is exactly 0 the graph has no edges, so throw. Callable / precomputed matrices are additionally checked to be square, symmetric within 1e-6, and non-negative.</li>
+<li><strong>Detect connected components.</strong> <code>detect_connected_components</code> (dense) or <code>detect_sparse_connected_components</code> (sparse) returns <code>num_components</code>, <code>is_fully_connected</code>, and per-node <code>component_labels</code>. A disconnected graph emits a <code>console.warn</code>.</li>
+<li><strong>Connected-components shortcut.</strong> If the graph is disconnected <em>and</em> <code>num_components ≥ n_clusters</code>, skip the eigensolver entirely: <code>create_component_indicators</code> turns the component labels into orthonormal piecewise-constant indicator columns and uses them directly as the embedding. This is the exact analytic solution for the zero-eigenvalue eigenspace.</li>
+<li><strong>Build the normalized Laplacian.</strong> Otherwise, the dense path runs <code>normalised_laplacian(A, true)</code>: it zeros <code>A</code>'s diagonal, computes degrees, forms <code>L = I − D⁻¹ᐟ² A D⁻¹ᐟ²</code>, and returns <code>sqrt_degrees = D⁻¹ᐟ²</code>. The sparse path builds a matrix-free operator whose <code>matvec</code> applies <code>L</code> without ever materializing it.</li>
+<li><strong>Extract smallest eigenvectors.</strong> Request <code>num_eigenvectors = max(n_clusters, num_components)</code>. A matrix-free operator always uses Lanczos; a dense matrix uses Lanczos when <code>n &gt; 100</code> <em>and</em> <code>k &lt; n/3</code>, otherwise the dense Jacobi path. Lanczos over-fetches <code>k+5</code> pairs to capture near-zero eigenvalues, with a Jacobi fallback for dense inputs.</li>
+<li><strong>Degree-rescale the embedding.</strong> Slice the first <code>n_clusters</code> eigenvector columns, then divide each <em>row</em> by <code>D¹ᐟ² = pow(sqrt_degrees, -1)</code>. This converts the symmetric-Laplacian eigenvectors into the random-walk embedding, matching sklearn's <code>spectral_embedding</code> recovery step. No unit-length row normalization is applied.</li>
+<li><strong>Final k-means.</strong> Run <code>KMeans</code> on the embedding rows directly, with <code>n_init</code> defaulting to 10 and the supplied <code>random_state</code>. <code>labels_</code> stores the result. Optional alternative paths exist: <code>use_validation</code> (with <code>n_clusters ≥ 3</code>) sweeps k-means seeds keeping the best validation score; <code>intensive_parameter_sweep</code> (rbf only) sweeps gamma × metric × attempts.</li>
+</ol>
+
+<!-- DEMO 1: affinity graph dial -->
+<h3>Try it · The affinity graph as you turn the dial</h3>
+<p>Two interleaving moons sit in raw feature space, drawn with an edge for every nonzero affinity (opacity ∝ <code>A[i,j]</code>). Switch between <code>rbf</code> and <code>nearest_neighbors</code> and turn the dial. As <strong>gamma</strong> rises the RBF graph fragments into tiny local cliques; as <strong>k</strong> rises the kNN graph stitches the two moons into a single connected component. The readout reports the number of connected components — exactly what step 4 measures.</p>
+<div class="demo">
+  <canvas id="affCanvas" width="880" height="420"></canvas>
+  <div class="controls">
+    <div class="ctl-group">
+      <label>affinity</label>
+      <button id="affModeRbf">rbf</button>
+      <button id="affModeKnn" class="ghost">nearest_neighbors</button>
+    </div>
+    <div class="ctl-group" id="gammaCtl">
+      <label>γ = <span id="gammaVal">2.0</span></label>
+      <input type="range" id="gammaSlider" min="0.2" max="40" step="0.2" value="2">
+    </div>
+    <div class="ctl-group" id="kCtl" style="display:none">
+      <label>k = <span id="kVal">3</span></label>
+      <input type="range" id="kSlider" min="1" max="14" step="1" value="3">
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--c1)"></i>moon A (truth)</span>
+    <span><i style="background:var(--c3)"></i>moon B (truth)</span>
+    <span><i style="background:var(--muted)"></i>edge: nonzero affinity</span>
+  </div>
+  <div class="readout" id="affReadout"></div>
+</div>
+
+<h2 id="math">The math</h2>
+
+<h3>RBF affinity</h3>
+<div class="eq">A[i,j] = exp(−γ · ‖x<sub>i</sub> − x<sub>j</sub>‖²),&nbsp;&nbsp; diag(A) = 1</div>
+<p>A Gaussian kernel similarity. <code>γ</code> (gamma) scales how fast similarity decays with distance: large <code>γ</code> means only very near points stay connected. The default <code>γ = 1 / n_features</code> matches sklearn. The matrix is symmetrized as <code>(A + Aᵀ)/2</code> and the diagonal is forced to exactly 1 (<code>compute_rbf_affinity</code>, <code>src/graph/affinity.ts</code>).</p>
+
+<h3>Symmetrized kNN affinity</h3>
+<div class="eq">A = 0.5 · (W + Wᵀ),&nbsp;&nbsp; W[i,j] = 1 if j ∈ kNN(i) else 0</div>
+<p>The directed k-nearest-neighbor graph <code>W</code> made symmetric. A <em>mutual</em> edge (both directions present) gets weight 1.0; a one-directional edge gets 0.5. Self-loops are included so isolated points stay connected. <code>k</code> is the dial: larger <code>k</code> fuses more of the graph together.</p>
+
+<h3>Degree</h3>
+<div class="eq">d<sub>i</sub> = Σ<sub>j</sub> A[i,j]&nbsp;&nbsp;(the diagonal of A is zeroed first)</div>
+<p><code>d_i</code> is the total edge weight touching node <code>i</code>. The diagonal matrix <code>D = diag(d)</code> is the degree matrix. The code zeros <code>A</code>'s diagonal before summing, matching scipy's <code>csgraph_laplacian</code> (<code>laplacian.ts</code> lines 53–59).</p>
+
+<h3>Symmetric normalized Laplacian</h3>
+<div class="eq">L<sub>sym</sub> = I − D<sup>−1/2</sup> · A · D<sup>−1/2</sup></div>
+<p>The matrix whose smallest eigenvectors give the smooth graph functions. <code>D⁻¹ᐟ²</code> divides each row and column by <code>√d_i</code> so high- and low-degree nodes are comparable. Isolated nodes (<code>d_i = 0</code>) use inverse-sqrt = 1 to avoid division by zero (<code>laplacian.ts</code> lines 62–66). The diagonal of <code>L</code> ends up exactly 1 for non-isolated nodes.</p>
+
+<h3>Eigenproblem</h3>
+<div class="eq">L<sub>sym</sub> · u<sub>ℓ</sub> = λ<sub>ℓ</sub> · u<sub>ℓ</sub>,&nbsp;&nbsp; 0 = λ<sub>1</sub> ≤ λ<sub>2</sub> ≤ … ,&nbsp;&nbsp; pick ℓ = 1…k</div>
+<p>Take the <code>k</code> eigenvectors with the <em>smallest</em> eigenvalues. <code>λ_ℓ</code> measures how non-smooth eigenvector <code>u_ℓ</code> is across edges, so small <code>λ</code> means smooth. For a graph with <code>c</code> connected components, exactly <code>c</code> eigenvalues equal 0 and their eigenvectors span the component-indicator space. The size of the gap after <code>λ_k</code> (the <em>eigengap</em>) suggests the natural number of clusters.</p>
+
+<h3>Embedding recovery (degree rescale)</h3>
+<div class="eq">U[i, :] ← u(i) / √d<sub>i</sub>&nbsp;&nbsp;&nbsp;&nbsp;i.e. divide row i by D<sup>1/2</sup></div>
+<p>This converts the <code>L_sym</code> eigenvectors into the random-walk normalized embedding. In code it is <code>U_selected.div(pow(sqrt_degrees, -1))</code> (<code>spectral.ts</code> lines 367–369): <code>sqrt_degrees</code> stores <code>D⁻¹ᐟ²</code>, so <code>pow(·, −1)</code> recovers <code>D¹ᐟ²</code>, and dividing the row by <code>D¹ᐟ²</code> is the same as multiplying by <code>√d_i⁻¹</code>… that is, dividing each coordinate by <code>√d_i</code>. This mirrors sklearn's <code>spectral_embedding</code>.</p>
+
+<h3>Final assignment</h3>
+<div class="eq">labels = KMeans(U, k),&nbsp;&nbsp; minimize Σ<sub>i</sub> ‖U[i,:] − c<sub>label(i)</sub>‖²</div>
+<p>Ordinary k-means on the embedding rows. Each point is now a <code>k</code>-dimensional vector that sits near one of <code>k</code> well-separated centroids, so k-means trivially recovers the original tangled clusters. No L2-row-normalization in the default k-means path.</p>
+
+<!-- DEMO 2: raw -> embedding morph + spectrum -->
+<h3>Try it · From raw space to spectral embedding</h3>
+<p>The left panel is three concentric rings in raw 2D — hopeless for plain k-means. Press <strong>Run pipeline</strong> to watch the points morph into the degree-rescaled embedding (right panel), where the rings collapse into three separated blobs. The bar chart shows the smallest eigenvalues <code>λ₁…λ₁₀</code> of <code>L_sym</code>; notice three near-zero values followed by a gap — the eigengap that signals <code>k = 3</code>. Drag the embedding-axis sliders to pick which eigenvector columns map to x and y.</p>
+<div class="demo">
+  <div class="split">
+    <div>
+      <div class="subhead">raw feature space</div>
+      <canvas id="rawCanvas" width="420" height="360"></canvas>
+    </div>
+    <div>
+      <div class="subhead">spectral embedding U (columns <span id="axLabel">u₂ × u₃</span>)</div>
+      <canvas id="embCanvas" width="420" height="360"></canvas>
+    </div>
+  </div>
+  <div style="margin-top:1rem">
+    <div class="subhead">Laplacian spectrum — smallest eigenvalues λ₁…λ₁₀</div>
+    <canvas id="specCanvas" width="880" height="170"></canvas>
+  </div>
+  <div class="controls">
+    <button id="runPipeline">Run pipeline ▶</button>
+    <button id="resetPipeline" class="ghost">Reset</button>
+    <div class="ctl-group">
+      <label>x-axis = u<sub><span id="axXVal">2</span></sub></label>
+      <input type="range" id="axX" min="1" max="5" step="1" value="2">
+    </div>
+    <div class="ctl-group">
+      <label>y-axis = u<sub><span id="axYVal">3</span></sub></label>
+      <input type="range" id="axY" min="1" max="5" step="1" value="3">
+    </div>
+  </div>
+  <div class="legend">
+    <span><i style="background:var(--c1)"></i>ring 0</span>
+    <span><i style="background:var(--c2)"></i>ring 1</span>
+    <span><i style="background:var(--c3)"></i>ring 2</span>
+    <span><i style="background:var(--c4)"></i>near-zero λ (one per cluster)</span>
+  </div>
+  <div class="readout" id="embReadout"></div>
+</div>
+
+<!-- DEMO 3: components shortcut vs eigensolve -->
+<h3>Try it · Connected-components shortcut vs eigensolve</h3>
+<p>This is the decision at step 5. Drag the slider to weaken the edges <em>between</em> the three blobs. While the graph is still one connected piece, the badge reads <span class="badge eig">eigensolve</span> and the solver choice depends on <code>n</code> and <code>k</code>. The moment inter-cluster edges vanish and <code>num_components ≥ n_clusters</code>, the badge flips to <span class="badge shortcut">analytic component indicators</span> — the embedding snaps to clean orthogonal indicator columns and no eigensolver runs at all.</p>
+<div class="demo">
+  <canvas id="compCanvas" width="880" height="360"></canvas>
+  <div class="controls">
+    <div class="ctl-group" style="flex:1;min-width:240px">
+      <label>inter-cluster connectivity</label>
+      <input type="range" id="connSlider" min="0" max="100" step="1" value="100" style="flex:1">
+    </div>
+    <div class="ctl-group">
+      <label>n samples</label>
+      <input type="range" id="nSlider" min="30" max="300" step="10" value="90">
+    </div>
+  </div>
+  <div class="readout" id="compReadout"></div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<p>Every step above maps to a concrete location. <code>fit()</code> orchestrates; the heavy lifting lives in the <code>graph/</code> and <code>eigen/</code> modules.</p>
+<table>
+<thead><tr><th>Location</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>spectral.ts:154</code></td><td><code>fit()</code> — the full pipeline orchestrator: input guard, affinity, component detection, embedding, k-means.</td></tr>
+<tr><td><code>spectral.ts:175-185</code></td><td>Sparse-vs-dense routing flag and the O(n²) <code>max_samples</code> memory guard.</td></tr>
+<tr><td><code>spectral.ts:256-268</code></td><td>Connected-components shortcut — use component indicators as the embedding instead of eigensolving.</td></tr>
+<tr><td><code>spectral.ts:296-359</code></td><td>Standard path — build (sparse or dense) normalized Laplacian and extract smallest eigenvectors.</td></tr>
+<tr><td><code>spectral.ts:361-370</code></td><td>Embedding degree-rescale — slice first <code>n_clusters</code> columns and divide rows by <code>D¹ᐟ²</code>.</td></tr>
+<tr><td><code>spectral.ts:454-488</code></td><td>Default final k-means step (<code>n_init=10</code>), with debug inertia capture.</td></tr>
+<tr><td><code>spectral.ts:758-785</code></td><td><code>compute_affinity_matrix</code> — dispatches rbf / precomputed / callable / dense-kNN.</td></tr>
+<tr><td><code>spectral.ts:788-800</code></td><td><code>default_neighbors</code> — sklearn-matching <code>k = max(1, round(log2(n)))</code>.</td></tr>
+<tr><td><code>spectral.ts:868-887</code></td><td><code>validate_affinity_matrix</code> — square, symmetric (1e-6), non-negative checks.</td></tr>
+<tr><td><code>affinity.ts:21</code></td><td><code>compute_rbf_affinity</code> — Gaussian kernel, default <code>gamma=1/n_features</code>, symmetrized, unit diagonal.</td></tr>
+<tr><td><code>affinity.ts:79</code></td><td><code>compute_sparse_knn_affinity</code> — block-wise CSR kNN graph, symmetrized <code>0.5·(W+Wᵀ)</code>.</td></tr>
+<tr><td><code>laplacian.ts:46</code></td><td><code>normalised_laplacian</code> — dense <code>L = I − D⁻¹ᐟ² A D⁻¹ᐟ²</code>, returns <code>sqrt_degrees = D⁻¹ᐟ²</code>.</td></tr>
+<tr><td><code>laplacian.ts:105</code></td><td><code>sparse_normalised_laplacian_operator</code> — matrix-free <code>matvec</code> applying <code>L_sym</code> for Lanczos.</td></tr>
+<tr><td><code>smallest_eigenvectors_with_values.ts:21</code></td><td>Solver entry point and dense-vs-Lanczos routing (threshold <code>n&gt;100</code>, <code>k&lt;n/3</code>).</td></tr>
+<tr><td><code>smallest_eigenvectors_with_values.ts:56</code></td><td><code>lanczos_path</code> — sparse/large iterative solver, +5 extra pairs, Jacobi fallback (dense only).</td></tr>
+<tr><td><code>smallest_eigenvectors_with_values.ts:114</code></td><td><code>jacobi_path</code> — full dense eigendecomposition with deterministic sign/order processing.</td></tr>
+<tr><td><code>connected_components.ts:17</code></td><td><code>detect_connected_components</code> — dense graph component detection.</td></tr>
+<tr><td><code>connected_components.ts:69</code></td><td><code>detect_sparse_connected_components</code> — CSR graph component detection.</td></tr>
+<tr><td><code>component_indicators.ts:15</code></td><td><code>create_component_indicators</code> — analytic piecewise-constant embedding for disconnected graphs.</td></tr>
+<tr><td><code>spectral_optimization.ts:31</code></td><td><code>validation_based_optimization</code> — sweep k-means seeds, keep best validation score.</td></tr>
+<tr><td><code>spectral_optimization.ts:101</code></td><td><code>intensive_parameter_sweep</code> — rbf gamma × metric × attempts grid, one embedding per gamma.</td></tr>
+</tbody>
+</table>
+
+<p>The core slice-and-rescale that turns eigenvectors into the embedding (<code>spectral.ts:361-370</code>):</p>
+<pre><span class="cm">// sqrt_degrees stores D^(-1/2); pow(-1) recovers D^(1/2)</span>
+U = tf.<span class="fn">tidy</span>(() =&gt; {
+  <span class="kw">const</span> U_selected = tf.<span class="fn">slice</span>(U_full, [<span class="num">0</span>, <span class="num">0</span>], [<span class="num">-1</span>, this.params.n_clusters]);
+  <span class="kw">const</span> sqrt_deg     = tf.<span class="fn">pow</span>(sqrt_degrees_tensor, <span class="num">-1</span>);     <span class="cm">// = D^(1/2)</span>
+  <span class="kw">const</span> sqrt_deg_col = sqrt_deg.<span class="fn">reshape</span>([<span class="num">-1</span>, <span class="num">1</span>]);
+  <span class="kw">return</span> U_selected.<span class="fn">div</span>(sqrt_deg_col);             <span class="cm">// divide each row by sqrt(d_i)</span>
+});</pre>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>n_clusters</code></td><td>Number of clusters <code>k</code>; also the number of smallest eigenvectors used for the embedding. Positive integer, ≤ <code>n_samples</code>.</td></tr>
+<tr><td><code>affinity</code></td><td>How the similarity graph is built: <code>'rbf'</code> (Gaussian kernel, default), <code>'nearest_neighbors'</code> (sparse symmetric kNN graph), <code>'precomputed'</code> (X is already a valid affinity matrix), or a callable <code>X → tf.Tensor2D</code>.</td></tr>
+<tr><td><code>gamma</code></td><td>RBF kernel width. Only valid with <code>affinity='rbf'</code>. Must be &gt; 0. Defaults to <code>1/n_features</code>. Supplying it with any other affinity throws.</td></tr>
+<tr><td><code>n_neighbors</code></td><td><code>k</code> for the kNN graph. Only valid with <code>affinity='nearest_neighbors'</code>. Defaults at fit time to <code>max(1, round(log2(n)))</code>.</td></tr>
+<tr><td><code>n_init</code></td><td>Number of k-means++ restarts for the final step; best inertia wins. Default 10 (sklearn default).</td></tr>
+<tr><td><code>random_state</code></td><td>Seed for deterministic k-means initialization. Lanczos itself uses a fixed internal seed (42).</td></tr>
+<tr><td><code>max_samples</code></td><td>Guardrail for the O(n²) dense affinity memory cost; default 10000. The sparse <code>nearest_neighbors</code> path bypasses this check.</td></tr>
+<tr><td><code>use_validation</code></td><td>When true and <code>n_clusters ≥ 3</code>, runs <code>validation_based_optimization</code>: many single-init k-means seeds scored by a validation metric, best kept.</td></tr>
+<tr><td><code>validation_metric</code></td><td>Metric for <code>use_validation</code>: <code>'calinski-harabasz'</code> (default, higher better), <code>'davies-bouldin'</code> (lower better), or <code>'silhouette'</code> (higher better).</td></tr>
+<tr><td><code>validation_attempts</code></td><td>Number of random k-means seeds tried under <code>use_validation</code>. Default 20.</td></tr>
+<tr><td><code>intensive_parameter_sweep</code></td><td>rbf-only grid search over <code>gamma_range × metrics × attempts</code>, reusing one embedding per gamma. Expensive; for small/hard datasets.</td></tr>
+<tr><td><code>gamma_range</code></td><td>Custom gamma grid for the intensive sweep. Default <code>[0.01, 0.05, 0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0]</code>.</td></tr>
+<tr><td><code>capture_debug_info</code></td><td>When true, stores affinity stats, Laplacian spectrum (first up to 10 eigenvalues), embedding stats, and k-means inertia, retrievable via <code>get_debug_info()</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<h3>Edge cases</h3>
+<table>
+<tbody>
+<tr><td><strong>All-zero affinity</strong></td><td>Throws <code>'Affinity matrix contains only zeros'</code> — the graph has no edges (<code>spectral.ts:210-214</code>).</td></tr>
+<tr><td><strong>Disconnected, components ≥ k</strong></td><td>Skips eigensolving entirely and uses analytic component indicators; this is exact, not an approximation. If <code>num_components &lt; n_clusters</code> it still warns but proceeds through the Laplacian path.</td></tr>
+<tr><td><strong>Over-fetch eigenvectors</strong></td><td>Requests <code>max(n_clusters, num_components)</code> eigenvectors, then slices the first <code>n_clusters</code> columns — over-fetching keeps the near-zero eigenspace intact when components exist.</td></tr>
+<tr><td><strong>Isolated nodes</strong></td><td>Degree-0 nodes get inverse-sqrt-degree set to 1 in both dense and sparse Laplacian builders to avoid division by zero (<code>laplacian.ts:62-66, 116-118</code>).</td></tr>
+<tr><td><strong>Solver selection</strong></td><td>Lanczos only when <code>n &gt; 100</code> <em>and</em> <code>k &lt; n/3</code> for dense matrices; otherwise Jacobi. A matrix-free operator (sparse path) always uses Lanczos with no Jacobi fallback.</td></tr>
+<tr><td><strong>Zero-eigenvalue tolerance</strong></td><td>Lanczos uses 1e-2 while the dense Jacobi path uses 1e-7 — different solvers count near-zero eigenvalues differently.</td></tr>
+<tr><td><strong>No row normalization</strong></td><td>The default k-means path does <em>not</em> L2-row-normalize the embedding; row normalization is reserved for <code>discretize</code>, which this implementation does not use by default.</td></tr>
+<tr><td><strong>Parameter mismatches</strong></td><td><code>gamma</code> with non-rbf affinity, <code>n_neighbors</code> with non-kNN affinity, and <code>gamma</code>/<code>n_neighbors</code> with <code>precomputed</code> all throw at construction.</td></tr>
+<tr><td><strong>RBF cleanup</strong></td><td>The RBF diagonal is forced to exactly 1 and the matrix is symmetrized via <code>(A+Aᵀ)/2</code> to kill numerical asymmetry.</td></tr>
+</tbody>
+</table>
+
+<h3>scikit-learn parity</h3>
+<ul>
+<li>Default <code>gamma = 1/n_features</code> matches sklearn's RBF kernel inside <code>SpectralClustering</code>.</li>
+<li>Default kNN neighbors <code>= max(1, round(log2(n)))</code> matches sklearn.</li>
+<li>The normalized Laplacian zeros the input adjacency diagonal before normalization, matching scipy's <code>csgraph_laplacian</code>.</li>
+<li>The embedding recovery divides eigenvectors by <code>D¹ᐟ²</code>, mirroring sklearn's <code>spectral_embedding</code> rescaling of symmetric-Laplacian eigenvectors back to the random-walk solution.</li>
+<li>Default <code>n_init = 10</code> for the inner k-means matches sklearn's default.</li>
+<li>No row L2-normalization before k-means, matching sklearn's <code>assign_labels='kmeans'</code> default (sklearn only row-normalizes for <code>'discretize'</code>).</li>
+<li>Deterministic eigenpair processing (sign-fixing and ordering) in the Jacobi path keeps eigenvector signs stable for reproducible parity.</li>
+<li>Fixed Lanczos <code>random_seed = 42</code> makes the iterative path reproducible across runs.</li>
+</ul>
+
+<footer>
+<p><strong>Related topics:</strong>
+&larr; <a href="./kmeans.html">K-Means</a> (the final assignment step) ·
+<a href="./eigen.html">Eigendecomposition Engine</a> (Lanczos &amp; Jacobi) ·
+<a href="./graph.html">Graph &amp; Laplacian Construction</a> (affinity &amp; <code>L_sym</code>) ·
+<a href="./model-selection.html">Choosing k</a> (the eigengap) ·
+<a href="./agglomerative.html">Agglomerative Clustering</a> &rarr;</p>
+<p><a href="./index.html">&#9670; Back to the Clustering Atlas index</a></p>
+<p class="muted">Generated as an offline comprehension companion for <code>src/clustering/spectral.ts</code>, <code>src/clustering/spectral_optimization.ts</code>, and <code>src/graph/laplacian.ts</code>. Self-contained, no external dependencies.</p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+  const COL = {c1:'#58a6ff',c2:'#7ee787',c3:'#ff7b9c',c4:'#f0b429',c5:'#bc8cff',c6:'#39d0d8',muted:'#9aa7b4',line:'#2b333d',ink:'#e6edf3'};
+
+  /* ----------------------------------------------------------------- */
+  /*  Shared linear-algebra helpers (tiny, dependency-free)            */
+  /* ----------------------------------------------------------------- */
+  function dist2(a,b){const dx=a[0]-b[0],dy=a[1]-b[1];return dx*dx+dy*dy;}
+
+  // Jacobi eigen-decomposition for small symmetric matrices.
+  // Returns {values, vectors} sorted ascending; vectors[i] is i-th eigenvector (column).
+  function jacobiEig(Min){
+    const n=Min.length;
+    const A=Min.map(r=>r.slice());
+    const V=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>i===j?1:0));
+    const maxIter=100;
+    for(let sweep=0;sweep<maxIter;sweep++){
+      let off=0;
+      for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)off+=A[i][j]*A[i][j];
+      if(off<1e-12)break;
+      for(let p=0;p<n;p++)for(let q=p+1;q<n;q++){
+        if(Math.abs(A[p][q])<1e-14)continue;
+        const tau=(A[q][q]-A[p][p])/(2*A[p][q]);
+        const t=Math.sign(tau||1)/(Math.abs(tau)+Math.sqrt(1+tau*tau));
+        const c=1/Math.sqrt(1+t*t), s=t*c;
+        for(let k=0;k<n;k++){const akp=A[k][p],akq=A[k][q];A[k][p]=c*akp-s*akq;A[k][q]=s*akp+c*akq;}
+        for(let k=0;k<n;k++){const apk=A[p][k],aqk=A[q][k];A[p][k]=c*apk-s*aqk;A[q][k]=s*apk+c*aqk;}
+        for(let k=0;k<n;k++){const vkp=V[k][p],vkq=V[k][q];V[k][p]=c*vkp-s*vkq;V[k][q]=s*vkp+c*vkq;}
+      }
+    }
+    const vals=A.map((r,i)=>r[i]);
+    const idx=vals.map((v,i)=>({v,i})).sort((a,b)=>a.v-b.v);
+    const sv=idx.map(o=>o.v);
+    const vecs=idx.map(o=>V.map(r=>r[o.i])); // vecs[k] = k-th eigenvector (length n)
+    return {values:sv, vectors:vecs};
+  }
+
+  // Build symmetric normalized Laplacian L = I - D^-1/2 A D^-1/2 (diagonal of A zeroed).
+  // Returns {L, invSqrtDeg} where invSqrtDeg[i] = d_i^-1/2 (=1 if d_i=0).
+  function normLaplacian(A){
+    const n=A.length;
+    const deg=new Array(n).fill(0);
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){if(i!==j)deg[i]+=A[i][j];}
+    const isd=deg.map(d=>d===0?1:Math.pow(d,-0.5));
+    const L=Array.from({length:n},()=>new Array(n).fill(0));
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){
+      const a=(i===j)?0:A[i][j];
+      L[i][j]=(i===j?1:0)-isd[i]*a*isd[j];
+    }
+    return {L, invSqrtDeg:isd, deg};
+  }
+
+  // Count connected components on a thresholded adjacency (weight>0 == edge).
+  function countComponents(A){
+    const n=A.length;
+    const seen=new Array(n).fill(-1);
+    let c=0;
+    for(let s=0;s<n;s++){
+      if(seen[s]>=0)continue;
+      const stack=[s];seen[s]=c;
+      while(stack.length){
+        const u=stack.pop();
+        for(let v=0;v<n;v++){if(v!==u&&seen[v]<0&&A[u][v]>1e-9){seen[v]=c;stack.push(v);}}
+      }
+      c++;
+    }
+    return {num:c, labels:seen};
+  }
+
+  /* ----------------------------------------------------------------- */
+  /*  DEMO 1 : affinity graph as you turn the dial                     */
+  /* ----------------------------------------------------------------- */
+  (function affinityDemo(){
+    const cv=document.getElementById('affCanvas'); if(!cv)return;
+    const ctx=cv.getContext('2d');
+    const W=cv.width,H=cv.height;
+    // two moons
+    function makeMoons(nPer){
+      const pts=[],lab=[];
+      for(let i=0;i<nPer;i++){
+        const t=Math.PI*(i/(nPer-1));
+        pts.push([Math.cos(t), Math.sin(t)]); lab.push(0);
+      }
+      for(let i=0;i<nPer;i++){
+        const t=Math.PI*(i/(nPer-1));
+        pts.push([1-Math.cos(t), -Math.sin(t)+0.35]); lab.push(1);
+      }
+      // jitter (deterministic)
+      let seed=7;
+      const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+      for(const p of pts){p[0]+=(rnd()-0.5)*0.18;p[1]+=(rnd()-0.5)*0.18;}
+      return {pts,lab};
+    }
+    const {pts,lab}=makeMoons(28);
+    const N=pts.length;
+    // precompute distances
+    const D=Array.from({length:N},(_,i)=>pts.map((q)=>Math.sqrt(dist2(pts[i],q))));
+    // bounds for screen mapping
+    let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+    const pad=40;
+    function sx(x){return pad+(x-minX)/(maxX-minX)*(W-2*pad);}
+    function sy(y){return H-pad-(y-minY)/(maxY-minY)*(H-2*pad);}
+
+    let mode='rbf', gamma=2.0, kk=3;
+
+    function buildAffinity(){
+      const A=Array.from({length:N},()=>new Array(N).fill(0));
+      if(mode==='rbf'){
+        for(let i=0;i<N;i++)for(let j=0;j<N;j++){if(i===j)continue;
+          A[i][j]=Math.exp(-gamma*D[i][j]*D[i][j]);
+        }
+        // threshold tiny weights so the graph visibly fragments
+        for(let i=0;i<N;i++)for(let j=0;j<N;j++){if(A[i][j]<0.04)A[i][j]=0;}
+      } else {
+        const W2=Array.from({length:N},()=>new Array(N).fill(0));
+        for(let i=0;i<N;i++){
+          const order=D[i].map((d,j)=>({d,j})).sort((a,b)=>a.d-b.d);
+          let cnt=0;
+          for(const o of order){if(o.j===i)continue;W2[i][o.j]=1;if(++cnt>=kk)break;}
+        }
+        for(let i=0;i<N;i++)for(let j=0;j<N;j++){A[i][j]=0.5*(W2[i][j]+W2[j][i]);}
+      }
+      return A;
+    }
+
+    function draw(){
+      const A=buildAffinity();
+      ctx.clearRect(0,0,W,H);
+      // edges
+      ctx.lineWidth=1;
+      for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+        const w=A[i][j];if(w<=0)continue;
+        ctx.strokeStyle='rgba(154,167,180,'+Math.min(0.9,w*0.9+0.08)+')';
+        ctx.beginPath();ctx.moveTo(sx(pts[i][0]),sy(pts[i][1]));ctx.lineTo(sx(pts[j][0]),sy(pts[j][1]));ctx.stroke();
+      }
+      // nodes
+      for(let i=0;i<N;i++){
+        ctx.fillStyle=lab[i]===0?COL.c1:COL.c3;
+        ctx.beginPath();ctx.arc(sx(pts[i][0]),sy(pts[i][1]),4.5,0,7);ctx.fill();
+      }
+      const {num}=countComponents(A);
+      let edges=0;for(let i=0;i<N;i++)for(let j=i+1;j<N;j++)if(A[i][j]>0)edges++;
+      const ro=document.getElementById('affReadout');
+      ro.innerHTML='<span>mode <b>'+mode+'</b></span>'+
+        (mode==='rbf'?'<span>γ <b>'+gamma.toFixed(1)+'</b></span>':'<span>k <b>'+kk+'</b></span>')+
+        '<span>edges <b>'+edges+'</b></span>'+
+        '<span>connected components <b>'+num+'</b></span>'+
+        '<span>'+(num===1?'one piece — clusters found by smoothness':num<=2?'two pieces — close to ideal block structure':num+' fragments — graph too sparse')+'</span>';
+    }
+
+    function setMode(m){
+      mode=m;
+      document.getElementById('affModeRbf').className=m==='rbf'?'':'ghost';
+      document.getElementById('affModeKnn').className=m==='knn'?'':'ghost';
+      document.getElementById('gammaCtl').style.display=m==='rbf'?'':'none';
+      document.getElementById('kCtl').style.display=m==='knn'?'':'none';
+      draw();
+    }
+    document.getElementById('affModeRbf').onclick=()=>setMode('rbf');
+    document.getElementById('affModeKnn').onclick=()=>setMode('knn');
+    document.getElementById('gammaSlider').oninput=e=>{gamma=+e.target.value;document.getElementById('gammaVal').textContent=gamma.toFixed(1);draw();};
+    document.getElementById('kSlider').oninput=e=>{kk=+e.target.value;document.getElementById('kVal').textContent=kk;draw();};
+    draw();
+  })();
+
+  /* ----------------------------------------------------------------- */
+  /*  DEMO 2 : raw -> embedding morph + spectrum                       */
+  /* ----------------------------------------------------------------- */
+  (function embeddingDemo(){
+    const rawC=document.getElementById('rawCanvas'); if(!rawC)return;
+    const embC=document.getElementById('embCanvas');
+    const specC=document.getElementById('specCanvas');
+    const rctx=rawC.getContext('2d'), ectx=embC.getContext('2d'), sctx=specC.getContext('2d');
+
+    // three concentric rings
+    function makeRings(){
+      const pts=[],lab=[];
+      const radii=[0.45,0.95,1.5], counts=[16,24,32];
+      let seed=11;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+      for(let r=0;r<3;r++){
+        for(let i=0;i<counts[r];i++){
+          const t=2*Math.PI*i/counts[r];
+          pts.push([radii[r]*Math.cos(t)+(rnd()-0.5)*0.12, radii[r]*Math.sin(t)+(rnd()-0.5)*0.12]);
+          lab.push(r);
+        }
+      }
+      return {pts,lab};
+    }
+    const {pts,lab}=makeRings();
+    const N=pts.length;
+    const K=3;
+    // kNN affinity to connect rings internally (rings are non-convex -> rbf with single gamma is tricky, knn is robust)
+    function buildKnnAff(k){
+      const Dm=Array.from({length:N},(_,i)=>pts.map(q=>Math.sqrt(dist2(pts[i],q))));
+      const W=Array.from({length:N},()=>new Array(N).fill(0));
+      for(let i=0;i<N;i++){
+        const order=Dm[i].map((d,j)=>({d,j})).sort((a,b)=>a.d-b.d);
+        let cnt=0;for(const o of order){if(o.j===i)continue;W[i][o.j]=1;if(++cnt>=k)break;}
+      }
+      const A=Array.from({length:N},()=>new Array(N).fill(0));
+      for(let i=0;i<N;i++)for(let j=0;j<N;j++)A[i][j]=0.5*(W[i][j]+W[j][i]);
+      return A;
+    }
+    const A=buildKnnAff(4);
+    const {L,invSqrtDeg}=normLaplacian(A);
+    const eig=jacobiEig(L); // values ascending, vectors[k] length N
+    // degree-rescaled embedding columns: U[:,c] = eigvec_c / sqrt(d_i) = eigvec_c * invSqrtDeg... wait:
+    // recovery divides row by D^1/2 = multiply by D^-1/2 = invSqrtDeg
+    const numCols=6;
+    const Ucols=[]; // Ucols[c][i]
+    for(let c=0;c<numCols;c++){
+      const v=eig.vectors[c]||new Array(N).fill(0);
+      Ucols.push(v.map((val,i)=>val*invSqrtDeg[i]));
+    }
+    // normalize each embedding column for display
+    function colStats(c){
+      let mn=1e9,mx=-1e9;for(const v of Ucols[c]){mn=Math.min(mn,v);mx=Math.max(mx,v);}
+      return {mn,mx};
+    }
+    const stats=Ucols.map((_,c)=>colStats(c));
+
+    // raw bounds
+    let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+
+    const W2=rawC.width,H2=rawC.height,pad=34;
+    function rawScreen(p){
+      return [pad+(p[0]-minX)/(maxX-minX)*(W2-2*pad), H2-pad-(p[1]-minY)/(maxY-minY)*(H2-2*pad)];
+    }
+    let axX=2, axY=3; // 1-based eigenvector index (u2,u3,...)
+    function embScreen(i){
+      const cx=axX-1, cy=axY-1;
+      const sxr=stats[cx], syr=stats[cy];
+      const nx=(Ucols[cx][i]-sxr.mn)/((sxr.mx-sxr.mn)||1);
+      const ny=(Ucols[cy][i]-syr.mn)/((syr.mx-syr.mn)||1);
+      return [pad+nx*(W2-2*pad), H2-pad-ny*(H2-2*pad)];
+    }
+
+    let progress=0; // 0 raw, 1 embedding
+    let anim=null;
+
+    function lerp(a,b,t){return a+(b-a)*t;}
+
+    function drawScatter(ctx,positions,size){
+      ctx.clearRect(0,0,W2,H2);
+      // axes box
+      ctx.strokeStyle=COL.line;ctx.lineWidth=1;ctx.strokeRect(pad,pad,W2-2*pad,H2-2*pad);
+      for(let i=0;i<N;i++){
+        ctx.fillStyle=[COL.c1,COL.c2,COL.c3][lab[i]];
+        ctx.beginPath();ctx.arc(positions[i][0],positions[i][1],size,0,7);ctx.fill();
+      }
+    }
+
+    function render(){
+      // raw panel always raw
+      const rawPos=pts.map(rawScreen);
+      // embedding panel morphs from raw to embedding by progress
+      const embTarget=pts.map((_,i)=>embScreen(i));
+      const embPos=rawPos.map((rp,i)=>[lerp(rp[0],embTarget[i][0],progress), lerp(rp[1],embTarget[i][1],progress)]);
+      drawScatter(rctx,rawPos,4.5);
+      drawScatter(ectx,embPos,4.5);
+      drawSpectrum();
+      const ro=document.getElementById('embReadout');
+      const vals=eig.values.slice(0,10).map(v=>Math.max(0,v));
+      const near=vals.filter(v=>v<0.05).length;
+      ro.innerHTML='<span>n <b>'+N+'</b></span><span>k <b>'+K+'</b></span>'+
+        '<span>near-zero λ (≈ #clusters) <b>'+near+'</b></span>'+
+        '<span>λ&#8323; − λ&#8322; gap <b>'+(vals[3]-vals[2]).toFixed(3)+'</b></span>'+
+        '<span>'+(progress<0.99?'press Run pipeline ▶':'rings collapsed to '+K+' blobs — k-means now trivial')+'</span>';
+    }
+
+    function drawSpectrum(){
+      const W3=specC.width,H3=specC.height,p=30;
+      sctx.clearRect(0,0,W3,H3);
+      const vals=eig.values.slice(0,10).map(v=>Math.max(0,v));
+      const mx=Math.max(...vals,0.001);
+      const bw=(W3-2*p)/vals.length;
+      // baseline
+      sctx.strokeStyle=COL.line;sctx.beginPath();sctx.moveTo(p,H3-22);sctx.lineTo(W3-p,H3-22);sctx.stroke();
+      for(let i=0;i<vals.length;i++){
+        const h=(vals[i]/mx)*(H3-50);
+        const x=p+i*bw+bw*0.18, w=bw*0.64;
+        const isNear=vals[i]<0.05 && i<K;
+        sctx.fillStyle=isNear?COL.c4:COL.c1;
+        sctx.fillRect(x,H3-22-h,w,h);
+        sctx.fillStyle=COL.muted;sctx.font='11px ui-monospace,monospace';sctx.textAlign='center';
+        sctx.fillText('λ'+(i+1),x+w/2,H3-8);
+      }
+      // gap marker after k
+      const gx=p+K*bw;
+      sctx.strokeStyle=COL.c2;sctx.setLineDash([4,3]);sctx.beginPath();sctx.moveTo(gx,12);sctx.lineTo(gx,H3-22);sctx.stroke();sctx.setLineDash([]);
+      sctx.fillStyle=COL.c2;sctx.textAlign='left';sctx.font='11px ui-monospace,monospace';
+      sctx.fillText('eigengap → k='+K, gx+6, 18);
+    }
+
+    function runPipeline(){
+      if(anim)cancelAnimationFrame(anim);
+      const start=performance.now(), dur=1400;
+      function step(now){
+        const t=Math.min(1,(now-start)/dur);
+        progress=t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2; // easeInOut
+        render();
+        if(t<1)anim=requestAnimationFrame(step);
+      }
+      anim=requestAnimationFrame(step);
+    }
+    document.getElementById('runPipeline').onclick=runPipeline;
+    document.getElementById('resetPipeline').onclick=()=>{if(anim)cancelAnimationFrame(anim);progress=0;render();};
+    function updAxLabel(){
+      document.getElementById('axLabel').textContent='u'+axX+' × u'+axY;
+      document.getElementById('axXVal').textContent=axX;
+      document.getElementById('axYVal').textContent=axY;
+    }
+    document.getElementById('axX').oninput=e=>{axX=+e.target.value;updAxLabel();render();};
+    document.getElementById('axY').oninput=e=>{axY=+e.target.value;updAxLabel();render();};
+    updAxLabel();
+    render();
+  })();
+
+  /* ----------------------------------------------------------------- */
+  /*  DEMO 3 : components shortcut vs eigensolve                       */
+  /* ----------------------------------------------------------------- */
+  (function componentsDemo(){
+    const cv=document.getElementById('compCanvas'); if(!cv)return;
+    const ctx=cv.getContext('2d');
+    const W=cv.width,H=cv.height;
+    const K=3;
+    let nPer=30, conn=100;
+
+    function makeBlobs(per){
+      const pts=[],lab=[];
+      const centers=[[-1.6,0],[0,0.1],[1.6,0]];
+      let seed=23;const rnd=()=>{seed=(seed*1103515245+12345)&0x7fffffff;return seed/0x7fffffff;};
+      for(let c=0;c<3;c++)for(let i=0;i<per;i++){
+        pts.push([centers[c][0]+(rnd()-0.5)*0.9, centers[c][1]+(rnd()-0.5)*0.9]);
+        lab.push(c);
+      }
+      return {pts,lab};
+    }
+    let {pts,lab}=makeBlobs(nPer);
+    let N=pts.length;
+
+    let minX=1e9,maxX=-1e9,minY=1e9,maxY=-1e9;
+    function recomputeBounds(){
+      minX=1e9;maxX=-1e9;minY=1e9;maxY=-1e9;
+      for(const p of pts){minX=Math.min(minX,p[0]);maxX=Math.max(maxX,p[0]);minY=Math.min(minY,p[1]);maxY=Math.max(maxY,p[1]);}
+    }
+    recomputeBounds();
+    const pad=40;
+    function sx(x){return pad+(x-minX)/(maxX-minX)*(W-2*pad);}
+    function sy(y){return H-pad-(y-minY)/(maxY-minY)*(H-2*pad);}
+
+    function buildAff(){
+      // rbf-ish within blobs always strong; inter-blob edges scaled by conn
+      const A=Array.from({length:N},()=>new Array(N).fill(0));
+      const g=1.2;
+      const cf=conn/100;
+      for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+        const d2=dist2(pts[i],pts[j]);
+        let w=Math.exp(-g*d2);
+        if(w<0.05)w=0;
+        if(lab[i]!==lab[j]) w*=cf; // weaken/cut inter-cluster edges
+        if(w<0.04)w=0;
+        A[i][j]=w;A[j][i]=w;
+      }
+      return A;
+    }
+
+    function draw(){
+      const A=buildAff();
+      const {num,labels:compLab}=countComponents(A);
+      ctx.clearRect(0,0,W,H);
+      // edges
+      for(let i=0;i<N;i++)for(let j=i+1;j<N;j++){
+        const w=A[i][j];if(w<=0)continue;
+        const inter=lab[i]!==lab[j];
+        ctx.strokeStyle=inter?'rgba(240,180,41,'+Math.min(0.8,w+0.1)+')':'rgba(154,167,180,'+Math.min(0.7,w*0.6+0.06)+')';
+        ctx.lineWidth=inter?1.4:1;
+        ctx.beginPath();ctx.moveTo(sx(pts[i][0]),sy(pts[i][1]));ctx.lineTo(sx(pts[j][0]),sy(pts[j][1]));ctx.stroke();
+      }
+      // nodes coloured by detected component (caps at palette)
+      const pal=[COL.c1,COL.c2,COL.c3,COL.c5,COL.c6,COL.c4];
+      for(let i=0;i<N;i++){
+        ctx.fillStyle=pal[compLab[i]%pal.length];
+        ctx.beginPath();ctx.arc(sx(pts[i][0]),sy(pts[i][1]),4.5,0,7);ctx.fill();
+      }
+      // decide branch
+      const shortcut = num>=K && num<N; // disconnected with enough components
+      // solver routing for the eigensolve branch (dense path): Lanczos iff n>100 && k<n/3
+      const lanczos = N>100 && K < N/3;
+      const ro=document.getElementById('compReadout');
+      ro.innerHTML=
+        '<span>n <b>'+N+'</b></span>'+
+        '<span>k <b>'+K+'</b></span>'+
+        '<span>num_components <b>'+num+'</b></span>'+
+        '<span>is_fully_connected <b>'+(num===1)+'</b></span>'+
+        '<span>branch '+(shortcut
+          ? '<b style="color:'+COL.c2+'">analytic component indicators</b>'
+          : '<b style="color:'+COL.c1+'">eigensolve ('+(lanczos?'Lanczos':'dense Jacobi')+')</b>')+'</span>'+
+        '<span>'+(shortcut
+          ? 'num_components ≥ k → exact piecewise-constant embedding, no eigensolver'
+          : (num===1? 'single connected graph → smallest eigenvectors of L_sym'
+                    : num+' components but < k → warns, still eigensolves'))+'</span>';
+    }
+
+    document.getElementById('connSlider').oninput=e=>{conn=+e.target.value;draw();};
+    document.getElementById('nSlider').oninput=e=>{
+      nPer=Math.max(10,Math.round(+e.target.value/3));
+      const m=makeBlobs(nPer);pts=m.pts;lab=m.lab;N=pts.length;recomputeBounds();draw();
+    };
+    draw();
+  })();
+
+})();
+</script>
+</body>
+</html>

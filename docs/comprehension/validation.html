@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation Metrics — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.metricgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;margin:1rem 0}
+.mcard{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .8rem}
+.mcard .nm{font-weight:700;font-size:.95rem}
+.mcard .rg{font-family:var(--mono);font-size:.78rem;color:var(--muted);margin-top:.2rem}
+.mcard.int{border-left:3px solid var(--c2)}
+.mcard.ext{border-left:3px solid var(--c5)}
+.readout{font-family:var(--mono);font-size:.85rem;background:#0a0e14;border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;margin-top:.6rem;line-height:1.7}
+.readout b{color:var(--ink)}
+.bartrack{position:relative;height:22px;background:#0a0e14;border:1px solid var(--line);border-radius:6px;margin:.4rem 0;overflow:hidden}
+.barfill{position:absolute;top:0;bottom:0;left:50%;background:var(--accent);transition:none}
+.barzero{position:absolute;top:0;bottom:0;left:50%;width:1px;background:var(--muted);opacity:.6}
+.lab{font-size:.8rem;color:var(--muted);display:inline-flex;align-items:center;gap:.35rem}
+.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+.ctable{border-collapse:collapse;font-family:var(--mono);font-size:.85rem}
+.ctable td,.ctable th{border:1px solid var(--line);padding:.35rem .55rem;text-align:center;min-width:38px}
+.ctable .marg{color:var(--warn);background:rgba(240,180,41,.06)}
+.ctable .corner{background:transparent;border:none}
+.cell{cursor:pointer}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{background:var(--panel2);color:var(--muted);border-radius:0;border-right:1px solid var(--line);font-weight:500;padding:.35rem .7rem}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--accent);color:#06121f;font-weight:700}
+.tag{font-family:var(--mono);font-size:.72rem;padding:.05rem .4rem;border-radius:4px;color:#06121f}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html" class="active">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Validation Metrics: Internal and External Cluster Quality</h1>
+<p class="lede">Five scores that grade a clustering — three judge geometry without ground truth, two compare a labeling against a known truth via a contingency table.</p>
+
+<div class="metricgrid">
+  <div class="mcard int"><div class="nm">Silhouette</div><div class="rg">internal · [−1, 1] · higher better</div></div>
+  <div class="mcard int"><div class="nm">Davies-Bouldin</div><div class="rg">internal · [0, ∞) · lower better</div></div>
+  <div class="mcard int"><div class="nm">Calinski-Harabasz</div><div class="rg">internal · [0, ∞) · higher better</div></div>
+  <div class="mcard ext"><div class="nm">Adjusted Rand Index</div><div class="rg">external · [−1, 1] · higher better</div></div>
+  <div class="mcard ext"><div class="nm">Normalized Mutual Info</div><div class="rg">external · [0, 1] · higher better</div></div>
+</div>
+<p class="muted" style="font-size:.85rem"><span class="swatch" style="background:var(--c2)"></span> internal (geometry only) &nbsp;&nbsp; <span class="swatch" style="background:var(--c5)"></span> external (vs. ground truth)</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>There are two fundamentally different questions you can ask about a clustering.</p>
+<p>The first is <em>"does this clustering look good on its own terms?"</em> Are points tight within their cluster and far from other clusters? You answer this using only the data <code>X</code> and the <code>labels</code>, with no reference answer. These are the <strong>internal metrics</strong>: silhouette, Davies-Bouldin, and Calinski-Harabasz. They all reward <strong>compactness</strong> (points near their own centroid/neighbors) and <strong>separation</strong> (clusters far apart) — but each packages those two ideas differently. Silhouette works per-point and is bounded in [−1, 1]; Davies-Bouldin averages a worst-case "confusability" ratio per cluster and is unbounded with lower=better; Calinski-Harabasz is a single variance ratio (between-cluster spread over within-cluster spread) with higher=better.</p>
+<p>The second is <em>"does this clustering agree with a known ground-truth labeling?"</em> You answer this by cross-tabulating the two labelings into a <strong>contingency table</strong> n<sub>ij</sub> = how many points are in true-class <em>i</em> AND predicted-cluster <em>j</em>. Every external metric here is a function of that one table plus its row/column margins. The key subtlety is <strong>chance correction</strong>: if you randomly threw points into k buckets you would get some accidental agreement, so a good metric subtracts off what chance alone would produce. ARI does this by counting agreeing pairs and subtracting an expected pair count; NMI measures shared information (entropy) between the two labelings and normalizes it to [0, 1].</p>
+<p>Both contingency-based metrics are <strong>invariant to how you name or permute the labels</strong> — only the partition structure matters. ARI asks "for every pair of points, do the two labelings agree on whether they are together or apart?" NMI asks "knowing the predicted cluster, how much uncertainty about the true class is removed?"</p>
+<div class="note">A recurring theme across the whole file set is <strong>exact scikit-learn parity</strong>: every degenerate case — a singleton cluster, identical points, a zero denominator — is handled to match what sklearn returns, even when the "natural" math would give <code>NaN</code> or <code>Infinity</code>.</div>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><strong>Validate and convert inputs (all metrics).</strong> <code>validate_labels_length</code> checks <code>labels.length</code> equals the number of data rows. <code>convert_validation_inputs</code> returns the data as a <code>tf.Tensor2D</code> plus a plain integer <code>label_array</code> (tensor labels are <code>dataSync</code>'d and <code>Math.round</code>'d). An <code>owns_tensor</code> flag records whether this function created the tensor and must dispose it. Internal metrics require <code>k</code> = unique labels &gt; 1; Calinski-Harabasz also requires <code>k &lt; n</code>.</li>
+  <li><strong>Silhouette — full pairwise distance matrix.</strong> Compute D[i,j] = ‖x<sub>i</sub> − x<sub>j</sub>‖ via the squared-norm identity x_norm + x_normᵀ − 2·X·Xᵀ, clamped at 0 with <code>tf.maximum</code> before <code>sqrt</code> to avoid negative round-off under the root. Flatten to a <code>Float32Array</code> for the per-sample loops.</li>
+  <li><strong>Silhouette — per-sample a and b.</strong> For each point i, partition the others by label. <code>a(i)</code> = mean distance to same-cluster points. For every other cluster compute the mean distance to its members; <code>b(i)</code> = the smallest such mean (the nearest competing cluster). Score s = (b − a) / max(a, b). Degenerate handling: singleton cluster → 0; a==0 and b==0 (identical points) → 0. <code>silhouette_score</code> is the plain mean of all s.</li>
+  <li><strong>Davies-Bouldin — centroids and dispersions.</strong> For each cluster compute its centroid (mean of points) and dispersion s<sub>i</sub> = mean Euclidean distance from its points to the centroid. A singleton cluster gets dispersion 0.</li>
+  <li><strong>Davies-Bouldin — per-cluster worst similarity.</strong> For each cluster i, over all j≠i compute R<sub>ij</sub> = (s<sub>i</sub> + s<sub>j</sub>) / d<sub>ij</sub> where d<sub>ij</sub> is the centroid-to-centroid distance; take the max over j. DB = mean of those maxima over k clusters. Lower is better. Coincident centroids (d<sub>ij</sub>==0): if the dispersion sum &gt; 0 → that cluster's max becomes Infinity (break); if both dispersions are 0 → skip the pair (mirrors sklearn nanmax of 0/0=NaN).</li>
+  <li><strong>Calinski-Harabasz — BSS and WSS.</strong> Compute the global centroid (mean of all points). For each cluster, WSS accumulates the sum of squared distances from points to their cluster centroid; BSS accumulates cluster_size · ‖cluster_centroid − global_centroid‖². Score = (BSS/(k−1)) / (WSS/(n−k)). Higher is better.</li>
+  <li><strong>External metrics — build the contingency table.</strong> <code>build_contingency_table</code> maps each labeling's unique values to dense 0-based indices, then fills <code>table[i][j]</code> = count of points with (true=i, pred=j). It also returns <code>row_sums</code> (a<sub>i</sub>, true-class sizes), <code>col_sums</code> (b<sub>j</sub>, pred-cluster sizes), and <code>n</code>.</li>
+  <li><strong>ARI — pair counts and chance correction.</strong> Using C(x)=x(x−1)/2: index = Σ<sub>ij</sub> C(n<sub>ij</sub>); sum_a = Σ<sub>i</sub> C(a<sub>i</sub>); sum_b = Σ<sub>j</sub> C(b<sub>j</sub>). expected = sum_a·sum_b / C(n); max_index = (sum_a + sum_b)/2. ARI = (index − expected)/(max_index − expected). If C(n)==0 (≤1 sample) → 1.0. If the denominator==0 → return 1.0 when index==expected, else 0.0.</li>
+  <li><strong>NMI — entropies, mutual information, normalize.</strong> H(U) from row_sums and H(V) from col_sums using −p·ln(p) (natural log, skipping zero counts). MI = Σ<sub>ij</sub> (n<sub>ij</sub>/n)·ln(n·n<sub>ij</sub> / (a<sub>i</sub>·b<sub>j</sub>)) over positive cells. The normalizer is chosen by the <code>average</code> option: arithmetic (H_U+H_V)/2, geometric √(H_U·H_V), min, or max. NMI = MI/normalizer. If normalizer==0 → 1.0 when MI==0, else 0.0.</li>
+</ol>
+
+<h2 id="math">The math</h2>
+
+<h3>Silhouette coefficient</h3>
+<div class="eq">s(i) = ( b(i) − a(i) ) / max( a(i), b(i) ) ∈ [−1, 1]</div>
+<p><code>a(i)</code> = mean intra-cluster distance; <code>b(i)</code> = the minimum over other clusters of the mean distance to that cluster. The score is <strong>+1</strong> when the point sits far from all rivals, <strong>0</strong> on a boundary, and <strong>negative</strong> if the point is likely misassigned. The overall <code>silhouette_score = mean_i s(i)</code>.</p>
+
+<h3>Pairwise distance identity</h3>
+<div class="eq">D[i,j] = √( max(0, ‖x<sub>i</sub>‖² + ‖x<sub>j</sub>‖² − 2·x<sub>i</sub>ᵀx<sub>j</sub>) )</div>
+<p>Vectorized Euclidean distance via the Gram matrix X·Xᵀ. The <code>max(0, ·)</code> guards against tiny <em>negative</em> values produced by floating-point round-off before the square root — without it, two coincident points could yield <code>√(−1e-7) = NaN</code>.</p>
+
+<h3>Davies-Bouldin index</h3>
+<div class="eq">DB = (1/k) · Σ<sub>i</sub> max<sub>j≠i</sub> ( s<sub>i</sub> + s<sub>j</sub> ) / d<sub>ij</sub></div>
+<p><code>s<sub>i</sub></code> = mean distance of cluster i's points to its centroid (its <em>dispersion</em>); <code>d<sub>ij</sub></code> = distance between centroids i and j. Each cluster contributes its <strong>worst</strong> (most confusable) neighbor ratio: a cluster that is both fat and close to another fat cluster scores high. <strong>Lower = better</strong> separated.</p>
+
+<h3>Calinski-Harabasz (variance ratio)</h3>
+<div class="eq">CH = ( BSS / (k−1) ) / ( WSS / (n−k) ),&nbsp;&nbsp; BSS = Σ<sub>i</sub> n<sub>i</sub>·‖c<sub>i</sub> − c‖²,&nbsp;&nbsp; WSS = Σ<sub>i</sub> Σ<sub>x∈C<sub>i</sub></sub> ‖x − c<sub>i</sub>‖²</div>
+<p>Ratio of <strong>between-cluster</strong> dispersion (cluster centroids c<sub>i</sub> spread around the global centroid c, weighted by size n<sub>i</sub>) to <strong>within-cluster</strong> dispersion (point spread around their own centroid), each scaled by its degrees of freedom. <strong>Higher = tighter</strong>, better-separated clusters.</p>
+
+<h3>Adjusted Rand Index</h3>
+<div class="eq">ARI = ( Σ<sub>ij</sub> C(n<sub>ij</sub>) − E ) / ( (Σ<sub>i</sub> C(a<sub>i</sub>) + Σ<sub>j</sub> C(b<sub>j</sub>))/2 − E ),&nbsp;&nbsp; E = Σ<sub>i</sub> C(a<sub>i</sub>) · Σ<sub>j</sub> C(b<sub>j</sub>) / C(n)</div>
+<p>C(x) = x(x−1)/2 counts the <strong>pairs</strong> inside a group of x points. The numerator is agreeing pairs minus the chance expectation E; the denominator is the maximum possible minus E. <strong>ARI = 1</strong> is perfect, <strong>≈ 0</strong> is random, and it <em>can go negative</em> when agreement is worse than chance.</p>
+
+<h3>Mutual information</h3>
+<div class="eq">MI(U,V) = Σ<sub>ij</sub> ( n<sub>ij</sub>/n ) · ln( n·n<sub>ij</sub> / ( a<sub>i</sub>·b<sub>j</sub> ) )</div>
+<p>Information shared between the two labelings; only positive cells contribute. It is <strong>zero</strong> exactly when the labelings are statistically independent (n<sub>ij</sub> = a<sub>i</sub>·b<sub>j</sub>/n for all cells).</p>
+
+<h3>Normalized Mutual Information</h3>
+<div class="eq">NMI = MI(U,V) / normalizer,&nbsp;&nbsp; normalizer ∈ { (H_U+H_V)/2, √(H_U·H_V), min(H_U,H_V), max(H_U,H_V) }</div>
+<p>H_U = −Σ<sub>i</sub> (a<sub>i</sub>/n)·ln(a<sub>i</sub>/n) and H_V likewise from b<sub>j</sub> are the entropies of the two labelings. Normalizing MI by an entropy average rescales agreement into [0, 1]; the choice of average is the <code>average</code> option (default <strong>arithmetic</strong>, matching sklearn).</p>
+
+<h2 id="try-sil">Try it — Silhouette dissection</h2>
+<p>Three colored clusters of 2D points. <strong>Click any point</strong> to dissect its silhouette: faint lines fan out to its own cluster (averaging into <code>a</code>) and to each other cluster (the nearest one's mean is <code>b</code>, drawn bold). <strong>Drag</strong> the selected point across the boundary and watch <code>a</code> and <code>b</code> cross over while s drops through 0 into negative.</p>
+<div class="demo">
+  <canvas id="sil_canvas" width="860" height="420"></canvas>
+  <div class="controls">
+    <button id="sil_reset" class="ghost">Reset points</button>
+    <span class="lab"><span class="swatch" style="background:var(--c1)"></span>cluster 0</span>
+    <span class="lab"><span class="swatch" style="background:var(--c2)"></span>cluster 1</span>
+    <span class="lab"><span class="swatch" style="background:var(--c3)"></span>cluster 2</span>
+  </div>
+  <div class="readout" id="sil_read">Click a point to begin.</div>
+  <div class="bartrack"><div class="barzero"></div><div class="barfill" id="sil_bar"></div></div>
+  <div class="muted" style="font-size:.78rem;display:flex;justify-content:space-between"><span>s = −1</span><span>0</span><span>+1</span></div>
+  <div class="readout" id="sil_mean" style="margin-top:.5rem">mean silhouette_score over all points: <b id="sil_meanval">—</b></div>
+</div>
+
+<h2 id="try-db">Try it — Davies-Bouldin similarity ratios</h2>
+<p>Each cluster is drawn as a centroid with a dispersion radius s<sub>i</sub> (the dashed circle). For the <strong>selected cluster</strong>, the ratio (s<sub>i</sub>+s<sub>j</sub>)/d<sub>ij</sub> to every other cluster is drawn, and its <em>worst</em> (max) neighbor is bold. <strong>Drag a centroid</strong> closer to another, or use the slider to inflate a cluster's dispersion, and watch that max ratio — and the overall DB — climb. Lower DB is visibly better separation.</p>
+<div class="demo">
+  <canvas id="db_canvas" width="860" height="420"></canvas>
+  <div class="controls">
+    <label class="lab">selected cluster
+      <span class="seg" id="db_sel"></span>
+    </label>
+    <label class="lab">dispersion s of selected
+      <input type="range" id="db_disp" min="10" max="120" value="45" step="1">
+    </label>
+    <button id="db_reset" class="ghost">Reset</button>
+  </div>
+  <div class="readout" id="db_read">—</div>
+</div>
+
+<h2 id="try-ch">Try it — Calinski-Harabasz variance tug-of-war</h2>
+<p>The global centroid <code>c</code> sits at the center. Each cluster centroid <code>c<sub>i</sub></code> is joined to it by an arrow whose contribution to <strong>BSS</strong> grows with both distance and cluster size. The faint spokes inside each cluster are the <strong>WSS</strong> spread. Pull the clusters apart (raising BSS) or tighten them (lowering WSS) and watch the CH gauge respond — higher is better.</p>
+<div class="demo">
+  <canvas id="ch_canvas" width="860" height="420"></canvas>
+  <div class="controls">
+    <label class="lab">separation (pull clusters apart)
+      <input type="range" id="ch_sep" min="20" max="100" value="55" step="1">
+    </label>
+    <label class="lab">tightness (shrink spread)
+      <input type="range" id="ch_tight" min="10" max="100" value="50" step="1">
+    </label>
+    <button id="ch_anim" class="ghost">Animate sweep</button>
+  </div>
+  <div class="readout" id="ch_read">—</div>
+</div>
+
+<h2 id="try-ext">Try it — Contingency table to ARI &amp; NMI</h2>
+<p>Twelve points each carry a fixed <strong>true class</strong> (row) and an editable <strong>predicted cluster</strong> (column). <strong>Click a cell</strong> to move one point from that true-class out of its current predicted cluster into the next predicted cluster — the table cells, the margins a<sub>i</sub> / b<sub>j</sub>, and both scores recompute live. Switch the NMI <code>average</code> mode to watch the normalizer (and final NMI) change. Hit <em>Permute labels</em> to rename predicted clusters and confirm both metrics are invariant.</p>
+<div class="demo">
+  <div class="grid two" style="align-items:start">
+    <div>
+      <div class="muted" style="font-size:.82rem;margin-bottom:.3rem">contingency table &nbsp;<span class="pill">n<sub>ij</sub></span> &nbsp; rows = true class, cols = predicted cluster</div>
+      <div id="ext_table"></div>
+      <div class="controls">
+        <button id="ext_perm" class="ghost">Permute pred labels</button>
+        <button id="ext_reset" class="ghost">Reset</button>
+      </div>
+    </div>
+    <div>
+      <div class="readout" id="ext_ari"></div>
+      <div style="margin:.6rem 0 .3rem" class="lab">NMI average mode:</div>
+      <span class="seg" id="ext_avg">
+        <button data-m="arithmetic" class="on">arithmetic</button>
+        <button data-m="geometric">geometric</button>
+        <button data-m="min">min</button>
+        <button data-m="max">max</button>
+      </span>
+      <div class="readout" id="ext_nmi" style="margin-top:.6rem"></div>
+    </div>
+  </div>
+  <div class="muted" style="font-size:.78rem;margin-top:.5rem">Tip: click a cell repeatedly to cycle a point through all predicted clusters; both scores stay identical under any consistent renaming of the columns.</div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<table>
+  <thead><tr><th>Reference</th><th>Role</th></tr></thead>
+  <tbody>
+    <tr><td><code>silhouette.ts:22 silhouette_samples</code></td><td>Per-sample silhouette via the full pairwise distance matrix; computes a(i), nearest-cluster b(i), and s = (b−a)/max(a,b) with degenerate handling at lines 96–106.</td></tr>
+    <tr><td><code>silhouette.ts:40-45</code></td><td>Vectorized Euclidean distance using the Gram-matrix identity with <code>tf.maximum(0,·)</code> clamp before <code>sqrt</code>.</td></tr>
+    <tr><td><code>silhouette.ts:121 silhouette_score</code></td><td>Mean of the per-sample coefficients.</td></tr>
+    <tr><td><code>silhouette.ts:135 silhouette_score_subset</code></td><td>On-the-fly distance computation for a subset of samples to avoid materializing the full n×n matrix.</td></tr>
+    <tr><td><code>davies_bouldin.ts:22 davies_bouldin</code></td><td>Centroids + dispersions, then per-cluster max similarity R<sub>ij</sub>; coincident-centroid handling at lines 86–96.</td></tr>
+    <tr><td><code>davies_bouldin.ts:124 davies_bouldin_efficient</code></td><td>Same result with per-cluster <code>tf.tidy</code> and JS-side centroid arrays to reduce tensor pressure.</td></tr>
+    <tr><td><code>calinski_harabasz.ts:23 calinski_harabasz</code></td><td>Accumulates WSS and BSS against the global centroid; score at line 80 with (k−1)/(n−k) scaling; k≥n guard at line 38.</td></tr>
+    <tr><td><code>calinski_harabasz.ts:94 calinski_harabasz_efficient</code></td><td>Memory-efficient per-cluster variant.</td></tr>
+    <tr><td><code>adjusted_rand_index.ts:21 adjusted_rand_index</code></td><td><code>comb2</code> pair counting, expected/max index, chance-corrected ratio with the zero-denominator branch at lines 80–82.</td></tr>
+    <tr><td><code>normalized_mutual_info.ts:27 normalized_mutual_info</code></td><td>Entropies H_U/H_V, MI loop (lines 69–77), normalizer switch (81–94), zero-normalizer branch (98–100).</td></tr>
+    <tr><td><code>contingency.ts:40 build_contingency_table</code></td><td>Dense-index contingency table with row_sums/col_sums/n — the shared substrate for ARI and NMI.</td></tr>
+    <tr><td><code>contingency.ts:21 to_label_array</code></td><td>Normalizes tensor-or-array labels to an integer <code>number[]</code> (rounds tensor values).</td></tr>
+    <tr><td><code>validate.ts:14 validate_labels_length</code></td><td>Length guard run before any computation.</td></tr>
+    <tr><td><code>validate.ts:36 convert_validation_inputs</code></td><td>Coerces X to <code>Tensor2D</code> and labels to an integer array; returns <code>owns_tensor</code> for disposal.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+  <thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>X</code> (DataMatrix)</td><td>Data matrix [n_samples, n_features], a <code>number[][]</code> or <code>tf.Tensor2D</code>. Required by all three internal metrics; not used by ARI/NMI.</td></tr>
+    <tr><td><code>labels</code> (LabelVector)</td><td>Cluster assignment per sample (<code>number[]</code> or tensor). Tensor labels are <code>dataSync</code>'d and rounded to integers. Length must equal n_samples.</td></tr>
+    <tr><td><code>labels_true</code> / <code>labels_pred</code></td><td>The two labelings ARI and NMI compare. Both are LabelVectors of equal length; the metrics are symmetric and invariant to label naming/permutation.</td></tr>
+    <tr><td><code>average</code> (NMIAverage, default <code>'arithmetic'</code>)</td><td>NMI normalization choice: <code>'arithmetic'</code> (H_U+H_V)/2, <code>'geometric'</code> √(H_U·H_V), <code>'min'</code>, or <code>'max'</code>. Default matches sklearn.</td></tr>
+    <tr><td><code>sample_indices</code> (number[])</td><td><code>silhouette_score_subset</code> only: indices of the samples to score, computing distances on the fly so the full n×n matrix is never materialized — for large datasets.</td></tr>
+  </tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<p>Every degenerate branch is written to reproduce scikit-learn's <em>exact</em> return value rather than the raw mathematical result.</p>
+<table>
+  <thead><tr><th>Situation</th><th>Behavior</th></tr></thead>
+  <tbody>
+    <tr><td>k ≤ 1</td><td>Silhouette, Davies-Bouldin and Calinski-Harabasz all throw <code>requires at least 2 clusters</code>. Calinski-Harabasz additionally throws when k ≥ n.</td></tr>
+    <tr><td>Singleton cluster</td><td>Silhouette returns 0 for that point (no same-cluster neighbors); Davies-Bouldin assigns dispersion 0 to single-point clusters.</td></tr>
+    <tr><td>Identical points (silhouette)</td><td>When a==0 and b==0 the formula 0/0 is undefined; the code returns 0 to match the sklearn convention.</td></tr>
+    <tr><td>Coincident centroids (Davies-Bouldin)</td><td>d<sub>ij</sub>==0 with a positive dispersion sum forces that cluster's contribution to <code>Infinity</code>; with both dispersions 0 the pair is skipped (sklearn nanmax of 0/0=NaN).</td></tr>
+    <tr><td>Distance round-off</td><td>Silhouette clamps the squared-distance expression with <code>max(0, ·)</code> before <code>sqrt</code> so floating-point negatives never produce <code>NaN</code>.</td></tr>
+    <tr><td>ARI with ≤ 1 sample</td><td>C(n)==0, so it returns 1.0 (trivially identical partitions).</td></tr>
+    <tr><td>ARI zero denominator</td><td>When max_index==expected, return 1.0 if index==expected (perfect agreement), else 0.0.</td></tr>
+    <tr><td>NMI zero normalizer</td><td>When both entropies vanish (e.g. all points in one cluster), return 1.0 if MI==0 else 0.0.</td></tr>
+    <tr><td>Memory</td><td><code>davies_bouldin_efficient</code> and <code>calinski_harabasz_efficient</code> pull centroids/sums to JS and <code>tidy</code> per-cluster to avoid holding all tensors at once; <code>owns_tensor</code> governs whether the input tensor is disposed.</td></tr>
+  </tbody>
+</table>
+
+<footer>
+  <p><strong>Clustering Atlas</strong> · Validation Metrics. Built from <code>src/validation/{silhouette,davies_bouldin,calinski_harabasz,adjusted_rand_index,normalized_mutual_info,contingency,validate}.ts</code>.</p>
+  <p>← <a href="./model-selection.html">Choosing k (Model Selection)</a> &nbsp;·&nbsp; <a href="./distance.html">Pairwise Distance</a> &nbsp;·&nbsp; <a href="./random.html">Deterministic RNG</a> → &nbsp;|&nbsp; <a href="./index.html">Back to index</a></p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+const COLORS = ['#58a6ff','#7ee787','#ff7b9c','#f0b429','#bc8cff','#39d0d8'];
+
+/* ============================================================
+   1. SILHOUETTE DISSECTION
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('sil_canvas');
+  const ctx = cv.getContext('2d');
+  const W = cv.width, H = cv.height;
+  const read = document.getElementById('sil_read');
+  const bar = document.getElementById('sil_bar');
+  const meanval = document.getElementById('sil_meanval');
+
+  // three blobs (cluster centers in canvas coords)
+  const CENTERS = [[210,160],[600,150],[420,320]];
+  let pts = [];
+  function seed(){
+    pts = [];
+    // deterministic pseudo-random
+    let s = 12345;
+    const rnd = ()=>{ s=(s*1103515245+12345)&0x7fffffff; return (s/0x7fffffff); };
+    for(let c=0;c<3;c++){
+      for(let i=0;i<7;i++){
+        const ang = rnd()*Math.PI*2, r = rnd()*55;
+        pts.push({x:CENTERS[c][0]+Math.cos(ang)*r, y:CENTERS[c][1]+Math.sin(ang)*r, lab:c});
+      }
+    }
+  }
+  seed();
+  let selected = -1, dragging = false;
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  // compute a, b, s for point index i (using full pixel distances)
+  function silOf(i){
+    const p = pts[i];
+    let aSum=0, aCnt=0;
+    const others = new Map(); // lab -> {sum,cnt}
+    for(let j=0;j<pts.length;j++){
+      if(j===i) continue;
+      const d = dist(p, pts[j]);
+      if(pts[j].lab===p.lab){ aSum+=d; aCnt++; }
+      else { const o=others.get(pts[j].lab)||{sum:0,cnt:0}; o.sum+=d; o.cnt++; others.set(pts[j].lab,o); }
+    }
+    let a = aCnt>0 ? aSum/aCnt : 0;
+    let b = Infinity, bLab=-1;
+    for(const [lab,o] of others){ const m=o.sum/o.cnt; if(m<b){b=m;bLab=lab;} }
+    let s;
+    if(aCnt===0) s=0;
+    else if(a===0&&b===0) s=0;
+    else s=(b-a)/Math.max(a,b);
+    return {a,b,s,bLab,aCnt};
+  }
+
+  function meanSil(){
+    let sum=0;
+    for(let i=0;i<pts.length;i++) sum+=silOf(i).s;
+    return sum/pts.length;
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    // connection lines for selected
+    if(selected>=0){
+      const p = pts[selected];
+      const info = silOf(selected);
+      for(let j=0;j<pts.length;j++){
+        if(j===selected) continue;
+        const q = pts[j];
+        const same = q.lab===p.lab;
+        const isB = q.lab===info.bLab;
+        ctx.beginPath();
+        ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y);
+        if(same){ ctx.strokeStyle='rgba(126,231,135,.5)'; ctx.lineWidth=1.4; }
+        else if(isB){ ctx.strokeStyle='rgba(255,123,156,.7)'; ctx.lineWidth=2; }
+        else { ctx.strokeStyle='rgba(154,167,180,.18)'; ctx.lineWidth=1; }
+        ctx.stroke();
+      }
+    }
+    // points
+    for(let i=0;i<pts.length;i++){
+      const p=pts[i];
+      ctx.beginPath();
+      ctx.arc(p.x,p.y, i===selected?8:5, 0, Math.PI*2);
+      ctx.fillStyle = COLORS[p.lab];
+      ctx.fill();
+      if(i===selected){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); }
+    }
+    meanval.textContent = meanSil().toFixed(3);
+  }
+
+  function updateReadout(){
+    if(selected<0){ read.textContent='Click a point to begin.'; bar.style.width='0'; return; }
+    const info = silOf(selected);
+    if(info.aCnt===0){
+      read.innerHTML='Singleton cluster — no same-cluster neighbors → s = <b>0</b> (sklearn convention).';
+    } else {
+      read.innerHTML = 'a (mean dist within own cluster) = <b>'+info.a.toFixed(1)+'</b> &nbsp; '+
+        'b (mean dist to nearest cluster '+info.bLab+') = <b>'+info.b.toFixed(1)+'</b> &nbsp; → &nbsp; '+
+        's = (b − a)/max(a,b) = <b>'+info.s.toFixed(3)+'</b>';
+    }
+    // bar: map s in [-1,1] to fill from center
+    const s = Math.max(-1, Math.min(1, info.s));
+    if(s>=0){ bar.style.left='50%'; bar.style.width=(s*50)+'%'; bar.style.background=(s>0.5?'var(--c2)':'var(--accent)'); }
+    else { bar.style.left=(50+s*50)+'%'; bar.style.width=(-s*50)+'%'; bar.style.background='var(--c3)'; }
+  }
+
+  function pick(mx,my){
+    let best=-1, bd=14;
+    for(let i=0;i<pts.length;i++){ const d=Math.hypot(pts[i].x-mx,pts[i].y-my); if(d<bd){bd=d;best=i;} }
+    return best;
+  }
+  function toCanvas(e){
+    const r=cv.getBoundingClientRect();
+    return [(e.clientX-r.left)*(W/r.width),(e.clientY-r.top)*(H/r.height)];
+  }
+  cv.addEventListener('mousedown',e=>{
+    const [mx,my]=toCanvas(e); const hit=pick(mx,my);
+    if(hit>=0){ selected=hit; dragging=true; draw(); updateReadout(); }
+  });
+  cv.addEventListener('mousemove',e=>{
+    if(!dragging||selected<0) return;
+    const [mx,my]=toCanvas(e); pts[selected].x=mx; pts[selected].y=my;
+    draw(); updateReadout();
+  });
+  window.addEventListener('mouseup',()=>{dragging=false;});
+  document.getElementById('sil_reset').addEventListener('click',()=>{ seed(); selected=-1; draw(); updateReadout(); });
+  draw(); updateReadout();
+})();
+
+/* ============================================================
+   2. DAVIES-BOULDIN SIMILARITY RATIOS
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('db_canvas');
+  const ctx = cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const read=document.getElementById('db_read');
+  const dispSlider=document.getElementById('db_disp');
+  const segWrap=document.getElementById('db_sel');
+
+  const DEFAULT=[
+    {x:230,y:170,s:45},
+    {x:610,y:150,s:55},
+    {x:430,y:320,s:40}
+  ];
+  let clusters = DEFAULT.map(c=>({...c}));
+  let sel=0, dragging=-1;
+
+  // build selector segmented buttons
+  function buildSel(){
+    segWrap.innerHTML='';
+    clusters.forEach((c,i)=>{
+      const b=document.createElement('button');
+      b.textContent=i; b.className=(i===sel?'on':'');
+      b.style.color=(i===sel?'#06121f':COLORS[i]);
+      b.addEventListener('click',()=>{ sel=i; dispSlider.value=clusters[i].s; buildSel(); draw(); });
+      segWrap.appendChild(b);
+    });
+  }
+
+  function dij(i,j){ return Math.hypot(clusters[i].x-clusters[j].x, clusters[i].y-clusters[j].y); }
+
+  function compute(){
+    const k=clusters.length;
+    const maxes=[];
+    let worstJ=new Array(k).fill(-1);
+    for(let i=0;i<k;i++){
+      let mx=0, wj=-1;
+      for(let j=0;j<k;j++){ if(i===j) continue;
+        const d=dij(i,j);
+        let R;
+        if(d===0){ R = (clusters[i].s+clusters[j].s)>0 ? Infinity : 0; }
+        else R=(clusters[i].s+clusters[j].s)/d;
+        if(R>mx){ mx=R; wj=j; }
+      }
+      maxes.push(mx); worstJ[i]=wj;
+    }
+    const DB=maxes.reduce((a,b)=>a+b,0)/k;
+    return {maxes,worstJ,DB};
+  }
+
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    const {maxes,worstJ,DB}=compute();
+    // dispersion circles
+    for(let i=0;i<clusters.length;i++){
+      const c=clusters[i];
+      ctx.beginPath(); ctx.arc(c.x,c.y,c.s,0,Math.PI*2);
+      ctx.setLineDash([5,4]); ctx.strokeStyle=COLORS[i]+'88'; ctx.lineWidth=1.4; ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(c.x,c.y,2,0,Math.PI*2);
+      ctx.fillStyle=COLORS[i]+'33'; ctx.fill();
+    }
+    // ratio lines from selected
+    const i=sel;
+    for(let j=0;j<clusters.length;j++){
+      if(j===i) continue;
+      const a=clusters[i],b=clusters[j];
+      const d=dij(i,j);
+      const R = d===0 ? Infinity : (a.s+b.s)/d;
+      const isWorst = worstJ[i]===j;
+      ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y);
+      ctx.strokeStyle = isWorst ? 'var(--warn)' : 'rgba(154,167,180,.4)';
+      ctx.lineWidth = isWorst ? 3 : 1.3;
+      ctx.stroke();
+      // label R at midpoint
+      const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+      ctx.fillStyle = isWorst ? '#f0b429' : '#9aa7b4';
+      ctx.font = (isWorst?'bold ':'')+'13px '+'ui-monospace,monospace';
+      ctx.fillText('R='+(isFinite(R)?R.toFixed(2):'∞'), mx-18, my-6);
+    }
+    // centroids
+    for(let i2=0;i2<clusters.length;i2++){
+      const c=clusters[i2];
+      ctx.beginPath(); ctx.arc(c.x,c.y, i2===sel?10:7,0,Math.PI*2);
+      ctx.fillStyle=COLORS[i2]; ctx.fill();
+      if(i2===sel){ ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke(); }
+      ctx.fillStyle='#06121f'; ctx.font='bold 11px ui-monospace,monospace';
+      ctx.fillText(i2, c.x-3, c.y+4);
+    }
+    let parts = maxes.map((m,idx)=>'max R['+idx+']='+(isFinite(m)?m.toFixed(2):'∞')).join('  ·  ');
+    read.innerHTML = parts + ' &nbsp; → &nbsp; DB = mean = <b>'+(isFinite(DB)?DB.toFixed(3):'∞')+'</b> <span class="muted">(lower is better)</span>';
+  }
+
+  function toCanvas(e){ const r=cv.getBoundingClientRect(); return [(e.clientX-r.left)*(W/r.width),(e.clientY-r.top)*(H/r.height)]; }
+  cv.addEventListener('mousedown',e=>{
+    const [mx,my]=toCanvas(e);
+    for(let i=0;i<clusters.length;i++){ if(Math.hypot(clusters[i].x-mx,clusters[i].y-my)<16){ dragging=i; sel=i; dispSlider.value=clusters[i].s; buildSel(); draw(); return; } }
+  });
+  cv.addEventListener('mousemove',e=>{
+    if(dragging<0) return;
+    const [mx,my]=toCanvas(e);
+    clusters[dragging].x=Math.max(20,Math.min(W-20,mx));
+    clusters[dragging].y=Math.max(20,Math.min(H-20,my));
+    draw();
+  });
+  window.addEventListener('mouseup',()=>{dragging=-1;});
+  dispSlider.addEventListener('input',()=>{ clusters[sel].s=+dispSlider.value; draw(); });
+  document.getElementById('db_reset').addEventListener('click',()=>{ clusters=DEFAULT.map(c=>({...c})); sel=0; dispSlider.value=clusters[0].s; buildSel(); draw(); });
+  buildSel(); draw();
+})();
+
+/* ============================================================
+   3. CALINSKI-HARABASZ VARIANCE TUG-OF-WAR
+   ============================================================ */
+(function(){
+  const cv=document.getElementById('ch_canvas');
+  const ctx=cv.getContext('2d');
+  const W=cv.width,H=cv.height;
+  const read=document.getElementById('ch_read');
+  const sepS=document.getElementById('ch_sep');
+  const tightS=document.getElementById('ch_tight');
+  const animBtn=document.getElementById('ch_anim');
+
+  // base cluster directions from global centroid (center of canvas)
+  const GC=[W/2,H/2];
+  const DIRS=[[-1,-0.55],[1,-0.55],[0,1]]; // three directions
+  const SIZES=[8,8,8]; // points per cluster
+
+  // generate deterministic offsets per point within unit disk
+  const OFFS=[];
+  { let s=999; const rnd=()=>{ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; };
+    for(let c=0;c<3;c++){ const arr=[]; for(let i=0;i<SIZES[c];i++){ const a=rnd()*Math.PI*2,r=rnd(); arr.push([Math.cos(a)*r,Math.sin(a)*r]); } OFFS.push(arr); } }
+
+  function build(sep,tight){
+    // sep ~ distance of cluster centroid from GC; tight ~ inverse spread
+    const spread = (110-tight); // bigger tight slider => smaller spread
+    const reach = sep*2.4;
+    const clusters=[];
+    for(let c=0;c<3;c++){
+      const cx=GC[0]+DIRS[c][0]*reach, cy=GC[1]+DIRS[c][1]*reach;
+      const pts=OFFS[c].map(o=>[cx+o[0]*spread, cy+o[1]*spread]);
+      clusters.push({cx,cy,pts});
+    }
+    return clusters;
+  }
+
+  function metrics(clusters){
+    const all=[]; clusters.forEach(c=>c.pts.forEach(p=>all.push(p)));
+    const n=all.length;
+    const gc=[all.reduce((s,p)=>s+p[0],0)/n, all.reduce((s,p)=>s+p[1],0)/n];
+    let WSS=0,BSS=0;
+    clusters.forEach(c=>{
+      const ci=[c.pts.reduce((s,p)=>s+p[0],0)/c.pts.length, c.pts.reduce((s,p)=>s+p[1],0)/c.pts.length];
+      c.ci=ci;
+      c.pts.forEach(p=>{ WSS+=(p[0]-ci[0])**2+(p[1]-ci[1])**2; });
+      BSS+=c.pts.length*((ci[0]-gc[0])**2+(ci[1]-gc[1])**2);
+    });
+    const k=clusters.length;
+    const CH = (BSS/(k-1))/(WSS/(n-k));
+    return {gc,WSS,BSS,CH,n,k};
+  }
+
+  function draw(){
+    const sep=+sepS.value, tight=+tightS.value;
+    const clusters=build(sep,tight);
+    const m=metrics(clusters);
+    ctx.clearRect(0,0,W,H);
+    // BSS arrows from gc to each centroid
+    clusters.forEach((c,i)=>{
+      // WSS spokes
+      c.pts.forEach(p=>{
+        ctx.beginPath(); ctx.moveTo(c.ci[0],c.ci[1]); ctx.lineTo(p[0],p[1]);
+        ctx.strokeStyle=COLORS[i]+'44'; ctx.lineWidth=1; ctx.stroke();
+        ctx.beginPath(); ctx.arc(p[0],p[1],3,0,Math.PI*2); ctx.fillStyle=COLORS[i]; ctx.fill();
+      });
+      // BSS arrow
+      ctx.beginPath(); ctx.moveTo(m.gc[0],m.gc[1]); ctx.lineTo(c.ci[0],c.ci[1]);
+      ctx.strokeStyle=COLORS[i]; ctx.lineWidth=2.5; ctx.stroke();
+      // arrowhead
+      const ang=Math.atan2(c.ci[1]-m.gc[1],c.ci[0]-m.gc[0]);
+      ctx.beginPath();
+      ctx.moveTo(c.ci[0],c.ci[1]);
+      ctx.lineTo(c.ci[0]-12*Math.cos(ang-0.4),c.ci[1]-12*Math.sin(ang-0.4));
+      ctx.lineTo(c.ci[0]-12*Math.cos(ang+0.4),c.ci[1]-12*Math.sin(ang+0.4));
+      ctx.closePath(); ctx.fillStyle=COLORS[i]; ctx.fill();
+    });
+    // global centroid
+    ctx.beginPath(); ctx.arc(m.gc[0],m.gc[1],7,0,Math.PI*2); ctx.fillStyle='#fff'; ctx.fill();
+    ctx.fillStyle='#9aa7b4'; ctx.font='12px ui-monospace,monospace'; ctx.fillText('c (global)', m.gc[0]+10, m.gc[1]+4);
+    read.innerHTML='BSS = <b style="color:var(--c2)">'+m.BSS.toFixed(0)+'</b> &nbsp; WSS = <b style="color:var(--c3)">'+m.WSS.toFixed(0)+'</b> &nbsp; '+
+      '(k−1)='+(m.k-1)+', (n−k)='+(m.n-m.k)+' &nbsp; → &nbsp; CH = <b>'+m.CH.toFixed(1)+'</b> <span class="muted">(higher is better)</span>';
+  }
+  sepS.addEventListener('input',draw);
+  tightS.addEventListener('input',draw);
+
+  let raf=null, t=0;
+  animBtn.addEventListener('click',()=>{
+    if(raf){ cancelAnimationFrame(raf); raf=null; animBtn.textContent='Animate sweep'; return; }
+    animBtn.textContent='Stop';
+    const loop=()=>{
+      t+=0.02;
+      sepS.value = 60 + Math.sin(t)*35;
+      tightS.value = 55 + Math.cos(t*0.8)*40;
+      draw();
+      raf=requestAnimationFrame(loop);
+    };
+    raf=requestAnimationFrame(loop);
+  });
+  draw();
+})();
+
+/* ============================================================
+   4. CONTINGENCY TABLE -> ARI & NMI
+   ============================================================ */
+(function(){
+  const tableDiv=document.getElementById('ext_table');
+  const ariDiv=document.getElementById('ext_ari');
+  const nmiDiv=document.getElementById('ext_nmi');
+  const avgWrap=document.getElementById('ext_avg');
+
+  const N_PRED=3, N_TRUE=3;
+  // 12 points: fixed true class, editable pred. Start near-perfect.
+  const INIT_TRUE=[0,0,0,0, 1,1,1,1, 2,2,2,2];
+  const INIT_PRED=[0,0,0,1, 1,1,1,0, 2,2,2,2];
+  let trueArr=[...INIT_TRUE], predArr=[...INIT_PRED];
+  let avgMode='arithmetic';
+
+  function contingency(){
+    const table=Array.from({length:N_TRUE},()=>new Array(N_PRED).fill(0));
+    for(let i=0;i<trueArr.length;i++) table[trueArr[i]][predArr[i]]++;
+    const row=new Array(N_TRUE).fill(0), col=new Array(N_PRED).fill(0);
+    for(let i=0;i<N_TRUE;i++) for(let j=0;j<N_PRED;j++){ row[i]+=table[i][j]; col[j]+=table[i][j]; }
+    return {table,row,col,n:trueArr.length};
+  }
+  const comb2=x=>x*(x-1)/2;
+
+  function ari(c){
+    const nc2=comb2(c.n);
+    if(nc2===0) return {ari:1,index:0,exp:0,max:0};
+    let index=0; for(let i=0;i<N_TRUE;i++) for(let j=0;j<N_PRED;j++) index+=comb2(c.table[i][j]);
+    let sa=0; c.row.forEach(a=>sa+=comb2(a));
+    let sb=0; c.col.forEach(b=>sb+=comb2(b));
+    const exp=(sa*sb)/nc2, max=(sa+sb)/2, den=max-exp;
+    let val; if(den===0) val=(index===exp)?1:0; else val=(index-exp)/den;
+    return {ari:val,index,exp,max,sa,sb};
+  }
+  function nmi(c){
+    let hU=0; c.row.forEach(a=>{ if(a>0){ const p=a/c.n; hU-=p*Math.log(p); } });
+    let hV=0; c.col.forEach(b=>{ if(b>0){ const p=b/c.n; hV-=p*Math.log(p); } });
+    let mi=0;
+    for(let i=0;i<N_TRUE;i++) for(let j=0;j<N_PRED;j++){ const nij=c.table[i][j]; if(nij>0) mi+=(nij/c.n)*Math.log((c.n*nij)/(c.row[i]*c.col[j])); }
+    let norm;
+    if(avgMode==='arithmetic') norm=(hU+hV)/2;
+    else if(avgMode==='geometric') norm=Math.sqrt(hU*hV);
+    else if(avgMode==='min') norm=Math.min(hU,hV);
+    else norm=Math.max(hU,hV);
+    let val; if(norm===0) val=(mi===0)?1:0; else val=mi/norm;
+    return {nmi:val,hU,hV,mi,norm};
+  }
+
+  function render(){
+    const c=contingency();
+    // build table
+    let html='<table class="ctable"><tr><td class="corner"></td>';
+    for(let j=0;j<N_PRED;j++) html+='<th style="color:'+COLORS[j]+'">pred '+j+'</th>';
+    html+='<th class="marg">a<sub>i</sub></th></tr>';
+    for(let i=0;i<N_TRUE;i++){
+      html+='<tr><th style="color:'+COLORS[i]+'">true '+i+'</th>';
+      for(let j=0;j<N_PRED;j++){
+        html+='<td class="cell" data-i="'+i+'" data-j="'+j+'" title="click to move a point to next pred cluster">'+c.table[i][j]+'</td>';
+      }
+      html+='<td class="marg">'+c.row[i]+'</td></tr>';
+    }
+    html+='<tr><th class="marg">b<sub>j</sub></th>';
+    for(let j=0;j<N_PRED;j++) html+='<td class="marg">'+c.col[j]+'</td>';
+    html+='<td class="marg">n='+c.n+'</td></tr></table>';
+    tableDiv.innerHTML=html;
+    tableDiv.querySelectorAll('.cell').forEach(td=>{
+      td.addEventListener('click',()=>{
+        const i=+td.dataset.i, j=+td.dataset.j;
+        // find a point with true==i AND pred==j, move it to next pred cluster
+        for(let p=0;p<trueArr.length;p++){
+          if(trueArr[p]===i && predArr[p]===j){ predArr[p]=(predArr[p]+1)%N_PRED; break; }
+        }
+        render();
+      });
+    });
+    // ARI
+    const A=ari(c);
+    ariDiv.innerHTML='<b style="color:var(--c5)">Adjusted Rand Index</b><br>'+
+      'index Σ C(n<sub>ij</sub>) = <b>'+A.index+'</b><br>'+
+      'expected E = sum_a·sum_b/C(n) = <b>'+A.exp.toFixed(2)+'</b><br>'+
+      'max_index = (sum_a+sum_b)/2 = <b>'+(A.max!==undefined?A.max.toFixed(2):'—')+'</b><br>'+
+      '→ ARI = (index−E)/(max−E) = <b style="font-size:1.05rem">'+A.ari.toFixed(3)+'</b>';
+    // NMI
+    const M=nmi(c);
+    nmiDiv.innerHTML='<b style="color:var(--c5)">Normalized Mutual Information</b><br>'+
+      'H(U) = <b>'+M.hU.toFixed(3)+'</b> &nbsp; H(V) = <b>'+M.hV.toFixed(3)+'</b><br>'+
+      'MI = <b>'+M.mi.toFixed(3)+'</b><br>'+
+      'normalizer ('+avgMode+') = <b>'+M.norm.toFixed(3)+'</b><br>'+
+      '→ NMI = MI/normalizer = <b style="font-size:1.05rem">'+M.nmi.toFixed(3)+'</b>';
+  }
+
+  avgWrap.querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{
+      avgWrap.querySelectorAll('button').forEach(x=>x.classList.remove('on'));
+      b.classList.add('on'); avgMode=b.dataset.m; render();
+    });
+  });
+  document.getElementById('ext_perm').addEventListener('click',()=>{
+    // cyclic rename of pred labels 0->1->2->0  (must not change ARI/NMI)
+    predArr=predArr.map(p=>(p+1)%N_PRED); render();
+  });
+  document.getElementById('ext_reset').addEventListener('click',()=>{
+    trueArr=[...INIT_TRUE]; predArr=[...INIT_PRED]; render();
+  });
+  render();
+})();
+</script>
+</body>
+</html>

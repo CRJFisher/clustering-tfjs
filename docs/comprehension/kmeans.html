@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>K-Means Clustering · Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+
+/* topic-specific additions */
+.statbar{display:flex;flex-wrap:wrap;gap:.6rem;margin:.7rem 0}
+.stat{flex:1;min-width:120px;background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:.55rem .8rem}
+.stat .v{font-family:var(--mono);font-size:1.25rem;color:var(--accent2)}
+.stat .l{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;font-size:.82rem;color:var(--muted);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.swatch{width:.8rem;height:.8rem;border-radius:50%;display:inline-block}
+.tourney{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.7rem;margin-top:.8rem}
+.tcell{background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:.4rem;position:relative}
+.tcell.win{border-color:var(--accent2);box-shadow:0 0 0 1px var(--accent2)}
+.tcell canvas{border-radius:6px}
+.tcell .cap{font-family:var(--mono);font-size:.72rem;color:var(--muted);margin-top:.25rem;display:flex;justify-content:space-between}
+.tcell.win .cap{color:var(--accent2)}
+.tag{font-family:var(--mono);font-size:.7rem;color:var(--bg);background:var(--accent2);border-radius:4px;padding:0 .3rem;position:absolute;top:.4rem;right:.4rem}
+select{font-family:var(--mono);font-size:.85rem;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.35rem .5rem}
+.rdo{font-size:.85rem;color:var(--muted);display:inline-flex;align-items:center;gap:.3rem}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a class="active" href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph & Laplacian Construction</a><a href="./linkage.html">Linkage & NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>K-Means Clustering</h1>
+<p class="lede">Partition <em>n</em> points into <em>K</em> clusters by alternately assigning each point to its nearest centroid and recomputing centroids as cluster means — restarted from several k-means++ seedings, keeping the run with the lowest inertia.</p>
+<p><span class="pill">Lloyd's iteration</span> <span class="pill">k-means++ (greedy)</span> <span class="pill">n_init restarts</span> <span class="pill">sklearn parity</span></p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Imagine dropping <strong>K</strong> flags onto a scatter of points. Every point joins the nearest flag, forming K groups. Then each flag walks to the <em>center of mass</em> of its group. Points may now be closer to a different flag, so they re-join, and the flags move again. Repeat. This is <strong>Lloyd's iteration</strong>, and it monotonically decreases a single cost — the <strong>inertia</strong>, the total squared distance from points to their assigned centroid. It always converges, but only to a <em>local</em> minimum, so where you start matters a lot.</p>
+<p>The starting positions come from <strong>k-means++</strong>, a smarter seeding than picking K random points. It picks the first center uniformly at random, then picks each subsequent center with probability proportional to its <em>squared distance</em> from the nearest center already chosen. This spreads the seeds apart, dramatically reducing the chance of two landing in the same blob. To be more robust still, this implementation uses the <strong>greedy</strong> variant: at each step it samples several candidate centers and keeps the one that most reduces the overall potential.</p>
+<p>Because Lloyd only finds a local optimum, the whole procedure is run <code>n_init</code> times (default 10) from independent k-means++ seedings; the result with the <strong>lowest final inertia</strong> wins. This is the standard scikit-learn recipe and the main lever for stable, reproducible results.</p>
+
+<div class="note"><strong>Two precision details in this code.</strong> k-means++ probabilities and centroid means are computed in full-precision JavaScript arrays (the original <code>number[][]</code> data), while the heavy assignment-distance step runs on <code>float32</code> tensors via a matrix-multiply expansion of squared distance. This split keeps seeding faithful to scikit-learn while still using fast tensor math in the inner loop.</div>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+<li><strong>Validate &amp; ingest.</strong> <code>validate_params</code> checks <code>n_clusters&nbsp;&ge;&nbsp;1</code>, <code>max_iter&nbsp;&ge;&nbsp;1</code>, <code>tol&nbsp;&ge;&nbsp;0</code>, <code>n_init&nbsp;&ge;&nbsp;1</code>. <code>fit</code> rejects empty data and <code>K&nbsp;&gt;&nbsp;n_samples</code> <em>before</em> any tensor is created. Input is cloned to a float32 <code>x_tensor</code>, and a full-precision <code>points_arr</code> is kept for seeding and means.</li>
+<li><strong>Restart loop.</strong> <code>run_once</code> runs <code>n_init</code> times with <code>seed_offset = run index</code>. If <code>random_state</code> is set, the per-run seed is <code>base_seed + seed_offset</code> — deterministic but distinct seedings. The lowest-inertia run is kept; the rest are disposed.</li>
+<li><strong>k-means++ first center.</strong> A NumPy-aligned random stream is created; the first centroid index is <code>rand_int(n_samples)</code>, added to <code>centroid_idxs</code> and a membership <code>Set</code>.</li>
+<li><strong>k-means++ greedy seeding.</strong> While fewer than K centers: compute each point's squared distance to its nearest chosen center (0 if it is one); sum to <code>current_pot</code>. Draw <code>local_trials = 2 + ⌊ln K⌋</code> candidate indices by inverse-CDF sampling (binary search over the cumulative distance array with <code>rand()·current_pot</code>). For each candidate compute the resulting total potential and keep the candidate giving the <em>lowest</em> potential.</li>
+<li><strong>Degenerate-potential guard.</strong> If <code>current_pot === 0</code> (all remaining points coincide with existing centers), deterministically append the first unused index instead of sampling — preventing division-by-zero / NaN.</li>
+<li><strong>Assignment (E-step).</strong> Distances are computed as <code>‖x‖² + ‖c‖² − 2·x·cᵀ</code> on float32 tensors, clamped to <code>&ge; 0</code>. <code>argMin(1)</code> gives the labels; <code>min(1)</code> summed gives this iteration's inertia.</li>
+<li><strong>Update (M-step).</strong> Accumulate per-cluster feature sums and counts over <code>points_arr</code> (double precision), then divide by counts for the new centroids.</li>
+<li><strong>Empty-cluster handling.</strong> A cluster with count 0 first keeps its old centroid, then is relocated: points are sorted by descending distance-to-nearest-center and the farthest points reseed the empty clusters, one farthest point per empty cluster.</li>
+<li><strong>Convergence check.</strong> Compute <code>centroid_shift = max|old−new|</code> and relative inertia change <code>|prev−curr|/prev</code>. Break when <em>either</em> falls within <code>tol</code>; otherwise iterate up to <code>max_iter</code>.</li>
+<li><strong>Persist best.</strong> After all restarts, store <code>centroids_</code>, <code>labels_</code> (as <code>number[]</code>), <code>inertia_</code>; dispose <code>x_tensor</code>. <code>fit_predict</code> awaits <code>fit</code> and returns <code>labels_</code>.</li>
+</ol>
+
+<!-- ======================= DEMO 1: LLOYD ======================= -->
+<div class="demo">
+  <h3 style="margin-top:.2rem">Try it · Lloyd iteration play-through</h3>
+  <p class="muted" style="margin-top:0">Three Gaussian blobs. Each step recolors points by nearest centroid (the shaded Voronoi-ish cells), then slides every centroid (◆) to the mean of its members. <strong>Drag a centroid</strong> to a bad starting spot and watch it fall into a different local minimum. Inertia ticks down monotonically.</p>
+  <canvas id="lloyd_cv" width="860" height="460"></canvas>
+  <div class="statbar">
+    <div class="stat"><div class="v" id="ll_iter">0</div><div class="l">iteration</div></div>
+    <div class="stat"><div class="v" id="ll_inertia">—</div><div class="l">inertia J</div></div>
+    <div class="stat"><div class="v" id="ll_shift">—</div><div class="l">centroid shift</div></div>
+    <div class="stat"><div class="v" id="ll_status">idle</div><div class="l">status</div></div>
+  </div>
+  <div class="controls">
+    <button id="ll_play">▶ Play</button>
+    <button id="ll_step" class="ghost">Step</button>
+    <button id="ll_reseed" class="ghost">k-means++ reseed</button>
+    <button id="ll_reset" class="ghost">Reset blobs</button>
+    <label style="display:flex;align-items:center;gap:.4rem">K
+      <input id="ll_k" type="range" min="2" max="5" step="1" value="3">
+      <span class="pill" id="ll_klabel">3</span>
+    </label>
+  </div>
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--c1)"></span>cluster 1</span>
+    <span><span class="swatch" style="background:var(--c2)"></span>cluster 2</span>
+    <span><span class="swatch" style="background:var(--c3)"></span>cluster 3</span>
+    <span>◆ centroid (drag me)</span>
+  </div>
+</div>
+
+<h2 id="math">The math</h2>
+<p>Everything K-Means does is in service of minimising one objective.</p>
+
+<div class="eq"><strong>Inertia (objective)</strong><br>J = Σ<sub>i</sub> ‖ x<sub>i</sub> − c<sub>a(i)</sub> ‖²,&nbsp;&nbsp; a(i) = argmin<sub>k</sub> ‖ x<sub>i</sub> − c<sub>k</sub> ‖²</div>
+<p>The total squared Euclidean distance from each point <em>x<sub>i</sub></em> to its assigned centroid <em>c<sub>a(i)</sub></em>. Here <em>a(i)</em> is the cluster index assigned to point <em>i</em>. Lloyd's iteration drives J downward; across restarts the run with the smallest J is kept.</p>
+
+<div class="eq"><strong>Assignment — E-step</strong><br>a(i) ← argmin<sub>k</sub> ‖ x<sub>i</sub> − c<sub>k</sub> ‖²</div>
+<p>Every point joins its nearest centroid. In code this is an <code>argMin</code> over the point-to-centroid distance matrix.</p>
+
+<div class="eq"><strong>Distance via matmul expansion</strong><br>‖ x<sub>i</sub> − c<sub>k</sub> ‖² = ‖ x<sub>i</sub> ‖² + ‖ c<sub>k</sub> ‖² − 2 · x<sub>i</sub> · c<sub>k</sub>ᵀ,&nbsp;&nbsp; then max( · , 0)</div>
+<p>Expanding the squared norm avoids materialising a giant pairwise-difference tensor: the only heavy operation is the matrix product <em>X·Cᵀ</em>. The <code>max(·, 0)</code> clamp removes tiny negative values produced by float32 round-off, which would otherwise corrupt <code>argMin</code>.</p>
+
+<div class="eq"><strong>Update — M-step</strong><br>c<sub>k</sub> ← ( 1 / |S<sub>k</sub>| ) · Σ<sub>i ∈ S<sub>k</sub></sub> x<sub>i</sub></div>
+<p>Each centroid becomes the mean of its assigned points, where <em>S<sub>k</sub></em> is the set of points assigned to cluster <em>k</em> and <em>|S<sub>k</sub>|</em> is its count. This is the step that "walks the flag to the center of mass."</p>
+
+<div class="eq"><strong>k-means++ sampling</strong><br>P( choose x<sub>i</sub> ) ∝ D(x<sub>i</sub>)²,&nbsp;&nbsp; D(x<sub>i</sub>) = min<sub>c chosen</sub> ‖ x<sub>i</sub> − c ‖</div>
+<p>The probability of selecting a point as the next seed grows with the square of its distance to the nearest already-chosen center — so the next seed tends to land far from existing seeds, spreading initial centers across the data.</p>
+
+<div class="eq"><strong>Greedy candidate count</strong><br>local_trials = 2 + ⌊ ln K ⌋</div>
+<p>Rather than committing to the first sampled candidate, the greedy variant draws this many candidates per step and keeps the single one that minimises the total potential J. This matches scikit-learn's <code>n_local_trials</code>.</p>
+
+<div class="eq"><strong>Convergence test</strong><br>stop if&nbsp; | J<sub>prev</sub> − J | / max( J<sub>prev</sub>, 1 ) ≤ tol&nbsp;&nbsp;<strong>OR</strong>&nbsp;&nbsp; max<sub>k</sub> ‖ c<sub>k</sub> − c<sub>k</sub>′ ‖<sub>∞</sub> ≤ tol</div>
+<p>Either a negligible <em>relative</em> inertia change or a negligible <em>absolute</em> centroid movement halts iteration. A run can converge on centroid stability even while inertia is still nudging.</p>
+
+<!-- ======================= DEMO 2: KMEANS++ ======================= -->
+<div class="demo">
+  <h3 style="margin-top:.2rem">Try it · k-means++ seeding probabilities</h3>
+  <p class="muted" style="margin-top:0">Each point is heat-colored and sized by D(x)² — its squared distance to the nearest <em>chosen</em> center (★). Click <em>Pick next center</em> to advance the greedy step: the candidate samples are ringed in white, and the winner (lowest resulting potential) becomes a star. Watch the heat collapse near every new center. Toggle to plain uniform-random seeding to feel the difference in spread.</p>
+  <canvas id="pp_cv" width="860" height="460"></canvas>
+  <div class="statbar">
+    <div class="stat"><div class="v" id="pp_chosen">0</div><div class="l">centers chosen / K</div></div>
+    <div class="stat"><div class="v" id="pp_pot">—</div><div class="l">current potential</div></div>
+    <div class="stat"><div class="v" id="pp_trials">—</div><div class="l">local_trials</div></div>
+  </div>
+  <div class="controls">
+    <button id="pp_next">Pick next center</button>
+    <button id="pp_reset" class="ghost">Restart seeding</button>
+    <label class="rdo"><input type="radio" name="pp_mode" value="pp" checked> k-means++</label>
+    <label class="rdo"><input type="radio" name="pp_mode" value="uni"> uniform random</label>
+    <label style="display:flex;align-items:center;gap:.4rem">K
+      <input id="pp_k" type="range" min="2" max="6" step="1" value="4">
+      <span class="pill" id="pp_klabel">4</span>
+    </label>
+  </div>
+  <div class="legend">
+    <span><span class="swatch" style="background:#173a5e"></span>low D²</span>
+    <span><span class="swatch" style="background:var(--warn)"></span>high D² (likely next seed)</span>
+    <span>★ chosen center</span>
+    <span>○ candidate this step</span>
+  </div>
+</div>
+
+<!-- ======================= DEMO 3: TOURNAMENT ======================= -->
+<div class="demo">
+  <h3 style="margin-top:.2rem">Try it · n_init restart tournament</h3>
+  <p class="muted" style="margin-top:0">A deliberately ambiguous dataset run <code>n_init</code> times. Each panel is one independent k-means++ seeding run to convergence, captioned with its final inertia. The lowest-inertia panel is highlighted as the <strong>winner</strong> the model keeps. Re-roll to see how often restarts disagree — and why a single init is risky.</p>
+  <div class="controls" style="margin-top:0">
+    <button id="tn_run">Run tournament</button>
+    <label style="display:flex;align-items:center;gap:.4rem">n_init
+      <input id="tn_ninit" type="range" min="2" max="12" step="1" value="8">
+      <span class="pill" id="tn_label">8</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:.4rem">K
+      <input id="tn_k" type="range" min="2" max="4" step="1" value="3">
+      <span class="pill" id="tn_klabel">3</span>
+    </label>
+    <label class="rdo">random_state <input id="tn_seed" type="number" value="42" style="width:5rem;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.3rem"></label>
+  </div>
+  <div class="statbar" style="margin-top:.8rem">
+    <div class="stat"><div class="v" id="tn_best">—</div><div class="l">best inertia (kept)</div></div>
+    <div class="stat"><div class="v" id="tn_worst">—</div><div class="l">worst inertia</div></div>
+    <div class="stat"><div class="v" id="tn_spread">—</div><div class="l">worst / best ratio</div></div>
+  </div>
+  <div class="tourney" id="tn_grid"></div>
+  <p class="muted" style="font-size:.85rem;margin-bottom:0">With a fixed <code>random_state</code> the per-run seeds are <code>seed + 0, seed + 1, …</code> so the whole tournament is reproducible — exactly the determinism the real implementation provides.</p>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<p>Every reference below points into <code>src/clustering/kmeans.ts</code> unless noted. The actual k-means++ seeding lives inside <code>run_once</code> — the file <code>init.ts</code> is the library entry point and is unrelated to seeding.</p>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>kmeans.ts:16</code></td><td><code>KMeans</code> class implementing <code>BaseClustering&lt;KMeansParams&gt;</code>; holds <code>labels_</code>, <code>centroids_</code>, <code>inertia_</code>.</td></tr>
+<tr><td><code>kmeans.ts:29-35</code></td><td>Defaults: <code>DEFAULT_MAX_ITER=300</code>, <code>DEFAULT_TOL=1e-4</code>, <code>DEFAULT_N_INIT=10</code>.</td></tr>
+<tr><td><code>kmeans.ts:54-71</code></td><td><code>validate_params</code>: integer / positivity checks for <code>n_clusters</code>, <code>max_iter</code>, <code>tol</code>, <code>n_init</code>.</td></tr>
+<tr><td><code>kmeans.ts:103-135</code></td><td><code>fit</code>: input validation, float32 tensor + double-precision <code>points_arr</code> ingestion.</td></tr>
+<tr><td><code>kmeans.ts:147-356</code></td><td><code>run_once</code>: one k-means++ seeding + Lloyd loop, returns <code>{ inertia, labels, centroids }</code>.</td></tr>
+<tr><td><code>kmeans.ts:160-248</code></td><td>k-means++ greedy seeding — the actual init code (binary-search inverse-CDF sampling + greedy candidate selection).</td></tr>
+<tr><td><code>kmeans.ts:259-279</code></td><td>Assignment + inertia: matmul distance, <code>argMin</code> labels, summed <code>min</code> distances.</td></tr>
+<tr><td><code>kmeans.ts:281-311</code></td><td>M-step: per-cluster sums / counts and mean centroids.</td></tr>
+<tr><td><code>kmeans.ts:295-331</code></td><td>Empty-cluster relocation to the farthest points.</td></tr>
+<tr><td><code>kmeans.ts:339-353</code></td><td>Convergence: <code>centroid_shift</code> (∞-norm) and relative inertia change vs <code>tol</code>.</td></tr>
+<tr><td><code>kmeans.ts:358-377</code></td><td><code>n_init</code> restart loop, best-inertia selection, persist results.</td></tr>
+<tr><td><code>kmeans.ts:386-392</code></td><td><code>fit_predict</code> wrapper — awaits <code>fit</code>, returns <code>labels_</code>.</td></tr>
+<tr><td><code>types.ts:57-74</code></td><td><code>KMeansParams</code> interface (<code>n_clusters</code>, <code>max_iter</code>, <code>tol</code>, <code>n_init</code>).</td></tr>
+<tr><td><code>types.ts:29-45</code></td><td><code>CoreClusteringParams.random_state</code> and <code>BaseClusteringParams.n_clusters</code>.</td></tr>
+<tr><td><code>random/index.ts</code></td><td><code>make_random_stream</code> — NumPy-aligned RNG providing <code>rand()</code> and <code>rand_int()</code> (imported at <code>kmeans.ts:8</code>).</td></tr>
+</tbody>
+</table>
+
+<h3>The inner loop, verbatim</h3>
+<pre>for (let iter = 0; iter &lt; max_iter; iter++) {
+  const distances = tf.tidy(() =&gt; {
+    const x_norm = x_tensor.square().sum(1).reshape([n_samples, 1]);
+    const c_norm = centroids.square().sum(1).reshape([1, K]);
+    const cross  = tf.mat_mul(x_tensor, centroids.transpose());
+    const dist_sq = x_norm.add(c_norm).sub(cross.mul(2));
+    return tf.maximum(dist_sq, tf.scalar(0, 'float32'));   // clamp round-off
+  });
+  labels  = await distances.argMin(1).data();              // E-step
+  inertia = sum( await distances.min(1).data() );          // objective J
+  // ... accumulate sums/counts over points_arr (double precision) → M-step
+  // ... relocate empty clusters to farthest points
+  const relative_diff = Math.abs(prev_inertia - inertia) / (prev_inertia || 1);
+  if (relative_diff &lt;= tol || centroid_shift &lt;= tol) break; // convergence
+}</pre>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Default</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>n_clusters</code></td><td><span class="pill">required</span></td><td>Number of clusters <em>K</em>. Integer ≥ 1; cannot exceed <code>n_samples</code>. From <code>BaseClusteringParams</code>.</td></tr>
+<tr><td><code>max_iter</code></td><td><code>300</code></td><td>Maximum Lloyd iterations per restart. Integer ≥ 1.</td></tr>
+<tr><td><code>tol</code></td><td><code>1e-4</code></td><td>Convergence tolerance, non-negative. Used for <em>both</em> the relative inertia change and the ∞-norm centroid shift.</td></tr>
+<tr><td><code>n_init</code></td><td><code>10</code></td><td>Number of independent k-means++ restarts; the lowest-inertia run is kept. Integer ≥ 1. Matches scikit-learn.</td></tr>
+<tr><td><code>random_state</code></td><td><span class="pill">optional</span></td><td>Seed for the NumPy-aligned random stream. Per-run seed is <code>random_state + run_index</code>, so seeded runs are deterministic. Omitted → non-deterministic seeding. From <code>CoreClusteringParams</code>.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<div class="grid two">
+  <div class="card">
+    <h3 style="margin-top:0">Edge cases handled</h3>
+    <ul>
+      <li><strong>Empty clusters are never dropped.</strong> Each is relocated to one of the points farthest from its nearest centroid (sorted by descending min-distance), one farthest point per empty cluster.</li>
+      <li><strong>Degenerate k-means++ potential.</strong> If every remaining point coincides with a chosen center (<code>current_pot === 0</code>), the next center is the first unused index, chosen deterministically — no division-by-zero / NaN.</li>
+      <li><strong>Float32 round-off.</strong> Negative squared distances are clamped with <code>max(dist_sq, 0)</code> before <code>argMin</code> / <code>min</code>.</li>
+      <li><strong>Precision split.</strong> k-means++ distances and centroid means use full-precision <code>number[][]</code>; only the inner assignment uses float32 tensors — deliberate, to keep seeding probabilities faithful to scikit-learn.</li>
+      <li><strong>Fail fast, no leaks.</strong> <code>K &gt; n_samples</code> and empty input both throw <em>before</em> any tensor is created.</li>
+      <li><strong>Tensor hygiene.</strong> Losing restarts' centroids, intermediate distance / min / shift tensors, and <code>x_tensor</code> are all disposed; only the best centroids tensor survives on the instance.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">scikit-learn parity</h3>
+    <p>Targets scikit-learn <code>KMeans</code> defaults: <code>n_init=10</code>, <code>max_iter=300</code>, <code>tol=1e-4</code>, and greedy k-means++ with <code>local_trials = 2 + ⌊ln K⌋</code> (sklearn's <code>n_local_trials</code>). The random stream is explicitly NumPy-aligned (<code>make_random_stream</code>) so seeded runs reproduce sklearn's draw sequence; per-restart seeds advance as <code>base_seed + run index</code>. Probabilities and means are computed in double precision to match sklearn's numerics rather than float32. Lowest-inertia-across-restarts selection mirrors sklearn. The matmul distance expansion mirrors sklearn's <code>euclidean_distances</code> trick, including the negative-clamp.</p>
+    <div class="note" style="margin-bottom:0"><strong>Two intentional/known deviations.</strong> (1) The empty-cluster strategy here reassigns the <em>globally farthest</em> points, whereas sklearn relocates points from the <em>most-populous</em> clusters. (2) The convergence test uses a relative inertia threshold and an absolute ∞-norm centroid shift, while sklearn scales <code>tol</code> by the per-feature variance of the data and tests the <em>squared</em> center shift.</div>
+  </div>
+</div>
+
+<footer>
+  <p>← <a href="./random.html">Deterministic RNG (Mersenne Twister)</a> &nbsp;·&nbsp; <a href="./spectral.html">Spectral Clustering</a> → &nbsp;·&nbsp; <a href="./model-selection.html">Choosing k</a></p>
+  <p><a href="./index.html">◆ Back to the Clustering Atlas index</a></p>
+  <p class="muted">Generated from <code>src/clustering/kmeans.ts</code>, <code>src/clustering/types.ts</code>. Single-file, offline, vanilla JS.</p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+  /* ----------------------- shared helpers ----------------------- */
+  var COLORS = ["#58a6ff","#7ee787","#ff7b9c","#f0b429","#bc8cff","#39d0d8"];
+
+  // Mulberry32 deterministic PRNG (stand-in for the NumPy-aligned stream;
+  // used only so the demos are reproducible — the library uses a Mersenne
+  // Twister; the algorithm shown here is identical).
+  function rng(seed){
+    var s = seed >>> 0;
+    return function(){
+      s |= 0; s = s + 0x6D2B79F5 | 0;
+      var t = Math.imul(s ^ s >>> 15, 1 | s);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function rand_int(r, n){ return Math.floor(r() * n); }
+
+  // gaussian blob generator
+  function blob(r, cx, cy, sd, n, out){
+    for(var i=0;i<n;i++){
+      var u1=r(), u2=r();
+      var g1=Math.sqrt(-2*Math.log(u1+1e-12))*Math.cos(2*Math.PI*u2);
+      var g2=Math.sqrt(-2*Math.log(u1+1e-12))*Math.sin(2*Math.PI*u2);
+      out.push([cx+g1*sd, cy+g2*sd]);
+    }
+  }
+  function dist2(a,b){ var dx=a[0]-b[0], dy=a[1]-b[1]; return dx*dx+dy*dy; }
+
+  // map data coords (assumed roughly [0,10]) to canvas
+  function makeMap(cv, pad){
+    pad = pad||30;
+    var W=cv.width, H=cv.height;
+    return function(p){ return [pad + p[0]/10*(W-2*pad), H-pad - p[1]/10*(H-2*pad)]; };
+  }
+  function invMap(cv, pad){
+    pad=pad||30; var W=cv.width,H=cv.height;
+    return function(sx,sy){ return [ (sx-pad)/(W-2*pad)*10, (H-pad-sy)/(H-2*pad)*10 ]; };
+  }
+
+  /* =================================================================
+     k-means++ greedy seeding — faithful port of kmeans.ts:160-248
+     Returns array of chosen point indices.
+     onStep(state) optional callback for the interactive demo.
+     ================================================================= */
+  function kpp_seed(points, K, r, opts){
+    opts = opts || {};
+    var n = points.length, nf = points[0].length;
+    var idxs = [], set = {};
+    var first = rand_int(r, n);
+    idxs.push(first); set[first]=1;
+    while(idxs.length < K){
+      // squared distance to nearest chosen center
+      var distances = new Array(n);
+      var pot = 0;
+      for(var i=0;i<n;i++){
+        if(set[i]){ distances[i]=0; continue; }
+        var md=Infinity;
+        for(var c=0;c<idxs.length;c++){
+          var d=dist2(points[i], points[idxs[c]]);
+          if(d<md) md=d;
+        }
+        distances[i]=md; pot+=md;
+      }
+      if(pot===0){ // degenerate guard
+        for(var u=0;u<n;u++){ if(!set[u]){ idxs.push(u); set[u]=1; break; } }
+        continue;
+      }
+      var local_trials = 2 + Math.floor(Math.log(K));
+      var cum=[], cs=0;
+      for(var d2i=0;d2i<n;d2i++){ cs+=distances[d2i]; cum.push(cs); }
+      var cands=[];
+      for(var t=0;t<local_trials;t++){
+        var rr=r()*pot, lo=0, hi=n-1;
+        while(lo<hi){ var mid=(lo+hi)>>1; if(rr<=cum[mid]) hi=mid; else lo=mid+1; }
+        cands.push(lo);
+      }
+      // greedy: candidate with lowest resulting potential
+      var best=cands[0], bestPot=Infinity;
+      for(var ci=0;ci<cands.length;ci++){
+        var cand=cands[ci], p=0;
+        for(var j=0;j<n;j++){ p += Math.min(distances[j], dist2(points[j], points[cand])); }
+        if(p<bestPot){ bestPot=p; best=cand; }
+      }
+      idxs.push(best); set[best]=1;
+    }
+    return idxs;
+  }
+
+  /* =================================================================
+     One Lloyd run to convergence — mirrors run_once inner loop.
+     Returns { labels, centroids, inertia, iters }.
+     ================================================================= */
+  function lloyd(points, init_centroids, max_iter, tol){
+    var n=points.length, nf=points[0].length, K=init_centroids.length;
+    var centroids = init_centroids.map(function(c){ return c.slice(); });
+    var labels = new Array(n).fill(0);
+    var prev=Infinity, inertia=Infinity, iters=0;
+    for(var it=0; it<max_iter; it++){
+      iters=it+1;
+      // E-step
+      inertia=0;
+      for(var i=0;i<n;i++){
+        var bd=Infinity, bl=0;
+        for(var k=0;k<K;k++){ var d=dist2(points[i],centroids[k]); if(d<bd){bd=d;bl=k;} }
+        labels[i]=bl; inertia+=bd;
+      }
+      // M-step
+      var sums=[], counts=new Array(K).fill(0);
+      for(var k2=0;k2<K;k2++) sums.push(new Array(nf).fill(0));
+      for(var i2=0;i2<n;i2++){
+        var l=labels[i2]; counts[l]++;
+        for(var j=0;j<nf;j++) sums[l][j]+=points[i2][j];
+      }
+      var newc=[];
+      var empties=[];
+      for(var k3=0;k3<K;k3++){
+        if(counts[k3]===0){ empties.push(k3); newc.push(centroids[k3].slice()); }
+        else { var row=[]; for(var j2=0;j2<nf;j2++) row.push(sums[k3][j2]/counts[k3]); newc.push(row); }
+      }
+      // empty-cluster relocation to farthest points
+      if(empties.length){
+        var order = points.map(function(_,ix){return ix;}).sort(function(a,b){
+          var da=dist2(points[a],centroids[labels[a]]), db=dist2(points[b],centroids[labels[b]]);
+          return db-da;
+        });
+        for(var e=0;e<empties.length && e<n;e++) newc[empties[e]]=points[order[e]].slice();
+      }
+      // convergence
+      var shift=0;
+      for(var k4=0;k4<K;k4++) for(var j3=0;j3<nf;j3++) shift=Math.max(shift, Math.abs(centroids[k4][j3]-newc[k4][j3]));
+      centroids=newc;
+      var rel=Math.abs(prev-inertia)/(prev||1);
+      prev=inertia;
+      if(rel<=tol || shift<=tol) break;
+    }
+    return { labels:labels, centroids:centroids, inertia:inertia, iters:iters };
+  }
+
+  /* =================================================================
+     DEMO 1 — Lloyd iteration play-through (animated, draggable)
+     ================================================================= */
+  (function(){
+    var cv=document.getElementById("lloyd_cv"), ctx=cv.getContext("2d");
+    var map=makeMap(cv), inv=invMap(cv);
+    var points=[], centroids=[], target=[], labels=[];
+    var K=3, iter=0, playing=false, animT=1, converged=false;
+    var elIter=document.getElementById("ll_iter"), elIn=document.getElementById("ll_inertia"),
+        elShift=document.getElementById("ll_shift"), elStat=document.getElementById("ll_status");
+    var dragging=-1, baseSeed=7;
+
+    function genBlobs(){
+      var r=rng(baseSeed); points=[];
+      blob(r,2.5,2.8,0.55,42,points);
+      blob(r,7.2,3.0,0.6,42,points);
+      blob(r,5.0,7.4,0.55,42,points);
+    }
+    function reseed(){
+      var r=rng(baseSeed+iter+999*(K));
+      var idx=kpp_seed(points,K,r);
+      centroids=idx.map(function(i){return points[i].slice();});
+      target=centroids.map(function(c){return c.slice();});
+      iter=0; converged=false; animT=1; assign();
+      elIter.textContent="0"; elShift.textContent="—"; elStat.textContent="seeded";
+      draw();
+    }
+    function assign(){
+      var J=0;
+      labels=points.map(function(p){
+        var bd=Infinity,bl=0;
+        for(var k=0;k<K;k++){var d=dist2(p,centroids[k]); if(d<bd){bd=d;bl=k;}}
+        J+=bd; return bl;
+      });
+      elIn.textContent=J.toFixed(1);
+      return J;
+    }
+    function stepOnce(){
+      if(converged) return;
+      assign();
+      // compute means -> target
+      var nf=2, sums=[], counts=new Array(K).fill(0);
+      for(var k=0;k<K;k++) sums.push([0,0]);
+      for(var i=0;i<points.length;i++){var l=labels[i];counts[l]++;sums[l][0]+=points[i][0];sums[l][1]+=points[i][1];}
+      var nt=[];
+      for(var k2=0;k2<K;k2++){
+        if(counts[k2]===0) nt.push(centroids[k2].slice());
+        else nt.push([sums[k2][0]/counts[k2], sums[k2][1]/counts[k2]]);
+      }
+      var shift=0;
+      for(var k3=0;k3<K;k3++) shift=Math.max(shift, Math.abs(centroids[k3][0]-nt[k3][0]), Math.abs(centroids[k3][1]-nt[k3][1]));
+      target=nt; animT=0; iter++;
+      elIter.textContent=String(iter);
+      elShift.textContent=shift.toFixed(4);
+      if(shift<=1e-4){ converged=true; elStat.textContent="converged"; }
+      else elStat.textContent="iterating";
+    }
+    function draw(){
+      var W=cv.width,H=cv.height;
+      ctx.clearRect(0,0,W,H);
+      // Voronoi cell shading via coarse grid sampling of current centroids
+      var step=10, cc=centroids;
+      for(var sx=0;sx<W;sx+=step) for(var sy=0;sy<H;sy+=step){
+        var dp=inv(sx+step/2, sy+step/2), bd=Infinity, bl=0;
+        for(var k=0;k<cc.length;k++){var d=dist2(dp,cc[k]); if(d<bd){bd=d;bl=k;}}
+        ctx.fillStyle=hexA(COLORS[bl%COLORS.length],0.07);
+        ctx.fillRect(sx,sy,step,step);
+      }
+      // points
+      for(var i=0;i<points.length;i++){
+        var sp=map(points[i]);
+        ctx.beginPath(); ctx.arc(sp[0],sp[1],3.2,0,7);
+        ctx.fillStyle=COLORS[labels[i]%COLORS.length]; ctx.globalAlpha=0.85; ctx.fill(); ctx.globalAlpha=1;
+      }
+      // centroids (diamonds), interpolated old->target by animT
+      for(var k2=0;k2<centroids.length;k2++){
+        var cur=[centroids[k2][0]+(target[k2][0]-centroids[k2][0])*animT,
+                 centroids[k2][1]+(target[k2][1]-centroids[k2][1])*animT];
+        var c=map(cur), col=COLORS[k2%COLORS.length];
+        ctx.save(); ctx.translate(c[0],c[1]); ctx.rotate(Math.PI/4);
+        ctx.fillStyle=col; ctx.strokeStyle="#0a0e14"; ctx.lineWidth=3;
+        ctx.fillRect(-9,-9,18,18); ctx.strokeRect(-9,-9,18,18);
+        ctx.restore();
+      }
+    }
+    function hexA(hex,a){
+      var n=parseInt(hex.slice(1),16);
+      return "rgba("+(n>>16&255)+","+(n>>8&255)+","+(n&255)+","+a+")";
+    }
+    function tick(){
+      if(animT<1){ animT=Math.min(1, animT+0.06); if(animT>=1){ centroids=target.map(function(c){return c.slice();}); assign(); } draw(); }
+      if(playing){
+        if(animT>=1){ if(converged){ playing=false; document.getElementById("ll_play").textContent="▶ Play"; } else stepOnce(); }
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // dragging centroids
+    function pick(ev){
+      var rect=cv.getBoundingClientRect();
+      var x=(ev.clientX-rect.left)*(cv.width/rect.width), y=(ev.clientY-rect.top)*(cv.height/rect.height);
+      for(var k=0;k<centroids.length;k++){ var c=map(centroids[k]); if(Math.abs(c[0]-x)<12 && Math.abs(c[1]-y)<12) return k; }
+      return -1;
+    }
+    cv.addEventListener("mousedown",function(ev){ dragging=pick(ev); });
+    window.addEventListener("mousemove",function(ev){
+      if(dragging<0) return;
+      var rect=cv.getBoundingClientRect();
+      var x=(ev.clientX-rect.left)*(cv.width/rect.width), y=(ev.clientY-rect.top)*(cv.height/rect.height);
+      var dp=inv(x,y); centroids[dragging]=dp; target[dragging]=dp.slice();
+      converged=false; elStat.textContent="moved seed"; assign(); draw();
+    });
+    window.addEventListener("mouseup",function(){ dragging=-1; });
+
+    document.getElementById("ll_play").addEventListener("click",function(){
+      playing=!playing; this.textContent=playing?"⏸ Pause":"▶ Play";
+    });
+    document.getElementById("ll_step").addEventListener("click",function(){ if(animT>=1) stepOnce(); });
+    document.getElementById("ll_reseed").addEventListener("click",reseed);
+    document.getElementById("ll_reset").addEventListener("click",function(){ baseSeed=(baseSeed*7+13)>>>0; genBlobs(); reseed(); });
+    document.getElementById("ll_k").addEventListener("input",function(){
+      K=+this.value; document.getElementById("ll_klabel").textContent=K; reseed();
+    });
+
+    genBlobs(); reseed(); requestAnimationFrame(tick);
+  })();
+
+  /* =================================================================
+     DEMO 2 — k-means++ seeding probabilities (interactive, step-wise)
+     ================================================================= */
+  (function(){
+    var cv=document.getElementById("pp_cv"), ctx=cv.getContext("2d");
+    var map=makeMap(cv);
+    var points=[], chosen=[], chosenSet={}, K=4, mode="pp", seed=99;
+    var lastCands=[], lastWinner=-1;
+    var elCh=document.getElementById("pp_chosen"), elPot=document.getElementById("pp_pot"), elTr=document.getElementById("pp_trials");
+    var r=rng(seed);
+
+    function gen(){
+      var rr=rng(seed); points=[];
+      blob(rr,2.4,2.6,0.5,30,points);
+      blob(rr,7.4,3.0,0.55,30,points);
+      blob(rr,3.0,7.4,0.5,30,points);
+      blob(rr,7.2,7.2,0.5,30,points);
+    }
+    function nearestD2(i){
+      if(chosen.length===0) return 0;
+      var md=Infinity;
+      for(var c=0;c<chosen.length;c++){ var d=dist2(points[i],points[chosen[c]]); if(d<md) md=d; }
+      return md;
+    }
+    function totalPot(){
+      var p=0; for(var i=0;i<points.length;i++){ if(!chosenSet[i]) p+=nearestD2(i); } return p;
+    }
+    function restart(){
+      r=rng(seed*31+chosen.length); chosen=[]; chosenSet={}; lastCands=[]; lastWinner=-1;
+      var first=rand_int(r, points.length);
+      chosen.push(first); chosenSet[first]=1;
+      updateStats(); draw();
+    }
+    function pickNext(){
+      if(chosen.length>=K) return;
+      if(mode==="uni"){
+        var u; do { u=rand_int(r, points.length); } while(chosenSet[u]);
+        lastCands=[u]; lastWinner=u; chosen.push(u); chosenSet[u]=1; updateStats(); draw(); return;
+      }
+      var n=points.length;
+      var distances=new Array(n), pot=0;
+      for(var i=0;i<n;i++){ var d=chosenSet[i]?0:nearestD2(i); distances[i]=d; pot+=d; }
+      if(pot===0){ for(var u2=0;u2<n;u2++){ if(!chosenSet[u2]){ chosen.push(u2); chosenSet[u2]=1; break; } } updateStats(); draw(); return; }
+      var lt=2+Math.floor(Math.log(K));
+      var cum=[],cs=0; for(var z=0;z<n;z++){cs+=distances[z];cum.push(cs);}
+      var cands=[];
+      for(var t=0;t<lt;t++){
+        var rr2=r()*pot, lo=0, hi=n-1;
+        while(lo<hi){var mid=(lo+hi)>>1; if(rr2<=cum[mid])hi=mid; else lo=mid+1;}
+        cands.push(lo);
+      }
+      var best=cands[0], bp=Infinity;
+      for(var ci=0;ci<cands.length;ci++){
+        var cand=cands[ci], p=0;
+        for(var j=0;j<n;j++) p+=Math.min(distances[j], dist2(points[j],points[cand]));
+        if(p<bp){bp=p;best=cand;}
+      }
+      lastCands=cands.slice(); lastWinner=best;
+      chosen.push(best); chosenSet[best]=1; updateStats(); draw();
+    }
+    function updateStats(){
+      elCh.textContent=chosen.length+" / "+K;
+      elPot.textContent=chosen.length<K?totalPot().toFixed(1):"0.0 (done)";
+      elTr.textContent=mode==="pp"?(2+Math.floor(Math.log(K))):"1 (uniform)";
+    }
+    function heat(t){ // t in 0..1 -> blue (cold) to amber (hot)
+      t=Math.max(0,Math.min(1,t));
+      var c0=[23,58,94], c1=[240,180,41];
+      return "rgb("+Math.round(c0[0]+(c1[0]-c0[0])*t)+","+Math.round(c0[1]+(c1[1]-c0[1])*t)+","+Math.round(c0[2]+(c1[2]-c0[2])*t)+")";
+    }
+    function draw(){
+      ctx.clearRect(0,0,cv.width,cv.height);
+      var maxd=0; for(var i=0;i<points.length;i++) maxd=Math.max(maxd, nearestD2(i));
+      maxd=maxd||1;
+      for(var i2=0;i2<points.length;i2++){
+        var sp=map(points[i2]); var d=nearestD2(i2); var t=d/maxd;
+        var rad=3 + t*7;
+        ctx.beginPath(); ctx.arc(sp[0],sp[1],rad,0,7);
+        ctx.fillStyle = mode==="uni" ? "#3b4654" : heat(t);
+        ctx.globalAlpha=0.9; ctx.fill(); ctx.globalAlpha=1;
+      }
+      // candidates this step (rings)
+      for(var c=0;c<lastCands.length;c++){
+        var cp=map(points[lastCands[c]]);
+        ctx.beginPath(); ctx.arc(cp[0],cp[1],11,0,7); ctx.strokeStyle="#ffffff"; ctx.lineWidth=1.5; ctx.stroke();
+      }
+      // chosen centers (stars)
+      for(var k=0;k<chosen.length;k++){
+        var c2=map(points[chosen[k]]); star(ctx,c2[0],c2[1],9, chosen[k]===lastWinner ? "#7ee787":"#ffffff");
+      }
+    }
+    function star(c,x,y,rad,col){
+      c.save(); c.translate(x,y); c.fillStyle=col; c.strokeStyle="#0a0e14"; c.lineWidth=2; c.beginPath();
+      for(var i=0;i<10;i++){ var ang=Math.PI/5*i - Math.PI/2; var rr=(i%2===0)?rad:rad*0.45; c.lineTo(Math.cos(ang)*rr, Math.sin(ang)*rr); }
+      c.closePath(); c.fill(); c.stroke(); c.restore();
+    }
+    document.getElementById("pp_next").addEventListener("click",pickNext);
+    document.getElementById("pp_reset").addEventListener("click",restart);
+    Array.prototype.forEach.call(document.getElementsByName("pp_mode"),function(rb){
+      rb.addEventListener("change",function(){ mode=this.value; restart(); });
+    });
+    document.getElementById("pp_k").addEventListener("input",function(){
+      K=+this.value; document.getElementById("pp_klabel").textContent=K; restart();
+    });
+    gen(); restart();
+  })();
+
+  /* =================================================================
+     DEMO 3 — n_init restart tournament (small multiples)
+     ================================================================= */
+  (function(){
+    var grid=document.getElementById("tn_grid");
+    var points=[], K=3, nInit=8, seed=42;
+    var elBest=document.getElementById("tn_best"), elWorst=document.getElementById("tn_worst"), elSpread=document.getElementById("tn_spread");
+
+    function gen(){
+      // ambiguous: two close blobs + one elongated cloud => restarts disagree
+      var r=rng(seed); points=[];
+      blob(r,3.2,4.0,0.7,40,points);
+      blob(r,5.4,4.6,0.7,40,points);
+      blob(r,7.6,7.0,0.55,40,points);
+      // an elongated bridge to add ambiguity
+      for(var i=0;i<25;i++){ points.push([3+i/25*4.5, 5.8+ (r()-0.5)*0.6]); }
+    }
+    function drawPanel(cv, res){
+      var ctx=cv.getContext("2d"), map=makeMap(cv,8);
+      ctx.clearRect(0,0,cv.width,cv.height);
+      for(var i=0;i<points.length;i++){
+        var sp=map(points[i]);
+        ctx.beginPath(); ctx.arc(sp[0],sp[1],2.2,0,7);
+        ctx.fillStyle=COLORS[res.labels[i]%COLORS.length]; ctx.globalAlpha=0.85; ctx.fill(); ctx.globalAlpha=1;
+      }
+      for(var k=0;k<res.centroids.length;k++){
+        var c=map(res.centroids[k]);
+        ctx.save(); ctx.translate(c[0],c[1]); ctx.rotate(Math.PI/4);
+        ctx.fillStyle=COLORS[k%COLORS.length]; ctx.strokeStyle="#0a0e14"; ctx.lineWidth=2;
+        ctx.fillRect(-5,-5,10,10); ctx.strokeRect(-5,-5,10,10); ctx.restore();
+      }
+    }
+    function run(){
+      grid.innerHTML="";
+      var results=[];
+      for(var run=0; run<nInit; run++){
+        // per-run seed = base_seed + run index  (matches kmeans.ts)
+        var r=rng(seed + run);
+        var idx=kpp_seed(points, K, r);
+        var init=idx.map(function(i){return points[i].slice();});
+        var res=lloyd(points, init, 300, 1e-4);
+        results.push(res);
+      }
+      var best=Infinity, bestI=0, worst=0;
+      results.forEach(function(res,i){ if(res.inertia<best){best=res.inertia;bestI=i;} if(res.inertia>worst)worst=res.inertia; });
+      results.forEach(function(res,i){
+        var cell=document.createElement("div");
+        cell.className="tcell"+(i===bestI?" win":"");
+        var cv=document.createElement("canvas"); cv.width=200; cv.height=140;
+        cv.style.width="100%"; cv.style.height="auto"; cv.style.background="#0a0e14";
+        cell.appendChild(cv);
+        var cap=document.createElement("div"); cap.className="cap";
+        cap.innerHTML="<span>run "+i+"</span><span>J="+res.inertia.toFixed(1)+"</span>";
+        cell.appendChild(cap);
+        if(i===bestI){ var tag=document.createElement("span"); tag.className="tag"; tag.textContent="KEPT"; cell.appendChild(tag); }
+        grid.appendChild(cell);
+        drawPanel(cv,res);
+      });
+      elBest.textContent=best.toFixed(1);
+      elWorst.textContent=worst.toFixed(1);
+      elSpread.textContent=(worst/best).toFixed(2)+"×";
+    }
+    document.getElementById("tn_run").addEventListener("click",function(){ seed=+document.getElementById("tn_seed").value||0; run(); });
+    document.getElementById("tn_ninit").addEventListener("input",function(){ nInit=+this.value; document.getElementById("tn_label").textContent=nInit; });
+    document.getElementById("tn_k").addEventListener("input",function(){ K=+this.value; document.getElementById("tn_klabel").textContent=K; });
+    document.getElementById("tn_seed").addEventListener("change",function(){ seed=+this.value||0; gen(); });
+    gen(); run();
+  })();
+
+})();
+</script>
+</body>
+</html>

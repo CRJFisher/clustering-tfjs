@@ -1,0 +1,796 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choosing k (Model Selection) — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.readout{font-family:var(--mono);font-size:.85rem;color:var(--ink);min-width:3.4rem;text-align:right}
+.legend{display:flex;flex-wrap:wrap;gap:.4rem 1rem;font-size:.82rem;color:var(--muted);margin-top:.6rem}
+.legend i{display:inline-block;width:.85rem;height:.85rem;border-radius:3px;margin-right:.35rem;vertical-align:-1px}
+.seg{display:inline-flex;border:1px solid var(--accent);border-radius:8px;overflow:hidden}
+.seg button{background:transparent;color:var(--accent);border:0;border-radius:0;padding:.4rem .75rem;font-size:.82rem}
+.seg button.on{background:var(--accent);color:#06121f}
+.toggle{display:inline-flex;align-items:center;gap:.35rem;font-size:.82rem;color:var(--muted);cursor:pointer;
+  border:1px solid var(--line);border-radius:8px;padding:.35rem .6rem}
+.toggle input{accent-color:var(--accent)}
+.toggle.on{border-color:var(--accent);color:var(--ink)}
+.statline{font-family:var(--mono);font-size:.82rem;color:var(--muted);margin-top:.6rem}
+.statline b{color:var(--accent2)}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph & Laplacian Construction</a><a href="./linkage.html">Linkage & NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a class="active" href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Choosing k (Model Selection)</h1>
+<p class="lede">Sweep candidate cluster counts k, score each clustering with validation metrics or an inertia-elbow knee detector, and pick the best k.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Most clustering algorithms — k-means, spectral, agglomerative, SOM — make you commit to the number of clusters <code>k</code> before they run. But the "right" <code>k</code> is rarely known in advance. <code>find_optimal_clusters</code> turns the question into a search: fit the algorithm for every <code>k</code> in a range, measure how good each clustering is, and let the scores rank the candidates. The whole module is that search loop plus the scoring rules.</p>
+
+<p>There are two distinct mental models, and the module supports both behind one knob called <code>method</code>.</p>
+
+<div class="grid two">
+  <div class="card">
+    <h3 style="margin-top:0">① Metric-based selection</h3>
+    <p class="muted" style="margin:0">For each <code>k</code>, compute one or more validation indices — <b>silhouette</b>, <b>Davies-Bouldin</b>, <b>Calinski-Harabasz</b>. Because these live on incomparable scales, the <code>'combined'</code> method normalizes each into <code>[0,1]</code> and averages them so no single metric dominates. <code>'silhouette'</code> just uses the raw silhouette. Higher combined score wins.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">② The elbow / knee</h3>
+    <p class="muted" style="margin:0">Within-cluster sum of squares (WSS, a.k.a. inertia) <i>always</i> falls as you add clusters — more centroids means every point sits closer to its own. The curve drops steeply, then flattens. The <b>elbow</b> is the <code>k</code> where another cluster stops paying off. Kneedle finds it geometrically.</p>
+  </div>
+</div>
+
+<p>The geometric trick of Kneedle: normalize the WSS-vs-k curve into a unit box, draw a straight <b>chord</b> from the first point to the last, and find the point that bulges farthest from that chord. For a decreasing (concave) curve the curve <i>sags below</i> the chord, so the gaps are negative — the most-negative gap is the elbow. The selection code negates those differences so the elbow earns the highest <code>combined_score</code>, then sorts descending. That is the <i>same</i> ranking machinery the metric-based methods use: every method ends as a list of <code>combined_score</code> values, sorted, with index <code>0</code> the winner.</p>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><b>Validate range and coerce input.</b> Require <code>min_clusters ≥ 2</code> and <code>max_clusters ≥ min_clusters</code>. Convert the <code>DataMatrix</code> to a <code>tf.Tensor2D</code> if it isn't already one. Set <code>effective_max_clusters = min(max_clusters, n_samples − 1)</code> so you never request more clusters than points-minus-one.</li>
+  <li><b>Decide which metrics to compute.</b> Flags <code>compute_silhouette</code> / <code>compute_db</code> / <code>compute_ch</code> / <code>should_compute_wss</code> are derived from <code>method</code> and <code>metrics</code>. <code>'silhouette'</code> computes only silhouette; <code>'combined'</code> computes whichever metrics are listed; <code>'elbow'</code> computes WSS only; a custom <code>scoring_function</code> computes whatever metrics it lists. No paying for metrics you won't use.</li>
+  <li><b>SOM special case (train once).</b> If <code>algorithm === 'som'</code>, a single map is trained <i>before</i> the loop — grid sized via the ~5·√n neuron heuristic, at least √(effective_max_clusters). Each <code>k</code> is then produced by phase-2 agglomerative grouping of the trained neuron weights via <code>shared_som.cluster(k)</code>. Every other algorithm builds a fresh clusterer per <code>k</code>.</li>
+  <li><b>Sweep k and fit.</b> For <code>k</code> from <code>min_clusters</code> to <code>effective_max_clusters</code>: build the clusterer with <code>n_clusters = k</code> plus <code>algorithm_params</code>, then <code>labels = await clusterer.fit_predict(data_tensor)</code>. For SOM, <code>labels = shared_som.cluster(k)</code>.</li>
+  <li><b>Score each clustering.</b> Defaults: <code>silhouette = 0</code>, <code>davies_bouldin = Infinity</code>, <code>calinski_harabasz = 0</code>. The guard <code>has_enough_clusters = new Set(labels).size ≥ 2</code> catches collapsed labelings; if violated, worst-case values are assigned (silhouette <code>−1</code>, DB <code>Infinity</code>, CH <code>0</code>) so that <code>k</code> ranks last instead of crashing the metrics.</li>
+  <li><b>Read or compute WSS for the elbow.</b> When <code>should_compute_wss</code> is true: if a <code>KMeans</code> instance exposes a non-null <code>inertia_</code>, reuse it directly; otherwise call <code>compute_wss(data_tensor, labels)</code>, which gathers each cluster's rows, takes the centroid as the column mean, squares the deviations, and sums across all clusters.</li>
+  <li><b>Apply the scoring rule (post-loop).</b> A custom <code>scoring_function</code> already set <code>combined_score</code> per-eval from raw values. Otherwise: <code>'combined'</code> calls <code>normalize_and_score_evaluations</code>; <code>'silhouette'</code> copies the raw silhouette into <code>combined_score</code>; <code>'elbow'</code> calls <code>find_knee</code> on <code>(k, WSS)</code> and sets <code>combined_score[i] = −differences[i]</code>.</li>
+  <li><b>Kneedle knee detection.</b> <code>find_knee</code> returns <code>null</code> when <code>n &lt; 3</code> or the x/y range is zero. Otherwise it normalizes both axes to <code>[0,1]</code>, computes per-index the chord height <code>y_line</code> and the gap <code>y_norm[i] − y_line</code>, then scans interior indices <code>1…n−2</code> for the maximum deviation (negated for concave). A knee is accepted only if <code>best_deviation ≥ sensitivity/(n−1)</code>; otherwise <code>knee_x</code> is <code>null</code>.</li>
+  <li><b>Elbow fallback.</b> If <code>find_knee</code> returns <code>knee_x === null</code>, the elbow path falls back to <code>combined_score = −k</code> for every evaluation, favoring the smallest <code>k</code> (parsimony) after the descending sort.</li>
+  <li><b>Rank, pick optimal, clean up.</b> Sort <code>evaluations</code> by <code>combined_score</code> descending; <code>optimal = evaluations[0]</code>. The input tensor is disposed only if <code>find_optimal_clusters</code> created it; per-k clusterers are disposed inside the loop, the shared SOM after it.</li>
+</ol>
+
+<h2 id="elbow-demo">Try it: the elbow, the chord & the difference curve</h2>
+<p>This is exactly what the <code>'elbow'</code> method does. WSS-vs-k is normalized into the unit square (left). A <span style="color:var(--c4)">chord</span> joins the first and last points. At each interior <code>k</code> the vertical gap to the chord is the difference <code>d<sub>i</sub></code>. The knee is the <code>k</code> with the largest sag below the chord — the argmax of <code>−d<sub>i</sub></code>. The bottom panel plots the difference curve directly. Drag <b>k</b> to measure a single gap; drag <b>sensitivity</b> to move the acceptance line <code>S/(n−1)</code> — when the deepest sag can't clear it, the knee turns gray and the elbow path falls back to <code>−k</code>.</p>
+
+<div class="demo">
+  <canvas id="elbow_cv" width="900" height="430" aria-label="WSS elbow with chord and difference curve"></canvas>
+  <div class="controls">
+    <button class="ghost" id="elbow_dataset">Reshape curve</button>
+    <label>k&nbsp;<input type="range" id="elbow_k" min="0" max="8" value="3" step="1"></label>
+    <span class="readout" id="elbow_k_out">k=5</span>
+    <label>sensitivity S&nbsp;<input type="range" id="elbow_sens" min="0" max="3" value="1" step="0.05"></label>
+    <span class="readout" id="elbow_sens_out">1.00</span>
+  </div>
+  <div class="statline" id="elbow_stat"></div>
+  <div class="legend">
+    <span><i style="background:var(--c1)"></i>normalized WSS</span>
+    <span><i style="background:var(--c4)"></i>chord (first→last)</span>
+    <span><i style="background:var(--pink)"></i>measured gap d<sub>i</sub></span>
+    <span><i style="background:var(--c2)"></i>selected knee</span>
+  </div>
+</div>
+
+<div class="note">The first and last <code>k</code> can never be the knee — the scan runs only over interior indices <code>1…n−2</code>, and the chord passes exactly through the endpoints (gap = 0 there). The elbow is, by construction, an interior point.</div>
+
+<h2 id="math">The math</h2>
+
+<h3>Within-cluster sum of squares (WSS / inertia)</h3>
+<div class="eq">WSS = Σ<sub>c</sub> Σ<sub>x ∈ C<sub>c</sub></sub> ‖x − μ<sub>c</sub>‖²&nbsp;&nbsp;&nbsp;μ<sub>c</sub> = (1/|C<sub>c</sub>|) Σ<sub>x ∈ C<sub>c</sub></sub> x</div>
+<p>Sum over clusters <code>c</code> of the squared Euclidean distances from each point <code>x</code> in cluster <code>C<sub>c</sub></code> to that cluster's centroid <code>μ<sub>c</sub></code>. In <code>compute_wss</code>, <code>μ<sub>c</sub></code> is <code>cluster_data.mean(0)</code> and the accumulation is <code>diff.square().sum()</code>. WSS is monotonically non-increasing in <code>k</code>, which is precisely why you can't pick <code>k</code> by minimizing it — you need the <i>elbow</i>, not the minimum.</p>
+
+<h3>Min-max normalization — Calinski-Harabasz (higher better)</h3>
+<div class="eq">nch = (ch − ch<sub>min</sub>) / (ch<sub>max</sub> − ch<sub>min</sub>)</div>
+<p>A linear rescale of the CH index into <code>[0,1]</code> across all tested <code>k</code>. If the range is <code>0</code> or non-finite, <code>nch = 0.5</code>; if CH is <code>Infinity</code> (perfect separation, WSS = 0) then <code>nch = 1</code>.</p>
+
+<h3>Min-max normalization — Davies-Bouldin (lower better)</h3>
+<div class="eq">ndb = 1 − (db − db<sub>min</sub>) / (db<sub>max</sub> − db<sub>min</sub>)</div>
+<p>DB is <i>inverted</i> because lower is better — small DB becomes a large normalized score. A zero/non-finite range gives <code>0.5</code>; a non-finite <code>db</code> gives <code>0</code> (the worst).</p>
+
+<h3>Silhouette normalization (fixed range)</h3>
+<div class="eq">ns = (s + 1) / 2</div>
+<p>Silhouette already lives in <code>[-1, 1]</code>, so it uses a fixed mapping to <code>[0,1]</code> rather than data-dependent min-max. This keeps its scale comparable across runs instead of shifting with whatever min/max happened to appear.</p>
+
+<h3>Combined score</h3>
+<div class="eq">combined_score = (1/m) Σ<sub>metric</sub> normalized_metric</div>
+<p>An unweighted mean of the <code>m</code> selected normalized metrics, giving each equal contribution. An empty metric set yields <code>0</code>.</p>
+
+<h3>Kneedle normalization</h3>
+<div class="eq">x_norm = (x − x<sub>min</sub>) / (x<sub>max</sub> − x<sub>min</sub>)&nbsp;&nbsp;&nbsp;y_norm = (y − y<sub>min</sub>) / (y<sub>max</sub> − y<sub>min</sub>)</div>
+<p>Maps both axes of the WSS-vs-k curve into the unit square so the chord deviation is scale-free — the elbow doesn't depend on whether WSS is in the thousands or the millions.</p>
+
+<h3>Difference curve (deviation from chord)</h3>
+<div class="eq">d<sub>i</sub> = y_norm<sub>i</sub> − [ y_first + (y_last − y_first)·(x_norm<sub>i</sub> − x_first)/(x_last − x_first) ]</div>
+<p>The vertical gap between the normalized curve and the straight chord joining the first and last points. The bracketed term is <code>y_line</code> at index <code>i</code>. For a decreasing concave curve every interior <code>d<sub>i</sub></code> is negative.</p>
+
+<h3>Knee = extremum of the difference curve</h3>
+<div class="eq">knee_index = argmax<sub>1 ≤ i ≤ n−2</sub> ( −d<sub>i</sub> if concave, d<sub>i</sub> if convex )</div>
+<p>The interior point of maximum deviation from the chord. For concave (decreasing WSS) the curve sags below the chord, so the most-negative <code>d<sub>i</sub></code> — equivalently the largest <code>−d<sub>i</sub></code> — is the elbow.</p>
+
+<h3>Significance threshold</h3>
+<div class="eq">knee accepted ⟺ best_deviation ≥ sensitivity / (n − 1)</div>
+<p>Scales the minimum acceptable bulge by the average normalized step size <code>1/(n−1)</code>. A higher <code>sensitivity</code> demands a more pronounced knee; failing the test returns <code>knee_x = null</code>.</p>
+
+<h3>Elbow → score mapping</h3>
+<div class="eq">combined_score<sub>i</sub> ← −d<sub>i</sub>&nbsp;&nbsp;&nbsp;(fallback: combined_score<sub>i</sub> ← −k<sub>i</sub>)</div>
+<p>Negating the difference makes the elbow (most-negative <code>d<sub>i</sub></code> for concave curves) the highest score, so the standard descending sort selects it. With no significant knee, <code>−k</code> favors the smallest <code>k</code>.</p>
+
+<h2 id="ranking-demo">Try it: live k-sweep ranking board</h2>
+<p>This animates the metric-based loop. Press <b>Run sweep</b> to fit each <code>k</code> in turn (a tiny synthetic dataset with three true blobs). For every <code>k</code> you see the scatter coloring and the three raw indices, then watch the min-max normalization collapse them into <code>[0,1]</code> bars and average into <code>combined_score</code>. The bars re-sort descending to reveal the winning <code>k</code>. Toggle metrics on/off and switch the <code>method</code> to watch the optimal <code>k</code> change — <code>'silhouette'</code> and <code>'elbow'</code> can disagree with <code>'combined'</code>.</p>
+
+<div class="demo">
+  <canvas id="rank_cv" width="900" height="470" aria-label="Live k-sweep ranking board"></canvas>
+  <div class="controls">
+    <button id="rank_run">Run sweep</button>
+    <button class="ghost" id="rank_step">Step</button>
+    <span class="seg" id="rank_method">
+      <button data-m="combined" class="on">combined</button>
+      <button data-m="silhouette">silhouette</button>
+      <button data-m="elbow">elbow</button>
+    </span>
+  </div>
+  <div class="controls" id="rank_metric_toggles">
+    <label class="toggle on"><input type="checkbox" data-metric="silhouette" checked>silhouette</label>
+    <label class="toggle on"><input type="checkbox" data-metric="calinski_harabasz" checked>calinski_harabasz</label>
+    <label class="toggle on"><input type="checkbox" data-metric="davies_bouldin" checked>davies_bouldin</label>
+  </div>
+  <div class="statline" id="rank_stat"></div>
+</div>
+<p class="muted" style="font-size:.9rem">The metric toggles only affect the <code>'combined'</code> method, exactly as in the code: <code>compute_db</code>/<code>compute_ch</code> are gated on <code>method === 'combined' && metrics.includes(...)</code>. Under <code>'silhouette'</code> the toggles are inert, and under <code>'elbow'</code> only WSS is scored.</p>
+
+<h2 id="equalizer-demo">Try it: the normalization equalizer</h2>
+<p>Why normalize at all? Because the three indices live on wildly different scales — silhouette in <code>[-1, 1]</code>, Calinski-Harabasz in the hundreds or thousands, Davies-Bouldin near <code>1</code>. Averaging the raw values would let CH swamp everything. Drag each raw track to feel its normalizer map it into <code>[0,1]</code>, then watch the combined score respond. Push a track to an extreme to fire the special cases: <span style="color:var(--c2)">CH = ∞ → 1</span>, <span style="color:var(--pink)">DB = ∞ → 0</span>, zero range → <code>0.5</code>.</p>
+
+<div class="demo">
+  <canvas id="eq_cv" width="900" height="360" aria-label="Normalization equalizer"></canvas>
+  <div class="controls">
+    <label>silhouette s&nbsp;<input type="range" id="eq_s" min="-1" max="1" value="0.55" step="0.01"></label>
+    <span class="readout" id="eq_s_out">0.55</span>
+  </div>
+  <div class="controls">
+    <label>Calinski-Harabasz ch&nbsp;<input type="range" id="eq_ch" min="0" max="100" value="62" step="0.5"></label>
+    <span class="readout" id="eq_ch_out">620</span>
+    <label class="toggle"><input type="checkbox" id="eq_ch_inf">force ch = ∞</label>
+  </div>
+  <div class="controls">
+    <label>Davies-Bouldin db&nbsp;<input type="range" id="eq_db" min="0" max="100" value="40" step="0.5"></label>
+    <span class="readout" id="eq_db_out">0.80</span>
+    <label class="toggle"><input type="checkbox" id="eq_db_inf">force db = ∞</label>
+  </div>
+  <div class="statline" id="eq_stat"></div>
+</div>
+<p class="muted" style="font-size:.9rem">The min/max here come from a fixed three-k context so the dragged value rescales against realistic neighbours. The point is the shape of the mapping, not the exact endpoints: silhouette uses a <i>fixed</i> <code>(s+1)/2</code>, while CH and DB use <i>data-dependent</i> min-max (DB inverted).</p>
+
+<h2 id="code">Inside the code</h2>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>find_optimal_clusters.ts:168</code></td><td><code>find_optimal_clusters</code> entry point — option defaults, validation, tensor coercion, <code>effective_max_clusters</code> clamp.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:214</code></td><td><code>compute_silhouette</code> / <code>compute_db</code> / <code>compute_ch</code> / <code>should_compute_wss</code> flag derivation from <code>method</code> + <code>metrics</code>.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:235</code></td><td>SOM train-once branch: grid heuristic (<code>5·√n</code>) and <code>shared_som.fit</code> before the k loop.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:249</code></td><td>Main k-sweep loop: per-k clusterer construction and <code>fit_predict</code>.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:300</code></td><td><code>has_enough_clusters</code> guard and worst-case metric assignment for degenerate labelings.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:317</code></td><td>WSS reuse from <code>KMeans.inertia_</code> else <code>compute_wss</code> fallback.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:74</code></td><td><code>normalize_and_score_evaluations</code> — min-max for CH/DB, fixed-range silhouette, averaged <code>combined_score</code>.</td></tr>
+<tr><td><code>find_optimal_clusters.ts:368</code></td><td><code>'elbow'</code> branch: <code>find_knee</code> call and <code>combined_score = −differences[i]</code> (with <code>−k</code> fallback).</td></tr>
+<tr><td><code>find_optimal_clusters.ts:389</code></td><td>Descending sort and <code>optimal = evaluations[0]</code>.</td></tr>
+<tr><td><code>compute_wss.ts:15</code></td><td><code>compute_wss</code> — per-cluster gather, centroid mean, squared-deviation sum.</td></tr>
+<tr><td><code>kneedle.ts:47</code></td><td><code>find_knee</code> — normalization, chord-difference curve, max-deviation knee with significance threshold.</td></tr>
+<tr><td><code>kneedle.ts:90</code></td><td>Difference-curve loop computing <code>d<sub>i</sub> = y_norm[i] − y_line</code>.</td></tr>
+<tr><td><code>kneedle.ts:109</code></td><td>Interior-index argmax of deviation and threshold acceptance check.</td></tr>
+</tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>min_clusters</code></td><td>Smallest <code>k</code> to test, inclusive. Default <code>2</code>. Must be <code>≥ 2</code>.</td></tr>
+<tr><td><code>max_clusters</code></td><td>Largest <code>k</code> to test, inclusive. Default <code>10</code>. Clamped to <code>min(max_clusters, n_samples − 1)</code> as <code>effective_max_clusters</code>.</td></tr>
+<tr><td><code>algorithm</code></td><td>Which clusterer to fit per <code>k</code>: <code>'kmeans'</code> (default), <code>'spectral'</code>, <code>'agglomerative'</code>, or <code>'som'</code>. SOM is trained once and grouped per <code>k</code>; the rest are re-fit per <code>k</code>.</td></tr>
+<tr><td><code>algorithm_params</code></td><td>Record of extra options spread into each clusterer's constructor (e.g. <code>affinity</code> for spectral, <code>linkage</code> for agglomerative, grid dims for SOM). <code>n_clusters = k</code> is set automatically.</td></tr>
+<tr><td><code>metrics</code></td><td>Subset of <code>['silhouette', 'davies_bouldin', 'calinski_harabasz']</code> used by the <code>'combined'</code> method (and a custom scorer). Default all three.</td></tr>
+<tr><td><code>scoring_function</code></td><td>Optional callback receiving a <code>ClusterEvaluation</code> with raw (un-normalized) metric values; its return becomes <code>combined_score</code> and overrides <code>method</code>.</td></tr>
+<tr><td><code>method</code></td><td>Selection strategy: <code>'combined'</code> (default, normalized average), <code>'elbow'</code> (Kneedle on WSS), or <code>'silhouette'</code> (raw silhouette).</td></tr>
+<tr><td><code>direction</code> <span class="pill">KneedleOptions</span></td><td><code>'concave'</code> (default; decreasing-then-flattening curves like WSS vs k) or <code>'convex'</code>. Controls the sign used when picking the max-deviation point.</td></tr>
+<tr><td><code>sensitivity</code> <span class="pill">KneedleOptions</span></td><td>Sensitivity <code>S</code>, default <code>1.0</code>. Sets the acceptance threshold <code>sensitivity/(n−1)</code>; higher demands a more pronounced knee.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases & scikit-learn parity</h2>
+<div class="card">
+<h3 style="margin-top:0">Edge cases</h3>
+<ul>
+<li><code>find_knee</code> returns no knee (<code>knee_x = null</code>) when <code>n &lt; 3</code>, when <code>x_range = 0</code>, or when <code>y_range = 0</code>; the elbow path then falls back to <code>combined_score = −k</code> (smallest <code>k</code> wins).</li>
+<li>A knee candidate is rejected if <code>best_deviation &lt; sensitivity/(n−1)</code>, again triggering the <code>−k</code> parsimony fallback.</li>
+<li>Only interior indices <code>1…n−2</code> can be the knee; the first and last <code>k</code> are never selected as elbows by construction.</li>
+<li>Degenerate labelings where fewer than 2 distinct clusters appear (<code>has_enough_clusters</code> false) get worst-case metrics (silhouette <code>−1</code>, DB <code>Infinity</code>, CH <code>0</code>) so that <code>k</code> sorts last instead of throwing — primarily a SOM phase-2 collapse safeguard.</li>
+<li>Calinski-Harabasz <code>= Infinity</code> (WSS = 0, perfect separation) normalizes to <code>nch = 1</code>; non-finite DB normalizes to <code>ndb = 0</code>; a zero or non-finite normalization range maps that metric to a neutral <code>0.5</code>.</li>
+<li><code>effective_max_clusters &lt; min_clusters</code> throws <code>"Not enough samples …"</code>; <code>min_clusters &lt; 2</code> and <code>max_clusters &lt; min_clusters</code> throw on entry.</li>
+<li>WSS is reused from <code>KMeans.inertia_</code> when available (and non-null) to avoid an O(n·d) recompute; other algorithms always call <code>compute_wss</code>.</li>
+<li>Tensor ownership: the input tensor is disposed only if <code>find_optimal_clusters</code> created it from a <code>number[][]</code>; an externally supplied tensor is left intact.</li>
+</ul>
+</div>
+
+<div class="card">
+<h3 style="margin-top:0">scikit-learn parity</h3>
+<p style="margin-bottom:0">This module is a higher-level convenience layer with no direct scikit-learn equivalent — sklearn has no single <code>find_optimal_clusters</code> — so parity is about the building blocks rather than this API. The validation indices it calls (<code>silhouette_score</code>, <code>davies_bouldin</code>, <code>calinski_harabasz</code>) are the parts held to exact sklearn parity, and the per-k clusterers (KMeans, SpectralClustering, AgglomerativeClustering) carry their own parity guarantees. The Kneedle implementation is a deliberately simplified variant of Satopaa et al. 2011 (normalize, chord-difference, max deviation) rather than the full <code>kneed</code> library — it omits smoothing splines and the online polygon/threshold logic, using a single global maximum of the difference curve with a <code>sensitivity/(n−1)</code> acceptance gate. WSS matches sklearn's KMeans <code>inertia_</code> definition (sum of squared distances to cluster centroids) and is read directly from <code>inertia_</code> when KMeans provides it, ensuring numerical consistency with the fitted model.</p>
+</div>
+
+<footer>
+<p><span class="pill">prev</span> <a href="./distance.html">Pairwise Distance</a> &nbsp;·&nbsp; <span class="pill">next</span> <a href="./validation.html">Validation Metrics</a></p>
+<p><a href="./index.html">◆ Back to the Clustering Atlas index</a></p>
+<p class="muted">Generated companion for <code>src/model_selection/find_optimal_clusters.ts</code>, <code>compute_wss.ts</code>, <code>kneedle.ts</code>. Self-contained, offline.</p>
+</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var COL = {bg:"#0a0e14", ink:"#e6edf3", muted:"#9aa7b4", line:"#2b333d",
+  c1:"#58a6ff", c2:"#7ee787", c3:"#ff7b9c", c4:"#f0b429", c5:"#bc8cff", c6:"#39d0d8",
+  accent:"#58a6ff", pink:"#ff7b9c", warn:"#f0b429"};
+
+function setupHiDPI(cv){
+  var ratio = window.devicePixelRatio || 1;
+  var cssW = cv.width, cssH = cv.height;
+  cv.width = cssW * ratio; cv.height = cssH * ratio;
+  cv.style.aspectRatio = cssW + " / " + cssH;
+  var ctx = cv.getContext("2d");
+  ctx.scale(ratio, ratio);
+  cv._w = cssW; cv._h = cssH;
+  return ctx;
+}
+
+/* ============================================================
+   DEMO 1 — WSS elbow with chord & difference curve (Kneedle)
+   ============================================================ */
+(function(){
+  var cv = document.getElementById("elbow_cv");
+  var ctx = setupHiDPI(cv);
+  var W = cv._w, H = cv._h;
+
+  // Several WSS-like curves (decreasing, concave). Index 0 of slider maps to k=2.
+  var datasets = [
+    [820, 360, 150, 96, 72, 60, 53, 49, 46],   // sharp elbow around k=4
+    [900, 700, 520, 360, 230, 150, 110, 88, 75],// softer, elbow ~k=5
+    [600, 540, 480, 420, 360, 300, 240, 180, 120],// almost linear -> weak knee
+    [950, 280, 200, 165, 145, 132, 124, 119, 116]// very sharp at k=3
+  ];
+  var dsi = 0;
+  var k_idx = 3;        // slider index, default highlight k=5
+  var sensitivity = 1.0;
+
+  var kSlider = document.getElementById("elbow_k");
+  var kOut = document.getElementById("elbow_k_out");
+  var sSlider = document.getElementById("elbow_sens");
+  var sOut = document.getElementById("elbow_sens_out");
+  var stat = document.getElementById("elbow_stat");
+  var resetBtn = document.getElementById("elbow_dataset");
+
+  function kValues(d){ var a=[]; for(var i=0;i<d.length;i++) a.push(i+2); return a; }
+
+  // Replicates find_knee()
+  function findKnee(xs, ys, sens){
+    var n = xs.length;
+    var xmin = xs[0], xmax = xs[n-1], xr = xmax - xmin;
+    var ymin = ys[0], ymax = ys[0];
+    for(var i=1;i<n;i++){ if(ys[i]<ymin)ymin=ys[i]; if(ys[i]>ymax)ymax=ys[i]; }
+    var yr = ymax - ymin;
+    var xn = xs.map(function(x){return (x-xmin)/xr;});
+    var yn = ys.map(function(y){return (y-ymin)/yr;});
+    var yf = yn[0], yl = yn[n-1], xf = xn[0], xl = xn[n-1];
+    var diffs = [];
+    for(var i2=0;i2<n;i2++){
+      var yline = yf + (yl - yf)*(xn[i2]-xf)/(xl-xf);
+      diffs.push(yn[i2]-yline);
+    }
+    var thr = sens/(n-1);
+    var bi=-1, bd=-Infinity;
+    for(var j=1;j<n-1;j++){ var dev = -diffs[j]; if(dev>bd){bd=dev;bi=j;} }
+    var accepted = !(bi===-1 || bd<thr);
+    return {xn:xn, yn:yn, diffs:diffs, best_index:bi, best_dev:bd, thr:thr, accepted:accepted};
+  }
+
+  function draw(){
+    var d = datasets[dsi];
+    var xs = kValues(d);
+    var n = d.length;
+    var kn = findKnee(xs, d, sensitivity);
+    ctx.clearRect(0,0,W,H);
+
+    // ---- TOP PANEL: unit-square WSS curve + chord ----
+    var topH = 250, padL=58, padR=20, padT=24, padB=18;
+    var px0 = padL, px1 = W - padR;
+    var py0 = padT, py1 = topH - padB;
+    function PX(xn){ return px0 + xn*(px1-px0); }
+    function PY(yn){ return py1 - yn*(py1-py0); } // yn=0 bottom, 1 top
+
+    // panel bg
+    ctx.fillStyle = "#0a0e14"; ctx.fillRect(0,0,W,H);
+    // grid + axes
+    ctx.strokeStyle = COL.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px0,py0); ctx.lineTo(px0,py1); ctx.lineTo(px1,py1); ctx.stroke();
+    ctx.fillStyle = COL.muted; ctx.font = "12px ui-monospace,monospace";
+    ctx.fillText("y_norm", 8, py0+6);
+    ctx.save(); ctx.fillText("1", px0-16, py0+6); ctx.fillText("0", px0-16, py1+4); ctx.restore();
+    ctx.fillText("normalized WSS vs k", px1-180, py0+2);
+
+    // chord
+    ctx.strokeStyle = COL.c4; ctx.lineWidth=2; ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(PX(kn.xn[0]),PY(kn.yn[0])); ctx.lineTo(PX(kn.xn[n-1]),PY(kn.yn[n-1])); ctx.stroke();
+    ctx.setLineDash([]);
+
+    // measured gap at slider k (pink)
+    var gi = k_idx;
+    if(gi>=0 && gi<n){
+      var gx = PX(kn.xn[gi]);
+      var yc = PY(kn.yn[gi]);
+      var yline = kn.yn[0] + (kn.yn[n-1]-kn.yn[0])*(kn.xn[gi]-kn.xn[0])/(kn.xn[n-1]-kn.xn[0]);
+      var yl_px = PY(yline);
+      ctx.strokeStyle = COL.pink; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(gx,yc); ctx.lineTo(gx,yl_px); ctx.stroke();
+      ctx.fillStyle = COL.pink; ctx.font="11px ui-monospace,monospace";
+      var dval = kn.diffs[gi];
+      ctx.fillText("d="+dval.toFixed(3), gx+6, (yc+yl_px)/2);
+    }
+
+    // curve
+    ctx.strokeStyle = COL.c1; ctx.lineWidth=2.5;
+    ctx.beginPath();
+    for(var i=0;i<n;i++){ var X=PX(kn.xn[i]), Y=PY(kn.yn[i]); if(i===0)ctx.moveTo(X,Y); else ctx.lineTo(X,Y); }
+    ctx.stroke();
+    // points
+    for(var i2=0;i2<n;i2++){
+      var X=PX(kn.xn[i2]), Y=PY(kn.yn[i2]);
+      var isKnee = kn.accepted && i2===kn.best_index;
+      ctx.fillStyle = isKnee ? COL.c2 : (i2===k_idx ? COL.pink : COL.c1);
+      ctx.beginPath(); ctx.arc(X,Y, isKnee?7:4, 0, Math.PI*2); ctx.fill();
+      ctx.fillStyle = COL.muted; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText("k="+xs[i2], X-12, py1+15);
+    }
+    if(kn.accepted){
+      var kx = PX(kn.xn[kn.best_index]);
+      ctx.strokeStyle = COL.c2; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(kx,py0); ctx.lineTo(kx,py1); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillStyle=COL.c2; ctx.font="bold 12px ui-monospace,monospace";
+      ctx.fillText("KNEE k="+xs[kn.best_index], kx-30, py0+18);
+    }
+
+    // ---- BOTTOM PANEL: difference curve d_i ----
+    var by0 = topH + 22, by1 = H - 26;
+    var bmid = (by0+by1)/2;
+    // find scale: max |diff|
+    var amax=0.0001; for(var q=0;q<n;q++){ amax=Math.max(amax, Math.abs(kn.diffs[q])); }
+    function BPY(v){ return bmid - (v/amax)*((by1-by0)/2 - 6); }
+    ctx.strokeStyle=COL.line; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(px0,by0); ctx.lineTo(px0,by1); ctx.stroke();
+    // zero line
+    ctx.strokeStyle="#3a4450"; ctx.setLineDash([2,3]);
+    ctx.beginPath(); ctx.moveTo(px0,bmid); ctx.lineTo(px1,bmid); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=COL.muted; ctx.font="12px ui-monospace,monospace";
+    ctx.fillText("difference curve  d_i = y_norm − chord", px0+4, by0-4);
+    ctx.fillText("0", px0-16, bmid+4);
+
+    // acceptance threshold lines: knee accepted when -d_i >= thr  =>  d_i <= -thr
+    var thrPy = BPY(-kn.thr);
+    ctx.strokeStyle=COL.warn; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(px0,thrPy); ctx.lineTo(px1,thrPy); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=COL.warn; ctx.font="11px ui-monospace,monospace";
+    ctx.fillText("acceptance: d ≤ −S/(n−1) = "+(-kn.thr).toFixed(3), px1-260, thrPy-5);
+
+    // diff bars
+    for(var b=0;b<n;b++){
+      var bx = PX(kn.xn[b]);
+      var bvY = BPY(kn.diffs[b]);
+      var interior = (b>=1 && b<=n-2);
+      ctx.strokeStyle = interior ? (kn.accepted && b===kn.best_index ? COL.c2 : COL.c1) : "#4a545f";
+      ctx.lineWidth = (b===kn.best_index && kn.accepted) ? 4 : 2.5;
+      ctx.beginPath(); ctx.moveTo(bx,bmid); ctx.lineTo(bx,bvY); ctx.stroke();
+      ctx.fillStyle = (b===k_idx) ? COL.pink : (kn.accepted && b===kn.best_index ? COL.c2 : COL.c1);
+      ctx.beginPath(); ctx.arc(bx,bvY,3.5,0,Math.PI*2); ctx.fill();
+    }
+
+    // status line
+    var msg;
+    if(kn.accepted){
+      msg = "elbow at <b>k=" + xs[kn.best_index] + "</b> · best −d = " + kn.best_dev.toFixed(3) +
+            " ≥ threshold S/(n−1) = " + kn.thr.toFixed(3) + " ✓ accepted · combined_score[i] = −d_i";
+    } else {
+      msg = "<span style='color:"+COL.warn+"'>no significant knee</span> · best −d = " + (kn.best_dev<0?0:kn.best_dev).toFixed(3) +
+            " &lt; threshold " + kn.thr.toFixed(3) + " · fallback combined_score = −k → smallest k wins";
+    }
+    stat.innerHTML = msg;
+  }
+
+  kSlider.addEventListener("input", function(){ k_idx=+kSlider.value; kOut.textContent="k="+(k_idx+2); draw(); });
+  sSlider.addEventListener("input", function(){ sensitivity=+sSlider.value; sOut.textContent=sensitivity.toFixed(2); draw(); });
+  resetBtn.addEventListener("click", function(){ dsi=(dsi+1)%datasets.length; var d=datasets[dsi]; if(k_idx>=d.length)k_idx=d.length-1; kSlider.max=d.length-1; draw(); });
+  kOut.textContent="k="+(k_idx+2); sOut.textContent=sensitivity.toFixed(2);
+  kSlider.max = datasets[0].length-1;
+  draw();
+})();
+
+/* ============================================================
+   DEMO 2 — Live k-sweep ranking board
+   ============================================================ */
+(function(){
+  var cv = document.getElementById("rank_cv");
+  var ctx = setupHiDPI(cv);
+  var W = cv._w, H = cv._h;
+
+  // Synthetic dataset: 3 true blobs in [0,1]x[0,1]
+  var pts = [];
+  (function gen(){
+    var seed=1234567;
+    function rnd(){ seed=(seed*48271)%2147483647; return seed/2147483647; }
+    function gauss(){ return (rnd()+rnd()+rnd()+rnd()-2)/2; }
+    var centers=[[0.25,0.30],[0.72,0.28],[0.50,0.78]];
+    for(var c=0;c<3;c++) for(var i=0;i<22;i++){
+      pts.push([centers[c][0]+gauss()*0.085, centers[c][1]+gauss()*0.085]);
+    }
+  })();
+
+  // Precompute k-means-ish labels per k via Lloyd on the synthetic set (deterministic init = farthest spread)
+  function fitKmeans(k){
+    var n=pts.length;
+    // init: pick k spread points deterministically
+    var cs=[pts[0].slice()];
+    for(var t=1;t<k;t++){
+      var bestI=0,bestD=-1;
+      for(var i=0;i<n;i++){
+        var md=Infinity;
+        for(var c=0;c<cs.length;c++){ var dx=pts[i][0]-cs[c][0],dy=pts[i][1]-cs[c][1]; md=Math.min(md,dx*dx+dy*dy); }
+        if(md>bestD){bestD=md;bestI=i;}
+      }
+      cs.push(pts[bestI].slice());
+    }
+    var labels=new Array(n).fill(0);
+    for(var it=0;it<25;it++){
+      for(var i2=0;i2<n;i2++){
+        var bd=Infinity,bl=0;
+        for(var c2=0;c2<k;c2++){ var ex=pts[i2][0]-cs[c2][0],ey=pts[i2][1]-cs[c2][1]; var dd=ex*ex+ey*ey; if(dd<bd){bd=dd;bl=c2;} }
+        labels[i2]=bl;
+      }
+      var sx=[],sy=[],cnt=[]; for(var c3=0;c3<k;c3++){sx.push(0);sy.push(0);cnt.push(0);}
+      for(var i3=0;i3<n;i3++){ var l=labels[i3]; sx[l]+=pts[i3][0]; sy[l]+=pts[i3][1]; cnt[l]++; }
+      for(var c4=0;c4<k;c4++){ if(cnt[c4]>0){cs[c4][0]=sx[c4]/cnt[c4]; cs[c4][1]=sy[c4]/cnt[c4];} }
+    }
+    // WSS
+    var wss=0; for(var i4=0;i4<n;i4++){ var l2=labels[i4]; var dx2=pts[i4][0]-cs[l2][0],dy2=pts[i4][1]-cs[l2][1]; wss+=dx2*dx2+dy2*dy2; }
+    return {labels:labels, centers:cs, wss:wss};
+  }
+
+  // metric helpers (real silhouette / DB / CH on synthetic 2D set)
+  function dist(a,b){ var dx=a[0]-b[0],dy=a[1]-b[1]; return Math.sqrt(dx*dx+dy*dy); }
+  function silhouette(labels,k){
+    var n=pts.length, groups=[]; for(var i=0;i<k;i++)groups.push([]);
+    for(var j=0;j<n;j++)groups[labels[j]].push(j);
+    var tot=0;
+    for(var p=0;p<n;p++){
+      var own=labels[p];
+      if(groups[own].length<=1){ continue; }
+      var a=0; for(var q=0;q<groups[own].length;q++){ if(groups[own][q]!==p)a+=dist(pts[p],pts[groups[own][q]]); }
+      a/=(groups[own].length-1);
+      var b=Infinity;
+      for(var g=0;g<k;g++){ if(g===own||groups[g].length===0)continue; var s=0; for(var r=0;r<groups[g].length;r++)s+=dist(pts[p],pts[groups[g][r]]); s/=groups[g].length; if(s<b)b=s; }
+      tot += (b-a)/Math.max(a,b);
+    }
+    return tot/n;
+  }
+  function centroidsOf(labels,k){ var cs=[],cnt=[]; for(var i=0;i<k;i++){cs.push([0,0]);cnt.push(0);} for(var j=0;j<pts.length;j++){var l=labels[j];cs[l][0]+=pts[j][0];cs[l][1]+=pts[j][1];cnt[l]++;} for(var c=0;c<k;c++){if(cnt[c]>0){cs[c][0]/=cnt[c];cs[c][1]/=cnt[c];}} return {cs:cs,cnt:cnt}; }
+  function daviesBouldin(labels,k){
+    var cc=centroidsOf(labels,k); var cs=cc.cs,cnt=cc.cnt;
+    var S=[]; for(var i=0;i<k;i++)S.push(0);
+    for(var j=0;j<pts.length;j++){ var l=labels[j]; S[l]+=dist(pts[j],cs[l]); }
+    for(var c=0;c<k;c++){ if(cnt[c]>0)S[c]/=cnt[c]; }
+    var sum=0;
+    for(var a=0;a<k;a++){ var mx=0; for(var b=0;b<k;b++){ if(a===b||cnt[a]===0||cnt[b]===0)continue; var m=dist(cs[a],cs[b]); if(m>0){ var r=(S[a]+S[b])/m; if(r>mx)mx=r; } } sum+=mx; }
+    return sum/k;
+  }
+  function calinski(labels,k){
+    var n=pts.length; var gm=[0,0]; for(var j=0;j<n;j++){gm[0]+=pts[j][0];gm[1]+=pts[j][1];} gm[0]/=n;gm[1]/=n;
+    var cc=centroidsOf(labels,k); var cs=cc.cs,cnt=cc.cnt;
+    var bgss=0; for(var c=0;c<k;c++){ if(cnt[c]>0)bgss+=cnt[c]*Math.pow(dist(cs[c],gm),2); }
+    var wgss=0; for(var i=0;i<n;i++){ var l=labels[i]; wgss+=Math.pow(dist(pts[i],cs[l]),2); }
+    if(wgss===0) return Infinity;
+    return (bgss/(k-1))/(wgss/(n-k));
+  }
+
+  var KMIN=2,KMAX=7;
+  var evals=[]; // {k,sil,db,ch,wss,labels,combined}
+  for(var k=KMIN;k<=KMAX;k++){
+    var fk=fitKmeans(k);
+    evals.push({k:k, labels:fk.labels, centers:fk.centers, wss:fk.wss,
+      sil:silhouette(fk.labels,k), db:daviesBouldin(fk.labels,k), ch:calinski(fk.labels,k), combined:0});
+  }
+
+  var method="combined";
+  var useMetrics={silhouette:true, calinski_harabasz:true, davies_bouldin:true};
+  var revealedCount=0; // how many k have been "swept" in animation
+  var anim=null;
+
+  function findKneeScore(){
+    var xs=evals.map(function(e){return e.k;});
+    var ys=evals.map(function(e){return e.wss;});
+    var n=xs.length, xmin=xs[0],xmax=xs[n-1],xr=xmax-xmin;
+    var ymin=ys[0],ymax=ys[0]; for(var i=1;i<n;i++){if(ys[i]<ymin)ymin=ys[i];if(ys[i]>ymax)ymax=ys[i];}
+    var yr=ymax-ymin; var xn=xs.map(function(x){return (x-xmin)/xr;}); var yn=ys.map(function(y){return (y-ymin)/yr;});
+    var diffs=[]; for(var i2=0;i2<n;i2++){ var yl=yn[0]+(yn[n-1]-yn[0])*(xn[i2]-xn[0])/(xn[n-1]-xn[0]); diffs.push(yn[i2]-yl); }
+    var thr=1.0/(n-1); var bi=-1,bd=-Infinity;
+    for(var j=1;j<n-1;j++){ if(-diffs[j]>bd){bd=-diffs[j];bi=j;} }
+    if(bi===-1||bd<thr){ for(var f=0;f<n;f++)evals[f].combined=-evals[f].k; return; }
+    for(var s=0;s<n;s++)evals[s].combined=-diffs[s];
+  }
+
+  function score(){
+    if(method==="silhouette"){ for(var i=0;i<evals.length;i++)evals[i].combined=evals[i].sil; return; }
+    if(method==="elbow"){ findKneeScore(); return; }
+    // combined
+    var ms=[]; if(useMetrics.silhouette)ms.push("s"); if(useMetrics.calinski_harabasz)ms.push("ch"); if(useMetrics.davies_bouldin)ms.push("db");
+    var chmin=Infinity,chmax=-Infinity,dbmin=Infinity,dbmax=-Infinity;
+    for(var e=0;e<evals.length;e++){ if(isFinite(evals[e].ch)){chmin=Math.min(chmin,evals[e].ch);chmax=Math.max(chmax,evals[e].ch);} if(isFinite(evals[e].db)){dbmin=Math.min(dbmin,evals[e].db);dbmax=Math.max(dbmax,evals[e].db);} }
+    var chr=chmax-chmin, dbr=dbmax-dbmin;
+    for(var v=0;v<evals.length;v++){
+      var ev=evals[v]; var sc=0,m=0;
+      if(useMetrics.silhouette){ sc+=(ev.sil+1)/2; m++; }
+      if(useMetrics.calinski_harabasz){ var nch; if(!isFinite(ev.ch))nch=1; else if(chr===0||!isFinite(chr))nch=0.5; else nch=(ev.ch-chmin)/chr; sc+=nch; m++; }
+      if(useMetrics.davies_bouldin){ var ndb; if(!isFinite(ev.db))ndb=0; else if(dbr===0||!isFinite(dbr))ndb=0.5; else ndb=1-(ev.db-dbmin)/dbr; sc+=ndb; m++; }
+      ev.combined = m>0 ? sc/m : 0;
+    }
+  }
+
+  var COLk=[COL.c1,COL.c2,COL.c3,COL.c4,COL.c5,COL.c6,"#ffa657"];
+
+  function draw(){
+    score();
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle="#0a0e14"; ctx.fillRect(0,0,W,H);
+
+    // ranked list (by combined desc), but only among revealed
+    var shown = evals.slice(0, Math.max(revealedCount, method==="combined"&&revealedCount===evals.length?evals.length:revealedCount));
+    var ranked = evals.slice(0, revealedCount).slice().sort(function(a,b){return b.combined-a.combined;});
+
+    // ---- LEFT: scatter of currently-focused k ----
+    var sx0=20, sy0=20, sw=240, sh=240;
+    ctx.strokeStyle=COL.line; ctx.strokeRect(sx0,sy0,sw,sh);
+    var focus = revealedCount>0 ? evals[Math.min(revealedCount-1,evals.length-1)] : null;
+    ctx.fillStyle=COL.muted; ctx.font="12px ui-monospace,monospace";
+    ctx.fillText(focus?("fit k="+focus.k):("press Run sweep"), sx0+6, sy0+16);
+    if(focus){
+      for(var i=0;i<pts.length;i++){
+        var X=sx0+pts[i][0]*sw, Y=sy0+pts[i][1]*sh;
+        ctx.fillStyle=COLk[focus.labels[i]%COLk.length];
+        ctx.beginPath(); ctx.arc(X,Y,3.2,0,Math.PI*2); ctx.fill();
+      }
+      if(focus.centers) for(var c=0;c<focus.centers.length;c++){
+        var CX=sx0+focus.centers[c][0]*sw, CY=sy0+focus.centers[c][1]*sh;
+        ctx.strokeStyle="#fff"; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.moveTo(CX-5,CY);ctx.lineTo(CX+5,CY);ctx.moveTo(CX,CY-5);ctx.lineTo(CX,CY+5); ctx.stroke();
+      }
+      ctx.fillStyle=COL.muted; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText("sil="+focus.sil.toFixed(3), sx0+6, sy0+sh-36);
+      ctx.fillText("DB ="+(isFinite(focus.db)?focus.db.toFixed(3):"∞"), sx0+6, sy0+sh-22);
+      ctx.fillText("CH ="+(isFinite(focus.ch)?focus.ch.toFixed(1):"∞"), sx0+6, sy0+sh-8);
+    }
+
+    // ---- RIGHT: ranking bars ----
+    var bx0=300, bw=W-bx0-30;
+    var rowH=Math.min(56,(H-50)/evals.length);
+    ctx.fillStyle=COL.muted; ctx.font="12px ui-monospace,monospace";
+    ctx.fillText("ranked by combined_score (descending) — method: "+method, bx0, 18);
+
+    // determine score scale for bar widths
+    var allScores=ranked.map(function(e){return e.combined;});
+    var smin=Math.min.apply(null,allScores.concat([0])), smax=Math.max.apply(null,allScores.concat([0.0001]));
+    var srange=(smax-smin)||1;
+
+    for(var r=0;r<ranked.length;r++){
+      var ev=ranked[r];
+      var y=34+r*rowH;
+      var winner = r===0;
+      // label
+      ctx.fillStyle=COLk[(ev.k-KMIN)%COLk.length];
+      ctx.fillRect(bx0,y+8,10,rowH-20);
+      ctx.fillStyle=winner?COL.c2:COL.ink; ctx.font=(winner?"bold ":"")+"13px ui-monospace,monospace";
+      ctx.fillText("k="+ev.k, bx0+18, y+rowH/2+4);
+      // bar
+      var bX=bx0+74;
+      var barMaxW=bw-150;
+      var frac=(ev.combined-smin)/srange;
+      ctx.fillStyle="#19222c"; ctx.fillRect(bX,y+8,barMaxW,rowH-22);
+      ctx.fillStyle=winner?COL.c2:COL.accent;
+      ctx.fillRect(bX,y+8,Math.max(2,frac*barMaxW),rowH-22);
+      ctx.fillStyle=winner?"#06121f":COL.ink; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText(ev.combined.toFixed(3), bX+6, y+rowH/2+4);
+      if(winner){ ctx.fillStyle=COL.c2; ctx.font="bold 12px ui-monospace,monospace"; ctx.fillText("★ optimal", bX+barMaxW+8, y+rowH/2+4); }
+    }
+
+    // status
+    var stat=document.getElementById("rank_stat");
+    if(revealedCount<evals.length){ stat.innerHTML="sweeping… fitting k="+(focus?focus.k:KMIN)+" of "+KMIN+"…"+KMAX; }
+    else { var best=ranked[0]; stat.innerHTML="winner: <b>k="+best.k+"</b> · combined_score="+best.combined.toFixed(3)+" · method="+method; }
+  }
+
+  function runSweep(){
+    if(anim){ cancelAnimationFrame(anim); anim=null; }
+    revealedCount=0; draw();
+    var last=0;
+    function step(ts){
+      if(!last)last=ts;
+      if(ts-last>520){ last=ts; revealedCount++; draw(); }
+      if(revealedCount<evals.length){ anim=requestAnimationFrame(step); }
+      else anim=null;
+    }
+    anim=requestAnimationFrame(step);
+  }
+
+  document.getElementById("rank_run").addEventListener("click", runSweep);
+  document.getElementById("rank_step").addEventListener("click", function(){ if(revealedCount<evals.length){revealedCount++;draw();} else {revealedCount=0;draw();} });
+
+  var mseg=document.getElementById("rank_method");
+  mseg.addEventListener("click", function(e){ var b=e.target.closest("button"); if(!b)return; method=b.getAttribute("data-m"); Array.prototype.forEach.call(mseg.querySelectorAll("button"),function(x){x.classList.toggle("on",x===b);}); var tg=document.getElementById("rank_metric_toggles"); tg.style.opacity=(method==="combined")?"1":"0.4"; tg.style.pointerEvents=(method==="combined")?"auto":"none"; if(revealedCount===0)revealedCount=evals.length; draw(); });
+
+  document.getElementById("rank_metric_toggles").addEventListener("change", function(e){
+    var cb=e.target; var m=cb.getAttribute("data-metric"); useMetrics[m]=cb.checked;
+    cb.closest("label").classList.toggle("on",cb.checked);
+    if(revealedCount===0)revealedCount=evals.length; draw();
+  });
+
+  // initial: show all instantly so the board isn't empty
+  revealedCount=evals.length; draw();
+})();
+
+/* ============================================================
+   DEMO 3 — Normalization equalizer
+   ============================================================ */
+(function(){
+  var cv=document.getElementById("eq_cv");
+  var ctx=setupHiDPI(cv); var W=cv._w,H=cv._h;
+
+  // fixed neighbour context (other k) so min-max has realistic endpoints
+  var ctx_ch=[120, 540, 380];  // CH values of "other k"
+  var ctx_db=[1.9, 0.6, 1.2];
+
+  var sS=document.getElementById("eq_s"), sCH=document.getElementById("eq_ch"), sDB=document.getElementById("eq_db");
+  var oS=document.getElementById("eq_s_out"), oCH=document.getElementById("eq_ch_out"), oDB=document.getElementById("eq_db_out");
+  var chInf=document.getElementById("eq_ch_inf"), dbInf=document.getElementById("eq_db_inf");
+  var stat=document.getElementById("eq_stat");
+
+  function draw(){
+    var s=+sS.value;
+    var ch = chInf.checked ? Infinity : (+sCH.value)*10;   // slider 0..100 -> 0..1000
+    var db = dbInf.checked ? Infinity : (+sDB.value)/50;   // slider 0..100 -> 0..2
+    oS.textContent=s.toFixed(2); oCH.textContent=isFinite(ch)?ch.toFixed(0):"∞"; oDB.textContent=isFinite(db)?db.toFixed(2):"∞";
+
+    // ----- normalized values (replicating code) -----
+    var ns=(s+1)/2;
+    // CH min-max over [this, ...context]
+    var chAll=ctx_ch.concat(isFinite(ch)?[ch]:[]);
+    var chmin=Math.min.apply(null,chAll), chmax=Math.max.apply(null,chAll), chr=chmax-chmin;
+    var nch; if(!isFinite(ch))nch=1; else if(chr===0||!isFinite(chr))nch=0.5; else nch=(ch-chmin)/chr;
+    nch=Math.max(0,Math.min(1,nch));
+    var dbAll=ctx_db.concat(isFinite(db)?[db]:[]);
+    var dbmin=Math.min.apply(null,dbAll),dbmax=Math.max.apply(null,dbAll),dbr=dbmax-dbmin;
+    var ndb; if(!isFinite(db))ndb=0; else if(dbr===0||!isFinite(dbr))ndb=0.5; else ndb=1-(db-dbmin)/dbr;
+    ndb=Math.max(0,Math.min(1,ndb));
+    var combined=(ns+nch+ndb)/3;
+
+    ctx.clearRect(0,0,W,H);
+    ctx.fillStyle="#0a0e14"; ctx.fillRect(0,0,W,H);
+
+    var rows=[
+      {name:"silhouette  s ∈ [−1,1]", raw:isFinite(s)?s.toFixed(2):"∞", norm:ns, map:"(s+1)/2", col:COL.c1},
+      {name:"Calinski-Harabasz  ch", raw:isFinite(ch)?ch.toFixed(0):"∞", norm:nch, map:"(ch−min)/(max−min)", col:COL.c2},
+      {name:"Davies-Bouldin  db", raw:isFinite(db)?db.toFixed(2):"∞", norm:ndb, map:"1−(db−min)/(max−min)", col:COL.c3}
+    ];
+    var rawX=20, rawW=200, normX=W-260, normW=200, midY;
+    var rowH=78, top=24;
+    for(var i=0;i<rows.length;i++){
+      var y=top+i*rowH; var cy=y+rowH/2-6;
+      var r=rows[i];
+      // label
+      ctx.fillStyle=COL.muted; ctx.font="12px ui-monospace,monospace";
+      ctx.fillText(r.name, rawX, y+8);
+      // raw track
+      ctx.fillStyle="#19222c"; ctx.fillRect(rawX,cy,rawW,14);
+      ctx.fillStyle=r.col; ctx.font="13px ui-monospace,monospace";
+      ctx.fillText("raw = "+r.raw, rawX, cy+34);
+      // mapping arrow + label
+      ctx.strokeStyle=r.col; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(rawX+rawW+8,cy+7); ctx.lineTo(normX-12,cy+7); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(normX-12,cy+7); ctx.lineTo(normX-20,cy+2); ctx.lineTo(normX-20,cy+12); ctx.closePath(); ctx.fillStyle=r.col; ctx.fill();
+      ctx.fillStyle=COL.muted; ctx.font="11px ui-monospace,monospace";
+      ctx.fillText(r.map, (rawX+rawW+normX)/2-60, cy-6);
+      // normalized [0,1] bar
+      ctx.fillStyle="#19222c"; ctx.fillRect(normX,cy,normW,14);
+      ctx.fillStyle=r.col; ctx.fillRect(normX,cy,r.norm*normW,14);
+      ctx.strokeStyle=COL.line; ctx.strokeRect(normX,cy,normW,14);
+      ctx.fillStyle=COL.ink; ctx.font="bold 12px ui-monospace,monospace";
+      ctx.fillText(r.norm.toFixed(3), normX+normW+8, cy+12);
+    }
+    // [0,1] axis label
+    ctx.fillStyle=COL.muted; ctx.font="11px ui-monospace,monospace";
+    ctx.fillText("normalized → [0,1]", normX, top-4);
+
+    // combined readout
+    var cyc=top+rows.length*rowH+6;
+    ctx.fillStyle=COL.warn; ctx.font="bold 14px ui-monospace,monospace";
+    ctx.fillText("combined_score = mean = "+combined.toFixed(3), normX-40, cyc+18);
+    ctx.fillStyle="#19222c"; ctx.fillRect(normX,cyc+26,normW,16);
+    ctx.fillStyle=COL.warn; ctx.fillRect(normX,cyc+26,combined*normW,16);
+    ctx.strokeStyle=COL.line; ctx.strokeRect(normX,cyc+26,normW,16);
+
+    var notes=[];
+    if(!isFinite(ch))notes.push("CH=∞ → nch=1 (perfect separation)");
+    if(!isFinite(db))notes.push("DB=∞ → ndb=0 (worst)");
+    stat.innerHTML = "ns="+ns.toFixed(3)+" · nch="+nch.toFixed(3)+" · ndb="+ndb.toFixed(3)+" → combined="+combined.toFixed(3)+(notes.length?"  ·  "+notes.join(" · "):"");
+  }
+
+  [sS,sCH,sDB].forEach(function(el){el.addEventListener("input",draw);});
+  [chInf,dbInf].forEach(function(el){el.addEventListener("change",draw);});
+  draw();
+})();
+
+})();
+</script>
+</body>
+</html>

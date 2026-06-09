@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Self-Organizing Maps (SOM) — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.ctl{display:flex;flex-direction:column;gap:.15rem;font-size:.8rem;color:var(--muted);min-width:150px}
+.ctl b{color:var(--ink);font-family:var(--mono);font-weight:600}
+.ctl select{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:7px;padding:.3rem .4rem;font-family:var(--sans)}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;font-size:.78rem;color:var(--muted);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.swatch{width:12px;height:12px;border-radius:3px;display:inline-block}
+.readout{font-family:var(--mono);font-size:.82rem;color:var(--accent2)}
+.bignum{font-family:var(--mono);font-size:1.5rem;color:var(--accent2);font-weight:700}
+.flex-demo{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:680px){.flex-demo{grid-template-columns:1fr}}
+.tag{font-family:var(--mono);font-size:.72rem;color:var(--c5)}
+.sub{color:var(--muted);font-size:.84rem}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html" class="active">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph & Laplacian Construction</a><a href="./linkage.html">Linkage & NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Self-Organizing Maps (SOM)</h1>
+<p class="lede">A SOM trains a 2D grid of weight vectors by competitive learning, so that neurons sitting next to each other on the grid come to respond to nearby regions of high-dimensional input space — a topology-preserving map you can read at a glance through its U-matrix.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Picture a flexible rubber sheet of <b>neurons</b> laid out on a 2D grid — say 5&times;5 = 25 of them. Each neuron carries a <b>weight vector</b> (a "prototype" or codebook entry) that lives in the same space as your data, exactly like a k-means centroid. Training repeatedly shows the sheet a data point, finds the single neuron whose prototype is closest to it — the <span class="tag">Best-Matching Unit (BMU)</span> — and pulls that prototype toward the point.</p>
+
+<p>The twist that separates SOM from k-means: it also drags the BMU's <em>grid neighbors</em> along, by an amount that fades with grid distance. This neighborhood coupling is what makes the final map <b>topology-preserving</b> — adjacent neurons end up representing similar inputs.</p>
+
+<p>Two quantities shrink over training: the <b style="color:var(--c1)">learning rate</b> (how hard you pull) and the <b style="color:var(--c4)">neighborhood radius</b> (how far the pull spreads on the grid). Early, with a large radius, the whole sheet organizes coarsely — it unfolds and orients to the global shape of the data. Late, with a tiny radius and small learning rate, only the BMU and its immediate neighbors adjust, fine-tuning detail. This <b>anneal-from-global-to-local</b> schedule is why a SOM converges to an organized map rather than a tangled one.</p>
+
+<p>In this library the implementation is mini-batched and vectorized in TensorFlow.js. For each batch it computes BMUs for every sample at once, looks up each BMU's row of a precomputed grid-distance matrix, runs it through a kernel (<code>gaussian</code> / <code>bubble</code> / <code>mexican_hat</code>) to get per-neuron influences, and applies one batched weight update normalized by the summed influence per neuron. Because the grid usually holds far more neurons than the clusters you want, the SOM is a <em>quantizer/organizer</em>, not a final clusterer by itself — <code>cluster()</code> bridges that gap by running agglomerative clustering on the neuron prototypes.</p>
+
+<div class="card">
+<h3 style="margin-top:.2rem">SOM vs. K-Means in one line</h3>
+<p style="margin:0">K-means moves only the winning centroid toward a point. A SOM moves the winner <em>and</em> its grid neighbors, with the neighbor pull fading by grid distance and shrinking over time. That single difference buys you a map you can plot in 2D.</p>
+</div>
+
+<h2 id="watch-it">Watch it learn</h2>
+<p>Below is a real SOM trained live in your browser on a small 2D dataset. Each grid neuron is a node positioned at its current weight vector; lines connect grid-adjacent neurons, so the grid looks like a mesh draped over the data. Press <b>Play</b> and watch the mesh <em>unfold</em> from a tight tangle to a smooth sheet that covers the data — the anneal-from-global-to-local schedule in action. The translucent disk shows the current neighborhood radius around a sampled BMU; it shrinks as epochs advance.</p>
+
+<div class="demo">
+  <div class="flex-demo">
+    <div>
+      <canvas id="train-canvas" width="440" height="380" aria-label="SOM mesh unfolding over 2D data"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--muted)"></span>data points</span>
+        <span><span class="swatch" style="background:var(--c2)"></span>neuron mesh</span>
+        <span><span class="swatch" style="background:var(--c4)"></span>neighborhood radius</span>
+      </div>
+    </div>
+    <div>
+      <canvas id="qe-canvas" width="440" height="200" aria-label="Quantization error curve"></canvas>
+      <p class="sub" style="margin:.4rem 0 0">Quantization error per epoch — mean distance from each point to its BMU prototype. The convergence metric; training stops early if its change drops below <code>tol</code>.</p>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="train-play">▶ Play</button>
+    <button id="train-step" class="ghost">Step</button>
+    <button id="train-reset" class="ghost">↻ Reset</button>
+    <label class="ctl">neighborhood <b id="nb-val">gaussian</b>
+      <select id="nb-sel"><option value="gaussian">gaussian</option><option value="bubble">bubble</option><option value="mexican_hat">mexican_hat</option></select>
+    </label>
+    <label class="ctl">init learning rate <b id="lr-val">0.50</b>
+      <input id="lr-sel" type="range" min="0.1" max="0.9" step="0.05" value="0.5">
+    </label>
+    <label class="ctl">init radius <b id="rad-val">2.5</b>
+      <input id="rad-sel" type="range" min="1" max="5" step="0.5" value="2.5">
+    </label>
+    <label class="ctl">dataset <b id="ds-val">blobs</b>
+      <select id="ds-sel"><option value="blobs">3 blobs</option><option value="ring">ring</option><option value="grid">grid</option></select>
+    </label>
+  </div>
+  <p class="readout" id="train-readout">epoch 0 / 60 · λ = 0.500 · radius = 2.50 · QE = —</p>
+</div>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><b>Validate params &amp; build schedulers.</b> The constructor (<code>som.ts:58</code>) checks <code>grid_width</code>/<code>grid_height &ge; 1</code> and fills defaults (<code>topology=rectangular, neighborhood=gaussian, num_epochs=100, learning_rate=0.5, initialization=random, tol=1e-4, mini_batch_size=32</code>). <code>initialize_schedulers</code> (<code>som.ts:90</code>) wraps the learning rate and radius into exponential-decay functions; the default radius scheduler decays from <code>max(grid_width,grid_height)/2</code> down to <code>1</code>.</li>
+  <li><b>Initialize weights.</b> On first fit, <code>initialize_weights</code> (<code>som_neighborhood.ts:129</code>) builds the <code>[grid_height, grid_width, n_features]</code> weight tensor. <code>random</code> draws uniform values scaled to each feature's <code>[min,max]</code> range; <code>linear</code> / <code>pca</code> place neurons along the first two principal components found by power iteration.</li>
+  <li><b>Precompute the grid-distance matrix.</b> <code>create_grid_distance_matrix</code> (<code>som_neighborhood.ts:376</code>) builds a <code>[total_neurons, total_neurons]</code> matrix of pairwise grid distances. Rectangular uses plain Euclidean <code>(r,c)</code> distance; hexagonal applies an offset-coordinate transform (even rows shifted by 0.5 in x, rows spaced by &radic;3/2 in y).</li>
+  <li><b>Per-epoch decay &amp; shuffle.</b> Each epoch (<code>som.ts:183</code>) reads the current learning rate and radius from the schedulers, calls <code>validate_neighborhood_params</code> (radius must be &gt; 0; warns if it exceeds the grid), then Fisher-Yates shuffles the sample order with a seeded RNG (<code>shuffle_indices</code>, <code>som.ts:981</code>) so updates are not order-biased.</li>
+  <li><b>Find BMUs for a batch.</b> <code>train_epoch</code> (<code>som.ts:230</code>) slices the shuffled data into mini-batches. <code>find_bmu_batch</code> (<code>som_neighborhood.ts:488</code>) computes squared distances from every sample to every neuron via <code>&#8214;x&#8214;&sup2; + &#8214;w&#8214;&sup2; &minus; 2&middot;x&middot;w</code>, takes <code>argMin</code> over neurons, and converts flat indices to <code>[row,col]</code>.</li>
+  <li><b>Compute neighborhood influence.</b> <code>compute_neighborhood_influence_batch</code> (<code>som_neighborhood.ts:720</code>) gathers each BMU's row from the grid-distance matrix, then applies the chosen kernel to produce an <code>[n_samples, total_neurons]</code> influence matrix.</li>
+  <li><b>Batched weight update.</b> <code>update_weights</code> (<code>som.ts:292</code>) computes, per neuron j, <code>&Delta;w_j = lr &middot; (&Sigma;_i h_ij (x_i &minus; w_j)) / (&Sigma;_i h_ij)</code>. The differences are broadcast over neurons, scaled by influence, summed over samples, then divided by the per-neuron influence sum (guarded by <code>&epsilon;=1e-8</code> via <code>tf.where</code>, sign-preserving for mexican_hat's negative lobes). The new grid replaces the old tensor.</li>
+  <li><b>Track quantization error &amp; check convergence.</b> <code>compute_bmu_distances</code> (<code>som_neighborhood.ts:534</code>) gives each sample's Euclidean distance to its BMU prototype; <code>train_epoch</code> sample-weights the batch means into one epoch error. The loop (<code>som.ts:211</code>) stops early when <code>|prev_error &minus; error| &lt; tol</code>.</li>
+  <li><b>Assign final labels.</b> <code>compute_final_labels</code> (<code>som.ts:349</code>) runs <code>find_bmu_batch</code> over all data and stores <code>labels_ = row&middot;grid_width + col</code> for each point. <code>predict()</code> repeats this for new data.</li>
+  <li><b>Optional 2-phase clustering.</b> <code>cluster(n_clusters, options)</code> (<code>som.ts:439</code>) flattens the trained grid into <code>[total_neurons, n_features]</code>, runs <code>AgglomerativeClustering</code> (default <code>ward</code>/<code>euclidean</code>) to merge neurons into macro-clusters, then maps each point's BMU index to its neuron's cluster label.</li>
+  <li><b>Build the U-matrix.</b> <code>get_u_matrix</code> (<code>som.ts:589</code>) returns a <code>[grid_height, grid_width]</code> grid where each cell is the average Euclidean distance from that neuron's prototype to its grid neighbors (8-connected rectangular, 6-connected hexagonal). High values mark cluster boundaries; low values mark coherent regions.</li>
+</ol>
+
+<h2 id="math">The math</h2>
+
+<h3>BMU selection</h3>
+<div class="eq">bmu(x) = argmin<sub>j</sub> &#8214;x &minus; w<sub>j</sub>&#8214;&sup2;</div>
+<p>The best-matching unit is the neuron whose prototype <b>w<sub>j</sub></b> is closest to input <b>x</b>. Computing the full pairwise distance directly is wasteful, so <code>find_bmu_batch</code> expands the squared norm:</p>
+<div class="eq">&#8214;x &minus; w<sub>j</sub>&#8214;&sup2; = &#8214;x&#8214;&sup2; + &#8214;w<sub>j</sub>&#8214;&sup2; &minus; 2&middot;x&middot;w<sub>j</sub></div>
+<p>The <code>&minus;2&middot;x&middot;w<sub>j</sub></code> term is a single matrix multiply over the whole batch; the two squared-norm terms are cheap. <code>argMin</code> over j then picks the winner (<code>som_neighborhood.ts:504-515</code>). The constant <code>&#8214;x&#8214;&sup2;</code> does not change the argmin, so only the sum of <code>&#8214;w<sub>j</sub>&#8214;&sup2;</code> and the dot product really matter.</p>
+
+<h3>Neighborhood kernels h(d, &sigma;)</h3>
+<p>Given grid distance <b>d</b> from the BMU and current radius <b>&sigma;</b>, the kernel decides how much each neuron is pulled. Three are implemented:</p>
+<div class="eq">gaussian:&nbsp;&nbsp;&nbsp;&nbsp;h(d, &sigma;) = exp(&minus;d&sup2; / (2&sigma;&sup2;))</div>
+<div class="eq">bubble:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;h(d, &sigma;) = 1 if d &le; &sigma;, else 0</div>
+<div class="eq">mexican_hat:&nbsp;&nbsp;h(d, &sigma;) = 2 &middot; (1 &minus; (d/&sigma;)&sup2;) &middot; exp(&minus;(d/&sigma;)&sup2; / 2)</div>
+<p><b>Gaussian</b> (<code>som_neighborhood.ts:583</code>) is smooth and always positive, peaking at 1 for the BMU itself (<code>d=0</code>). <b>Bubble</b> (<code>:602</code>) is a hard cutoff — full influence inside the radius, nothing outside. <b>Mexican-hat</b> (the Ricker wavelet, <code>:620</code>) is positive at the center but <em>negative</em> at medium grid distances: it adds lateral inhibition, pushing mid-range neurons <em>away</em> from the sample. Its amplitude <code>2</code> is hardcoded. Try all three side by side below.</p>
+
+<div class="demo">
+  <div class="flex-demo">
+    <div>
+      <canvas id="kern-canvas" width="440" height="300" aria-label="Neighborhood kernel shapes"></canvas>
+      <p class="sub" style="margin:.4rem 0 0">h(d, &sigma;) vs grid distance d. The dashed vertical line is the current &sigma; (radius).</p>
+    </div>
+    <div>
+      <canvas id="decay-canvas" width="440" height="300" aria-label="Exponential decay of learning rate and radius"></canvas>
+      <p class="sub" style="margin:.4rem 0 0">Exponential-decay schedules over epochs. The marker is the current epoch; it sets the &sigma; used on the left.</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="ctl">current epoch <b id="ke-val">0</b>
+      <input id="ke-sel" type="range" min="0" max="99" step="1" value="0">
+    </label>
+    <label class="ctl">num_epochs <b id="kn-val">100</b>
+      <input id="kn-sel" type="range" min="20" max="200" step="10" value="100">
+    </label>
+    <label class="ctl">init radius <b id="kr-val">3.0</b>
+      <input id="kr-sel" type="range" min="1" max="6" step="0.5" value="3">
+    </label>
+    <label class="ctl" style="justify-content:flex-end">
+      <span><input id="kall-sel" type="checkbox" checked> overlay all three kernels</span>
+    </label>
+  </div>
+  <p class="readout" id="kern-readout">&sigma; = 3.00 · λ = 0.500</p>
+</div>
+
+<h3>Batch weight update</h3>
+<div class="eq">&Delta;w<sub>j</sub> = &lambda; &middot; ( &Sigma;<sub>i</sub> h<sub>ij</sub> (x<sub>i</sub> &minus; w<sub>j</sub>) ) / ( &Sigma;<sub>i</sub> h<sub>ij</sub> )</div>
+<p>For a batch, each neuron <b>j</b> moves by the influence-weighted mean pull toward all batch samples <b>x<sub>i</sub></b>, scaled by learning rate <b>&lambda;</b>. <b>h<sub>ij</sub></b> is the kernel influence of sample i's BMU on neuron j. Dividing by <code>&Sigma;<sub>i</sub> h<sub>ij</sub></code> normalizes so updates do not depend on batch size — this is the <em>batch-SOM</em> update, distinct from the textbook online rule <code>w += &lambda; h (x &minus; w)</code>. The denominator is guarded: if its absolute value drops below <code>&epsilon; = 1e-8</code> it is replaced by <code>&epsilon;</code> (via <code>tf.where</code>), which both avoids divide-by-zero and stays sign-preserving so mexican_hat's negative lobes correctly push neurons away (<code>som.ts:305-335</code>).</p>
+
+<h3>Exponential decay (&lambda; and radius)</h3>
+<div class="eq">v(t) = v<sub>final</sub> + (v<sub>initial</sub> &minus; v<sub>final</sub>) &middot; exp(&minus;t / &tau;),&nbsp;&nbsp;&tau; = num_epochs / 5</div>
+<p>Both learning rate and radius follow this schedule across epoch <b>t</b>; <code>decay_rate = 5</code> sets the time constant <b>&tau;</b> (<code>som_neighborhood.ts:843</code>). The default final value is <code>v<sub>initial</sub> &middot; 0.01</code> for the learning rate and <code>1</code> for the radius (<code>som.ts:117</code>). Large radius early &rArr; coarse global organization; tiny radius late &rArr; local fine-tuning.</p>
+
+<h3>U-matrix cell</h3>
+<div class="eq">U(i,j) = (1 / |N(i,j)|) &middot; &Sigma;<sub>n &isin; N(i,j)</sub> &#8214;w<sub>ij</sub> &minus; w<sub>n</sub>&#8214;</div>
+<p>Each cell is the average Euclidean distance from neuron <code>(i,j)</code>'s prototype to its grid neighbors <b>N(i,j)</b>. Ridges (large U) sit between clusters; valleys (small U) are coherent cluster cores (<code>som.ts:589-653</code>). This is the canonical way to <em>see</em> structure on a trained map — explore it below.</p>
+
+<h3>Quality &amp; topology metrics</h3>
+<div class="eq">QE = (1 / n) &middot; &Sigma;<sub>i</sub> &#8214;x<sub>i</sub> &minus; w<sub>bmu(x_i)</sub>&#8214;</div>
+<div class="eq">TE = (1 / n) &middot; &Sigma;<sub>i</sub> 1[ bmu1(x<sub>i</sub>) and bmu2(x<sub>i</sub>) are not grid neighbors ]</div>
+<p><b>Quantization error (QE)</b> is the mean distance from each sample to its BMU prototype — how well the map quantizes the data, and the convergence signal (<code>som_neighborhood.ts:534</code>, aggregated at <code>som.ts:284</code>). <b>Topographic error (TE)</b> is the fraction of samples whose two closest neurons are <em>not</em> adjacent on the grid — how well topology is preserved (<code>som.ts:670</code>). Low QE with low TE means an accurate, well-organized map.</p>
+
+<h2 id="umatrix">Try it: U-matrix &amp; macro-clusters</h2>
+<p>This trained 5&times;5 map is rendered as a heatmap. Switch between the <b>U-matrix</b> (dark valleys = cluster cores, bright ridges = boundaries), the <b>hit map</b> (how many samples land on each neuron, shown as sized dots), and the <b>quantization-quality map</b>. Move the <code>n_clusters</code> slider to re-run the agglomerative merge on the neuron prototypes and recolor the macro-cluster regions — the exact second phase of <code>cluster()</code>.</p>
+
+<div class="demo">
+  <div class="flex-demo">
+    <div>
+      <canvas id="um-canvas" width="440" height="440" aria-label="U-matrix heatmap with cluster regions"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:#0a0e14"></span>low (valley / core)</span>
+        <span><span class="swatch" style="background:var(--c4)"></span>high (ridge / boundary)</span>
+        <span><span class="swatch" style="background:#fff;border-radius:50%"></span>hit count</span>
+      </div>
+    </div>
+    <div>
+      <canvas id="um-data" width="440" height="300" aria-label="Source data colored by macro-cluster"></canvas>
+      <p class="sub" style="margin:.4rem 0 0">The source points colored by the macro-cluster their BMU was merged into. Each point routes data &rarr; BMU neuron &rarr; agglomerative cluster.</p>
+    </div>
+  </div>
+  <div class="controls">
+    <label class="ctl">layer <b id="um-layer-val">U-matrix</b>
+      <select id="um-layer"><option value="u">U-matrix</option><option value="hit">hit map</option><option value="qual">quality map</option></select>
+    </label>
+    <label class="ctl">n_clusters <b id="um-nc-val">3</b>
+      <input id="um-nc" type="range" min="2" max="6" step="1" value="3">
+    </label>
+    <label class="ctl">linkage <b id="um-link-val">ward</b>
+      <select id="um-link"><option value="ward">ward</option><option value="complete">complete</option><option value="average">average</option><option value="single">single</option></select>
+    </label>
+    <button id="um-retrain" class="ghost">↻ Retrain map</button>
+  </div>
+  <p class="readout" id="um-readout">25 neurons · merged into 3 macro-clusters · linkage = ward</p>
+</div>
+
+<h2 id="probe">Try it: probe a sample &amp; its BMU</h2>
+<p>Click or drag anywhere in the data scatter to inject a probe point <b>x</b>. The grid highlights its BMU (the neuron whose prototype minimizes <code>&#8214;x&minus;w&#8214;&sup2;</code>) and renders the <b>activation map</b> — each neuron's response strength via the inverse-distance normalization in <code>get_activation_map</code>. The panel shows the live <code>&#8214;x&#8214;&sup2; + &#8214;w&#8214;&sup2; &minus; 2x&middot;w</code> decomposition for the winning neuron, and whether the 2nd-closest neuron is a grid neighbor of the BMU (the per-sample test behind topographic error).</p>
+
+<div class="demo">
+  <div class="flex-demo">
+    <div>
+      <canvas id="pr-data" width="440" height="380" aria-label="Click to inject a probe point"></canvas>
+      <p class="sub" style="margin:.4rem 0 0">Click / drag to move the probe (the white ring).</p>
+    </div>
+    <div>
+      <canvas id="pr-grid" width="440" height="380" aria-label="Activation map and BMU"></canvas>
+      <div class="legend">
+        <span><span class="swatch" style="background:var(--c1)"></span>strong response</span>
+        <span><span class="swatch" style="background:var(--c2);border:2px solid #fff"></span>BMU (1st)</span>
+        <span><span class="swatch" style="background:var(--c3)"></span>2nd BMU</span>
+      </div>
+    </div>
+  </div>
+  <p class="readout" id="pr-readout" style="white-space:pre-line">click the scatter to begin</p>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<table>
+<thead><tr><th>Location</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>som.ts:32</code></td><td><code>SOM</code> class implementing <code>BaseClustering&lt;SOMParams&gt;</code>; holds <code>weights_</code>, <code>labels_</code>, <code>bmus_</code>, schedulers, per-epoch state.</td></tr>
+<tr><td><code>som.ts:90</code></td><td><code>initialize_schedulers</code>: wraps <code>learning_rate</code> &amp; <code>radius</code> into decay functions; default radius decays from <code>max(w,h)/2</code> to <code>1</code>.</td></tr>
+<tr><td><code>som.ts:145</code></td><td><code>fit_tensor</code>: training driver — init weights, precompute grid distances, per-epoch decay+shuffle+train, convergence check, final labels.</td></tr>
+<tr><td><code>som.ts:230</code></td><td><code>train_epoch</code>: mini-batch loop computing BMUs, influence, weight update, accumulating quantization error.</td></tr>
+<tr><td><code>som.ts:292</code></td><td><code>update_weights</code>: batched SOM update with &epsilon;-guarded, sign-preserving normalization.</td></tr>
+<tr><td><code>som.ts:349</code></td><td><code>compute_final_labels</code>: <code>labels_ = row&middot;grid_width + col</code> from final BMUs.</td></tr>
+<tr><td><code>som.ts:439</code></td><td><code>cluster()</code>: 2-phase clustering — agglomerative on neuron prototypes, then BMU&rarr;macro-cluster relabel.</td></tr>
+<tr><td><code>som.ts:589</code></td><td><code>get_u_matrix</code>: average prototype distance to grid neighbors (8-conn rectangular / 6-conn hexagonal).</td></tr>
+<tr><td><code>som.ts:670</code></td><td><code>topographic_error</code>: fraction of samples whose 1st &amp; 2nd BMUs are not grid neighbors.</td></tr>
+<tr><td><code>som.ts:981</code></td><td><code>shuffle_indices</code>: seeded Fisher-Yates shuffle for per-epoch order independence.</td></tr>
+<tr><td><code>som_neighborhood.ts:488</code></td><td><code>find_bmu_batch</code>: vectorized BMU search via <code>&#8214;x&#8214;&sup2;+&#8214;w&#8214;&sup2;&minus;2x&middot;w</code> then <code>argMin</code>.</td></tr>
+<tr><td><code>som_neighborhood.ts:583</code></td><td><code>gaussian_neighborhood</code>: <code>exp(&minus;d&sup2;/(2&sigma;&sup2;))</code>.</td></tr>
+<tr><td><code>som_neighborhood.ts:602</code></td><td><code>bubble_neighborhood</code>: hard cutoff <code>d &le; radius</code>.</td></tr>
+<tr><td><code>som_neighborhood.ts:620</code></td><td><code>mexican_hat_neighborhood</code>: Ricker wavelet, amplitude 2, negative surround.</td></tr>
+<tr><td><code>som_neighborhood.ts:720</code></td><td><code>compute_neighborhood_influence_batch</code>: gather each BMU's grid-distance row, apply chosen kernel.</td></tr>
+<tr><td><code>som_neighborhood.ts:376</code></td><td><code>create_grid_distance_matrix</code>: precomputed <code>[total_neurons, total_neurons]</code> grid distances.</td></tr>
+<tr><td><code>som_neighborhood.ts:32</code></td><td><code>grid_distance</code>: rectangular Euclidean vs hexagonal offset-coordinate distance.</td></tr>
+<tr><td><code>som_neighborhood.ts:129</code></td><td><code>initialize_weights</code>: <code>random</code> / <code>linear</code> / <code>pca</code> init strategies.</td></tr>
+<tr><td><code>som_neighborhood.ts:312</code></td><td><code>compute_principal_components</code>: power-iteration PCA used by <code>linear</code>/<code>pca</code> init (TF.js lacks eig).</td></tr>
+<tr><td><code>som_neighborhood.ts:843</code></td><td><code>exponential_decay</code>: <code>final + (initial&minus;final)&middot;exp(&minus;epoch/(total/5))</code> for &lambda; and radius.</td></tr>
+<tr><td><code>som_neighborhood.ts:534</code></td><td><code>compute_bmu_distances</code>: per-sample Euclidean distance to its BMU prototype.</td></tr>
+<tr><td><code>som_visualization.ts:18</code></td><td><code>get_component_planes</code>: per-feature view of the grid, transposed to <code>[features, h, w]</code>.</td></tr>
+<tr><td><code>som_visualization.ts:35</code></td><td><code>get_hit_map</code>: count of samples whose BMU is each neuron.</td></tr>
+<tr><td><code>som_visualization.ts:66</code></td><td><code>get_activation_map</code>: per-neuron response strength to one sample (inverse-distance normalized).</td></tr>
+<tr><td><code>som_visualization.ts:317</code></td><td><code>get_density_map</code>: hit map smoothed by a Gaussian kernel via <code>conv2d</code>.</td></tr>
+<tr><td><code>types.ts:262</code></td><td><code>SOMParams</code> interface — the constructor contract and all defaults documented inline.</td></tr>
+</tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Parameter</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>grid_width</code></td><td>Neurons along the x-axis. Required, <code>&ge; 1</code>. Total neurons = <code>grid_width &times; grid_height</code>.</td></tr>
+<tr><td><code>grid_height</code></td><td>Neurons along the y-axis. Required, <code>&ge; 1</code>.</td></tr>
+<tr><td><code>topology</code></td><td><code>rectangular</code> (default; Euclidean grid distance, 8-connected) or <code>hexagonal</code> (offset-coordinate distance, 6-connected).</td></tr>
+<tr><td><code>neighborhood</code></td><td>Kernel: <code>gaussian</code> (default, smooth), <code>bubble</code> (hard cutoff), or <code>mexican_hat</code> (lateral inhibition with negative lobes).</td></tr>
+<tr><td><code>num_epochs</code></td><td>Training passes over the data. Default <code>100</code>. Also the horizon used by the decay schedulers.</td></tr>
+<tr><td><code>learning_rate</code></td><td>Initial &lambda; (default <code>0.5</code>) or a custom <code>DecayFunction(epoch, total_epochs)</code>. A number is wrapped in exponential decay to <code>&lambda;&middot;0.01</code>.</td></tr>
+<tr><td><code>radius</code></td><td>Initial &sigma; or a custom <code>DecayFunction</code>. If omitted, defaults to exponential decay from <code>max(grid_width,grid_height)/2</code> down to <code>1</code>.</td></tr>
+<tr><td><code>initialization</code></td><td><code>random</code> (default; uniform within per-feature data range), <code>linear</code> (grid spanned along first two PCs, MiniSom-style), or <code>pca</code> (grid placed in PC space and back-projected).</td></tr>
+<tr><td><code>random_state</code></td><td>Seed (from <code>CoreClusteringParams</code>) feeding both weight init and the per-epoch Fisher-Yates shuffle for reproducibility.</td></tr>
+<tr><td><code>tol</code></td><td>Convergence tolerance (default <code>1e-4</code>). Training stops early when the absolute change in epoch quantization error drops below it.</td></tr>
+<tr><td><code>mini_batch_size</code></td><td>Mini-batch size for the batched update (default <code>32</code>). Clamped to <code>n_samples</code> per batch.</td></tr>
+<tr><td><code>online_mode</code></td><td>Enables incremental learning via <code>partial_fit</code> / <code>process_stream</code> (default <code>false</code>). Drives <code>total_samples_learned_</code> and virtual-epoch scheduling.</td></tr>
+<tr><td><code>n_clusters</code> <span class="tag">cluster() arg</span></td><td>Desired macro-cluster count for the 2-phase <code>cluster()</code> method. Integer in <code>[1, grid_width&times;grid_height]</code>.</td></tr>
+<tr><td><code>options.linkage / .metric</code> <span class="tag">cluster() arg</span></td><td>Agglomerative linkage (<code>ward</code> default; complete/average/single) and metric (<code>euclidean</code> default; manhattan/cosine) used to merge neuron prototypes.</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<div class="note"><b>No fixed scikit-learn reference.</b> scikit-learn has no SOM estimator, so this implementation follows <b>MiniSom</b> conventions (PCA/linear init, exponential decay, gaussian/bubble kernels) rather than an sklearn API. There is no upstream parity test for SOM itself. Where it <em>does</em> touch the repo's sklearn-parity machinery is the second phase of <code>cluster()</code>: it delegates to <code>AgglomerativeClustering</code> (default <code>ward</code>/<code>euclidean</code>, <code>som.ts:469-475</code>) — the repo's scikit-learn-parity-tested hierarchical clusterer. So SOM inherits sklearn-parity behavior only <em>indirectly</em>, through the agglomerative merge that turns neuron prototypes into final labels. Reproducibility uses the shared seeded <code>RandomStream</code> for both weight init and the per-epoch shuffle.</div>
+
+<ul>
+<li><b>Convergence can stop very early.</b> The <code>tol</code> check compares consecutive epoch quantization errors, so a flat or noisy curve can break the loop well before <code>num_epochs</code> — especially with <code>bubble</code> on small batches where the error is near-constant.</li>
+<li><b>Batch-SOM, not classic online SOM.</b> <code>fit()</code> uses an influence-normalized batched update (delta divided by sum of influences). This makes updates batch-size-independent but changes the exact trajectory versus <code>w += &lambda; h (x &minus; w)</code>.</li>
+<li><b>mexican_hat produces negative influences.</b> The update normalizes by the <em>signed</em> influence sum (guarded with <code>|sum| &gt; &epsilon;</code> via <code>tf.where</code>) so neurons in the inhibitory lobe move <em>away</em> from the sample. A near-zero signed sum is replaced by &epsilon; to avoid blow-ups.</li>
+<li><b>Radius must stay positive.</b> <code>validate_neighborhood_params</code> throws if radius <code>&le; 0</code>, and the default radius scheduler floors at <code>1</code>. It only <em>warns</em> when radius exceeds the grid size, which causes near-uniform influence.</li>
+<li><b>Grid-distance metric is topology-specific.</b> U-matrix, <code>are_neighbors</code>, and the neighbor-distance matrix all use 8-connectivity (rectangular) or 6-connectivity (hexagonal) and must stay mutually consistent — the source comments explicitly flag this.</li>
+<li><b>linear/pca fall back to random</b> when <code>n_samples &lt; 2</code> or <code>n_features &lt; 2</code>, since power-iteration PCA needs at least two samples/features.</li>
+<li><b>Labels are raw BMU indices</b> (<code>0..total_neurons&minus;1</code>), not cluster ids. Treating them as clusters directly is usually wrong; use <code>cluster()</code> for meaningful groupings.</li>
+<li><b>partial_fit requires online_mode=true</b> (throws otherwise) and enforces matching <code>n_features</code>. Its <code>virtual_epoch = floor(total_samples_learned / n_samples)</code> drives the same schedulers, so streaming decay depends on how data is chunked.</li>
+<li><b>Unfitted access throws.</b> <code>predict</code> on an unfitted model throws (<code>'SOM must be fitted before prediction'</code>); <code>quantization_error()</code>, <code>get_u_matrix()</code>, and <code>get_weights()</code> also throw before fit.</li>
+<li><b>PCA init uses power iteration</b> (100 iterations, deflation) because TF.js lacks eigendecomposition; results can differ slightly from a true SVD/eig and from MiniSom's NumPy PCA.</li>
+</ul>
+
+<footer>
+<p><b>Connects to:</b>
+<a href="./kmeans.html">K-Means</a> · <a href="./agglomerative.html">Agglomerative Clustering</a> · <a href="./linkage.html">Linkage &amp; NN-Chain</a> · <a href="./distance.html">Pairwise Distance</a> · <a href="./eigen.html">Eigendecomposition</a> · <a href="./random.html">Deterministic RNG</a> · <a href="./validation.html">Validation Metrics</a> · <a href="./model-selection.html">Choosing k</a></p>
+<p>&larr; Prev: <a href="./agglomerative.html">Agglomerative Clustering</a> &nbsp;|&nbsp; Next: <a href="./eigen.html">Eigendecomposition Engine</a> &rarr;</p>
+<p><a href="./index.html">◆ Back to the Clustering Atlas index</a></p>
+<p class="muted">Self-contained, offline. All SOM training, BMU search, neighborhood kernels, the batch update, U-matrix and agglomerative merge run live in vanilla JS, mirroring <code>src/clustering/som.ts</code>, <code>src/clustering/som_neighborhood.ts</code>, and <code>src/visualization/som_visualization.ts</code>.</p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+/* ============================================================
+   Minimal faithful re-implementation of the SOM core in plain JS.
+   Mirrors src/clustering/som.ts and som_neighborhood.ts:
+   - BMU via ||x-w||^2 = ||x||^2 + ||w||^2 - 2 x.w (argmin)
+   - gaussian / bubble / mexican_hat kernels
+   - batch update dw_j = lr * sum_i h_ij (x_i - w_j) / sum_i h_ij  (eps-guarded, signed)
+   - exponential decay  v(t) = final + (init-final)*exp(-t/(epochs/5))
+   - U-matrix = mean Euclidean dist to 8-connected grid neighbors
+   ============================================================ */
+
+/* ---------- seeded RNG (mulberry32; deterministic, like a seeded stream) ---------- */
+function make_rng(seed){
+  let s = seed >>> 0;
+  return function(){
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function rand_int(rng, n){ return Math.floor(rng() * n); }
+
+/* ---------- decay ---------- */
+function exp_decay(initial, final, epoch, total, rate){
+  rate = rate || 5;
+  if (total <= 1) return initial;
+  const tau = total / rate;
+  return final + (initial - final) * Math.exp(-epoch / tau);
+}
+
+/* ---------- kernels ---------- */
+function kernel(name, d, sigma){
+  if (name === 'gaussian') return Math.exp(-(d*d) / (2*sigma*sigma));
+  if (name === 'bubble')   return d <= sigma ? 1 : 0;
+  // mexican_hat (Ricker), amplitude 2 (hardcoded in source)
+  const dn = d / sigma, dn2 = dn*dn;
+  return 2 * (1 - dn2) * Math.exp(-dn2 / 2);
+}
+
+/* ---------- grid distance (rectangular Euclidean) ---------- */
+function grid_dist(r1,c1,r2,c2){ return Math.hypot(r1-r2, c1-c2); }
+
+/* ---------- datasets ---------- */
+function make_dataset(kind, rng){
+  const pts = [];
+  if (kind === 'blobs'){
+    const centers = [[0.25,0.30],[0.72,0.28],[0.50,0.75]];
+    for (const [cx,cy] of centers){
+      for (let i=0;i<45;i++){
+        pts.push([cx + (rng()-0.5)*0.20, cy + (rng()-0.5)*0.20]);
+      }
+    }
+  } else if (kind === 'ring'){
+    for (let i=0;i<140;i++){
+      const a = rng()*Math.PI*2, rr = 0.32 + (rng()-0.5)*0.07;
+      pts.push([0.5 + rr*Math.cos(a), 0.5 + rr*Math.sin(a)]);
+    }
+  } else { // grid
+    for (let gx=0;gx<5;gx++) for (let gy=0;gy<5;gy++){
+      for (let k=0;k<5;k++)
+        pts.push([0.15 + gx*0.175 + (rng()-0.5)*0.05, 0.15 + gy*0.175 + (rng()-0.5)*0.05]);
+    }
+  }
+  return pts;
+}
+
+/* ---------- a tiny SOM that can step one epoch at a time ---------- */
+function make_som(opts){
+  const GW = opts.gw, GH = opts.gh, N = GW*GH;
+  const data = opts.data;
+  const nf = 2;
+  const rng = make_rng(opts.seed||42);
+  // random init within data range
+  let xmin=[Infinity,Infinity], xmax=[-Infinity,-Infinity];
+  for (const p of data){ for(let f=0;f<nf;f++){ xmin[f]=Math.min(xmin[f],p[f]); xmax[f]=Math.max(xmax[f],p[f]); } }
+  const W = []; // [N][nf]
+  for (let i=0;i<N;i++){
+    W.push([ xmin[0]+rng()*(xmax[0]-xmin[0]), xmin[1]+rng()*(xmax[1]-xmin[1]) ]);
+  }
+  // precomputed grid distance matrix
+  const GD = [];
+  for (let i=0;i<N;i++){ const r1=Math.floor(i/GW), c1=i%GW; const row=[];
+    for (let j=0;j<N;j++){ const r2=Math.floor(j/GW), c2=j%GW; row.push(grid_dist(r1,c1,r2,c2)); } GD.push(row); }
+
+  function bmu(p){
+    let best=-1, bd=Infinity;
+    for (let j=0;j<N;j++){ const w=W[j]; const dx=p[0]-w[0], dy=p[1]-w[1]; const d=dx*dx+dy*dy;
+      if (d<bd){bd=d;best=j;} }
+    return best;
+  }
+
+  function step_epoch(epoch, total, nb, lr0, rad0, radFinal){
+    const lr = exp_decay(lr0, lr0*0.01, epoch, total);
+    const rad = Math.max(1e-6, exp_decay(rad0, radFinal, epoch, total));
+    // shuffle
+    const idx = data.map((_,i)=>i);
+    for (let i=idx.length-1;i>0;i--){ const j=rand_int(rng,i+1); const t=idx[i];idx[i]=idx[j];idx[j]=t; }
+    // single batch over all (small data)
+    // accumulate numerator [N][nf] and denominator [N]
+    const num = []; const den = new Float64Array(N);
+    for (let j=0;j<N;j++) num.push([0,0]);
+    let qe=0;
+    for (const ii of idx){
+      const p = data[ii];
+      const b = bmu(p);
+      const grow = GD[b];
+      for (let j=0;j<N;j++){
+        const h = kernel(nb, grow[j], rad);
+        num[j][0] += h*(p[0]-W[j][0]);
+        num[j][1] += h*(p[1]-W[j][1]);
+        den[j] += h;
+      }
+      qe += Math.hypot(p[0]-W[b][0], p[1]-W[b][1]);
+    }
+    const eps = 1e-8;
+    for (let j=0;j<N;j++){
+      let dsum = den[j];
+      if (Math.abs(dsum) <= eps) dsum = eps; // sign-preserving guard
+      W[j][0] += lr * (num[j][0]/dsum);
+      W[j][1] += lr * (num[j][1]/dsum);
+    }
+    return { qe: qe/data.length, lr, rad };
+  }
+
+  return {
+    GW, GH, N, W, GD, data, bmu, step_epoch,
+    sample_bmu(){ return bmu(data[rand_int(rng, data.length)]); }
+  };
+}
+
+/* ============================================================
+   DEMO 1 — live training mesh
+   ============================================================ */
+(function(){
+  const cv = document.getElementById('train-canvas');
+  const qcv = document.getElementById('qe-canvas');
+  if(!cv) return;
+  const ctx = cv.getContext('2d'), qctx = qcv.getContext('2d');
+  const GW=5, GH=5, TOTAL=60;
+  let som, epoch, playing=false, qe_hist=[], raf=null, sampleBmu=0;
+  let nb='gaussian', lr0=0.5, rad0=2.5;
+  let dataset='blobs';
+
+  function rebuild(){
+    const rng = make_rng(7);
+    const data = make_dataset(dataset, rng);
+    som = make_som({gw:GW,gh:GH,data,seed:99});
+    epoch=0; qe_hist=[]; sampleBmu=som.sample_bmu();
+    draw(); drawQE();
+    updateReadout(0.5, rad0, NaN);
+  }
+  function dataXY(p){ return [20 + p[0]*(cv.width-40), cv.height-20 - p[1]*(cv.height-40)]; }
+
+  function draw(){
+    ctx.clearRect(0,0,cv.width,cv.height);
+    // data
+    ctx.fillStyle='rgba(154,167,180,.55)';
+    for (const p of som.data){ const [x,y]=dataXY(p); ctx.beginPath(); ctx.arc(x,y,2.4,0,7); ctx.fill(); }
+    // neighborhood disk around sampled BMU (in DATA space, sized by current grid radius -> rough data radius)
+    const rad = Math.max(1e-6, exp_decay(rad0, 1, epoch, TOTAL));
+    const br = Math.floor(sampleBmu/GW), bc = sampleBmu%GW;
+    // approximate: average data-space spacing between grid-adjacent neurons
+    let spacing=0, cnt=0;
+    for (let i=0;i<som.N;i++){ const r=Math.floor(i/GW),c=i%GW;
+      if (c<GW-1){ const j=i+1; spacing_add(i,j);} if (r<GH-1){ const j=i+GW; spacing_add(i,j);} }
+    function spacing_add(i,j){ spacing+=Math.hypot(som.W[i][0]-som.W[j][0], som.W[i][1]-som.W[j][1]); cnt++; }
+    const meanSpace = cnt? spacing/cnt : 0.1;
+    const [bx,by]=dataXY(som.W[sampleBmu]);
+    const diskR = Math.min(cv.width, rad*meanSpace*(cv.width-40));
+    ctx.fillStyle='rgba(240,180,41,.12)'; ctx.strokeStyle='rgba(240,180,41,.5)'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(bx,by,Math.max(8,diskR),0,7); ctx.fill(); ctx.stroke();
+    // mesh edges
+    ctx.strokeStyle='rgba(126,231,135,.55)'; ctx.lineWidth=1.2;
+    for (let i=0;i<som.N;i++){ const r=Math.floor(i/GW),c=i%GW;
+      const [x,y]=dataXY(som.W[i]);
+      if (c<GW-1){ const [x2,y2]=dataXY(som.W[i+1]); line(x,y,x2,y2); }
+      if (r<GH-1){ const [x2,y2]=dataXY(som.W[i+GW]); line(x,y,x2,y2); }
+    }
+    function line(a,b,c,d){ ctx.beginPath(); ctx.moveTo(a,b); ctx.lineTo(c,d); ctx.stroke(); }
+    // nodes
+    for (let i=0;i<som.N;i++){ const [x,y]=dataXY(som.W[i]);
+      ctx.fillStyle = (i===sampleBmu)?'#fff':'var(--c2)';
+      ctx.fillStyle = (i===sampleBmu)?'#ffffff':'#7ee787';
+      ctx.beginPath(); ctx.arc(x,y,(i===sampleBmu)?4.5:3,0,7); ctx.fill(); }
+  }
+
+  function drawQE(){
+    qctx.clearRect(0,0,qcv.width,qcv.height);
+    const pad=28, W=qcv.width, H=qcv.height;
+    qctx.strokeStyle='#2b333d'; qctx.lineWidth=1;
+    qctx.beginPath(); qctx.moveTo(pad,H-pad); qctx.lineTo(W-8,H-pad); qctx.moveTo(pad,8); qctx.lineTo(pad,H-pad); qctx.stroke();
+    qctx.fillStyle='#9aa7b4'; qctx.font='11px ui-monospace,monospace';
+    qctx.fillText('QE', 6, 16); qctx.fillText('epoch', W-44, H-8);
+    if (qe_hist.length<1) return;
+    const maxQ = Math.max.apply(null, qe_hist), minQ = Math.min.apply(null, qe_hist);
+    const rng = (maxQ-minQ)||1;
+    qctx.strokeStyle='#58a6ff'; qctx.lineWidth=2; qctx.beginPath();
+    qe_hist.forEach((q,i)=>{
+      const x = pad + (i/(TOTAL-1))*(W-pad-10);
+      const y = (H-pad) - ((q-minQ)/rng)*(H-pad-12);
+      i===0?qctx.moveTo(x,y):qctx.lineTo(x,y);
+    });
+    qctx.stroke();
+    // last point
+    const i=qe_hist.length-1, q=qe_hist[i];
+    const x = pad + (i/(TOTAL-1))*(W-pad-10);
+    const y = (H-pad) - ((q-minQ)/rng)*(H-pad-12);
+    qctx.fillStyle='#7ee787'; qctx.beginPath(); qctx.arc(x,y,3.5,0,7); qctx.fill();
+  }
+
+  function updateReadout(lr, rad, qe){
+    document.getElementById('train-readout').textContent =
+      `epoch ${epoch} / ${TOTAL} · λ = ${lr.toFixed(3)} · radius = ${rad.toFixed(2)} · QE = ${isNaN(qe)?'—':qe.toFixed(4)}`;
+  }
+
+  function stepOnce(){
+    if (epoch>=TOTAL){ stop(); return; }
+    const res = som.step_epoch(epoch, TOTAL, nb, lr0, rad0, 1);
+    qe_hist.push(res.qe);
+    if (epoch % 6 === 0) sampleBmu = som.sample_bmu();
+    epoch++;
+    updateReadout(res.lr, res.rad, res.qe);
+    draw(); drawQE();
+  }
+  function loop(){ if(!playing) return; stepOnce(); if(epoch>=TOTAL){ stop(); return; } raf=requestAnimationFrame(()=>setTimeout(loop,60)); }
+  function play(){ if(epoch>=TOTAL) rebuild(); playing=true; document.getElementById('train-play').textContent='⏸ Pause'; loop(); }
+  function stop(){ playing=false; document.getElementById('train-play').textContent='▶ Play'; if(raf)cancelAnimationFrame(raf); }
+
+  document.getElementById('train-play').onclick=()=> playing?stop():play();
+  document.getElementById('train-step').onclick=()=>{ stop(); if(epoch>=TOTAL) rebuild(); stepOnce(); };
+  document.getElementById('train-reset').onclick=()=>{ stop(); rebuild(); };
+  document.getElementById('nb-sel').onchange=e=>{ nb=e.target.value; document.getElementById('nb-val').textContent=nb; stop(); rebuild(); };
+  document.getElementById('lr-sel').oninput=e=>{ lr0=+e.target.value; document.getElementById('lr-val').textContent=lr0.toFixed(2); stop(); rebuild(); };
+  document.getElementById('rad-sel').oninput=e=>{ rad0=+e.target.value; document.getElementById('rad-val').textContent=rad0.toFixed(1); stop(); rebuild(); };
+  document.getElementById('ds-sel').onchange=e=>{ dataset=e.target.value; document.getElementById('ds-val').textContent=e.target.selectedOptions[0].text; stop(); rebuild(); };
+
+  rebuild();
+})();
+
+/* ============================================================
+   DEMO 2 — kernel + decay explorer
+   ============================================================ */
+(function(){
+  const kc = document.getElementById('kern-canvas');
+  const dc = document.getElementById('decay-canvas');
+  if(!kc) return;
+  const kctx=kc.getContext('2d'), dctx=dc.getContext('2d');
+  let epoch=0, total=100, rad0=3, all=true;
+  const lr0=0.5;
+  const COL={gaussian:'#58a6ff', bubble:'#7ee787', mexican_hat:'#ff7b9c'};
+
+  function sigma(){ return Math.max(1e-6, exp_decay(rad0, 1, epoch, total)); }
+  function lr(){ return exp_decay(lr0, lr0*0.01, epoch, total); }
+
+  function drawKern(){
+    kctx.clearRect(0,0,kc.width,kc.height);
+    const pad=34, W=kc.width, H=kc.height, dmax=6;
+    // axes
+    kctx.strokeStyle='#2b333d'; kctx.beginPath();
+    kctx.moveTo(pad,8); kctx.lineTo(pad,H-pad); kctx.lineTo(W-8,H-pad); kctx.stroke();
+    // zero line (for mexican hat negatives)
+    const y0 = H-pad - (1/2)*(H-pad-12)*0; // baseline placed so 0..1 maps; we map -1..2 -> bottom..top
+    const vmin=-1.2, vmax=2.1;
+    function vy(v){ return (H-pad) - ((v-vmin)/(vmax-vmin))*(H-pad-14); }
+    function dx(d){ return pad + (d/dmax)*(W-pad-10); }
+    // zero axis
+    kctx.strokeStyle='#3a444f'; kctx.setLineDash([3,3]); kctx.beginPath();
+    kctx.moveTo(pad,vy(0)); kctx.lineTo(W-8,vy(0)); kctx.stroke(); kctx.setLineDash([]);
+    // current sigma marker
+    kctx.strokeStyle='rgba(240,180,41,.7)'; kctx.setLineDash([4,4]); kctx.beginPath();
+    kctx.moveTo(dx(sigma()),8); kctx.lineTo(dx(sigma()),H-pad); kctx.stroke(); kctx.setLineDash([]);
+    kctx.fillStyle='#f0b429'; kctx.font='11px ui-monospace,monospace'; kctx.fillText('σ', dx(sigma())-4, 18);
+    // labels
+    kctx.fillStyle='#9aa7b4'; kctx.fillText('h', 8, 16); kctx.fillText('grid dist d', W-78, H-8);
+    kctx.fillText('0', pad-12, vy(0)+4); kctx.fillText('1', pad-12, vy(1)+4);
+    const kinds = all ? ['gaussian','bubble','mexican_hat'] : [currentSel];
+    for (const name of kinds){
+      kctx.strokeStyle=COL[name]; kctx.lineWidth=2; kctx.beginPath();
+      let started=false;
+      for (let px=0; px<=240; px++){
+        const d = (px/240)*dmax;
+        const v = kernel(name, d, sigma());
+        const X=dx(d), Y=vy(v);
+        if(!started){kctx.moveTo(X,Y);started=true;}else kctx.lineTo(X,Y);
+      }
+      kctx.stroke();
+    }
+    // legend
+    let lx=pad+6, ly=20;
+    for (const name of (all?['gaussian','bubble','mexican_hat']:[currentSel])){
+      kctx.fillStyle=COL[name]; kctx.fillRect(lx,ly-8,10,10);
+      kctx.fillStyle='#9aa7b4'; kctx.fillText(name, lx+14, ly+1);
+      ly+=15;
+    }
+  }
+  let currentSel='gaussian';
+
+  function drawDecay(){
+    dctx.clearRect(0,0,dc.width,dc.height);
+    const pad=34, W=dc.width, H=dc.height;
+    dctx.strokeStyle='#2b333d'; dctx.beginPath();
+    dctx.moveTo(pad,8); dctx.lineTo(pad,H-pad); dctx.lineTo(W-8,H-pad); dctx.stroke();
+    dctx.fillStyle='#9aa7b4'; dctx.font='11px ui-monospace,monospace';
+    dctx.fillText('value', 6, 16); dctx.fillText('epoch', W-44, H-8);
+    function ex(e){ return pad + (e/(total-1))*(W-pad-10); }
+    // two normalized curves: lr (0..lr0) and radius (1..rad0)
+    function ey(v,vmax){ return (H-pad) - (v/vmax)*(H-pad-14); }
+    // radius curve (orange)
+    dctx.strokeStyle='#f0b429'; dctx.lineWidth=2; dctx.beginPath();
+    for (let e=0;e<total;e++){ const v=exp_decay(rad0,1,e,total); const X=ex(e),Y=ey(v,rad0+0.3); e===0?dctx.moveTo(X,Y):dctx.lineTo(X,Y);} dctx.stroke();
+    // lr curve (blue), scaled to same plot height by its own max
+    dctx.strokeStyle='#58a6ff'; dctx.lineWidth=2; dctx.beginPath();
+    for (let e=0;e<total;e++){ const v=exp_decay(lr0,lr0*0.01,e,total); const X=ex(e),Y=ey(v,(lr0)*( (rad0+0.3)/lr0 )); /* match scale visually */
+      const Yv=ey(v* (rad0+0.3)/lr0, rad0+0.3); e===0?dctx.moveTo(X,Yv):dctx.lineTo(X,Yv);} dctx.stroke();
+    // epoch marker
+    dctx.strokeStyle='rgba(255,255,255,.5)'; dctx.setLineDash([4,4]); dctx.beginPath();
+    dctx.moveTo(ex(epoch),8); dctx.lineTo(ex(epoch),H-pad); dctx.stroke(); dctx.setLineDash([]);
+    // legend
+    dctx.fillStyle='#f0b429'; dctx.fillRect(pad+6,18,10,10); dctx.fillStyle='#9aa7b4'; dctx.fillText('radius σ(t)', pad+22,27);
+    dctx.fillStyle='#58a6ff'; dctx.fillRect(pad+6,33,10,10); dctx.fillStyle='#9aa7b4'; dctx.fillText('learning rate λ(t)', pad+22,42);
+  }
+
+  function refresh(){
+    document.getElementById('kern-readout').textContent = `σ = ${sigma().toFixed(2)} · λ = ${lr().toFixed(3)}`;
+    drawKern(); drawDecay();
+  }
+  document.getElementById('ke-sel').oninput=e=>{ epoch=+e.target.value; document.getElementById('ke-val').textContent=epoch; refresh(); };
+  document.getElementById('kn-sel').oninput=e=>{ total=+e.target.value; document.getElementById('kn-val').textContent=total;
+    const es=document.getElementById('ke-sel'); es.max=total-1; if(epoch>total-1){epoch=total-1;es.value=epoch;document.getElementById('ke-val').textContent=epoch;} refresh(); };
+  document.getElementById('kr-sel').oninput=e=>{ rad0=+e.target.value; document.getElementById('kr-val').textContent=rad0.toFixed(1); refresh(); };
+  document.getElementById('kall-sel').onchange=e=>{ all=e.target.checked; refresh(); };
+  refresh();
+})();
+
+/* ============================================================
+   DEMO 3 — U-matrix + macro-clusters (trains a 5x5 map, runs
+   single-linkage / complete / average / ward agglomerative on
+   neuron prototypes)
+   ============================================================ */
+(function(){
+  const umc=document.getElementById('um-canvas');
+  const umd=document.getElementById('um-data');
+  if(!umc) return;
+  const uctx=umc.getContext('2d'), dctx=umd.getContext('2d');
+  const GW=5,GH=5,N=25;
+  let som, hits, retrainSeed=3;
+  let layer='u', nc=3, linkage='ward';
+  const CLUSTER_COLORS=['#58a6ff','#7ee787','#ff7b9c','#f0b429','#bc8cff','#39d0d8'];
+
+  function train(){
+    const rng=make_rng(retrainSeed);
+    const data=make_dataset('blobs', rng);
+    som=make_som({gw:GW,gh:GH,data,seed:retrainSeed*7+1});
+    for (let e=0;e<60;e++) som.step_epoch(e,60,'gaussian',0.5,2.5,1);
+    // hit map
+    hits=new Array(N).fill(0);
+    for (const p of som.data) hits[som.bmu(p)]++;
+  }
+
+  /* U-matrix: 8-connected mean distance */
+  function u_matrix(){
+    const U=new Array(N).fill(0);
+    for (let i=0;i<N;i++){ const r=Math.floor(i/GW),c=i%GW; let tot=0,cnt=0;
+      const nb=[[r-1,c],[r+1,c],[r,c-1],[r,c+1],[r-1,c-1],[r-1,c+1],[r+1,c-1],[r+1,c+1]];
+      for (const [nr,ncl] of nb){ if(nr>=0&&nr<GH&&ncl>=0&&ncl<GW){ const j=nr*GW+ncl;
+        tot+=Math.hypot(som.W[i][0]-som.W[j][0], som.W[i][1]-som.W[j][1]); cnt++; } }
+      U[i]= cnt? tot/cnt : 0;
+    }
+    return U;
+  }
+  function quality(){ // mean dist of points assigned to each neuron
+    const q=new Array(N).fill(0), cnt=new Array(N).fill(0);
+    for (const p of som.data){ const b=som.bmu(p); q[b]+=Math.hypot(p[0]-som.W[b][0],p[1]-som.W[b][1]); cnt[b]++; }
+    for (let i=0;i<N;i++) q[i]= cnt[i]? q[i]/cnt[i] : 0;
+    return q;
+  }
+
+  /* ---- agglomerative on neuron prototypes (mirrors cluster() phase 2) ---- */
+  function agglomerative(vectors, k, link){
+    // start: each point its own cluster (list of member indices)
+    let clusters = vectors.map((_,i)=>[i]);
+    function dist(a,b){ return Math.hypot(a[0]-b[0],a[1]-b[1]); }
+    function linkDist(A,B){
+      // ward uses increase in SSE; approximate with centroid + size weighting
+      if (link==='ward'){
+        const ca=centroid(A), cb=centroid(B);
+        const d=dist(ca,cb); const na=A.length, nb=B.length;
+        return Math.sqrt((na*nb)/(na+nb))*d;
+      }
+      let agg = link==='single'?Infinity:(link==='complete'?-Infinity:0); let count=0;
+      for (const i of A) for (const j of B){ const d=dist(vectors[i],vectors[j]);
+        if(link==='single') agg=Math.min(agg,d);
+        else if(link==='complete') agg=Math.max(agg,d);
+        else { agg+=d; count++; } }
+      return link==='average'? agg/count : agg;
+    }
+    function centroid(idxs){ let x=0,y=0; for(const i of idxs){x+=vectors[i][0];y+=vectors[i][1];} return [x/idxs.length,y/idxs.length]; }
+    while (clusters.length>k){
+      let bi=0,bj=1,bd=Infinity;
+      for (let i=0;i<clusters.length;i++) for (let j=i+1;j<clusters.length;j++){
+        const d=linkDist(clusters[i],clusters[j]); if(d<bd){bd=d;bi=i;bj=j;} }
+      const merged=clusters[bi].concat(clusters[bj]);
+      clusters=clusters.filter((_,k2)=>k2!==bi&&k2!==bj); clusters.push(merged);
+    }
+    const labels=new Array(vectors.length).fill(0);
+    clusters.forEach((cl,ci)=>cl.forEach(i=>labels[i]=ci));
+    return labels;
+  }
+
+  function draw(){
+    uctx.clearRect(0,0,umc.width,umc.height);
+    const cell=umc.width/GW;
+    let vals = layer==='u'? u_matrix() : (layer==='qual'? quality() : hits.map(h=>h));
+    const vmax=Math.max.apply(null, vals)||1, vmin=Math.min.apply(null, vals);
+    const rng=(vmax-vmin)||1;
+    // macro cluster labels
+    const labels = agglomerative(som.W, nc, linkage);
+    for (let i=0;i<N;i++){ const r=Math.floor(i/GW),c=i%GW;
+      const t=(vals[i]-vmin)/rng;
+      // heatmap dark->orange->white
+      const col = heat(t);
+      uctx.fillStyle=col; uctx.fillRect(c*cell, r*cell, cell-1, cell-1);
+      // cluster border tint
+      uctx.strokeStyle=CLUSTER_COLORS[labels[i]%CLUSTER_COLORS.length]; uctx.lineWidth=3;
+      uctx.strokeRect(c*cell+2, r*cell+2, cell-5, cell-5);
+    }
+    // hit dots overlay (always show, sized by hit count)
+    const maxHit=Math.max.apply(null,hits)||1;
+    for (let i=0;i<N;i++){ const r=Math.floor(i/GW),c=i%GW;
+      if(hits[i]===0) continue;
+      const rr=4+ (hits[i]/maxHit)*((cell/2)-6);
+      uctx.fillStyle='rgba(255,255,255,.78)';
+      uctx.beginPath(); uctx.arc(c*cell+cell/2, r*cell+cell/2, rr,0,7); uctx.fill();
+      uctx.fillStyle='#06121f'; uctx.font='10px ui-monospace,monospace'; uctx.textAlign='center';
+      uctx.fillText(hits[i], c*cell+cell/2, r*cell+cell/2+3); uctx.textAlign='left';
+    }
+    drawData(labels);
+    document.getElementById('um-readout').textContent =
+      `25 neurons · merged into ${nc} macro-clusters · linkage = ${linkage}`;
+  }
+  function heat(t){
+    // dark -> orange -> white
+    t=Math.max(0,Math.min(1,t));
+    const a=[10,14,20], b=[240,180,41], c=[245,245,245];
+    let col;
+    if(t<0.5){ const u=t/0.5; col=a.map((v,i)=>Math.round(v+(b[i]-v)*u)); }
+    else { const u=(t-0.5)/0.5; col=b.map((v,i)=>Math.round(v+(c[i]-v)*u)); }
+    return `rgb(${col[0]},${col[1]},${col[2]})`;
+  }
+  function drawData(labels){
+    dctx.clearRect(0,0,umd.width,umd.height);
+    function xy(p){ return [20+p[0]*(umd.width-40), umd.height-20-p[1]*(umd.height-40)]; }
+    for (const p of som.data){ const b=som.bmu(p); const cl=labels[b];
+      const [x,y]=xy(p); dctx.fillStyle=CLUSTER_COLORS[cl%CLUSTER_COLORS.length];
+      dctx.beginPath(); dctx.arc(x,y,3,0,7); dctx.fill(); }
+    // neuron prototypes
+    dctx.fillStyle='rgba(255,255,255,.4)';
+    for (let i=0;i<N;i++){ const [x,y]=xy(som.W[i]); dctx.fillRect(x-1.5,y-1.5,3,3); }
+  }
+
+  document.getElementById('um-layer').onchange=e=>{ layer=e.target.value; document.getElementById('um-layer-val').textContent=e.target.selectedOptions[0].text; draw(); };
+  document.getElementById('um-nc').oninput=e=>{ nc=+e.target.value; document.getElementById('um-nc-val').textContent=nc; draw(); };
+  document.getElementById('um-link').onchange=e=>{ linkage=e.target.value; document.getElementById('um-link-val').textContent=linkage; draw(); };
+  document.getElementById('um-retrain').onclick=()=>{ retrainSeed++; train(); draw(); };
+
+  train(); draw();
+})();
+
+/* ============================================================
+   DEMO 4 — probe a sample, show BMU + activation map
+   ============================================================ */
+(function(){
+  const pd=document.getElementById('pr-data');
+  const pg=document.getElementById('pr-grid');
+  if(!pd) return;
+  const dctx=pd.getContext('2d'), gctx=pg.getContext('2d');
+  const GW=6,GH=6,N=36;
+  let som, probe=[0.5,0.5];
+
+  function train(){
+    const rng=make_rng(11);
+    const data=make_dataset('blobs', rng);
+    som=make_som({gw:GW,gh:GH,data,seed:21});
+    for (let e=0;e<70;e++) som.step_epoch(e,70,'gaussian',0.5,3,1);
+  }
+  function xy(p){ return [20+p[0]*(pd.width-40), pd.height-20-p[1]*(pd.height-40)]; }
+  function inv(px,py){ return [ (px-20)/(pd.width-40), (pd.height-20-py)/(pd.height-40) ]; }
+
+  function bmu2(p){
+    // returns [b1, b2, d1sq, normx, normw1, dot1]
+    let b1=-1,b2=-1,d1=Infinity,d2=Infinity;
+    const normx=p[0]*p[0]+p[1]*p[1];
+    for (let j=0;j<N;j++){ const w=som.W[j];
+      const dx=p[0]-w[0],dy=p[1]-w[1]; const d=dx*dx+dy*dy;
+      if(d<d1){ d2=d1;b2=b1; d1=d;b1=j; } else if(d<d2){ d2=d;b2=j; } }
+    const w1=som.W[b1]; const normw1=w1[0]*w1[0]+w1[1]*w1[1]; const dot1=p[0]*w1[0]+p[1]*w1[1];
+    return {b1,b2,d1,normx,normw1,dot1};
+  }
+  function are_neighbors(a,b){
+    const r1=Math.floor(a/GW),c1=a%GW,r2=Math.floor(b/GW),c2=b%GW;
+    const dr=Math.abs(r1-r2),dc=Math.abs(c1-c2);
+    return dr<=1&&dc<=1&&(dr+dc>0);
+  }
+
+  function drawData(){
+    dctx.clearRect(0,0,pd.width,pd.height);
+    dctx.fillStyle='rgba(154,167,180,.5)';
+    for (const p of som.data){ const [x,y]=xy(p); dctx.beginPath(); dctx.arc(x,y,2.4,0,7); dctx.fill(); }
+    // prototypes faint
+    dctx.fillStyle='rgba(126,231,135,.35)';
+    for (let i=0;i<N;i++){ const [x,y]=xy(som.W[i]); dctx.fillRect(x-1.5,y-1.5,3,3); }
+    // probe
+    const [px,py]=xy(probe);
+    dctx.strokeStyle='#fff'; dctx.lineWidth=2; dctx.beginPath(); dctx.arc(px,py,7,0,7); dctx.stroke();
+    dctx.fillStyle='#fff'; dctx.beginPath(); dctx.arc(px,py,2.5,0,7); dctx.fill();
+  }
+  function drawGrid(res){
+    gctx.clearRect(0,0,pg.width,pg.height);
+    const cell=Math.min(pg.width,pg.height)/GW;
+    // activation = (max-dist)/max  per neuron
+    const dists=[]; let mx=0;
+    for (let i=0;i<N;i++){ const d=Math.hypot(probe[0]-som.W[i][0],probe[1]-som.W[i][1]); dists.push(d); mx=Math.max(mx,d); }
+    for (let i=0;i<N;i++){ const r=Math.floor(i/GW),c=i%GW;
+      const act = mx>0?(mx-dists[i])/mx:0; // inverse-distance normalized (get_activation_map)
+      const t=act;
+      const col=[Math.round(10+t*(88-10)),Math.round(14+t*(166-14)),Math.round(20+t*(255-20))];
+      gctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`;
+      gctx.fillRect(c*cell,r*cell,cell-1,cell-1);
+    }
+    // BMU + 2nd BMU
+    function mark(idx,color,lw){ const r=Math.floor(idx/GW),c=idx%GW;
+      gctx.strokeStyle=color; gctx.lineWidth=lw; gctx.strokeRect(c*cell+2,r*cell+2,cell-5,cell-5); }
+    mark(res.b2,'#ff7b9c',2.5);
+    mark(res.b1,'#7ee787',3.5);
+    gctx.fillStyle='#fff'; gctx.font='10px ui-monospace,monospace';
+  }
+  function update(){
+    const res=bmu2(probe);
+    drawData(); drawGrid(res);
+    const r1=Math.floor(res.b1/GW),c1=res.b1%GW;
+    const nbr=are_neighbors(res.b1,res.b2);
+    const reconstructed = res.normx + res.normw1 - 2*res.dot1;
+    document.getElementById('pr-readout').textContent =
+`probe x = (${probe[0].toFixed(3)}, ${probe[1].toFixed(3)})
+BMU  = neuron ${res.b1}  at grid (row ${r1}, col ${c1})   label = row·grid_width+col = ${res.b1}
+‖x‖² + ‖w‖² − 2x·w  =  ${res.normx.toFixed(3)} + ${res.normw1.toFixed(3)} − 2·(${res.dot1.toFixed(3)})  =  ${reconstructed.toFixed(4)}   (= ‖x−w‖²)
+2nd BMU = neuron ${res.b2};  grid-neighbor of BMU? ${nbr?'YES → topology preserved here':'NO → counts toward topographic error'}`;
+  }
+
+  let dragging=false;
+  function setProbe(ev){
+    const rect=pd.getBoundingClientRect();
+    const sx=pd.width/rect.width, sy=pd.height/rect.height;
+    const px=(ev.clientX-rect.left)*sx, py=(ev.clientY-rect.top)*sy;
+    const [a,b]=inv(px,py);
+    probe=[Math.max(0,Math.min(1,a)),Math.max(0,Math.min(1,b))];
+    update();
+  }
+  pd.addEventListener('mousedown',e=>{dragging=true; setProbe(e);});
+  pd.addEventListener('mousemove',e=>{ if(dragging) setProbe(e); });
+  window.addEventListener('mouseup',()=>dragging=false);
+  pd.addEventListener('touchstart',e=>{ if(e.touches[0]){setProbe(e.touches[0]); e.preventDefault();} },{passive:false});
+  pd.addEventListener('touchmove',e=>{ if(e.touches[0]){setProbe(e.touches[0]); e.preventDefault();} },{passive:false});
+
+  train(); update();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linkage &amp; NN-Chain Merge Engine — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+/* topic-specific */
+.linkpick{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.linkpick button{border-radius:0;background:transparent;color:var(--muted);font-weight:600;padding:.4rem .8rem}
+.linkpick button.on{background:var(--accent);color:#06121f}
+.readout{font-family:var(--mono);font-size:.85rem;color:var(--accent2);margin-left:.4rem}
+.slabel{font-family:var(--mono);font-size:.8rem;color:var(--muted);min-width:3.2rem;display:inline-block}
+.varhi{padding:.05rem .3rem;border-radius:5px;font-weight:700}
+.legend{display:flex;flex-wrap:wrap;gap:.8rem;font-size:.8rem;color:var(--muted);margin-top:.6rem}
+.legend span::before{content:"";display:inline-block;width:.7rem;height:.7rem;border-radius:50%;margin-right:.35rem;vertical-align:-1px}
+.dot-c{background:var(--c1)}.dot-m{background:var(--pink)}.dot-d{background:var(--accent2)}
+.bits{font-family:var(--mono);font-size:.78rem;word-break:break-all;line-height:1.4}
+.bits .flip{background:var(--pink);color:#06121f;font-weight:700;border-radius:3px;padding:0 1px}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a class="active" href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+
+<h1>Linkage &amp; NN-Chain Merge Engine</h1>
+<p class="lede">An O(n²) nearest-neighbor-chain agglomerative engine that merges reciprocal nearest neighbors and updates inter-cluster distances in place via the Lance–Williams recurrence — reproducing scipy/sklearn dendrograms bit-for-bit, tie order included.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>Hierarchical agglomerative clustering starts with every point as its own cluster and repeatedly merges the two closest clusters until one remains. The naïve way scans every pair of active clusters each round and physically shrinks a distance matrix — overall <strong>O(n³)</strong>.</p>
+<p>The nearest-neighbor-chain (<strong>NN-chain</strong>) algorithm is the shortcut. Instead of hunting globally for the single closest pair every step, you walk a <em>chain</em> of clusters where each one points at its current nearest neighbor. The moment two consecutive chain members are each other's nearest neighbor — a <strong>reciprocal pair</strong> — you have found a pair that is provably safe to merge <em>right now</em>. Merge them, pop them off the chain, and keep walking from wherever you left off. This is <strong>O(n²)</strong> time and memory.</p>
+<div class="card">
+<p style="margin:0"><strong>Why is a reciprocal pair safe to merge out of strict global order?</strong> Because single, complete, average and Ward linkage are all <em>reducible</em>: when you merge clusters <code>i</code> and <code>j</code> into <code>t</code>, <code>t</code> is never closer to any third cluster <code>k</code> than the closer of <code>i</code> and <code>j</code> was. Merging can only push distances outward or leave them flat — it can never pull a third cluster in to undercut the pair you just chose. So a mutual nearest-neighbor pair can never be "stolen" by a future merge.</p>
+</div>
+<p>One shared engine handles all four linkages by swapping a <strong>single formula</strong>: the Lance–Williams update, which gives the distance from the freshly merged cluster <code>t</code> to every remaining cluster <code>k</code> purely from the old distances <code>D(i,k)</code>, <code>D(j,k)</code>, <code>D(i,j)</code> and the cluster sizes. The raw data points are never re-scanned after the initial matrix is built. The whole thing operates on a flat <code>Float64Array</code> with active/inactive flags rather than splicing arrays — cache-friendly, and no per-merge O(n²) copies.</p>
+<p>The output is a list of merge records (which two clusters, at what distance, the new size) <strong>sorted by distance</strong>. A downstream pass turns that into the sklearn/scipy <code>children_</code> tree and <code>distances_</code>, and a union-find replay assigns flat labels when you cut the tree.</p>
+
+<h2 id="how">How it works</h2>
+<p>The engine in <code>nn_chain_cluster</code> performs exactly <code>n − 1</code> merges. Each iteration extends the chain until a reciprocal pair pops out:</p>
+<ol class="steps">
+<li><strong>Initialize active state.</strong> Allocate the flat n×n <code>D</code> (mutated in place), an <code>active</code> flag array (all 1), <code>cluster_sizes</code> (all 1.0), and an <code>Int32Array chain</code> of capacity n with <code>chain_len = 0</code>. <span class="pill">linkage.ts:98–106</span></li>
+<li><strong>Seed the chain.</strong> When <code>chain_len</code> is 0, scan from index 0 for the first active slot and put it at <code>chain[0]</code>. This deterministic lowest-index seed is part of tie-parity with scipy. <span class="pill">linkage.ts:109–117</span></li>
+<li><strong>Walk to a reciprocal nearest neighbor.</strong> Let <code>x</code> be the chain tip. Seed the candidate <code>y</code>/<code>min_dist</code> from the previous chain element (if any) using <em>strict-less-than</em> so the previous element wins ties — preventing 2-cycles. Scan all active <code>k ≠ x</code> and adopt <code>k</code> as <code>y</code> only if <code>D[x,k] &lt; min_dist</code>. If the found <code>y</code> equals the previous element, <code>x</code> and <code>y</code> are reciprocal: <strong>break</strong>. Otherwise push <code>y</code> and repeat with <code>y</code> as the new tip. <span class="pill">linkage.ts:119–152</span></li>
+<li><strong>Pop the reciprocal pair.</strong> Reduce <code>chain_len</code> by 2 to remove both <code>x</code> and <code>y</code>; the walk resumes from what remains. <span class="pill">linkage.ts:155</span></li>
+<li><strong>Choose survivor &amp; removed slot.</strong> <code>lower = min(x,y)</code>, <code>higher = max(x,y)</code>. The <em>higher</em> slot survives; the lower is removed. Capture <code>ni, nj, new_size = ni + nj</code>, set <code>active[removed]=0</code> and <code>size[removed]=0</code>. <span class="pill">linkage.ts:157–167</span></li>
+<li><strong>Lance–Williams update.</strong> For every active <code>k ≠ survivor</code>, compute <code>lance_williams(D[removed,k], D[survivor,k], min_dist, ni, nj, size[k], linkage)</code> and write it symmetrically into <code>D[survivor,k]</code> and <code>D[k,survivor]</code>. Here <code>min_dist</code> is <code>D(i,j)</code>, the distance the pair merged at. <span class="pill">linkage.ts:169–183</span></li>
+<li><strong>Record the merge.</strong> Set <code>size[survivor]=new_size</code> and push <code>{cluster_a: lower, cluster_b: higher, distance: min_dist, new_size}</code>. These are active-slot indices, not yet sklearn node ids. <span class="pill">linkage.ts:185–192</span></li>
+<li><strong>Loop until tree complete.</strong> Repeat until <code>n − 1</code> merges exist. The chain persists across merges; it is re-seeded only when fully consumed. <span class="pill">linkage.ts:108</span></li>
+<li><strong>Sort merges by distance.</strong> NN-chain discovers merges in chain order, not distance order; the final ascending sort yields a valid dendrogram order matching scipy/fastcluster. <span class="pill">linkage.ts:195</span></li>
+<li><strong>Build children ids (consumer).</strong> <code>agglomerative.ts build_children</code> replays merges through a <code>2n−1</code> union-find, emitting rows <code>[min(left,right), max(left,right)]</code> with internal ids starting at <code>n</code>. <span class="pill">agglomerative.ts:335–365</span></li>
+<li><strong>Cut and label (consumer).</strong> Slice merges to <code>n_samples − n_clusters</code> (or filter by <code>distance_threshold</code>), then replay through a second union-find to assign contiguous labels <code>0..n_clusters−1</code>. <span class="pill">agglomerative.ts:158–201</span></li>
+</ol>
+
+<h3>Watch the chain find a reciprocal pair</h3>
+<p>Active clusters sit on a 2D plane. The blue path is the chain; each step draws an arrow from the tip to its current nearest neighbor. When an arrow points back to the previous chain element (a <span style="color:var(--pink);font-weight:600">mutual nearest-neighbor pair</span>) it flashes, the two collapse into one node at their size-weighted center, and the walk continues. Switch the linkage to watch which pair becomes reciprocal first change.</p>
+
+<div class="demo">
+  <div class="linkpick" id="walk-link">
+    <button data-l="single" class="on">single</button><button data-l="complete">complete</button><button data-l="average">average</button><button data-l="ward">ward</button>
+  </div>
+  <canvas id="walk-canvas" width="880" height="440"></canvas>
+  <div class="legend">
+    <span class="dot-c">active cluster</span><span class="dot-d">chain edge (tip → NN)</span><span class="dot-m">reciprocal pair / merged node</span>
+  </div>
+  <div class="controls">
+    <button id="walk-step">Step ▸</button>
+    <button id="walk-play" class="ghost">Play ▶</button>
+    <button id="walk-reset" class="ghost">Reset ⟲</button>
+    <span class="slabel">speed</span><input id="walk-speed" type="range" min="1" max="10" value="5">
+    <span class="readout" id="walk-status">seed the chain</span>
+  </div>
+</div>
+
+<h2 id="math">The math</h2>
+<p>All four linkages are special cases of one update. Merging <code>i</code> and <code>j</code> into <code>t</code>, the distance to a remaining cluster <code>k</code> is:</p>
+
+<div class="eq">D(t,k) = α<sub>i</sub>·D(i,k) + α<sub>j</sub>·D(j,k) + β·D(i,j) + γ·|D(i,k) − D(j,k)|</div>
+<p>The <strong>general Lance–Williams form</strong>. <code>α</code>, <code>β</code>, <code>γ</code> are coefficients; <code>n<sub>i</sub></code>, <code>n<sub>j</sub></code>, <code>n<sub>k</sub></code> are member counts. Each linkage below picks specific coefficients (the engine writes them directly rather than through this general form).</p>
+
+<div class="eq">single &nbsp;&nbsp; D(t,k) = min( D(i,k), D(j,k) )</div>
+<p>The closest pair of members. Equivalent to <code>γ = −½</code>. Produces "chaining" — long straggly clusters.</p>
+
+<div class="eq">complete &nbsp; D(t,k) = max( D(i,k), D(j,k) )</div>
+<p>The farthest pair, <code>γ = +½</code>. Favors compact, equal-diameter clusters.</p>
+
+<div class="eq">average (UPGMA) &nbsp; D(t,k) = ( n<sub>i</sub>·D(i,k) + n<sub>j</sub>·D(j,k) ) / ( n<sub>i</sub> + n<sub>j</sub> )</div>
+<p>A <strong>size-weighted mean</strong> of the two child distances, where <code>n<sub>i</sub></code>, <code>n<sub>j</sub></code> are the merged clusters' member counts (<code>β = γ = 0</code>).</p>
+
+<div class="eq">ward &nbsp;&nbsp; D(t,k) = √( max( (n<sub>i</sub>+n<sub>k</sub>)·t·D(i,k)² + (n<sub>j</sub>+n<sub>k</sub>)·t·D(j,k)² − n<sub>k</sub>·t·D(i,j)² , 0 ) ) , &nbsp; t = 1/(n<sub>i</sub>+n<sub>j</sub>+n<sub>k</sub>)</div>
+<p>Merges that <strong>minimize the increase in within-cluster variance</strong>. Crucially the factor <code>t</code> is multiplied <em>into each term separately</em> rather than dividing a summed numerator — this is bit-identical to scipy's <code>_ward</code>, so it flips the very same IEEE-754 ties scipy/sklearn flip. The <code>max(…, 0)</code> guards against tiny negative values from floating-point cancellation before the <code>√</code>.</p>
+
+<div class="eq">reciprocal NN: &nbsp; y = argmin<sub>k≠x</sub> D(x,k) &nbsp;AND&nbsp; x = argmin<sub>k≠y</sub> D(y,k) &nbsp; ⟹ &nbsp; merge(x,y)</div>
+<p>A mutual nearest-neighbor pair is the reducibility-guaranteed safe merge.</p>
+
+<div class="eq">reducibility: &nbsp; D(i∪j, k) ≥ min( D(i,k), D(j,k) ) &nbsp; for all k</div>
+<p>Merging never makes the union closer to a third cluster than its closest child was. <strong>This is exactly why</strong> a reciprocal pair found mid-chain can be merged immediately, out of global distance order.</p>
+
+<div class="eq">node ids: &nbsp; leaves ∈ {0..n−1}; &nbsp; merge m (0-indexed) ⟶ internal id (n + m)</div>
+<p><code>build_children</code> maps active-slot merge records to scipy/sklearn <code>children_</code> node ids: the <code>m</code>-th merge in distance-sorted order becomes node <code>n+m</code>, children stored as <code>[min, max]</code>.</p>
+
+<h3>Lance–Williams, live</h3>
+<p>Three clusters <code>i</code>, <code>j</code>, <code>k</code> with the three relevant distances on the edges and sizes as node radii. Pick a linkage and drag the sliders; <code>i</code> and <code>j</code> merge into <code>t</code> and the new edge <code>D(t,k)</code> is computed by the exact branch the engine runs. The formula highlights each variable as it is read off. With Ward, push the distances so the numerator would go negative and watch the <code>max(…,0)</code> clamp light up.</p>
+
+<div class="demo">
+  <div class="linkpick" id="lw-link">
+    <button data-l="single" class="on">single</button><button data-l="complete">complete</button><button data-l="average">average</button><button data-l="ward">ward</button>
+  </div>
+  <canvas id="lw-canvas" width="880" height="320"></canvas>
+  <div class="eq" id="lw-formula" style="margin-top:.8rem">D(t,k) = …</div>
+  <div class="controls">
+    <span class="slabel">D(i,k)</span><input id="lw-dik" type="range" min="2" max="100" value="55"><span class="readout" id="lw-dik-r"></span>
+  </div>
+  <div class="controls">
+    <span class="slabel">D(j,k)</span><input id="lw-djk" type="range" min="2" max="100" value="40"><span class="readout" id="lw-djk-r"></span>
+  </div>
+  <div class="controls">
+    <span class="slabel">D(i,j)</span><input id="lw-dij" type="range" min="2" max="120" value="30"><span class="readout" id="lw-dij-r"></span>
+  </div>
+  <div class="controls">
+    <span class="slabel">nᵢ</span><input id="lw-ni" type="range" min="1" max="20" value="3"><span class="readout" id="lw-ni-r"></span>
+    <span class="slabel">nⱼ</span><input id="lw-nj" type="range" min="1" max="20" value="2"><span class="readout" id="lw-nj-r"></span>
+    <span class="slabel">nₖ</span><input id="lw-nk" type="range" min="1" max="20" value="4"><span class="readout" id="lw-nk-r"></span>
+  </div>
+</div>
+
+<h3>Why operation order is load-bearing: the Ward ULP tie-flip</h3>
+<p>Ward's update is algebraically the same whether you distribute <code>t</code> into each term or sum the numerator and divide once — but in IEEE-754 double precision the two can differ by a single <strong>unit in the last place (ULP)</strong>. On symmetric data, two distances that should tie can end up ordered differently, flipping which pair merges first. This repo uses the per-term form to match scipy exactly. Compute both forms below and reveal the differing last bit.</p>
+
+<div class="demo">
+  <div class="controls" style="margin-top:0">
+    <span class="slabel">D(i,k)</span><input id="ulp-dik" type="range" min="1" max="50" value="13" step="0.5">
+    <span class="slabel">D(j,k)</span><input id="ulp-djk" type="range" min="1" max="50" value="17" step="0.5">
+    <span class="slabel">D(i,j)</span><input id="ulp-dij" type="range" min="1" max="50" value="11" step="0.5">
+  </div>
+  <div class="card" style="margin-top:1rem">
+    <table style="margin:0">
+      <tr><th>form</th><th>D(t,k) (full precision)</th></tr>
+      <tr><td><code>per-term t</code> (this repo)</td><td class="readout" id="ulp-a" style="margin:0"></td></tr>
+      <tr><td><code>sum-then-divide</code></td><td class="readout" id="ulp-b" style="margin:0"></td></tr>
+      <tr><td>differ?</td><td class="readout" id="ulp-diff" style="margin:0"></td></tr>
+    </table>
+  </div>
+  <div class="controls">
+    <button id="ulp-bits" class="ghost">Show bits ⌗</button>
+    <span class="readout" id="ulp-fixed">ni=nj=nk=2 (symmetric)</span>
+  </div>
+  <div id="ulp-bitbox" style="display:none;margin-top:.8rem">
+    <p class="muted" style="margin:.2rem 0">IEEE-754 bit patterns — the highlighted bit is where they diverge:</p>
+    <div class="bits" id="ulp-bits-a"></div>
+    <div class="bits" id="ulp-bits-b"></div>
+  </div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<p>Everything below lives in <code>src/clustering/linkage.ts</code> unless noted. The consumer that cuts and labels the tree is <code>src/clustering/agglomerative.ts</code>.</p>
+<table>
+<tr><th>Ref</th><th>Role</th></tr>
+<tr><td><code>linkage.ts:23</code></td><td><code>LinkageCriterion</code> type: <code>'single' | 'complete' | 'average' | 'ward'</code></td></tr>
+<tr><td><code>linkage.ts:28</code></td><td><code>MergeRecord</code> interface: <code>cluster_a</code>, <code>cluster_b</code>, <code>distance</code>, <code>new_size</code></td></tr>
+<tr><td><code>linkage.ts:43</code></td><td><code>lance_williams</code>: the per-linkage distance update; single / complete / average / ward branches</td></tr>
+<tr><td><code>linkage.ts:67</code></td><td>Ward update with per-term <code>t</code>-factor distribution for scipy bit-parity and the <code>max(…,0)</code> sqrt guard</td></tr>
+<tr><td><code>linkage.ts:93</code></td><td><code>nn_chain_cluster</code>: the O(n²) NN-chain merge engine entry point</td></tr>
+<tr><td><code>linkage.ts:123</code></td><td>Inner <code>while(true)</code> loop: walks the chain to a reciprocal NN pair with the strict-inequality tie rule</td></tr>
+<tr><td><code>linkage.ts:169</code></td><td>In-place Lance–Williams update of the survivor's distance row/column over all active <code>k</code></td></tr>
+<tr><td><code>linkage.ts:187</code></td><td><code>MergeRecord</code> emission (active-slot indices, merge distance, new size)</td></tr>
+<tr><td><code>linkage.ts:195</code></td><td>Final sort of merges by distance to produce a valid dendrogram order</td></tr>
+<tr><td><code>agglomerative.ts:158</code></td><td>Consumer: calls <code>nn_chain_cluster</code> then slices/filters merges for the <code>n_clusters</code> or <code>distance_threshold</code> cut</td></tr>
+<tr><td><code>agglomerative.ts:169</code></td><td>Union-find replay assigning contiguous flat labels after cutting the tree</td></tr>
+<tr><td><code>agglomerative.ts:335</code></td><td><code>build_children</code>: maps active-slot merge records to sklearn/scipy <code>children_</code> node ids via a <code>2n−1</code> union-find</td></tr>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<tr><th>Name</th><th>Meaning</th></tr>
+<tr><td><code>D</code> (Float64Array)</td><td>Flat n×n square distance matrix, mutated in place as clusters merge. Built from data via the chosen metric, or supplied directly when <code>metric</code> is <code>'precomputed'</code>.</td></tr>
+<tr><td><code>n</code> (number)</td><td>Number of original data points (leaves). The engine performs exactly <code>n − 1</code> merges.</td></tr>
+<tr><td><code>linkage</code> (LinkageCriterion)</td><td>One of <code>single | complete | average | ward</code>. Selects which Lance–Williams branch runs. All four are reducible, so NN-chain is exact for each.</td></tr>
+<tr><td><code>n_clusters</code></td><td>Number of flat clusters to cut into; the engine keeps the first <code>n_samples − n_clusters</code> merges. Mutually exclusive with <code>distance_threshold</code>.</td></tr>
+<tr><td><code>distance_threshold</code></td><td>Alternative cut: keep only merges whose distance is strictly below this value, leaving an automatic number of clusters.</td></tr>
+<tr><td><code>metric</code></td><td>Distance metric used to build <code>D</code> from raw data (e.g. <code>euclidean</code>), or <code>'precomputed'</code> to pass a distance matrix directly.</td></tr>
+<tr><td><code>children_</code> (output)</td><td>Array of <code>[left, right]</code> node-id pairs in sklearn/scipy convention: leaves <code>0..n−1</code>, internal nodes <code>n..</code> in merge order.</td></tr>
+<tr><td><code>distances_</code> (output)</td><td>Per-merge distances aligned 1:1 with <code>children_</code>, enabling dendrogram cutting and plotting.</td></tr>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<p>The engine targets <strong>exact</strong> scipy/sklearn parity, validated by <code>agglomerative_reference.test.ts</code>. Three mechanisms achieve it, and several edge cases keep it honest.</p>
+<div class="note"><strong>Ward arithmetic ordering is load-bearing.</strong> Multiplying <code>t = 1/(ni+nj+nk)</code> into each term separately (<code>linkage.ts:67–75</code>) versus summing then dividing differs by up to one ULP in IEEE-754, which flips exact distance ties and yields a different (still valid) dendrogram. The chosen form is bit-identical to scipy's <code>_ward</code>, so tie order matches scipy/sklearn exactly.</div>
+<ul>
+<li><strong>Ward sqrt guard.</strong> <code>max(…, 0)</code> before <code>√</code> (<code>linkage.ts:69</code>) absorbs tiny negative numerators from floating-point cancellation on symmetric data, which would otherwise produce <code>NaN</code>.</li>
+<li><strong>Strict-inequality tie rule.</strong> The chain walk uses strict <code>&lt;</code> (<code>linkage.ts:140</code>) and seeds the candidate from the previous chain element (<code>linkage.ts:128–134</code>). On a tie the earlier/previous chain element wins — both preventing infinite 2-cycles and reproducing scipy's strict-inequality NN-chain rule.</li>
+<li><strong>Deterministic re-seeding.</strong> Chain re-seeding always scans for the lowest active index (<code>linkage.ts:110–116</code>), a deterministic choice contributing to reproducible tie behavior.</li>
+<li><strong>Survivor / removed convention.</strong> Survivor is always the higher slot index, removed is the lower (<code>linkage.ts:157–160</code>); records store <code>cluster_a = lower</code>, <code>cluster_b = higher</code>. These are active-slot indices, not sklearn node ids — the <code>build_children</code> union-find converts them.</li>
+<li><strong>Discovery order is NOT a valid dendrogram order.</strong> NN-chain emits merges in chain order; the final sort by distance (<code>linkage.ts:195</code>) is required before the tree can be cut or interpreted, matching scipy/fastcluster.</li>
+<li><strong>Single sample.</strong> <code>n_samples === 1</code> is handled before the engine runs: labels <code>[0]</code>, empty <code>children_</code>/<code>distances_</code> (<code>agglomerative.ts:148–154</code>).</li>
+<li><strong>Only reducible linkages.</strong> NN-chain is exact only for reducible linkages. Centroid and median linkage are not reducible and are deliberately unsupported (only the four in <code>LinkageCriterion</code>).</li>
+<li><strong><code>min_dist</code> is the real merge distance.</strong> The <code>min_dist</code> passed as <code>D(i,j)</code> to Lance–Williams is the actual reciprocal-pair distance captured during the walk (<code>linkage.ts:130/140</code>), reused both for the update term and as the recorded merge distance.</li>
+</ul>
+<p>Commit history (<code>cb7a7dd</code>, <code>12adbdf</code> "exact scikit-learn tie parity for ward/complete/average") confirms tie parity is an explicit, tested requirement. Flat labels are derived by replaying the cut merges through a separate union-find with path compression and assigning contiguous labels in first-seen order (<code>agglomerative.ts:169–197</code>).</p>
+
+<footer>
+<p><strong>Clustering Atlas</strong> · generated from <code>src/clustering/linkage.ts</code> + <code>src/clustering/agglomerative.ts</code></p>
+<p>← Prev: <a href="./graph.html">Graph &amp; Laplacian Construction</a> &nbsp;·&nbsp; Next: <a href="./distance.html">Pairwise Distance</a> &nbsp;·&nbsp; <a href="./agglomerative.html">Agglomerative Clustering</a> &nbsp;·&nbsp; <a href="./index.html">◆ Back to index</a></p>
+</footer>
+
+</div>
+
+<script>
+"use strict";
+(function(){
+  var COL = {c1:'#58a6ff', c2:'#7ee787', c3:'#ff7b9c', c4:'#f0b429', c5:'#bc8cff', c6:'#39d0d8', line:'#2b333d', muted:'#9aa7b4', ink:'#e6edf3'};
+
+  function escapeHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+  /* ---------- shared Lance-Williams ---------- */
+  function lance_williams(dik, djk, dij, ni, nj, nk, linkage){
+    switch(linkage){
+      case 'single': return Math.min(dik, djk);
+      case 'complete': return Math.max(dik, djk);
+      case 'average': return (ni*dik + nj*djk)/(ni+nj);
+      case 'ward':{
+        var t = 1/(ni+nj+nk);
+        return Math.sqrt(Math.max((ni+nk)*t*dik*dik + (nj+nk)*t*djk*djk - nk*t*dij*dij, 0));
+      }
+    }
+  }
+
+  /* ============================================================
+     DEMO 1 — Chain walk to a reciprocal pair
+     ============================================================ */
+  (function(){
+    var canvas = document.getElementById('walk-canvas');
+    var ctx = canvas.getContext('2d');
+    var status = document.getElementById('walk-status');
+    var W = canvas.width, H = canvas.height;
+
+    // fixed synthetic point set (slot index -> {x,y})
+    var BASE = [
+      [120,120],[200,90],[160,210],[330,150],[400,260],
+      [350,330],[640,110],[710,180],[760,300],[600,330],
+      [470,90],[520,200]
+    ];
+    var N = BASE.length;
+    var linkage = 'single';
+
+    // engine state we step through
+    var state;
+    function dist0(a,b){ var dx=BASE[a][0]-BASE[b][0], dy=BASE[a][1]-BASE[b][1]; return Math.sqrt(dx*dx+dy*dy); }
+
+    function init(){
+      var D = new Float64Array(N*N);
+      for(var i=0;i<N;i++) for(var j=0;j<N;j++) D[i*N+j] = (i===j)?0:dist0(i,j);
+      state = {
+        D:D,
+        active: new Uint8Array(N).fill(1),
+        sizes: new Float64Array(N).fill(1),
+        pos: BASE.map(function(p){return [p[0],p[1]];}),
+        chain: [],
+        merges: [],
+        phase: 'seed',      // seed | walking | merged | done
+        lastPair: null,     // {x,y} just merged
+        flash: 0
+      };
+      status.textContent = 'seed the chain';
+      draw();
+    }
+
+    // one atomic step: either seed, extend chain by one, or merge a reciprocal pair
+    function step(){
+      var s = state;
+      if(s.phase === 'done') return;
+      if(s.merges.length >= N-1){ s.phase='done'; status.textContent='tree complete — '+s.merges.length+' merges'; draw(); return; }
+
+      if(s.chain.length === 0){
+        for(var i=0;i<N;i++){ if(s.active[i]){ s.chain.push(i); break; } }
+        s.phase='walking';
+        status.textContent='seeded chain at slot '+s.chain[0];
+        draw(); return;
+      }
+
+      // find NN of tip with strict-< and previous-element seeding
+      var x = s.chain[s.chain.length-1];
+      var y, min_dist;
+      if(s.chain.length>1){ y = s.chain[s.chain.length-2]; min_dist = s.D[x*N+y]; }
+      else { y=-1; min_dist=Infinity; }
+      for(var k=0;k<N;k++){
+        if(!s.active[k] || k===x) continue;
+        var d = s.D[x*N+k];
+        if(d < min_dist){ min_dist=d; y=k; }
+      }
+
+      if(s.chain.length>1 && y === s.chain[s.chain.length-2]){
+        // reciprocal pair: merge
+        s.chain.pop(); s.chain.pop();
+        var lower=Math.min(x,y), higher=Math.max(x,y);
+        var removed=lower, survivor=higher;
+        var ni=s.sizes[removed], nj=s.sizes[survivor], ns=ni+nj;
+        // size-weighted position for the survivor (merged node)
+        var px=(s.pos[removed][0]*ni + s.pos[survivor][0]*nj)/ns;
+        var py=(s.pos[removed][1]*ni + s.pos[survivor][1]*nj)/ns;
+        s.active[removed]=0; s.sizes[removed]=0;
+        for(var kk=0;kk<N;kk++){
+          if(!s.active[kk]||kk===survivor) continue;
+          var nd = lance_williams(s.D[removed*N+kk], s.D[survivor*N+kk], min_dist, ni, nj, s.sizes[kk], linkage);
+          s.D[survivor*N+kk]=nd; s.D[kk*N+survivor]=nd;
+        }
+        s.sizes[survivor]=ns;
+        s.pos[survivor]=[px,py];
+        s.merges.push({a:lower,b:higher,d:min_dist,n:ns});
+        s.lastPair={x:x,y:y,survivor:survivor};
+        s.flash=1;
+        status.textContent='merge #'+s.merges.length+': slots '+lower+'+'+higher+' @ d='+min_dist.toFixed(1);
+      } else {
+        s.chain.push(y);
+        status.textContent='chain: ['+s.chain.join(' → ')+']  (tip '+x+' → NN '+y+')';
+      }
+      draw();
+    }
+
+    function draw(){
+      var s = state;
+      ctx.clearRect(0,0,W,H);
+      // edges of the chain
+      for(var i=0;i<s.chain.length-1;i++){
+        var a=s.chain[i], b=s.chain[i+1];
+        drawArrow(s.pos[a][0],s.pos[a][1],s.pos[b][0],s.pos[b][1], COL.c2, 2);
+      }
+      // candidate arrow from tip (if walking and chain non-empty)
+      if(s.phase!=='done' && s.chain.length){
+        var x=s.chain[s.chain.length-1];
+        // recompute NN purely for display
+        var y=-1,md=Infinity;
+        if(s.chain.length>1){ y=s.chain[s.chain.length-2]; md=s.D[x*N+y]; }
+        for(var k=0;k<N;k++){ if(!s.active[k]||k===x) continue; var d=s.D[x*N+k]; if(d<md){md=d;y=k;} }
+        if(y>=0 && s.chain.length>0){
+          var recip = s.chain.length>1 && y===s.chain[s.chain.length-2];
+          drawArrow(s.pos[x][0],s.pos[x][1],s.pos[y][0],s.pos[y][1], recip?COL.c3:COL.c1, recip?3.5:2, recip);
+        }
+      }
+      // flash the just-merged pair
+      if(s.flash>0 && s.lastPair){
+        var sv=s.lastPair.survivor;
+        ctx.beginPath();
+        ctx.arc(s.pos[sv][0], s.pos[sv][1], 14+ Math.sin(s.flash*6)*4, 0, Math.PI*2);
+        ctx.strokeStyle=COL.c3; ctx.lineWidth=2; ctx.stroke();
+      }
+      // nodes
+      for(var n=0;n<N;n++){
+        if(!s.active[n]) continue;
+        var r = 7 + Math.sqrt(s.sizes[n]-1)*5;
+        var inChain = s.chain.indexOf(n)>=0;
+        ctx.beginPath();
+        ctx.arc(s.pos[n][0], s.pos[n][1], r, 0, Math.PI*2);
+        ctx.fillStyle = inChain ? COL.c1 : '#2b3a4d';
+        ctx.fill();
+        ctx.strokeStyle = inChain ? COL.c2 : COL.line; ctx.lineWidth = inChain?2.5:1.5; ctx.stroke();
+        ctx.fillStyle = COL.ink; ctx.font='11px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(String(n), s.pos[n][0], s.pos[n][1]);
+      }
+    }
+
+    function drawArrow(x1,y1,x2,y2,color,w,dbl){
+      var ang=Math.atan2(y2-y1,x2-x1);
+      var len=Math.hypot(x2-x1,y2-y1);
+      var pad=14;
+      var sx=x1+Math.cos(ang)*pad, sy=y1+Math.sin(ang)*pad;
+      var ex=x2-Math.cos(ang)*pad, ey=y2-Math.sin(ang)*pad;
+      ctx.strokeStyle=color; ctx.fillStyle=color; ctx.lineWidth=w;
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.stroke();
+      head(ex,ey,ang);
+      if(dbl) head(sx,sy,ang+Math.PI);
+      function head(px,py,a){ var h=9; ctx.beginPath(); ctx.moveTo(px,py);
+        ctx.lineTo(px-Math.cos(a-0.4)*h, py-Math.sin(a-0.4)*h);
+        ctx.lineTo(px-Math.cos(a+0.4)*h, py-Math.sin(a+0.4)*h); ctx.closePath(); ctx.fill(); }
+    }
+
+    // animation loop for flash + autoplay
+    var playing=false, accum=0, last=0;
+    function frame(ts){
+      if(!last) last=ts; var dt=ts-last; last=ts;
+      if(state.flash>0){ state.flash=Math.max(0,state.flash-dt/600); draw(); }
+      if(playing){
+        accum+=dt;
+        var speed=+document.getElementById('walk-speed').value;
+        var interval=900/speed;
+        if(accum>=interval){ accum=0; step(); if(state.phase==='done'){ playing=false; updatePlay(); } }
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    function updatePlay(){ document.getElementById('walk-play').textContent = playing?'Pause ⏸':'Play ▶'; }
+
+    document.getElementById('walk-step').onclick=function(){ step(); };
+    document.getElementById('walk-play').onclick=function(){ if(state.phase==='done') init(); playing=!playing; updatePlay(); };
+    document.getElementById('walk-reset').onclick=function(){ playing=false; updatePlay(); init(); };
+    document.querySelectorAll('#walk-link button').forEach(function(b){
+      b.onclick=function(){
+        document.querySelectorAll('#walk-link button').forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on'); linkage=b.dataset.l; playing=false; updatePlay(); init();
+        status.textContent='linkage = '+linkage+' — re-run the walk';
+      };
+    });
+
+    init();
+  })();
+
+  /* ============================================================
+     DEMO 2 — Lance-Williams formula spotlight
+     ============================================================ */
+  (function(){
+    var canvas=document.getElementById('lw-canvas');
+    var ctx=canvas.getContext('2d');
+    var W=canvas.width,H=canvas.height;
+    var linkage='single';
+    var ids={dik:'lw-dik',djk:'lw-djk',dij:'lw-dij',ni:'lw-ni',nj:'lw-nj',nk:'lw-nk'};
+    function val(k){ return +document.getElementById(ids[k]).value; }
+
+    function hi(t,color){ return '<span class="varhi" style="background:'+color+';color:#06121f">'+t+'</span>'; }
+
+    function render(){
+      var dik=val('dik'), djk=val('djk'), dij=val('dij'), ni=val('ni'), nj=val('nj'), nk=val('nk');
+      document.getElementById('lw-dik-r').textContent=dik;
+      document.getElementById('lw-djk-r').textContent=djk;
+      document.getElementById('lw-dij-r').textContent=dij;
+      document.getElementById('lw-ni-r').textContent=ni;
+      document.getElementById('lw-nj-r').textContent=nj;
+      document.getElementById('lw-nk-r').textContent=nk;
+
+      var dtk=lance_williams(dik,djk,dij,ni,nj,nk,linkage);
+      var f='';
+      if(linkage==='single'){
+        var pick = dik<=djk?'i':'j';
+        f='D(t,k) = min( '+hi('D(i,k)='+dik,COL.c1)+', '+hi('D(j,k)='+djk,COL.c4)+' ) = '+hi(dtk.toFixed(2),COL.c2)+'  &nbsp;(closer child: '+pick+')';
+      } else if(linkage==='complete'){
+        var pickc = dik>=djk?'i':'j';
+        f='D(t,k) = max( '+hi('D(i,k)='+dik,COL.c1)+', '+hi('D(j,k)='+djk,COL.c4)+' ) = '+hi(dtk.toFixed(2),COL.c2)+'  &nbsp;(farther child: '+pickc+')';
+      } else if(linkage==='average'){
+        f='D(t,k) = ( '+hi('nᵢ='+ni,COL.c5)+'·'+hi(dik,COL.c1)+' + '+hi('nⱼ='+nj,COL.c5)+'·'+hi(djk,COL.c4)+' ) / ( '+ni+'+'+nj+' ) = '+hi(dtk.toFixed(3),COL.c2);
+      } else {
+        var t=1/(ni+nj+nk);
+        var num=(ni+nk)*t*dik*dik + (nj+nk)*t*djk*djk - nk*t*dij*dij;
+        var clamped = num<0;
+        f='t = 1/('+ni+'+'+nj+'+'+nk+') = '+t.toFixed(4)+'<br>'+
+          'num = ('+hi(ni+'+'+nk,COL.c5)+')·t·'+hi(dik,COL.c1)+'² + ('+hi(nj+'+'+nk,COL.c5)+')·t·'+hi(djk,COL.c4)+'² − '+hi(nk,COL.c5)+'·t·'+hi(dij,COL.c6)+'² = '+num.toFixed(3)+'<br>'+
+          'D(t,k) = √( '+ (clamped?'<span class="varhi" style="background:'+COL.c3+';color:#06121f">max('+num.toFixed(3)+', 0)</span> ⟵ clamp!':'max('+num.toFixed(3)+', 0)') +' ) = '+hi(dtk.toFixed(3),COL.c2);
+      }
+      document.getElementById('lw-formula').innerHTML=f;
+      draw(dik,djk,dij,ni,nj,nk,dtk);
+    }
+
+    function rad(n){ return 12 + Math.sqrt(n)*4; }
+    function node(x,y,n,label,color){
+      ctx.beginPath(); ctx.arc(x,y,rad(n),0,Math.PI*2);
+      ctx.fillStyle=color; ctx.globalAlpha=.85; ctx.fill(); ctx.globalAlpha=1;
+      ctx.strokeStyle=COL.ink; ctx.lineWidth=1.5; ctx.stroke();
+      ctx.fillStyle='#06121f'; ctx.font='bold 13px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(label,x,y);
+    }
+    function edge(x1,y1,x2,y2,lab,color){
+      ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([6,5]);
+      ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke(); ctx.setLineDash([]);
+      var mx=(x1+x2)/2, my=(y1+y2)/2;
+      ctx.fillStyle='#0a0e14'; var w=ctx.measureText(lab).width;
+      ctx.font='12px ui-monospace,monospace';
+      ctx.fillStyle=color; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.save(); ctx.fillStyle='#0a0e14'; ctx.fillRect(mx-w/2-12,my-9,w+24,18); ctx.restore();
+      ctx.fillStyle=color; ctx.fillText(lab,mx,my);
+    }
+
+    function draw(dik,djk,dij,ni,nj,nk,dtk){
+      ctx.clearRect(0,0,W,H);
+      var iP=[200,90], jP=[200,250], kP=[680,170], tP=[440,170];
+      // before-merge edges
+      edge(iP[0],iP[1],kP[0],kP[1],'D(i,k)='+dik,COL.c1);
+      edge(jP[0],jP[1],kP[0],kP[1],'D(j,k)='+djk,COL.c4);
+      edge(iP[0],iP[1],jP[0],jP[1],'D(i,j)='+dij,COL.c6);
+      // merged-result edge
+      ctx.strokeStyle=COL.c2; ctx.lineWidth=3;
+      ctx.beginPath(); ctx.moveTo(tP[0],tP[1]); ctx.lineTo(kP[0],kP[1]); ctx.stroke();
+      var mx=(tP[0]+kP[0])/2, my=(tP[1]+kP[1])/2-2;
+      ctx.fillStyle='#0a0e14'; ctx.fillRect(mx-46,my-11,92,22);
+      ctx.fillStyle=COL.c2; ctx.font='bold 13px ui-monospace,monospace'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText('D(t,k)='+dtk.toFixed(2), mx, my);
+      // faint merge bracket i,j -> t
+      ctx.strokeStyle=COL.muted; ctx.lineWidth=1; ctx.setLineDash([2,3]);
+      ctx.beginPath(); ctx.moveTo(iP[0],iP[1]); ctx.lineTo(tP[0],tP[1]); ctx.lineTo(jP[0],jP[1]); ctx.stroke(); ctx.setLineDash([]);
+      // nodes
+      node(iP[0],iP[1],ni,'i',COL.c1);
+      node(jP[0],jP[1],nj,'j',COL.c4);
+      node(kP[0],kP[1],nk,'k',COL.c6);
+      node(tP[0],tP[1],ni+nj,'t',COL.c2);
+    }
+
+    Object.keys(ids).forEach(function(k){ document.getElementById(ids[k]).addEventListener('input',render); });
+    document.querySelectorAll('#lw-link button').forEach(function(b){
+      b.onclick=function(){
+        document.querySelectorAll('#lw-link button').forEach(function(x){x.classList.remove('on');});
+        b.classList.add('on'); linkage=b.dataset.l; render();
+      };
+    });
+    render();
+  })();
+
+  /* ============================================================
+     DEMO 3 — Ward ULP tie-flip
+     ============================================================ */
+  (function(){
+    var ni=2,nj=2,nk=2; // symmetric
+    function perTerm(dik,djk,dij){
+      var t=1/(ni+nj+nk);
+      return Math.sqrt(Math.max((ni+nk)*t*dik*dik + (nj+nk)*t*djk*djk - nk*t*dij*dij, 0));
+    }
+    function sumThenDivide(dik,djk,dij){
+      var num=(ni+nk)*dik*dik + (nj+nk)*djk*djk - nk*dij*dij;
+      return Math.sqrt(Math.max(num/(ni+nj+nk), 0));
+    }
+    function bits(x){
+      var buf=new ArrayBuffer(8), dv=new DataView(buf);
+      dv.setFloat64(0,x);
+      var s='';
+      for(var i=0;i<8;i++){ s += dv.getUint8(i).toString(2).padStart(8,'0'); }
+      return s;
+    }
+    function diffBits(a,b){
+      var ba=bits(a), bb=bits(b), oa='', ob='';
+      for(var i=0;i<64;i++){
+        if(ba[i]!==bb[i]){ oa+='<span class="flip">'+ba[i]+'</span>'; ob+='<span class="flip">'+bb[i]+'</span>'; }
+        else { oa+=ba[i]; ob+=bb[i]; }
+      }
+      return [oa,ob];
+    }
+    var bitsShown=false;
+    function render(){
+      var dik=+document.getElementById('ulp-dik').value;
+      var djk=+document.getElementById('ulp-djk').value;
+      var dij=+document.getElementById('ulp-dij').value;
+      var a=perTerm(dik,djk,dij), b=sumThenDivide(dik,djk,dij);
+      document.getElementById('ulp-a').textContent=a.toPrecision(17);
+      document.getElementById('ulp-b').textContent=b.toPrecision(17);
+      var same=(a===b);
+      document.getElementById('ulp-diff').innerHTML = same
+        ? '<span style="color:'+COL.muted+'">identical (no ULP gap at these inputs)</span>'
+        : '<span style="color:'+COL.c3+'">differ by '+Math.abs(a-b).toExponential(3)+' — one ULP region; a tie here would flip</span>';
+      if(bitsShown){
+        var d=diffBits(a,b);
+        document.getElementById('ulp-bits-a').innerHTML='per-term &nbsp;&nbsp;: '+d[0];
+        document.getElementById('ulp-bits-b').innerHTML='sum/divide: '+d[1];
+      }
+    }
+    ['ulp-dik','ulp-djk','ulp-dij'].forEach(function(id){ document.getElementById(id).addEventListener('input',render); });
+    document.getElementById('ulp-bits').onclick=function(){
+      bitsShown=!bitsShown;
+      document.getElementById('ulp-bitbox').style.display=bitsShown?'block':'none';
+      this.textContent=bitsShown?'Hide bits ⌗':'Show bits ⌗';
+      render();
+    };
+    render();
+  })();
+
+  /* active-section nav highlight (progressive enhancement) */
+  var secLinks = {};
+  document.querySelectorAll('.topnav a[href^="./"]').forEach(function(a){});
+})();
+</script>
+</body>
+</html>

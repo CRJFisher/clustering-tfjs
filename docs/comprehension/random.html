@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Deterministic RNG (Mersenne Twister) — Clustering Atlas</title>
+<style>
+:root{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c232c; --ink:#e6edf3; --muted:#9aa7b4;
+  --line:#2b333d; --accent:#58a6ff; --accent2:#7ee787; --warn:#f0b429; --pink:#ff7b9c;
+  --c1:#58a6ff; --c2:#7ee787; --c3:#ff7b9c; --c4:#f0b429; --c5:#bc8cff; --c6:#39d0d8;
+  --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;font-size:16px}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+.topnav{position:sticky;top:0;z-index:50;display:flex;flex-wrap:wrap;gap:.25rem .9rem;align-items:center;
+  background:rgba(13,17,23,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:.6rem 1.2rem;font-size:.85rem}
+.topnav .brand{font-weight:700;color:var(--ink);margin-right:.6rem}
+.topnav a{color:var(--muted)}.topnav a.active{color:var(--accent);font-weight:600}
+.wrap{max-width:920px;margin:0 auto;padding:2.2rem 1.2rem 6rem}
+h1{font-size:2.1rem;line-height:1.15;margin:.2rem 0 .4rem}
+h2{font-size:1.45rem;margin:2.6rem 0 .8rem;padding-top:.6rem;border-top:1px solid var(--line)}
+h3{font-size:1.1rem;margin:1.6rem 0 .5rem;color:var(--accent2)}
+.lede{font-size:1.15rem;color:var(--muted);max-width:62ch}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:1.1rem 1.3rem;margin:1.1rem 0}
+.demo{background:var(--panel2);border:1px solid var(--line);border-radius:var(--radius);padding:1rem;margin:1.4rem 0}
+.demo canvas,.demo svg{display:block;width:100%;height:auto;background:#0a0e14;border-radius:10px}
+.controls{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;margin-top:.8rem}
+button{font-family:var(--sans);font-size:.9rem;background:var(--accent);color:#06121f;border:0;border-radius:8px;
+  padding:.45rem .9rem;cursor:pointer;font-weight:600}
+button.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+button:disabled{opacity:.4;cursor:not-allowed}
+input[type=range]{accent-color:var(--accent)}
+.pill{display:inline-block;font-family:var(--mono);font-size:.78rem;background:var(--panel2);border:1px solid var(--line);
+  border-radius:999px;padding:.1rem .6rem;color:var(--muted)}
+code{font-family:var(--mono);background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:.1rem .35rem;font-size:.88em}
+pre{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-radius:10px;padding:1rem;overflow:auto;font-size:.85rem;line-height:1.5}
+.eq{font-family:var(--mono);background:#0a0e14;border:1px solid var(--line);border-left:3px solid var(--accent);
+  border-radius:8px;padding:.7rem 1rem;margin:.8rem 0;overflow-x:auto;color:#cfe8ff}
+.grid{display:grid;gap:1rem}.grid.two{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+table{width:100%;border-collapse:collapse;margin:1rem 0;font-size:.92rem}
+th,td{text-align:left;padding:.5rem .6rem;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--accent2);font-weight:600}
+.steps{counter-reset:s;list-style:none;padding:0}
+.steps li{counter-increment:s;position:relative;padding:.4rem 0 .4rem 2.4rem;border-bottom:1px solid var(--line)}
+.steps li::before{content:counter(s);position:absolute;left:0;top:.45rem;width:1.6rem;height:1.6rem;border-radius:50%;
+  background:var(--accent);color:#06121f;font-weight:700;display:grid;place-items:center;font-size:.85rem}
+.note{border-left:3px solid var(--warn);background:rgba(240,180,41,.08);padding:.6rem 1rem;border-radius:0 8px 8px 0;margin:1rem 0}
+.muted{color:var(--muted)}.kbd{font-family:var(--mono);font-size:.8rem}
+footer{border-top:1px solid var(--line);margin-top:4rem;padding-top:1.2rem;color:var(--muted);font-size:.85rem}
+
+/* topic-specific */
+.seedrow{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.seedrow input[type=number]{width:9rem;font-family:var(--mono);font-size:.9rem;background:#0a0e14;color:var(--ink);
+  border:1px solid var(--line);border-radius:8px;padding:.4rem .55rem}
+.readout{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-top:.6rem}
+.readout b{color:var(--accent2)}
+.bits{display:flex;flex-wrap:wrap;gap:3px;font-family:var(--mono);font-size:.72rem;margin:.4rem 0}
+.bit{width:1.05rem;height:1.05rem;display:grid;place-items:center;border-radius:3px;border:1px solid var(--line)}
+.bit.on{background:var(--accent);color:#06121f;border-color:var(--accent)}
+.bit.off{background:#0a0e14;color:#3b4654}
+.bitlabel{width:5.5rem;color:var(--muted);font-size:.74rem;align-self:center}
+.bitstage{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:.35rem 0;padding:.35rem .4rem;border-radius:8px}
+.bitstage.cur{background:rgba(88,166,255,.08);border:1px solid rgba(88,166,255,.3)}
+.legend{display:flex;flex-wrap:wrap;gap:.9rem;font-size:.8rem;color:var(--muted);margin-top:.6rem}
+.legend span{display:inline-flex;align-items:center;gap:.35rem}
+.sw{width:.85rem;height:.85rem;border-radius:3px;display:inline-block}
+.statval{font-family:var(--mono);font-size:.85rem}
+.two-up{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media(max-width:680px){.two-up{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<nav class="topnav"><a class="brand" href="./index.html">◆ Clustering Atlas</a><a href="./kmeans.html">K-Means</a><a href="./spectral.html">Spectral Clustering</a><a href="./agglomerative.html">Agglomerative Clustering</a><a href="./som.html">Self-Organizing Maps (SOM)</a><a href="./eigen.html">Eigendecomposition Engine</a><a href="./graph.html">Graph &amp; Laplacian Construction</a><a href="./linkage.html">Linkage &amp; NN-Chain Merge Engine</a><a href="./distance.html">Pairwise Distance</a><a href="./model-selection.html">Choosing k (Model Selection)</a><a href="./validation.html">Validation Metrics</a><a class="active" href="./random.html">Deterministic RNG (Mersenne Twister)</a></nav>
+
+<div class="wrap">
+<h1>Deterministic RNG (Mersenne Twister MT19937)</h1>
+<p class="lede">A 32-bit MT19937 pseudo-random generator that byte-for-byte reproduces NumPy&rsquo;s legacy <code>RandomState</code> stream, giving clustering-tfjs the deterministic, scikit-learn-matching randomness that k-means++ seeding, SOM shuffling, and Lanczos initialization depend on.</p>
+
+<h2 id="intuition">Intuition</h2>
+<p>A pseudo-random generator is a <b>deterministic machine</b>: feed it the same starting seed and it always emits the exact same sequence of &ldquo;random&rdquo; numbers. MT19937 (the Mersenne Twister, period 2<sup>19937</sup>&minus;1) holds <b>624 words</b> of 32-bit internal state. Numbers come out 624 at a time. When the buffer runs dry, a <b>twist</b> step churns the whole state vector forward; each individual draw then runs through a <b>temper</b> step that scrambles the bits of one state word so the output looks statistically uniform even though the underlying state evolves in a simple, structured way. Think of <i>twist</i> as reshuffling the whole deck and <i>temper</i> as a final card-by-card scramble before dealing.</p>
+<p>Why does this matter for a clustering library? Algorithms like <b>k-means++</b> and <b>SOM</b> are randomized: k-means++ picks its first center uniformly at random, then samples each subsequent center with probability proportional to squared distance; SOM shuffles its training rows every epoch. If the randomness is not reproducible you cannot get the same clusters twice, you cannot write deterministic tests, and you cannot match a reference implementation. scikit-learn&rsquo;s randomized routines are driven by NumPy&rsquo;s legacy <code>RandomState</code>, which <i>is</i> MT19937. So to produce identical cluster labels to scikit-learn for a given <code>random_state</code>, this codebase reproduces NumPy&rsquo;s MT19937 bit-for-bit: the same seeding recurrence, the same tempering masks, the same 53-bit float construction, and the same rejection-sampling scheme for bounded integers.</p>
+<p>The consumer side is a tiny <code>RandomStream</code> interface &mdash; <code>rand()</code> for a float in [0,1) and <code>rand_int(max)</code> for an integer in [0,max) &mdash; backed by <b>either</b> MT19937 (when a seed is given) <b>or</b> <code>Math.random</code> (when no seed is given). Seeded means deterministic and parity-checked; unseeded means fast but non-reproducible. The whole point of the module is that the seeded path is a faithful clone of NumPy, so the higher-level estimators inherit scikit-learn parity for free.</p>
+
+<div class="demo">
+  <h3 style="margin-top:0">Try it &mdash; same seed, same stream</h3>
+  <p class="muted" style="margin:.2rem 0 .4rem">Two independent generators seeded with the same number. Draw floats and watch the streams stay in lockstep. Change one seed and they diverge.</p>
+  <div class="two-up">
+    <div>
+      <div class="seedrow"><span class="pill">seed A</span><input type="number" id="seedA" value="42"></div>
+      <pre id="streamA" style="height:8.5rem;margin:.5rem 0 0"></pre>
+    </div>
+    <div>
+      <div class="seedrow"><span class="pill">seed B</span><input type="number" id="seedB" value="42"></div>
+      <pre id="streamB" style="height:8.5rem;margin:.5rem 0 0"></pre>
+    </div>
+  </div>
+  <div class="controls">
+    <button id="lockDraw">Draw 1 float (both)</button>
+    <button id="lockDraw5" class="ghost">Draw 5</button>
+    <button id="lockReset" class="ghost">Reset</button>
+    <span class="readout" id="lockStatus">identical seeds &rarr; identical streams</span>
+  </div>
+</div>
+
+<h2 id="how">How it works</h2>
+<ol class="steps">
+  <li><b>Seed the 624-word state (init).</b> The constructor coerces the seed to unsigned 32-bit (<code>seed&nbsp;&gt;&gt;&gt;&nbsp;0</code>) and calls <code>init</code>. State word <code>mt[0] = seed</code>; each subsequent word is <code>mt[i] = (1812433253 &middot; (mt[i-1] ^ (mt[i-1] &gt;&gt;&gt; 30)) + i) &amp; 0xffffffff</code>. The multiply is done in floating point then masked to 32 bits, and <code>index</code> is set to <code>N&nbsp;=&nbsp;624</code> so the first draw forces a twist. This is exactly NumPy / Knuth&rsquo;s <code>init_genrand</code>.</li>
+  <li><b>Refill the state when exhausted (twist).</b> When <code>index &ge; 624</code>, <code>twist()</code> regenerates all 624 words. For each <i>i</i>: combine the high bit of <code>mt[i]</code> with the low 31 bits of <code>mt[(i+1) mod 624]</code> into <i>x</i>; compute <code>x &gt;&gt;&gt; 1</code>, XOR in <code>MATRIX_A = 0x9908b0df</code> when <i>x</i> is odd; then <code>mt[i] = mt[(i+M) mod 624] ^ that</code>, with <code>M = 397</code>. Reset <code>index</code> to 0.</li>
+  <li><b>Temper and return one uint32 (next_uint32).</b> Read <code>y = mt[index]</code>, increment <code>index</code>, then apply four tempering operations: <code>y ^= y &gt;&gt;&gt; 11</code>; <code>y ^= (y &lt;&lt; 7) &amp; 0x9d2c5680</code>; <code>y ^= (y &lt;&lt; 15) &amp; 0xefc60000</code>; <code>y ^= y &gt;&gt;&gt; 18</code>. Return <code>y &gt;&gt;&gt; 0</code> to keep it unsigned. These masks are identical to NumPy&rsquo;s.</li>
+  <li><b>Build a 53-bit float in [0,1) (next_float).</b> Draw two uint32s. <code>a = first &gt;&gt;&gt; 5</code> (top 27 bits), <code>b = second &gt;&gt;&gt; 6</code> (top 26 bits). Return <code>(a &middot; 67108864 + b) &middot; 2<sup>-53</sup></code> (the literal <code>1.1102230246251565e-16</code>, with <code>67108864 = 2<sup>26</sup></code>). This reproduces NumPy&rsquo;s <code>random_sample</code> exactly &mdash; two words per float.</li>
+  <li><b>Bounded integer with rejection sampling (next_int).</b> Validate that <code>max</code> is a positive 32-bit integer. Compute <code>threshold = (2<sup>32</sup> &minus; bound) mod bound</code>. Loop: draw <code>r = next_uint32()</code>; if <code>r &ge; threshold</code> return <code>r mod bound</code>, else retry. This discards the low-end values that would cause modulo bias, matching NumPy&rsquo;s bounded-integer routine exactly.</li>
+  <li><b>Expose a RandomStream (make_random_stream).</b> If the seed is <code>undefined</code>, return <code>{ rand: Math.random, rand_int: floor(Math.random()*max) }</code> &mdash; fast and non-deterministic. If a seed is given, construct <code>MT19937(seed&nbsp;&gt;&gt;&gt;&nbsp;0)</code> and wrap it: <code>rand &rarr; next_float()</code>, <code>rand_int &rarr; next_int(max)</code>. All consumers depend only on those two methods.</li>
+</ol>
+
+<div class="demo">
+  <h3 style="margin-top:0">Try it &mdash; the 624-word state &amp; the twist</h3>
+  <p class="muted" style="margin:.2rem 0 .6rem">The state vector as 624 cells (color = value). <b>Step</b> advances one word of the twist; <b>Play</b> runs the whole sweep. Each highlighted word combines the high bit of <code>mt[i]</code> with the low 31 bits of <code>mt[i+1]</code> and folds in the feedback word <code>mt[i+397]</code>. Watch <code>index</code> snap from 624 back to 0 once a full twist completes.</p>
+  <div class="seedrow"><span class="pill">seed</span><input type="number" id="twSeed" value="5489"><button id="twReseed" class="ghost">Reseed</button></div>
+  <canvas id="stateCanvas" width="900" height="180"></canvas>
+  <div class="controls">
+    <button id="twStep">Step word</button>
+    <button id="twPlay">Play twist</button>
+    <button id="twFull" class="ghost">Twist all 624</button>
+  </div>
+  <div class="readout" id="twStatus"></div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--accent)"></span> mt[i] (being rewritten)</span>
+    <span><span class="sw" style="background:var(--c5)"></span> mt[i+1] (low 31 bits)</span>
+    <span><span class="sw" style="background:var(--warn)"></span> mt[i+397] (feedback)</span>
+    <span><span class="sw" style="background:#1e6b3a"></span> already twisted</span>
+  </div>
+</div>
+
+<div class="demo">
+  <h3 style="margin-top:0">Try it &mdash; the temper bit-pipeline</h3>
+  <p class="muted" style="margin:.2rem 0 .6rem">One 32-bit state word fed through the four tempering stages. Each row shows the running value <code>y</code> across 32 bit-cells (bit 31 at the left). Scrub the slider to apply stages one at a time; each invertible XOR scramble pushes the output toward statistical uniformity. The final row is the value <code>next_uint32</code> returns.</p>
+  <div class="seedrow"><span class="pill">input word y</span><input type="number" id="tmpInput" value="3499211612"><button id="tmpRand" class="ghost">Random word</button></div>
+  <div class="controls" style="margin-top:.6rem">
+    <span class="kbd">stage</span>
+    <input type="range" id="tmpStage" min="0" max="4" value="0" step="1" style="flex:1;min-width:160px">
+    <span class="readout" id="tmpStageLabel"></span>
+  </div>
+  <div id="tmpPipe" style="margin-top:.6rem"></div>
+</div>
+
+<h2 id="math">The math</h2>
+
+<h3>Seeding recurrence (init_genrand)</h3>
+<div class="eq">mt[i] &larr; (1812433253 &middot; (mt[i&minus;1] &oplus; (mt[i&minus;1] &gt;&gt; 30)) + i) &and; 0xffffffff,&nbsp;&nbsp; i = 1 &hellip; 623</div>
+<p>A linear-congruential-style fill of the 624-word state from one seed, with <code>mt[0] = seed</code>. The term <code>mt[i&minus;1] &gt;&gt; 30</code> shifts the top two bits down so they participate in the multiply; the XOR (&oplus;) mixes those high bits into the low end before multiplying by the constant 1812433253, so even seeds differing by one bit diverge quickly. The <code>&and; 0xffffffff</code> truncates the product back to 32 bits (the multiply itself is computed in floating point first to avoid JS&rsquo;s signed 32-bit overflow).</p>
+
+<h3>Twist (state recurrence)</h3>
+<div class="eq">x &larr; (mt[i] &and; 0x80000000) &or; (mt[(i+1) mod N] &and; 0x7fffffff)<br>mt[i] &larr; mt[(i+M) mod N] &oplus; (x &gt;&gt; 1) &oplus; (x &and; 1 ? 0x9908b0df : 0)</div>
+<p>The core generalized-feedback-shift-register step, with <code>N = 624</code> and <code>M = 397</code>. <code>UPPER_MASK = 0x80000000</code> selects just the top bit of word <i>i</i>; <code>LOWER_MASK = 0x7fffffff</code> selects the low 31 bits of word <i>i+1</i>; the <code>&or;</code> concatenates them into a 32-bit <i>x</i>. We then shift <i>x</i> right by one, conditionally XOR the twist matrix constant <code>MATRIX_A = 0x9908b0df</code> when <i>x</i> is odd, and fold in the &ldquo;middle&rdquo; word <code>mt[i+397]</code>. Indices wrap modulo 624, which is why the sweep visibly loops around near indices 624 and 397.</p>
+
+<h3>Tempering</h3>
+<div class="eq">y &larr; y &oplus; (y &gt;&gt; 11)<br>y &larr; y &oplus; ((y &lt;&lt; 7) &and; 0x9d2c5680)<br>y &larr; y &oplus; ((y &lt;&lt; 15) &and; 0xefc60000)<br>y &larr; y &oplus; (y &gt;&gt; 18)</div>
+<p>An invertible bit-scrambling applied to each emitted word so successive outputs are <i>equidistributed</i> (uniform across all bit positions). <code>&gt;&gt;</code> and <code>&lt;&lt;</code> are bit shifts; the <code>&and;</code> with masks <code>0x9d2c5680</code> and <code>0xefc60000</code> gates which bits the leftward shifts are allowed to flip. The four shift amounts 11/7/15/18 and these two masks are the canonical MT19937 constants &mdash; identical to NumPy&rsquo;s &mdash; which is exactly why the output stream lines up bit-for-bit.</p>
+
+<h3>53-bit uniform float</h3>
+<div class="eq">u &larr; (a &middot; 2<sup>26</sup> + b) &middot; 2<sup>-53</sup>,&nbsp;&nbsp; a = w&#8321; &gt;&gt; 5 (27 bits),&nbsp;&nbsp; b = w&#8322; &gt;&gt; 6 (26 bits)</div>
+<p>Two 32-bit words <i>w&#8321;</i>, <i>w&#8322;</i> are reduced to their top 27 and top 26 bits respectively (dropping noisy low bits), then packed into a 53-bit mantissa &mdash; the full precision of an IEEE-754 double. Multiplying by <code>2<sup>-53</sup> = 1.1102230246251565e-16</code> scales it into [0,1). This is exactly NumPy&rsquo;s <code>random_sample</code>, and it means every float costs <b>two</b> uint32 draws.</p>
+
+<h3>Unbiased bounded integer</h3>
+<div class="eq">threshold &larr; (2<sup>32</sup> &minus; bound) mod bound;&nbsp;&nbsp; draw r until r &ge; threshold;&nbsp;&nbsp; return r mod bound</div>
+<p>A plain <code>r mod bound</code> over-represents the first <code>(2<sup>32</sup> mod bound)</code> values, because 2<sup>32</sup> rarely divides evenly into <code>bound</code> equal blocks. Rejection sampling fixes this: it discards the leftover low region <code>[0, threshold)</code> so only whole blocks remain, every output is equally likely, and the integer sequence matches NumPy exactly rather than just approximately.</p>
+
+<h3>k-means++ distance-proportional sampling</h3>
+<div class="eq">P(point i) &prop; D(i)<sup>2</sup>,&nbsp; D(i)<sup>2</sup> = min<sub>c</sub> &Vert;x&#7522; &minus; &mu;&#8336;&Vert;<sup>2</sup>;&nbsp;&nbsp; pick i where r &middot; &Sigma;&#11388; D(j)<sup>2</sup> &le; cum&#7522;,&nbsp; r ~ U[0,1)</div>
+<p>Each candidate center is drawn with probability proportional to its squared distance <code>D(i)<sup>2</sup></code> from the nearest already-chosen center. The seeded <code>rand()</code> produces <i>r</i>; multiplying by the total potential <code>&Sigma; D(j)<sup>2</sup></code> throws a dart, and a binary search over the cumulative-distance array finds which point it lands in. Reproducing NumPy&rsquo;s float stream is precisely what makes the chosen centroids &mdash; and therefore the final labels &mdash; match scikit-learn.</p>
+
+<div class="demo">
+  <h3 style="margin-top:0">Try it &mdash; rejection sampling for unbiased integers</h3>
+  <p class="muted" style="margin:.2rem 0 .6rem">The line [0, 2<sup>32</sup>) split into whole blocks of size <code>bound</code> plus a leftover remainder region <code>[0, threshold)</code>. Draws that land in the leftover (red) are <b>rejected and retried</b>; accepted draws (green) map down to [0, bound) via <code>mod</code>. Watch the histogram fill flat. Toggle rejection <b>off</b> to see the modulo-bias spike that would break NumPy parity.</p>
+  <div class="seedrow">
+    <span class="pill">bound (max)</span><input type="number" id="rejBound" value="6" min="2" max="64">
+    <label class="kbd" style="display:inline-flex;align-items:center;gap:.35rem"><input type="checkbox" id="rejOn" checked> rejection ON</label>
+  </div>
+  <canvas id="rejCanvas" width="900" height="280"></canvas>
+  <div class="controls">
+    <button id="rejPlay">Play draws</button>
+    <button id="rejStep" class="ghost">Draw 1</button>
+    <button id="rejReset" class="ghost">Reset</button>
+    <span class="readout" id="rejStatus"></span>
+  </div>
+</div>
+
+<div class="demo">
+  <h3 style="margin-top:0">Try it &mdash; seed &rarr; stream &rarr; the same clusters</h3>
+  <p class="muted" style="margin:.2rem 0 .6rem">A small 2D dataset (three blobs). k-means++ picks <code>k</code> centers using the seeded float stream: the first is uniform; each next center is sampled with probability &prop; <code>D(x)<sup>2</sup></code> (the white bars over each point). Re-running with the <b>same</b> seed reproduces the identical centers; a <b>different</b> seed gives a different but equally deterministic outcome.</p>
+  <div class="seedrow">
+    <span class="pill">seed</span><input type="number" id="kmSeed" value="7">
+    <span class="pill">k</span><input type="number" id="kmK" value="3" min="2" max="6" style="width:5rem">
+  </div>
+  <canvas id="kmCanvas" width="900" height="420"></canvas>
+  <div class="controls">
+    <button id="kmStep">Pick next center</button>
+    <button id="kmRun">Run full seeding</button>
+    <button id="kmReset" class="ghost">Reset (same seed)</button>
+    <span class="readout" id="kmStatus"></span>
+  </div>
+</div>
+
+<h2 id="code">Inside the code</h2>
+<p>Every reference below points at real source. The engine lives in <code>src/random/mt19937.ts</code>; the consumer-facing interface in <code>src/random/index.ts</code>.</p>
+<table>
+<thead><tr><th>Reference</th><th>Role</th></tr></thead>
+<tbody>
+<tr><td><code>mt19937.ts:14</code></td><td><code>MT19937</code> class declaration</td></tr>
+<tr><td><code>mt19937.ts:15&ndash;19</code></td><td>Algorithm constants: <code>N=624</code>, <code>M=397</code>, <code>MATRIX_A</code>, <code>UPPER_MASK</code>, <code>LOWER_MASK</code></td></tr>
+<tr><td><code>mt19937.ts:22&ndash;25</code></td><td>State vector (<code>Uint32Array(624)</code>) and current <code>index</code> field</td></tr>
+<tr><td><code>mt19937.ts:27&ndash;29</code></td><td>Constructor: coerces seed to unsigned (<code>seed&nbsp;&gt;&gt;&gt;&nbsp;0</code>) and calls <code>init</code></td></tr>
+<tr><td><code>mt19937.ts:36&ndash;50</code></td><td><code>next_uint32</code>: twist-on-exhaustion plus the four tempering operations</td></tr>
+<tr><td><code>mt19937.ts:56&ndash;60</code></td><td><code>next_float</code>: 53-bit uniform float from two uint32 draws</td></tr>
+<tr><td><code>mt19937.ts:65&ndash;79</code></td><td><code>next_int</code>: bounded integer via NumPy-style rejection sampling (threshold computation)</td></tr>
+<tr><td><code>mt19937.ts:85&ndash;93</code></td><td><code>init</code>: <code>init_genrand</code> seeding recurrence, sets <code>index = N</code></td></tr>
+<tr><td><code>mt19937.ts:95&ndash;108</code></td><td><code>twist</code>: regenerates all 624 state words, resets <code>index</code> to 0</td></tr>
+<tr><td><code>index.ts:4&ndash;9</code></td><td><code>RandomStream</code> interface (<code>rand</code>, <code>rand_int</code>)</td></tr>
+<tr><td><code>index.ts:11&ndash;24</code></td><td><code>make_random_stream</code>: <code>Math.random</code> fallback when seed undefined, else MT19937-backed stream</td></tr>
+<tr><td><code>kmeans.ts:154&ndash;163</code></td><td>k-means++ creates a seeded stream (<code>base_seed + seed_offset</code>) and draws the first centroid via <code>rand_int</code></td></tr>
+<tr><td><code>kmeans.ts:198&ndash;219</code></td><td>k-means++ distance-proportional sampling using <code>rand()</code> with <code>local_trials</code> and a cumulative-distance binary search</td></tr>
+<tr><td><code>som.ts:181</code></td><td>SOM builds a seeded stream from <code>random_state</code></td></tr>
+<tr><td><code>som.ts:981&ndash;989</code></td><td>SOM Fisher-Yates <code>shuffle_indices</code> using <code>rng.rand_int</code></td></tr>
+<tr><td><code>lanczos.ts:102&ndash;108</code></td><td>Lanczos initial vector seeded via <code>rng.rand() &minus; 0.5</code></td></tr>
+</tbody>
+</table>
+
+<h2 id="params">Parameters</h2>
+<table>
+<thead><tr><th>Name</th><th>Meaning</th></tr></thead>
+<tbody>
+<tr><td><code>seed</code> (MT19937 constructor)</td><td>32-bit unsigned integer seed; coerced with <code>seed&nbsp;&gt;&gt;&gt;&nbsp;0</code>. Identical seeds yield identical full output streams.</td></tr>
+<tr><td><code>seed</code> (make_random_stream, optional)</td><td>If provided, returns a deterministic MT19937-backed stream; if <code>undefined</code>, returns a <code>Math.random</code>-backed stream that is fast but non-reproducible.</td></tr>
+<tr><td><code>max</code> (next_int / rand_int)</td><td>Exclusive upper bound for a uniform integer in [0, max). Must be a positive 32-bit integer (1 &hellip; 0xffffffff) or <code>next_int</code> throws.</td></tr>
+<tr><td><code>N = 624</code></td><td>State-vector length in 32-bit words; the number of outputs produced per twist.</td></tr>
+<tr><td><code>M = 397</code></td><td>Recurrence offset (middle word) used in the twist feedback term <code>mt[(i+M) mod N]</code>.</td></tr>
+<tr><td><code>MATRIX_A = 0x9908b0df</code></td><td>Twist matrix constant XORed in when the combined word <i>x</i> is odd.</td></tr>
+<tr><td><code>UPPER_MASK = 0x80000000</code> / <code>LOWER_MASK = 0x7fffffff</code></td><td>Bit masks selecting the high bit of one word and the low 31 bits of the next during twist.</td></tr>
+<tr><td><code>random_state</code> (KMeans)</td><td>Base seed; each of the <code>n_init</code> restarts uses <code>base_seed + seed_offset</code> so restarts are deterministic yet distinct (<code>kmeans.ts:154&ndash;156</code>).</td></tr>
+<tr><td><code>random_state</code> (SOM)</td><td>Seed for the per-epoch Fisher-Yates shuffle of training rows via <code>rand_int</code> (<code>som.ts:181, 985</code>).</td></tr>
+<tr><td><code>random_seed</code> (Lanczos)</td><td>Seed for the initial Lanczos vector, filled with <code>rng.rand() &minus; 0.5</code> so eigen-solves are reproducible (<code>lanczos.ts:102&ndash;108</code>).</td></tr>
+</tbody>
+</table>
+
+<h2 id="edge">Edge cases &amp; scikit-learn parity</h2>
+<ul>
+  <li><b>Exhaustion / first draw:</b> the constructor sets <code>index = N</code>, so the very first <code>next_uint32</code> triggers a twist before any output &mdash; matching NumPy, where the first refill happens on first use.</li>
+  <li><b>Unsigned coercion everywhere:</b> every return and state write applies <code>&gt;&gt;&gt; 0</code> because JS bitwise ops produce <i>signed</i> 32-bit ints; the seeding multiply <code>1812433253 * prev</code> is done in float then masked with <code>&amp; 0xffffffff</code> to avoid 32-bit overflow truncation.</li>
+  <li><b><code>next_int</code> validation:</b> throws <code>"max must be a 32-bit positive integer"</code> for a non-integer, <code>max &le; 0</code>, or <code>max &gt; 0xffffffff</code>. The rejection loop can in principle retry, but <code>threshold</code> is small so termination is fast.</li>
+  <li><b>Two words per float:</b> <code>next_float</code> consumes exactly two uint32 draws (27-bit + 26-bit). Any consumer mixing <code>rand()</code> and <code>rand_int()</code> must call them in the same order as scikit-learn or the streams diverge.</li>
+  <li><b>Unseeded mode is NOT reproducible:</b> <code>make_random_stream()</code> with no seed delegates to <code>Math.random</code> and gives no parity guarantees; only the seeded path matches scikit-learn.</li>
+  <li><b>k-means++ degenerate potential:</b> when <code>current_pot === 0</code> (all remaining points coincide with chosen centers) the code deterministically takes the first unused index instead of sampling, avoiding division by zero / NaN probabilities (<code>kmeans.ts:185&ndash;195</code>).</li>
+  <li><b>n_init seed offsetting:</b> KMeans adds <code>seed_offset</code> to the base seed per restart; if <code>base_seed</code> is undefined it stays undefined (each restart unseeded), preserving the seeded-vs-unseeded distinction across all restarts.</li>
+</ul>
+<div class="note">
+<b>The parity contract.</b> This module exists specifically to clone NumPy&rsquo;s legacy <code>RandomState</code> (the MT19937 backend that scikit-learn&rsquo;s <code>check_random_state</code> ultimately uses). Parity is achieved by matching four things exactly: (1) the <code>init_genrand</code> seeding recurrence with constant 1812433253 and the <code>&gt;&gt;&gt; 30</code> XOR-shift; (2) the twist with <code>N=624</code>, <code>M=397</code>, <code>MATRIX_A=0x9908b0df</code> and the upper/lower bit masks; (3) the four tempering shifts/masks (<code>0x9d2c5680</code>, <code>0xefc60000</code>, shifts 11/7/15/18) identical to NumPy; (4) the 53-bit float construction (top 27 + top 26 bits, scaled by 2<sup>-53</sup>) matching <code>random_sample</code>, plus rejection-sampled bounded integers to remove modulo bias the way NumPy does. With these in place, k-means++ chooses the same initial centroids as scikit-learn for a given <code>random_state</code> (the <code>rand()*current_pot</code> weighted draw and the <code>local_trials = 2 + floor(log K)</code> greedy candidate scheme mirror sklearn&rsquo;s <code>_kmeans_plusplus</code>), so final labels and inertia match. SOM and Lanczos similarly become reproducible. The deliberate seam: an undefined seed falls back to <code>Math.random</code>, which sacrifices parity for speed when determinism is not requested.
+</div>
+
+<footer>
+  <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:1rem">
+    <span>&larr; <a href="./validation.html">Validation Metrics</a></span>
+    <span><a href="./index.html">◆ Clustering Atlas index</a></span>
+    <span><a href="./kmeans.html">K-Means</a> &rarr;</span>
+  </div>
+  <p style="margin-top:1rem">Source of truth: <code>src/random/mt19937.ts</code>, <code>src/random/index.ts</code>. Consumers: <code>kmeans.ts</code>, <code>som.ts</code>, <code>lanczos.ts</code>. The live demos below run a faithful in-page port of the same algorithm.</p>
+</footer>
+</div>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ */
+/* Faithful in-page port of src/random/mt19937.ts                      */
+/* ------------------------------------------------------------------ */
+class MT19937 {
+  constructor(seed){
+    this.N=624; this.M=397;
+    this.MATRIX_A=0x9908b0df; this.UPPER_MASK=0x80000000; this.LOWER_MASK=0x7fffffff;
+    this.mt=new Uint32Array(this.N);
+    this.index=this.N;
+    this.init(seed>>>0);
+  }
+  init(seed){
+    this.mt[0]=seed>>>0;
+    for(let i=1;i<this.N;i++){
+      const prev=this.mt[i-1]>>>0;
+      this.mt[i]=((1812433253*(prev^(prev>>>30))+i)&0xffffffff)>>>0;
+    }
+    this.index=this.N;
+  }
+  twist(){
+    const N=this.N,M=this.M;
+    for(let i=0;i<N;i++){
+      const x=(this.mt[i]&this.UPPER_MASK)|(this.mt[(i+1)%N]&this.LOWER_MASK);
+      let xa=x>>>1;
+      if(x%2!==0) xa^=this.MATRIX_A;
+      this.mt[i]=this.mt[(i+M)%N]^xa;
+    }
+    this.index=0;
+  }
+  next_uint32(){
+    if(this.index>=this.N) this.twist();
+    let y=this.mt[this.index++];
+    y^=y>>>11;
+    y^=(y<<7)&0x9d2c5680;
+    y^=(y<<15)&0xefc60000;
+    y^=y>>>18;
+    return y>>>0;
+  }
+  next_float(){
+    const a=this.next_uint32()>>>5;
+    const b=this.next_uint32()>>>6;
+    return (a*67108864+b)*1.1102230246251565e-16;
+  }
+  next_int(max){
+    if(!Number.isInteger(max)||max<=0||max>0xffffffff) throw new Error('max must be a 32-bit positive integer');
+    const bound=max>>>0;
+    const threshold=(0x100000000-bound)%bound;
+    while(true){
+      const r=this.next_uint32();
+      if(r>=threshold) return r%bound;
+    }
+  }
+}
+
+/* helper: color from a 32-bit value (hue) */
+function valColor(v){
+  const h=((v>>>0)%360);
+  return `hsl(${h},65%,55%)`;
+}
+
+/* ================================================================== */
+/* Demo 1: same seed -> same stream                                    */
+/* ================================================================== */
+(function(){
+  const seedA=document.getElementById('seedA'), seedB=document.getElementById('seedB');
+  const preA=document.getElementById('streamA'), preB=document.getElementById('streamB');
+  const status=document.getElementById('lockStatus');
+  let engA, engB, listA, listB;
+  function reset(){
+    engA=new MT19937((+seedA.value||0)>>>0);
+    engB=new MT19937((+seedB.value||0)>>>0);
+    listA=[]; listB=[];
+    render();
+  }
+  function render(){
+    preA.textContent=listA.map((x,i)=>`#${i+1}  ${x.toFixed(9)}`).join('\n')||'(no draws yet)';
+    preB.textContent=listB.map((x,i)=>`#${i+1}  ${x.toFixed(9)}`).join('\n')||'(no draws yet)';
+    const same=(+seedA.value||0)>>>0===(+seedB.value||0)>>>0;
+    let diverged=false;
+    for(let i=0;i<Math.min(listA.length,listB.length);i++){ if(listA[i]!==listB[i]){diverged=true;break;} }
+    if(same && !diverged){ status.innerHTML='<b>identical</b> seeds &rarr; identical streams'; status.style.color='var(--accent2)'; }
+    else { status.innerHTML='different seeds &rarr; streams <span style="color:var(--pink)">diverge</span>'; status.style.color='var(--muted)'; }
+  }
+  function draw(n){
+    for(let i=0;i<n;i++){ listA.push(engA.next_float()); listB.push(engB.next_float()); }
+    render();
+  }
+  document.getElementById('lockDraw').onclick=()=>draw(1);
+  document.getElementById('lockDraw5').onclick=()=>draw(5);
+  document.getElementById('lockReset').onclick=reset;
+  seedA.oninput=reset; seedB.oninput=reset;
+  reset();
+})();
+
+/* ================================================================== */
+/* Demo 2: state vector + twist animation                              */
+/* ================================================================== */
+(function(){
+  const cv=document.getElementById('stateCanvas'), ctx=cv.getContext('2d');
+  const seedEl=document.getElementById('twSeed');
+  const status=document.getElementById('twStatus');
+  const N=624;
+  let mt=new Uint32Array(N), twisted=new Uint8Array(N), index=N, i=0, playing=false, raf=0;
+  const M=397, MATRIX_A=0x9908b0df, UPPER=0x80000000, LOWER=0x7fffffff;
+
+  function reseed(){
+    const m=new MT19937((+seedEl.value||0)>>>0);
+    mt=Uint32Array.from(m.mt);
+    index=N; i=0; twisted.fill(0);
+    draw();
+    status.innerHTML=`state seeded &bull; <b>index = ${index}</b> (next draw forces a twist)`;
+  }
+  function stepWord(){
+    if(i>=N){ // a full twist just completed
+      index=0; i=0; twisted.fill(0);
+      status.innerHTML=`twist complete &bull; <b>index reset 624 &rarr; 0</b> &bull; 624 fresh words ready`;
+      draw(); return false;
+    }
+    const x=(mt[i]&UPPER)|(mt[(i+1)%N]&LOWER);
+    let xa=x>>>1; if(x%2!==0) xa^=MATRIX_A;
+    mt[i]=(mt[(i+M)%N]^xa)>>>0;
+    twisted[i]=1;
+    status.innerHTML=`twisting word <b>i=${i}</b> &bull; combine high bit of mt[${i}] + low 31 of mt[${(i+1)%N}] &bull; fold in feedback mt[${(i+M)%N}]`;
+    i++;
+    draw();
+    return true;
+  }
+  function draw(){
+    const w=cv.width, h=cv.height;
+    ctx.clearRect(0,0,w,h);
+    const cols=78, rows=Math.ceil(N/cols);
+    const cw=w/cols, ch=(h-30)/rows;
+    for(let k=0;k<N;k++){
+      const cx=(k%cols)*cw, cy=Math.floor(k/cols)*ch+24;
+      ctx.fillStyle=twisted[k]?'#1e6b3a':valColor(mt[k]);
+      ctx.globalAlpha=twisted[k]?0.75:0.9;
+      ctx.fillRect(cx+0.5,cy+0.5,cw-1,ch-1);
+    }
+    ctx.globalAlpha=1;
+    // highlight the active trio
+    const cur=Math.min(i,N-1);
+    function ring(k,color){
+      const cx=(k%cols)*cw, cy=Math.floor(k/cols)*ch+24;
+      ctx.strokeStyle=color; ctx.lineWidth=2.5;
+      ctx.strokeRect(cx+1,cy+1,cw-2,ch-2);
+    }
+    if(i<N){
+      ring((i+M)%N,'#f0b429');
+      ring((i+1)%N,'#bc8cff');
+      ring(i,'#58a6ff');
+    }
+    ctx.fillStyle='#9aa7b4'; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText(`mt[0..623] — ${twisted.reduce((a,b)=>a+b,0)} of 624 words twisted`,4,15);
+  }
+  function play(){
+    if(playing){ playing=false; cancelAnimationFrame(raf); return; }
+    playing=true;
+    let acc=0;
+    function loop(){
+      if(!playing) return;
+      // advance several words per frame for a smooth sweep
+      let cont=true;
+      for(let s=0;s<6 && cont;s++) cont=stepWord();
+      if(!cont){ playing=false; return; }
+      raf=requestAnimationFrame(loop);
+    }
+    raf=requestAnimationFrame(loop);
+  }
+  document.getElementById('twStep').onclick=()=>{playing=false;stepWord();};
+  document.getElementById('twPlay').onclick=play;
+  document.getElementById('twFull').onclick=()=>{
+    playing=false; cancelAnimationFrame(raf);
+    if(i>=N){ index=0;i=0;twisted.fill(0); }
+    while(stepWord()){}
+    // run to completion of one sweep
+    while(i<N) stepWord();
+    status.innerHTML=`full twist done &bull; <b>index = 0</b> &bull; all 624 words regenerated`;
+    draw();
+  };
+  document.getElementById('twReseed').onclick=reseed;
+  seedEl.oninput=reseed;
+  reseed();
+})();
+
+/* ================================================================== */
+/* Demo 3: temper bit pipeline                                         */
+/* ================================================================== */
+(function(){
+  const inputEl=document.getElementById('tmpInput');
+  const stageEl=document.getElementById('tmpStage');
+  const label=document.getElementById('tmpStageLabel');
+  const pipe=document.getElementById('tmpPipe');
+
+  const STAGES=[
+    {name:'input word y (from state)', op:y=>y},
+    {name:'y ^= y >>> 11', op:y=>(y^(y>>>11))>>>0},
+    {name:'y ^= (y << 7) & 0x9d2c5680', op:y=>(y^((y<<7)&0x9d2c5680))>>>0},
+    {name:'y ^= (y << 15) & 0xefc60000', op:y=>(y^((y<<15)&0xefc60000))>>>0},
+    {name:'y ^= y >>> 18  → returned uint32', op:y=>(y^(y>>>18))>>>0},
+  ];
+
+  function bitsRow(label, v, hot){
+    let cells='';
+    for(let b=31;b>=0;b--){
+      const on=(v>>>b)&1;
+      cells+=`<div class="bit ${on?'on':'off'}">${on}</div>`;
+    }
+    return `<div class="bitstage ${hot?'cur':''}"><span class="bitlabel">${label}</span><div class="bits">${cells}</div></div>`;
+  }
+
+  function render(){
+    const raw=Math.floor(+inputEl.value);
+    let y=(isFinite(raw)?raw:0)>>>0;
+    const upto=+stageEl.value;
+    let html='';
+    let cur=y;
+    for(let s=0;s<STAGES.length;s++){
+      if(s>0){
+        if(s>upto) break;
+        cur=STAGES[s].op(cur);
+      }
+      html+=bitsRow(STAGES[s].name, cur, s===upto);
+    }
+    pipe.innerHTML=html;
+    label.innerHTML=`stage ${upto}/4 &bull; y = <b>${cur>>>0}</b> <span class="muted">(0x${(cur>>>0).toString(16).padStart(8,'0')})</span>`;
+  }
+  document.getElementById('tmpRand').onclick=()=>{
+    inputEl.value=(Math.floor(Math.random()*0xffffffff))>>>0;
+    render();
+  };
+  inputEl.oninput=render; stageEl.oninput=render;
+  render();
+})();
+
+/* ================================================================== */
+/* Demo 4: rejection sampling                                          */
+/* ================================================================== */
+(function(){
+  const cv=document.getElementById('rejCanvas'), ctx=cv.getContext('2d');
+  const boundEl=document.getElementById('rejBound'), onEl=document.getElementById('rejOn');
+  const status=document.getElementById('rejStatus');
+  let eng, hist, total, rejected, playing=false, raf=0;
+  const TWO32=0x100000000;
+
+  function reset(){
+    playing=false; cancelAnimationFrame(raf);
+    eng=new MT19937(0xC0FFEE);
+    const b=getBound();
+    hist=new Array(b).fill(0); total=0; rejected=0;
+    draw();
+  }
+  function getBound(){ let b=Math.max(2,Math.min(64,Math.floor(+boundEl.value||6))); return b; }
+
+  function step(){
+    const bound=getBound();
+    const useRej=onEl.checked;
+    const threshold=(TWO32-bound)%bound;
+    const r=eng.next_uint32();
+    let landX=r/TWO32; // 0..1 along the line
+    let accepted=true, bucket;
+    if(useRej && r<threshold){ accepted=false; rejected++; }
+    else { bucket=r%bound; hist[bucket]++; total++; }
+    if(!useRej){ bucket=r%bound; }
+    draw(landX, accepted, bucket, threshold/TWO32, bound);
+  }
+
+  function draw(landX, accepted, bucket, threshFrac, bound){
+    const w=cv.width, h=cv.height;
+    ctx.clearRect(0,0,w,h);
+    bound=bound||getBound();
+    const lineY=60, lineH=34, lx=20, lw=w-40;
+    // whole blocks
+    const usable=1-(threshFrac||0); // fraction occupied by whole blocks (if rejection)
+    // draw blocks across [threshold,1) split into `bound` equal pieces visually we draw the line [0,1)
+    // leftover region [0,threshold) in red
+    const tf = onEl.checked ? (threshFrac||0) : 0;
+    // leftover
+    ctx.fillStyle='rgba(255,123,156,.35)';
+    ctx.fillRect(lx, lineY, lw*tf, lineH);
+    // whole blocks region
+    const blockStart=lx+lw*tf, blockW=lw*(1-tf);
+    for(let k=0;k<bound;k++){
+      ctx.fillStyle=k%2? 'rgba(126,231,135,.16)':'rgba(126,231,135,.28)';
+      ctx.fillRect(blockStart+blockW*k/bound, lineY, blockW/bound, lineH);
+    }
+    ctx.strokeStyle='#2b333d'; ctx.lineWidth=1; ctx.strokeRect(lx,lineY,lw,lineH);
+    ctx.fillStyle='#9aa7b4'; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('0',lx,lineY-6);
+    ctx.fillText('2³² (=0x100000000)',lx+lw-130,lineY-6);
+    if(onEl.checked && tf>0){
+      ctx.fillStyle='var(--pink)'; ctx.fillStyle='#ff7b9c';
+      ctx.fillText('← reject',lx+2,lineY+lineH+15);
+    }
+    // dart
+    if(typeof landX==='number'){
+      const x=lx+lw*landX;
+      ctx.strokeStyle=accepted?'#7ee787':'#ff7b9c'; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.moveTo(x,lineY-12); ctx.lineTo(x,lineY+lineH+6); ctx.stroke();
+      ctx.fillStyle=accepted?'#7ee787':'#ff7b9c';
+      ctx.beginPath(); ctx.arc(x,lineY-12,4,0,7); ctx.fill();
+      if(accepted){
+        // map down arrow to histogram bucket
+        const bx=lx+ (w-40)*((bucket+0.5)/bound);
+        const histY=h-90;
+        ctx.strokeStyle='rgba(126,231,135,.5)'; ctx.setLineDash([4,4]);
+        ctx.beginPath(); ctx.moveTo(x,lineY+lineH+6); ctx.lineTo(bx, histY-50); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+    }
+    // histogram
+    const baseY=h-30, maxBar=80, hx=lx, hw=w-40;
+    const maxCount=Math.max(1,...hist);
+    for(let k=0;k<bound;k++){
+      const bx=hx+hw*k/bound, bw=hw/bound;
+      const bh=maxBar*(hist[k]/maxCount);
+      ctx.fillStyle='#58a6ff';
+      ctx.fillRect(bx+2, baseY-bh, bw-4, bh);
+      ctx.fillStyle='#9aa7b4'; ctx.font='11px ui-monospace,monospace';
+      ctx.fillText(String(k), bx+bw/2-3, baseY+14);
+      ctx.fillText(String(hist[k]), bx+bw/2-(String(hist[k]).length*3), baseY-bh-4);
+    }
+    ctx.fillStyle='#9aa7b4'; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('histogram of accepted r mod bound  (want it FLAT)', hx, baseY-maxBar-14);
+    const rate=total? (100*rejected/(total+rejected)).toFixed(1):'0.0';
+    status.innerHTML=`bound=${bound} &bull; accepted <b>${total}</b> &bull; rejected <b style="color:#ff7b9c">${rejected}</b> (${rate}%) &bull; threshold≈${(onEl.checked?((TWO32-bound)%bound):0)}`;
+  }
+  function play(){
+    if(playing){ playing=false; cancelAnimationFrame(raf); document.getElementById('rejPlay').textContent='Play draws'; return; }
+    playing=true; document.getElementById('rejPlay').textContent='Pause';
+    function loop(){ if(!playing) return; step(); raf=requestAnimationFrame(loop); }
+    raf=requestAnimationFrame(loop);
+  }
+  document.getElementById('rejPlay').onclick=play;
+  document.getElementById('rejStep').onclick=()=>{playing=false;document.getElementById('rejPlay').textContent='Play draws';step();};
+  document.getElementById('rejReset').onclick=reset;
+  boundEl.oninput=reset; onEl.onchange=reset;
+  reset();
+})();
+
+/* ================================================================== */
+/* Demo 5: seed -> stream -> same clusters (k-means++ seeding)         */
+/* ================================================================== */
+(function(){
+  const cv=document.getElementById('kmCanvas'), ctx=cv.getContext('2d');
+  const seedEl=document.getElementById('kmSeed'), kEl=document.getElementById('kmK');
+  const status=document.getElementById('kmStatus');
+
+  // Build a deterministic three-blob dataset (fixed, not seeded by user input)
+  const PTS=(function(){
+    const pts=[]; const blobs=[[230,150],[640,140],[430,330]];
+    let s=12345;
+    function rnd(){ s=(s*1103515245+12345)&0x7fffffff; return s/0x7fffffff; }
+    for(const [bx,by] of blobs){
+      for(let n=0;n<22;n++){
+        pts.push([bx+(rnd()-0.5)*150, by+(rnd()-0.5)*150]);
+      }
+    }
+    return pts;
+  })();
+
+  let eng, chosen, dists, status_done;
+  function reset(){
+    eng=new MT19937((+seedEl.value||0)>>>0);
+    chosen=[];
+    // first center: uniform via rand_int
+    const first=eng.next_int(PTS.length);
+    chosen.push(first);
+    recomputeDists();
+    status_done=false;
+    draw();
+    status.innerHTML=`seed ${(+seedEl.value||0)>>>0} &bull; first center = point <b>#${first}</b> (uniform rand_int)`;
+  }
+  function recomputeDists(){
+    dists=PTS.map((p,idx)=>{
+      if(chosen.includes(idx)) return 0;
+      let m=Infinity;
+      for(const c of chosen){
+        const dx=p[0]-PTS[c][0], dy=p[1]-PTS[c][1];
+        const d2=dx*dx+dy*dy;
+        if(d2<m) m=d2;
+      }
+      return m;
+    });
+  }
+  function pickNext(){
+    const K=Math.max(2,Math.min(6,Math.floor(+kEl.value||3)));
+    if(chosen.length>=K){ status_done=true; status.innerHTML=`done &bull; ${K} centers chosen for seed ${(+seedEl.value||0)>>>0}. Re-run with the same seed &rarr; identical centers.`; draw(); return; }
+    const pot=dists.reduce((a,b)=>a+b,0);
+    let pick;
+    if(pot===0){
+      for(let i=0;i<PTS.length;i++){ if(!chosen.includes(i)){ pick=i; break; } }
+    } else {
+      // greedy: local_trials candidates, choose best (mirrors kmeans.ts)
+      const local_trials=2+Math.floor(Math.log(K));
+      const cum=[]; let cs=0; for(const d of dists){ cs+=d; cum.push(cs); }
+      let best=-1, bestPot=Infinity, bestR=0;
+      for(let t=0;t<local_trials;t++){
+        const r=eng.next_float()*pot;
+        let lo=0, hi=PTS.length-1;
+        while(lo<hi){ const mid=(lo+hi)>>1; if(r<=cum[mid]) hi=mid; else lo=mid+1; }
+        // candidate potential
+        let cp=0;
+        for(let i=0;i<PTS.length;i++){
+          const dx=PTS[i][0]-PTS[lo][0], dy=PTS[i][1]-PTS[lo][1];
+          cp+=Math.min(dists[i], dx*dx+dy*dy);
+        }
+        if(cp<bestPot){ bestPot=cp; best=lo; bestR=r; }
+      }
+      pick=best;
+    }
+    chosen.push(pick);
+    recomputeDists();
+    draw();
+    status.innerHTML=`center #${chosen.length} = point <b>${pick}</b> &bull; sampled &prop; D(x)² from the seeded float stream`;
+  }
+  function draw(){
+    const w=cv.width, h=cv.height;
+    ctx.clearRect(0,0,w,h);
+    const pot=dists.reduce((a,b)=>a+b,0);
+    const maxd=Math.max(1,...dists);
+    // probability bars (white) over each point
+    for(let i=0;i<PTS.length;i++){
+      const [x,y]=PTS[i];
+      const isCenter=chosen.includes(i);
+      if(!isCenter && pot>0){
+        const barH=44*(dists[i]/maxd);
+        ctx.fillStyle='rgba(230,237,243,.55)';
+        ctx.fillRect(x-2,y-8-barH,4,barH);
+      }
+      ctx.beginPath(); ctx.arc(x,y,isCenter?9:5,0,7);
+      ctx.fillStyle=isCenter?'#f0b429':'#39d0d8';
+      ctx.fill();
+      if(isCenter){
+        ctx.strokeStyle='#fff'; ctx.lineWidth=2; ctx.stroke();
+        ctx.fillStyle='#f0b429'; ctx.font='bold 12px ui-monospace,monospace';
+        ctx.fillText('C'+(chosen.indexOf(i)+1), x+11, y+4);
+      }
+    }
+    ctx.fillStyle='#9aa7b4'; ctx.font='12px ui-monospace,monospace';
+    ctx.fillText('white bar over each point = D(x)²  (its selection weight)', 14, 18);
+    ctx.fillText(`chosen centers: ${chosen.length}`, 14, h-12);
+  }
+  document.getElementById('kmStep').onclick=pickNext;
+  document.getElementById('kmRun').onclick=()=>{
+    const K=Math.max(2,Math.min(6,Math.floor(+kEl.value||3)));
+    while(chosen.length<K) pickNext();
+  };
+  document.getElementById('kmReset').onclick=reset;
+  seedEl.oninput=reset; kEl.oninput=reset;
+  reset();
+})();
+</script>
+</body>
+</html>
