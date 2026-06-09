@@ -1,3 +1,11 @@
+/**
+ * Online mini-batch (production) SOM property tests.
+ *
+ * These exercise the default `SOM.fit` training path — shuffled mini-batches
+ * with a normalized batch update — and assert its own invariants (shapes,
+ * determinism, convergence, clustering, persistence). Numeric parity against
+ * MiniSom lives in `som_reference.test.ts` (batch-equivalence reference trainer).
+ */
 import { SOM } from './som';
 import * as tf from '../backend/adapter';
 import {
@@ -11,7 +19,7 @@ import {
   DecayTracker,
 } from './som_neighborhood';
 
-describe('SOM', () => {
+describe('SOM (online mini-batch — production path properties)', () => {
   beforeAll(() => {
     // Initialize TensorFlow.js backend
     tf.set_backend('cpu');
@@ -159,6 +167,99 @@ describe('SOM', () => {
 
       X.dispose();
       weights.dispose();
+    });
+  });
+
+  describe('initial_weights injection', () => {
+    it('uses injected initial weights verbatim instead of RNG init', async () => {
+      const initial: number[][][] = [
+        [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
+        [
+          [0.5, 0.6],
+          [0.7, 0.8],
+        ],
+      ];
+      const som = new SOM({
+        grid_width: 2,
+        grid_height: 2,
+        num_epochs: 0, // no training: weights must equal the injected grid
+        initial_weights: initial,
+      });
+
+      await som.fit([
+        [0, 0],
+        [1, 1],
+        [2, 2],
+      ]);
+
+      // Weights are stored as a float32 tensor, so compare within float32 epsilon.
+      const weights = som.get_weights();
+      for (let i = 0; i < initial.length; i++) {
+        for (let j = 0; j < initial[i].length; j++) {
+          for (let k = 0; k < initial[i][j].length; k++) {
+            expect(weights[i][j][k]).toBeCloseTo(initial[i][j][k], 6);
+          }
+        }
+      }
+    });
+
+    it('makes fit() reproducible across two instances', async () => {
+      const initial: number[][][] = [
+        [
+          [0.1, 0.2],
+          [0.3, 0.4],
+        ],
+        [
+          [0.5, 0.6],
+          [0.7, 0.8],
+        ],
+      ];
+      const data = [
+        [0, 0],
+        [1, 1],
+        [2, 2],
+        [3, 3],
+      ];
+      const run = async (): Promise<number[][][]> => {
+        const som = new SOM({ grid_width: 2, grid_height: 2, num_epochs: 5, initial_weights: initial });
+        await som.fit(data);
+        return som.get_weights();
+      };
+
+      expect(await run()).toEqual(await run());
+    });
+
+    it('throws when initial_weights shape does not match the grid', () => {
+      expect(
+        () => new SOM({ grid_width: 3, grid_height: 2, initial_weights: [[[0]], [[0]]] }),
+      ).toThrow(/initial_weights/);
+    });
+
+    it('throws when initial_weights feature dimension does not match data', async () => {
+      const som = new SOM({
+        grid_width: 2,
+        grid_height: 2,
+        initial_weights: [
+          [
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+          [
+            [0, 0, 0],
+            [0, 0, 0],
+          ],
+        ],
+      });
+
+      await expect(
+        som.fit([
+          [0, 0],
+          [1, 1],
+        ]),
+      ).rejects.toThrow(/feature dimension/);
     });
   });
 

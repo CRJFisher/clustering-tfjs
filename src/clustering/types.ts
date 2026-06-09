@@ -340,6 +340,15 @@ export interface SOMParams extends CoreClusteringParams {
    * Default: 1e-4
    */
   tol?: number;
+
+  /**
+   * Explicit initial weight grid of shape [grid_height][grid_width][n_features].
+   * When provided, fit() and partial_fit() use these weights verbatim instead of
+   * generating them from `initialization`/`random_state`, enabling reproducible
+   * training and warm-starting from a known codebook. The feature dimension must
+   * match the training data; a mismatch throws at fit time.
+   */
+  initial_weights?: number[][][];
 }
 
 /**

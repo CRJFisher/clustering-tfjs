@@ -1,8 +1,13 @@
+/**
+ * Hexagonal-topology property tests for the online (production) SOM path.
+ * Numeric parity against MiniSom (including hexagonal fixtures) is asserted in
+ * `som_reference.test.ts`.
+ */
 import * as tf from '@tensorflow/tfjs';
 import { SOM } from './som';
 import { grid_distance } from './som_neighborhood';
 
-describe('SOM Hexagonal Topology', () => {
+describe('SOM hexagonal (online path properties)', () => {
   beforeEach(() => {
     // Set a fixed seed for reproducible tests
     tf.randomUniform([1]);

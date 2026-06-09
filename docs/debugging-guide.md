@@ -2,6 +2,8 @@
 
 This guide provides procedures and best practices for debugging clustering implementations, particularly when comparing against reference implementations like scikit-learn.
 
+For SOM numeric validation against MiniSom — the reference training path, fixture schema, tolerances, and regeneration steps — see [SOM benchmarking against MiniSom](som-benchmarking.md).
+
 ## Common Issues and Solutions
 
 ### 1. Test Results Don't Match Manual Runs

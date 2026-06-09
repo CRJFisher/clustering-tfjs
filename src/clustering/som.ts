@@ -70,7 +70,10 @@ export class SOM implements BaseClustering<SOMParams> {
     if (!params.grid_height || params.grid_height < 1) {
       throw new Error('grid_height must be >= 1');
     }
-    
+    if (params.initial_weights) {
+      this.validate_initial_weights_shape(params.initial_weights, params.grid_height, params.grid_width);
+    }
+
     return {
       ...params,
       topology: params.topology ?? SOM.DEFAULT_TOPOLOGY,
@@ -84,6 +87,65 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
+  /**
+   * Validate that an injected initial weight grid has shape
+   * [grid_height][grid_width][n_features] with a consistent feature dimension.
+   */
+  private validate_initial_weights_shape(
+    initial_weights: number[][][],
+    grid_height: number,
+    grid_width: number,
+  ): void {
+    if (initial_weights.length !== grid_height) {
+      throw new Error(
+        `initial_weights must have grid_height (${grid_height}) rows, got ${initial_weights.length}`,
+      );
+    }
+    let n_features = -1;
+    for (const row of initial_weights) {
+      if (row.length !== grid_width) {
+        throw new Error(
+          `initial_weights rows must have grid_width (${grid_width}) entries, got ${row.length}`,
+        );
+      }
+      for (const weight of row) {
+        if (n_features === -1) {
+          n_features = weight.length;
+        }
+        if (weight.length !== n_features) {
+          throw new Error('initial_weights neuron vectors must all share the same length');
+        }
+      }
+    }
+    if (n_features < 1) {
+      throw new Error('initial_weights neuron vectors must have at least one feature');
+    }
+  }
+
+  /**
+   * Build the initial weight tensor, using injected `initial_weights` when
+   * provided (validated against the data feature dimension) and otherwise the
+   * configured initialization strategy.
+   */
+  private make_initial_weights(X: tf.Tensor2D, n_features: number): tf.Tensor3D {
+    if (this.params.initial_weights) {
+      const injected_features = this.params.initial_weights[0][0].length;
+      if (injected_features !== n_features) {
+        throw new Error(
+          `initial_weights feature dimension (${injected_features}) does not match data (${n_features})`,
+        );
+      }
+      return tf.tensor3d(this.params.initial_weights);
+    }
+    return initialize_weights(
+      X,
+      this.params.grid_height,
+      this.params.grid_width,
+      this.params.initialization!,
+      this.params.random_state,
+    );
+  }
+
   /**
    * Initialize learning rate and radius schedulers.
    */
@@ -143,27 +205,20 @@ export class SOM implements BaseClustering<SOMParams> {
    * Internal fit method using tensors.
    */
   private async fit_tensor(X: tf.Tensor2D): Promise<void> {
-    const { 
-      grid_width, 
-      grid_height, 
-      topology, 
-      num_epochs, 
-      initialization, 
+    const {
+      grid_width,
+      grid_height,
+      topology,
+      num_epochs,
       random_state,
       tol
     } = this.params;
     
     const [n_samples, _n_features] = X.shape;
-    
+
     // Initialize weights if not already done
     if (!this.weights_) {
-      this.weights_ = initialize_weights(
-        X,
-        grid_height,
-        grid_width,
-        initialization!,
-        random_state
-      );
+      this.weights_ = this.make_initial_weights(X, _n_features);
     }
     
     // Pre-compute grid distance matrix
@@ -506,14 +561,8 @@ export class SOM implements BaseClustering<SOMParams> {
       // Initialize if first call
       if (!this.weights_) {
         // Initialize weights and grid
-        this.weights_ = initialize_weights(
-          x_tensor,
-          this.params.grid_height,
-          this.params.grid_width,
-          this.params.initialization!,
-          this.params.random_state
-        );
-        
+        this.weights_ = this.make_initial_weights(x_tensor, x_tensor.shape[1]);
+
         this.grid_distance_matrix_ = create_grid_distance_matrix(
           this.params.grid_height,
           this.params.grid_width,
