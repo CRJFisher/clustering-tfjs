@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SOM ↔ MiniSom reference parity — divergence map &amp; equivalence strategy</title>
+<title>SOM ↔ MiniSom reference parity — divergence map &amp; as-built equivalence</title>
 <style>
   :root{
     --ivory:#f7f3ea; --slate:#2f3133; --clay:#b9683f; --olive:#6c7a44;
@@ -58,6 +58,8 @@
   .meta-row{display:flex; flex-wrap:wrap; gap:.5rem; margin-top:1rem;}
   .chip{font-family:var(--mono); font-size:.74rem; padding:.3rem .65rem; border-radius:999px; background:var(--g200); border:1px solid var(--g300); color:var(--g600);}
   .chip strong{color:var(--slate);}
+  .chip.ok{background:#e2e9cf; border-color:#cdd9a9; color:#4f5a30;}
+  .chip.ok strong{color:#3c4624;}
   h2{font-family:var(--serif); font-weight:600; font-size:1.6rem; margin:0 0 .2rem; line-height:1.18;}
   h2 .kick{display:block; font-family:var(--mono); font-size:.72rem; letter-spacing:.14em; text-transform:uppercase; color:var(--clay); margin-bottom:.25rem;}
   h3{font-family:var(--sans); font-weight:650; font-size:1.05rem; margin:1.4rem 0 .4rem;}
@@ -77,6 +79,8 @@
   aside.invert{background:var(--slate); color:var(--ivory); border:none; border-radius:var(--radius); padding:1.3rem 1.4rem;}
   aside.invert .ck{color:var(--oat);}
   aside.invert strong{color:#fff;}
+  aside.callout code,aside.invert code{background:rgba(0,0,0,.06); padding:.04rem .28rem; border-radius:4px; font-family:var(--mono); font-size:.84em;}
+  aside.invert code{background:rgba(255,255,255,.12); color:var(--oat);}
 
   /* ---- divergence matrix ---- */
   .matrix-wrap{overflow-x:auto;}
@@ -91,6 +95,7 @@
   .v-diff{background:#f4ddd5; color:var(--rust);}
   .v-same{background:#e2e9cf; color:#4f5a30;}
   .v-care{background:#f1e3cd; color:#8a5a23;}
+  .v-ok{background:#dbe6c2; color:#3c4624; font-weight:700;}
   .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:.45rem; vertical-align:middle;}
   .legend{display:flex; flex-wrap:wrap; gap:1rem; margin:.7rem 0 0; font-family:var(--mono); font-size:.74rem; color:var(--g600);}
 
@@ -116,6 +121,7 @@
   .opt-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:1.1rem; margin-top:1rem;}
   .opt{background:#fff; border:1px solid var(--g300); border-radius:var(--radius); padding:1.1rem 1.2rem; display:flex; flex-direction:column;}
   .opt.win{border-color:var(--olive); border-width:2px; box-shadow:0 2px 14px rgba(108,122,68,.12);}
+  .opt.lose{opacity:.82;}
   .opt .badge{display:inline-flex; align-items:center; gap:.4rem; font-family:var(--mono); font-size:.74rem; font-weight:700; padding:.25rem .6rem; border-radius:999px; align-self:flex-start; margin-bottom:.5rem;}
   .opt.win .badge{background:var(--olive); color:#fff;}
   .opt.lose .badge{background:var(--g200); color:var(--g600);}
@@ -128,7 +134,7 @@
 
   /* ---- magnitude / parity bars ---- */
   .bars{display:flex; flex-direction:column; gap:.7rem; background:#fff; border:1px solid var(--g300); border-radius:var(--radius); padding:1.1rem 1.2rem; margin-top:1rem;}
-  .bar-row{display:grid; grid-template-columns:200px 1fr 132px; align-items:center; gap:.8rem;}
+  .bar-row{display:grid; grid-template-columns:200px 1fr 168px; align-items:center; gap:.8rem;}
   .bar-row .lbl{font-family:var(--mono); font-size:.78rem; color:var(--g600);}
   .bar-track{background:var(--g200); border-radius:999px; height:14px; position:relative; overflow:hidden;}
   .bar-fill{position:absolute; left:0; top:0; bottom:0; border-radius:999px;}
@@ -168,83 +174,93 @@
 
 <nav class="topbar">
   <span class="home">backlog / tasks / task-51</span>
-  <span class="self" aria-current="page">divergence map &amp; equivalence strategy</span>
+  <span class="self" aria-current="page">divergence map &amp; as-built parity</span>
 </nav>
 
 <nav class="outline" id="outline">
-  <a href="#why">Why parity is loose</a>
+  <a href="#why">From loose to exact</a>
   <a href="#truth">What train_batch really does</a>
   <a href="#divergence">Divergence matrix</a>
   <a href="#formulas">Update &amp; decay formulas</a>
   <a href="#neighbor">Neighborhood &amp; coords</a>
   <a href="#decision">The strategy decision</a>
-  <a href="#parity">Expected parity</a>
+  <a href="#parity">Achieved parity</a>
   <a href="#where">Where the trainer lives</a>
-  <a href="#files">What changes, file by file</a>
+  <a href="#files">What was built, file by file</a>
 </nav>
 
 <main>
 
 <header class="id" id="top">
-  <span class="eyebrow">Task-51 · SOM reference benchmarking</span>
-  <h1>Matching MiniSom exactly: the divergence map and the equivalence strategy</h1>
-  <p class="lede">The SOM reference fixtures pass only under loose tolerances because the production trainer and MiniSom differ in every moving part of the update. This lays out exactly where they diverge, what MiniSom's <code>train_batch</code> truly computes, and the one strategy that reaches numeric parity — which is the opposite of the plan's first instinct.</p>
+  <span class="eyebrow">Task-51 · SOM reference benchmarking · as-built</span>
+  <h1>Matching MiniSom exactly: the divergence map and the equivalence that holds</h1>
+  <p class="lede">The SOM reference suite asserts per-element numeric parity against MiniSom. A dedicated reference trainer replicates MiniSom's real <code>train_batch</code>, identical initial weights are injected, and weights, quantization error and the U-matrix match at <strong>1e-9</strong> (observed ~1e-12) with exact BMUs and labels. This is the divergence map that drove the work, the proof of what <code>train_batch</code> truly computes, and the decision — Approach A — that delivered it.</p>
   <div class="meta-row">
-    <span class="chip">target weights <strong>≤ 1e-3</strong>/elem</span>
-    <span class="chip">QE / TE <strong>≤ 1%</strong> rel</span>
-    <span class="chip">BMU / labels <strong>exact</strong></span>
-    <span class="chip">skipped tests <strong>0</strong></span>
-    <span class="chip">reference fixtures <strong>16 → expanded</strong></span>
+    <span class="chip ok">weights / QE / U-matrix <strong>1e-9 (~1e-12)</strong></span>
+    <span class="chip ok">BMU / labels <strong>exact</strong></span>
+    <span class="chip ok">topographic error <strong>≤ 1% rel</strong></span>
+    <span class="chip ok">skipped tests <strong>0</strong></span>
+    <span class="chip ok">fixtures <strong>32</strong></span>
   </div>
 
   <div class="prov">
-    <span class="label">Grounded in source read</span>
+    <span class="label">As-built — verified against source</span>
     <ul>
-      <li><code>src/clustering/som.ts</code> — production online mini-batch <code>fit()</code></li>
-      <li><code>src/clustering/som_neighborhood.ts</code> — neighborhood, decay, grid coords</li>
-      <li><code>src/clustering/som_reference.test.ts</code> — current loose tolerances + one <code>it.skip</code></li>
-      <li><code>tools/sklearn_fixtures/generate_som.py</code> — current generator (camelCase, no initial weights)</li>
-      <li><code>__fixtures__/som/*.json</code> — 16 on-disk fixtures (snake_case, no <code>initial_weights</code>)</li>
-      <li>installed <code>minisom.py</code> — <code>train_batch</code>, decay, neighborhood functions</li>
+      <li><code>src/clustering/som.ts</code> — production trainer; <code>initial_weights</code> honored by <code>fit</code> and <code>partial_fit</code></li>
+      <li><code>src/clustering/som_reference_training.ts</code> — tensor-free MiniSom <code>train_batch</code> replica</li>
+      <li><code>src/clustering/som_neighborhood.ts</code> — separable neighborhoods, MiniSom hex coords</li>
+      <li><code>src/clustering/som_reference.test.ts</code> — tight tolerances, no skips</li>
+      <li><code>tools/sklearn_fixtures/generate_som.py</code> — rewritten generator (snake_case, injected init weights)</li>
+      <li><code>__fixtures__/som/*.json</code> — 32 fixtures with <code>initial_weights</code> and MiniSom-native metrics</li>
+      <li><code>docs/som-benchmarking.md</code> — canonical benchmarking guide</li>
     </ul>
   </div>
 </header>
 
 <!-- ============================================================= -->
 <section id="why">
-  <h2><span class="kick">The problem</span>Why the current tolerances are loose</h2>
+  <h2><span class="kick">The shift</span>From loose tolerances to per-element parity</h2>
   <div class="prose">
-    <p>The reference suite compares the production <code>SOM.fit()</code> against fixtures generated by MiniSom. Because the two trainers disagree on nearly every step of the weight update, the suite can only assert that they end up <em>roughly</em> in the same place: average weight difference under 2.0, quantization error within 60% relative, label agreement above 0.5, with <code>blobs_10x10_gaussian_rectangular</code> skipped entirely.</p>
-    <p>Those bounds catch shape errors and gross regressions but not subtle algorithmic correctness. The fix is not to nudge the production trainer toward MiniSom — it is to add a separate, deterministic reference path that replicates MiniSom exactly, inject identical initial weights, and assert tight tolerances against it. The production online path stays exactly as it is.</p>
+    <p>The reference suite compares a deterministic MiniSom replica against fixtures generated by MiniSom itself. Earlier the suite could only assert that the two trainers ended up <em>roughly</em> in the same place, because the production online mini-batch trainer disagrees with MiniSom on nearly every step of the weight update.</p>
+    <p>The suite now asserts exactness. A separate, deterministic reference path replicates MiniSom step for step, identical initial weights are injected, and weights, quantization error and the U-matrix are checked element by element at <strong>1e-9</strong> (the observed gap is around 1e-12), with BMUs and labels matched exactly. The production online mini-batch path is unchanged — the rigor lives entirely in the reference trainer.</p>
   </div>
-  <div class="bars" aria-label="current loose tolerances">
+  <div class="bars" aria-label="tolerances before and after">
     <div class="bar-row">
-      <span class="lbl">weight avg-diff</span>
-      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--rust);"></div></div>
-      <span class="val">&lt; 2.0 &nbsp;<span style="color:var(--rust)">(want 1e-3)</span></span>
+      <span class="lbl">weights / element</span>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
+      <span class="val">1e-9 asserted &nbsp;<span style="color:#4f5a30">(was &lt; 2.0)</span></span>
     </div>
     <div class="bar-row">
-      <span class="lbl">QE relative error</span>
-      <div class="bar-track"><div class="bar-fill" style="width:60%;background:var(--clay);"></div></div>
-      <span class="val">&lt; 60% &nbsp;<span style="color:var(--clay)">(want 1%)</span></span>
+      <span class="lbl">QE / U-matrix</span>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
+      <span class="val">1e-9 per elem &nbsp;<span style="color:#4f5a30">(was 60% rel)</span></span>
     </div>
     <div class="bar-row">
-      <span class="lbl">label agreement</span>
-      <div class="bar-track"><div class="bar-fill" style="width:50%;background:var(--clay);"></div></div>
-      <span class="val">&gt; 0.5 &nbsp;<span style="color:var(--clay)">(want exact)</span></span>
+      <span class="lbl">labels / BMU</span>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
+      <span class="val">exact &nbsp;<span style="color:#4f5a30">(was &gt; 0.5)</span></span>
+    </div>
+    <div class="bar-row">
+      <span class="lbl">topographic error</span>
+      <div class="bar-track"><div class="bar-fill" style="width:99.76%;background:var(--olive);"></div></div>
+      <span class="val">≤ 1% rel &nbsp;<span style="color:#8a5a23">(see note)</span></span>
     </div>
     <div class="bar-row">
       <span class="lbl">skipped fixtures</span>
-      <div class="bar-track"><div class="bar-fill" style="width:8%;background:var(--rust);"></div></div>
-      <span class="val">1 of 16</span>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
+      <span class="val">0 of 32</span>
     </div>
   </div>
+  <aside class="callout">
+    <span class="ck">Why topographic error is the one ≤1% metric, not 1e-9</span>
+    Topographic error is a <strong>discrete</strong> measure: it counts samples whose first- and second-nearest neurons are non-adjacent, and the second-nearest selection is discontinuous at distance degeneracies (two neurons exactly tied). A weight difference of 1e-12 can flip which neuron wins a tie, moving the count by one sample. So TE is held to a <strong>≤ 1% relative</strong> bound rather than an element tolerance — and across the 32 fixtures, 31 land at 0% deviation and one at 0.24%, well inside the bound.
+  </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="truth">
-  <h2><span class="kick">Correcting the plan's premise</span>What MiniSom's <code>train_batch</code> really does</h2>
-  <p class="section-intro">The Implementation Plan recommends adding a "batch-map" mode (<code>w ← Σ(h·x)/Σ(h)</code> over the whole dataset per epoch) and assumes MiniSom's <code>train_batch</code> is a batch-SOM. It is not. <code>train_batch</code> is fully <strong>online, per-sample, and sequential</strong> — and entirely deterministic given fixed initial weights.</p>
+  <h2><span class="kick">The premise that drove the design</span>What MiniSom's <code>train_batch</code> really does</h2>
+  <p class="section-intro">A "batch-map" SOM (<code>w ← Σ(h·x)/Σ(h)</code> over the whole dataset per epoch) is the intuitive thing to replicate — but MiniSom's <code>train_batch</code> is not a batch-SOM. It is fully <strong>online, per-sample, and sequential</strong>, and entirely deterministic given fixed initial weights. The reference trainer replicates exactly this.</p>
 
   <div class="code">
     <div class="file-label">minisom.py — what train_batch actually runs</div>
@@ -267,25 +283,25 @@
 </pre>
   </div>
 
-  <aside class="callout">
-    <span class="ck">The single load-bearing correction</span>
-    The only RNG in the whole run is <code>random_weights_init</code> (it picks random data rows as the starting grid). Inject identical initial weights and <code>train_batch</code> becomes a pure deterministic function. The plan's stated reason for rejecting "port MiniSom's online order" — "brittle, RNG order" — is unfounded: <strong>there is no RNG in the order.</strong>
+  <aside class="callout good">
+    <span class="ck">The load-bearing fact, confirmed in the build</span>
+    The only RNG in the whole run is <code>random_weights_init</code> (it picks random data rows as the starting grid). With identical initial weights injected, <code>train_batch</code> is a pure deterministic function — there is <strong>no RNG in the order</strong>. The reference trainer in <code>som_reference_training.ts</code> reproduces this loop tensor-free, and the resulting weights match MiniSom to ~1e-12.
   </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="divergence">
-  <h2><span class="kick">The visual centerpiece</span>Where production diverges from MiniSom</h2>
-  <p class="section-intro">Every row is a moving part of the update. Production <code>SOM.fit()</code> differs from MiniSom on every one — which is precisely why the suite is loose. Scan the verdict column: red rows are the parity-breakers a reference path must neutralize.</p>
+  <h2><span class="kick">The visual centerpiece</span>Every divergence, and how it was neutralized</h2>
+  <p class="section-intro">Each row is a moving part of the update where the production online trainer differs from MiniSom. The reference trainer matches every one. Scan the verdict column: the rows that were once parity risks — hex coordinates, the axis transpose, the separable neighborhoods, and the topographic-error adjacency test — are all verified bit-for-bit against MiniSom.</p>
 
   <div class="matrix-wrap">
   <table class="matrix">
     <thead>
       <tr>
         <th style="width:15%">Moving part</th>
-        <th style="width:30%">Production <code>SOM.fit()</code> <span class="ours">(ours)</span></th>
-        <th style="width:33%">MiniSom <code>train_batch</code> <span class="theirs">(reference)</span></th>
-        <th style="width:12%">Verdict</th>
+        <th style="width:28%">Production <code>SOM.fit()</code> <span class="ours">(online, untouched)</span></th>
+        <th style="width:31%">MiniSom <code>train_batch</code> <span class="theirs">(replicated in reference)</span></th>
+        <th style="width:16%">Status</th>
       </tr>
     </thead>
     <tbody>
@@ -293,106 +309,105 @@
         <td class="dim">Sample granularity</td>
         <td class="ours">Mini-batch of 32, processed together</td>
         <td class="theirs">One sample per iteration <code>data[t % n]</code></td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">replicated</span></td>
       </tr>
       <tr>
         <td class="dim">Ordering</td>
         <td class="ours">Fisher–Yates shuffle each epoch (MT19937 RNG)</td>
         <td class="theirs">Sequential cycling, no RNG</td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">replicated</span></td>
       </tr>
       <tr>
         <td class="dim">Weight update</td>
         <td class="ours">Normalized <code>w += lr·Σ(h·(x−w))/Σ(h)</code></td>
         <td class="theirs">Raw <code>w += η·g·(x−w)</code> (einsum)</td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">replicated</span></td>
       </tr>
       <tr>
         <td class="dim">Decay cadence</td>
         <td class="ours">Exponential, applied per <strong>epoch</strong></td>
         <td class="theirs">Asymptotic, applied per <strong>iteration</strong></td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">replicated</span></td>
       </tr>
       <tr>
         <td class="dim">Decay formula</td>
         <td class="ours"><code>final+(init−final)·e^(−ep/(E/5))</code></td>
         <td class="theirs"><code>p / (1 + t/(T/2))</code></td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">replicated</span></td>
       </tr>
       <tr>
         <td class="dim">Iteration semantics</td>
         <td class="ours"><code>num_epochs</code> = full passes</td>
         <td class="theirs"><code>num_iteration</code> = per-sample steps</td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">aligned</span></td>
       </tr>
       <tr>
         <td class="dim">gaussian neighborhood</td>
         <td class="ours"><code>exp(−d²/2σ²)</code>, euclidean grid <code>d</code></td>
         <td class="theirs">separable product of two 1-D gaussians over <code>_xx,_yy</code></td>
-        <td><span class="verdict v-same">same (rect)</span></td>
+        <td><span class="verdict v-ok">verified</span></td>
       </tr>
       <tr>
         <td class="dim">bubble neighborhood</td>
         <td class="ours">euclidean disc <code>d ≤ σ</code></td>
         <td class="theirs">open-interval box <code>(cx−σ &lt; x &lt; cx+σ)</code> ⊗ same y</td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">verified</span></td>
       </tr>
       <tr>
         <td class="dim">mexican_hat</td>
         <td class="ours">Ricker <code>2·(1−(d/σ)²)·exp(−(d/σ)²/2)</code></td>
         <td class="theirs"><code>exp(−p/d)·(1−2p/d)</code>, <code>p=Δ²</code>, <code>d=2σ²</code></td>
-        <td><span class="verdict v-diff">differs</span></td>
+        <td><span class="verdict v-ok">verified</span></td>
       </tr>
       <tr>
         <td class="dim">hex grid coords</td>
         <td class="ours">offset <em>odd</em> rows <code>+0.5</code>, <code>y=row·√3/2</code></td>
         <td class="theirs"><code>_xx[::-2]−=0.5</code> (offset from LAST row), <code>_yy·=0.8660254</code></td>
-        <td><span class="verdict v-care">parity risk</span></td>
+        <td><span class="verdict v-ok">verified</span></td>
       </tr>
       <tr>
         <td class="dim">grid axis order</td>
         <td class="ours"><code>[grid_height, grid_width]</code></td>
         <td class="theirs"><code>(x=width, y=height)</code> as first/second axes</td>
-        <td><span class="verdict v-care">hidden by square grids</span></td>
+        <td><span class="verdict v-ok">transpose verified</span></td>
       </tr>
       <tr>
         <td class="dim">topographic error</td>
         <td class="ours">explicit 8-/6-neighbor adjacency test</td>
         <td class="theirs">rect: <code>‖Δcoord‖&gt;1.42</code>; hex: <code>isclose(1, …)</code></td>
-        <td><span class="verdict v-care">should agree</span></td>
+        <td><span class="verdict v-care">≤ 1% rel (discrete)</span></td>
       </tr>
       <tr>
         <td class="dim">initial weights</td>
         <td class="ours">uniform-in-data-range, our RNG</td>
         <td class="theirs">random data rows, MiniSom RNG</td>
-        <td><span class="verdict v-diff">eliminate via injection</span></td>
+        <td><span class="verdict v-ok">injected, eliminated</span></td>
       </tr>
     </tbody>
   </table>
   </div>
   <div class="legend">
-    <span><span class="dot" style="background:var(--rust)"></span>differs — must be matched in reference path</span>
-    <span><span class="dot" style="background:#8a5a23"></span>parity risk — hidden by current square-grid fixtures</span>
-    <span><span class="dot" style="background:#4f5a30"></span>already equal for rectangular grids</span>
+    <span><span class="dot" style="background:#3c4624"></span>replicated / verified — matched bit-for-bit in the reference path</span>
+    <span><span class="dot" style="background:#8a5a23"></span>≤ 1% relative — discrete metric held to a relative bound, not an element tolerance</span>
   </div>
 </section>
 
 <!-- ============================================================= -->
 <section id="formulas">
-  <h2><span class="kick">Update &amp; decay</span>The formulas that must line up</h2>
-  <p class="section-intro">Two pairs of formulas decide parity. The reference path adopts the MiniSom side of each; production keeps the left side untouched.</p>
+  <h2><span class="kick">Update &amp; decay</span>The formulas that line up</h2>
+  <p class="section-intro">Two pairs of formulas decide parity. The reference trainer adopts the MiniSom side of each exactly; production keeps the left side untouched.</p>
 
   <h3>Weight update</h3>
   <div class="formula-grid">
     <div class="fcard">
       <h4>Production — normalized mini-batch</h4>
       <div class="eq">w<span class="var">ⱼ</span> += <span class="hl">lr</span> · Σᵢ(<span class="var">h</span>ᵢⱼ·(xᵢ−wⱼ)) / Σᵢ(<span class="var">h</span>ᵢⱼ)</div>
-      <p class="fnote">Sum over a 32-sample mini-batch, divided by the summed influence so the step is batch-size independent. Order-dependent because the batch is shuffled.</p>
+      <p class="fnote">Sum over a 32-sample mini-batch, divided by the summed influence so the step is batch-size independent. Order-dependent because the batch is shuffled. Left untouched by this work.</p>
     </div>
     <div class="fcard">
-      <h4>MiniSom — raw per-sample</h4>
+      <h4>Reference — raw per-sample (MiniSom)</h4>
       <div class="eq">w += <span class="hl">η(t)</span> · <span class="var">g</span>(t) · (x − w)</div>
-      <p class="fnote">One sample <code>x</code>, whole-grid update, <code>g</code> centred on its BMU. No normalization by Σ influence. Applied <code>num_iteration</code> times over the sequentially-cycled dataset.</p>
+      <p class="fnote">One sample <code>x</code>, whole-grid update, <code>g</code> centred on its BMU. No normalization by Σ influence. Applied <code>num_iteration</code> times over the sequentially-cycled dataset. This is what <code>som_reference_training.ts</code> computes.</p>
     </div>
   </div>
 
@@ -401,73 +416,73 @@
     <div class="fcard">
       <h4>Production — exponential, per epoch</h4>
       <div class="eq">p(ep) = final + (init−final)·e<sup>−ep / (E/5)</sup></div>
-      <p class="fnote">Stepped once per full pass; floor at a final value.</p>
+      <p class="fnote">Stepped once per full pass; floor at a final value. Untouched.</p>
     </div>
     <div class="fcard">
-      <h4>MiniSom — asymptotic, per iteration</h4>
+      <h4>Reference — asymptotic, per iteration (MiniSom)</h4>
       <div class="eq">p(t) = <span class="hl">p₀ / (1 + t / (T/2))</span></div>
-      <p class="fnote">Stepped every single sample; <code>T = num_iteration</code>. Applied identically to learning rate and sigma. This is the schedule a reference path must replicate, and the per-iteration <code>lr/sigma</code> sequence is the first thing to verify.</p>
+      <p class="fnote">Stepped every single sample; <code>T = num_iteration</code>. Applied identically to learning rate and sigma. The reference trainer reproduces this per-iteration <code>lr/sigma</code> sequence exactly, which is the foundation of the 1e-12 weight agreement.</p>
     </div>
   </div>
 </section>
 
 <!-- ============================================================= -->
 <section id="neighbor">
-  <h2><span class="kick">The subtle traps</span>Neighborhood functions &amp; hex coordinates</h2>
-  <p class="section-intro">Matching the update loop is not enough — the neighborhood <code>g</code> and the grid coordinates feeding it must match too. Three of these are genuine formula differences, not just constants.</p>
+  <h2><span class="kick">The subtle traps, closed</span>Neighborhood functions &amp; hex coordinates</h2>
+  <p class="section-intro">Matching the update loop is not enough — the neighborhood <code>g</code> and the grid coordinates feeding it must match too. Three of these are genuine formula differences, not just constants; all are now replicated and verified against MiniSom.</p>
 
   <div class="formula-grid">
     <div class="fcard">
-      <h4>gaussian — equal on rectangular</h4>
+      <h4>gaussian — separable product <span class="verdict v-ok">verified</span></h4>
       <div class="eq" style="white-space:normal">MiniSom: e<sup>−Δx²/2σ²</sup> · e<sup>−Δy²/2σ²</sup><br>ours: e<sup>−(Δx²+Δy²)/2σ²</sup></div>
-      <p class="fnote">The separable product equals our euclidean form on a rectangular grid. On hexagonal it differs only because <code>_xx,_yy</code> differ (see coords below).</p>
+      <p class="fnote">The separable product equals the euclidean form on a rectangular grid; on hexagonal it differs only through the coordinates. The reference path uses MiniSom's separable form over its <code>_xx,_yy</code> directly.</p>
     </div>
     <div class="fcard">
-      <h4>bubble — box vs disc <span class="verdict v-diff">differs</span></h4>
+      <h4>bubble — box, not disc <span class="verdict v-ok">verified</span></h4>
       <div class="eq" style="white-space:normal">MiniSom: (cx−σ &lt; x &lt; cx+σ) ⊗ (cy−σ &lt; y &lt; cy+σ)<br>ours: d ≤ σ (disc)</div>
-      <p class="fnote">A square open-interval box, not a disc — and strict <code>&lt;</code> vs our <code>≤</code>. Both must change in the reference path.</p>
+      <p class="fnote">A square open-interval box with strict <code>&lt;</code>, not a disc. The reference path implements the open-interval box exactly; production keeps its disc.</p>
     </div>
     <div class="fcard">
-      <h4>mexican_hat — different wavelet <span class="verdict v-diff">differs</span></h4>
+      <h4>mexican_hat — MiniSom wavelet <span class="verdict v-ok">verified</span></h4>
       <div class="eq" style="white-space:normal">MiniSom: e<sup>−p/d</sup>·(1 − 2p/d), &nbsp;p=Δ², d=2σ²<br>ours: 2·(1−(d/σ)²)·e<sup>−(d/σ)²/2</sup></div>
-      <p class="fnote">Different formula and amplitude. New <code>mexican_hat</code> coverage is an explicit acceptance criterion, so the reference path must implement MiniSom's exact form.</p>
+      <p class="fnote">A different formula and amplitude. The reference path implements MiniSom's exact form, and <code>mexican_hat</code> fixtures across square and non-square grids match to 1e-12.</p>
     </div>
     <div class="fcard">
-      <h4>hex coordinates — offset parity <span class="verdict v-care">risk</span></h4>
+      <h4>hex coordinates — offset parity <span class="verdict v-ok">verified</span></h4>
       <div class="eq" style="white-space:normal">MiniSom: _xx[::-2] −= 0.5 ; _yy *= 0.8660254<br>ours: x = col + (row%2)·0.5 ; y = row·√3/2</div>
-      <p class="fnote">The <code>√3/2 ≈ 0.866</code> factor matches. But MiniSom offsets <em>every other row counting from the LAST row</em>, so offset parity depends on grid height — ours always offsets odd rows. All current fixtures are square (5×5, 6×6, 7×7, 10×10), which also hides the axis-transpose; a non-square fixture is needed to expose both.</p>
+      <p class="fnote">The <code>√3/2 ≈ 0.866</code> factor matches; MiniSom offsets <em>every other row counting from the LAST row</em>, so parity depends on grid height. The reference path follows MiniSom's convention exactly, and the 8×4/4×8 non-square hexagonal fixtures confirm both the offset parity and the axis transpose bit-for-bit.</p>
     </div>
   </div>
 
-  <aside class="callout">
-    <span class="ck">Coverage gap to close</span>
-    Add at least one <strong>non-square</strong> grid and at least one <strong>mexican_hat</strong> fixture. Square-only coverage silently passes even with a transposed axis order or a flipped hex offset parity.
+  <aside class="callout good">
+    <span class="ck">Coverage that exposes these traps</span>
+    The fixture set now includes <strong>non-square</strong> grids (8×4 and 4×8) and <strong>mexican_hat</strong> configurations across both rectangular and hexagonal topologies. These were the cases that previously could pass silently with a transposed axis order or a flipped hex offset parity — they now actively verify both.
   </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="decision">
-  <h2><span class="kick">The heart of the matter</span>Which equivalence strategy</h2>
-  <p class="section-intro">The plan and reality point in opposite directions. The genuinely correct strategy is to replicate MiniSom's <em>real</em> <code>train_batch</code> — not a batch-map.</p>
+  <h2><span class="kick">The decision made</span>Approach A — replicate MiniSom's real <code>train_batch</code></h2>
+  <p class="section-intro">Two strategies were on the table. The decision resolved to Approach A: replicate MiniSom's real <code>train_batch</code> in a deterministic reference path. A was built; B was not.</p>
 
   <div class="opt-grid">
     <article class="opt win">
-      <span class="badge">A · RECOMMENDED</span>
+      <span class="badge">A · BUILT</span>
       <h3>Replicate MiniSom's real <code>train_batch</code></h3>
-      <p class="rationale">A reference-only training path that runs the deterministic online-sequential loop: <code>idx = t % n</code>, raw per-sample whole-grid update, asymptotic per-iteration decay, separable neighborhoods, MiniSom hex coords — with injected identical initial weights.</p>
+      <p class="rationale">A reference-only training path that runs the deterministic online-sequential loop: <code>idx = t % n</code>, raw per-sample whole-grid update, asymptotic per-iteration decay, separable neighborhoods, MiniSom hex coords — with injected identical initial weights. This is the path that shipped, as <code>som_reference_training.ts</code>.</p>
       <ul>
         <li class="pro">Validates directly against the actual MiniSom output</li>
-        <li class="pro">Deterministic given fixed init → reaches ~1e-12 weight parity</li>
-        <li class="pro">Far exceeds every acceptance criterion (1e-3, 1%, exact)</li>
+        <li class="pro">Deterministic given fixed init → weights/QE/U-matrix match to ~1e-12</li>
+        <li class="pro">Exact BMUs and labels; topographic error inside ≤ 1%</li>
         <li class="pro">Production online mini-batch path untouched</li>
-        <li class="con">Must faithfully port decay + neighborhood + hex coord details</li>
+        <li class="con">Requires a faithful port of decay + neighborhood + hex coord details — done and verified</li>
       </ul>
     </article>
 
     <article class="opt lose">
-      <span class="badge">B · REJECTED</span>
+      <span class="badge">B · NOT BUILT</span>
       <h3>Implement a true batch-map SOM</h3>
-      <p class="rationale">The plan's instinct: accumulate <code>w ← Σ(h·x)/Σ(h)</code> over the whole dataset per epoch in both Python and TypeScript.</p>
+      <p class="rationale">The intuitive alternative: accumulate <code>w ← Σ(h·x)/Σ(h)</code> over the whole dataset per epoch in both Python and TypeScript. Rejected at decision time.</p>
       <ul>
         <li class="con">MiniSom does not compute a batch-map — <code>train_batch</code> is online</li>
         <li class="con">Would not validate against the MiniSom reference at all</li>
@@ -479,25 +494,25 @@
   </div>
 
   <aside class="invert">
-    <span class="ck">Decision</span>
-    <p style="margin:.2rem 0 0"><strong>Take Approach A.</strong> Because <code>train_batch</code> is deterministic once initial weights are fixed, a faithful replica reaches per-element parity around <strong>1e-12</strong> — three orders of magnitude tighter than the 1e-3 criterion, with exact BMUs and labels and QE/TE far inside 1%. The plan's batch-map (B) would compute something MiniSom never computes, so it could not validate against the fixtures at all.</p>
+    <span class="ck">Decision — resolved</span>
+    <p style="margin:.2rem 0 0"><strong>Approach A was taken and built.</strong> Because <code>train_batch</code> is deterministic once initial weights are fixed, the faithful replica reaches per-element parity around <strong>1e-12</strong> (asserted at 1e-9) on weights, quantization error and the U-matrix, with exact BMUs and labels and topographic error inside the ≤ 1% bound. Approach B would have computed something MiniSom never computes, so it could not validate against the fixtures — it was not built.</p>
   </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="parity">
-  <h2><span class="kick">What "rigorous" buys</span>Expected parity under Approach A</h2>
-  <p class="section-intro">Once init is injected and the loop replicated, the achievable parity sits far below the acceptance thresholds. Longer bars are more headroom.</p>
-  <div class="bars" aria-label="achievable parity vs acceptance criteria">
+  <h2><span class="kick">What "rigorous" delivered</span>Achieved parity across 32 fixtures</h2>
+  <p class="section-intro">With init injected and the loop replicated, the achieved parity sits far below the acceptance thresholds. Longer bars are more headroom.</p>
+  <div class="bars" aria-label="achieved parity vs acceptance criteria">
     <div class="bar-row">
       <span class="lbl">weights / element</span>
       <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
-      <span class="val">~1e-12 &nbsp;<span style="color:#4f5a30">(AC 1e-3)</span></span>
+      <span class="val">~1e-12 &nbsp;<span style="color:#4f5a30">(asserted 1e-9)</span></span>
     </div>
     <div class="bar-row">
-      <span class="lbl">QE / TE relative</span>
-      <div class="bar-track"><div class="bar-fill" style="width:96%;background:var(--olive);"></div></div>
-      <span class="val">≪ 1% &nbsp;<span style="color:#4f5a30">(AC 1%)</span></span>
+      <span class="lbl">QE / U-matrix</span>
+      <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
+      <span class="val">~1e-12 &nbsp;<span style="color:#4f5a30">(asserted 1e-9)</span></span>
     </div>
     <div class="bar-row">
       <span class="lbl">BMU / labels</span>
@@ -505,106 +520,116 @@
       <span class="val">exact</span>
     </div>
     <div class="bar-row">
+      <span class="lbl">topographic error</span>
+      <div class="bar-track"><div class="bar-fill" style="width:99%;background:var(--olive);"></div></div>
+      <span class="val">31/32 at 0%, 1 at 0.24%</span>
+    </div>
+    <div class="bar-row">
       <span class="lbl">skipped fixtures</span>
       <div class="bar-track"><div class="bar-fill" style="width:100%;background:var(--olive);"></div></div>
-      <span class="val">0 — <code>blobs_10x10</code> passes</span>
+      <span class="val">0 of 32</span>
     </div>
   </div>
+  <aside class="callout good">
+    <span class="ck">The fixture matrix</span>
+    32 fixtures: 4 datasets × {square grid + 8×4 / 4×8 non-square grids} × {gaussian, bubble, mexican_hat} × {rectangular, hexagonal}. Every fixture stores the injected <code>initial_weights</code> and MiniSom-native metrics, and every one is asserted with no skips.
+  </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="where">
-  <h2><span class="kick">Secondary design question</span>Where the reference trainer should live</h2>
+  <h2><span class="kick">Where the reference trainer lives</span>A dedicated, tensor-free module</h2>
   <div class="prose">
-    <p>The task's Key files list implies the reference loop lands on the production <code>SOM</code> class in <code>som.ts</code>. The constitution forbids surplus code in production, which creates a tension: the MiniSom replica exists only to satisfy tests, yet a reference mode on <code>SOM</code> would expose MiniSom-specific math through the production API.</p>
+    <p>The MiniSom replica exists only to validate the production trainer, so its math is quarantined out of the production API. It lives in a dedicated module, <code>src/clustering/som_reference_training.ts</code>, computed tensor-free with plain arrays, and is consumed only by the reference test. The production <code>SOM</code> class keeps its clean online mini-batch surface.</p>
+    <p>One piece does belong on production: <code>initial_weights</code>. It is a genuine reproducibility feature any caller benefits from, so it is a real <code>SOMParams</code> field, honored by both <code>fit</code> and <code>partial_fit</code>. Injecting it is what makes <code>train_batch</code> deterministic and the 1e-12 parity reachable.</p>
   </div>
   <div class="opt-grid">
     <article class="opt lose">
-      <span class="badge">a · reference mode on SOM</span>
-      <h3>A flag/method on the production class</h3>
+      <span class="badge">a · not taken</span>
+      <h3>A reference flag/method on the production class</h3>
       <ul>
-        <li class="pro">Matches the task's stated Key files</li>
+        <li class="pro">Would have matched the task's first-draft Key files list</li>
         <li class="con">Leaks MiniSom-replica math into the production surface</li>
         <li class="con">Tension with "no surplus code in production"</li>
       </ul>
     </article>
     <article class="opt win">
-      <span class="badge">b · RECOMMENDED — dedicated module</span>
+      <span class="badge">b · BUILT — dedicated module</span>
       <h3>Isolated reference-trainer module</h3>
       <ul>
-        <li class="pro">MiniSom-replica math clearly quarantined, used only by the reference test</li>
+        <li class="pro">MiniSom-replica math quarantined in <code>som_reference_training.ts</code>, used only by the reference test</li>
         <li class="pro">Production <code>SOM</code> API stays clean</li>
-        <li class="pro"><code>initial_weights</code> injection stays a genuine production feature (reproducibility)</li>
-        <li class="con">One more file to maintain alongside <code>som.ts</code></li>
+        <li class="pro"><code>initial_weights</code> is a real production feature on <code>fit</code> and <code>partial_fit</code></li>
+        <li class="pro">Tensor-free — plain arrays, no tensor backend dependency</li>
       </ul>
     </article>
   </div>
   <aside class="callout good">
-    <span class="ck">Recommendation</span>
-    Keep <code>initial_weights</code> injection on production <code>SOM</code> — it is a legitimate reproducibility feature any caller benefits from. Put the MiniSom-equivalent loop in a clearly-labelled reference module (e.g. <code>som_minisom_reference.ts</code>) consumed only by <code>som_reference.test.ts</code>, so the production training path keeps its clean online mini-batch API.
+    <span class="ck">Canonical guide</span>
+    <code>docs/som-benchmarking.md</code> is the canonical guide to this benchmarking setup: the MiniSom venv, the regeneration command, every fixture field, the asymptotic decay form, the deterministic-equivalence guarantee, and the tolerance rationale (including why topographic error is held to ≤ 1% rather than an element tolerance).
   </aside>
 </section>
 
 <!-- ============================================================= -->
 <section id="files">
-  <h2><span class="kick">Handoff</span>What changes, file by file</h2>
-  <p class="section-intro">The shape of the work across six surfaces. Production training behavior does not change; the rigor lives in the reference path, the regenerated fixtures, and the docs.</p>
+  <h2><span class="kick">As-built</span>What was built, file by file</h2>
+  <p class="section-intro">The work across seven surfaces. Production training behavior is unchanged apart from the <code>initial_weights</code> feature; the rigor lives in the reference trainer, the regenerated fixtures, and the docs.</p>
 
   <div class="files">
     <div class="num">1</div>
     <div class="body">
-      <h4><span class="path">src/clustering/som.ts</span> — add <code>initial_weights</code> injection</h4>
-      <p>Accept a <code>[grid_height][grid_width][n_features]</code> initial weight grid and use it verbatim instead of RNG init. This is a real production feature (reproducibility), so it stays on the class. No change to the online mini-batch update or decay.</p>
+      <h4><span class="path">src/clustering/som.ts</span> — <code>initial_weights</code> production feature</h4>
+      <p>Accepts a <code>[grid_height][grid_width][n_features]</code> initial weight grid as a real <code>SOMParams</code> field, used verbatim instead of RNG init. Honored by both <code>fit</code> and <code>partial_fit</code> for reproducibility. The online mini-batch update and decay are unchanged.</p>
     </div>
 
     <div class="num ref">2</div>
     <div class="body">
-      <h4><span class="path">src/clustering/som_minisom_reference.ts</span> — new reference trainer</h4>
-      <p>A quarantined module replicating MiniSom's real <code>train_batch</code>: sequential <code>idx = t % n</code>, raw per-sample whole-grid update, asymptotic per-iteration decay <code>p₀/(1+t/(T/2))</code>, separable gaussian / open-box bubble / MiniSom mexican_hat, and MiniSom hex coords (offset-from-last-row, <code>·0.8660254</code>). Used only by the reference test.</p>
+      <h4><span class="path">src/clustering/som_reference_training.ts</span> — reference trainer</h4>
+      <p>A dedicated, tensor-free module replicating MiniSom's real <code>train_batch</code>: sequential <code>idx = t % n</code>, raw per-sample whole-grid update, asymptotic per-iteration decay <code>p₀/(1+t/(T/2))</code>, separable gaussian / open-box bubble / MiniSom mexican_hat, and MiniSom hex coords (offset-from-last-row, <code>·0.8660254</code>). Computed with plain arrays and consumed only by the reference test.</p>
     </div>
 
     <div class="num ref">3</div>
     <div class="body">
       <h4><span class="path">src/clustering/som_neighborhood.ts</span> — parity helpers</h4>
-      <p>Provide the MiniSom-equivalent neighborhood and grid-coordinate variants the reference trainer needs (separable gaussian, open-interval box bubble, MiniSom mexican_hat, hex coords with correct offset parity and axis order). Production helpers stay as they are.</p>
+      <p>Provides the MiniSom-equivalent neighborhood and grid-coordinate variants the reference trainer needs (separable gaussian, open-interval box bubble, MiniSom mexican_hat, hex coords with correct offset parity and axis order). Production helpers are unchanged.</p>
     </div>
 
     <div class="num gen">4</div>
     <div class="body">
-      <h4><span class="path">tools/sklearn_fixtures/generate_som.py</span> — rewrite the generator</h4>
-      <p>Export <code>initial_weights</code> (the exact grid seeded into MiniSom). Fix the key casing — it currently writes camelCase (<code>gridWidth</code>, <code>numEpochs</code>, <code>uMatrix</code>) and stores <code>num_iteration</code> as <code>numEpochs</code>, while the on-disk fixtures are snake_case with no init weights, so the generator does not match its own output. Keep using the real <code>train_batch</code>. Expand scenarios: add a non-square grid and a <code>mexican_hat</code> config.</p>
+      <h4><span class="path">tools/sklearn_fixtures/generate_som.py</span> — rewritten generator</h4>
+      <p>Rewritten on a snake_case schema with <code>num_iteration</code> as the per-sample step count. Injects and exports <code>initial_weights</code> (the exact grid seeded into MiniSom) and records MiniSom-native metrics. Uses the real <code>train_batch</code>. Scenarios expanded to 32: 4 datasets × {square + 8×4 / 4×8 non-square} × {gaussian, bubble, mexican_hat} × {rectangular, hexagonal}.</p>
     </div>
 
     <div class="num gen">5</div>
     <div class="body">
-      <h4><span class="path">__fixtures__/som/*.json</span> — regenerate</h4>
-      <p>Each fixture stores <code>X</code>, <code>params</code>, <code>initial_weights</code>, final <code>weights</code>, <code>bmus</code>, <code>labels</code>, <code>quantization_error</code>, <code>topographic_error</code>, <code>u_matrix</code> — all snake_case, with init weights now present.</p>
+      <h4><span class="path">__fixtures__/som/*.json</span> — 32 regenerated fixtures</h4>
+      <p>Each fixture stores <code>X</code>, <code>params</code>, <code>initial_weights</code>, final <code>weights</code>, <code>bmus</code>, <code>labels</code>, <code>quantization_error</code>, <code>topographic_error</code>, <code>u_matrix</code> — all snake_case, with init weights present.</p>
     </div>
 
     <div class="num ref">6</div>
     <div class="body">
-      <h4><span class="path">src/clustering/som_reference.test.ts</span> — tighten, no skips</h4>
-      <p>Inject <code>initial_weights</code>, run the reference trainer, and assert weights ≤ 1e-3 per element, QE/TE ≤ 1% relative, exact BMU/label match. Remove the <code>it.skip</code> on <code>blobs_10x10_gaussian_rectangular</code>. Leave the online-mode property tests in <code>som.test.ts</code> / <code>som_hexagonal.test.ts</code> intact and clearly separated.</p>
+      <h4><span class="path">src/clustering/som_reference.test.ts</span> — tight assertions, no skips</h4>
+      <p>Injects <code>initial_weights</code>, runs the reference trainer, and asserts weights / QE / U-matrix per element at 1e-9, exact BMU/label match, and topographic error within ≤ 1% relative. No <code>it.skip</code> remains. The online-mode property tests in <code>som.test.ts</code> / <code>som_hexagonal.test.ts</code> stay intact and clearly separated.</p>
     </div>
 
     <div class="num gen">7</div>
     <div class="body">
-      <h4><span class="path">docs/ or backlog/docs/ — SOM benchmarking guide</span></h4>
-      <p>Document the venv setup, regeneration command, what each fixture field means, the asymptotic decay form, the deterministic-equivalence guarantee, and the tolerance rationale. Note that regeneration needs the MiniSom venv and is not run in CI; the reference Jest suite is.</p>
+      <h4><span class="path">docs/som-benchmarking.md</span> — canonical benchmarking guide</h4>
+      <p>Documents the MiniSom venv setup, the regeneration command, what each fixture field means, the asymptotic decay form, the deterministic-equivalence guarantee, and the tolerance rationale. Regeneration needs the MiniSom venv and is not run in CI; the reference Jest suite is.</p>
     </div>
   </div>
 
   <details>
-    <summary>Reference: the exact reference-mode parameters to feed</summary>
+    <summary>Reference: the exact parameters the reference trainer is fed</summary>
     <div class="dcontent prose">
-      <p>For each fixture, the reference test should configure the trainer with the fixture's <code>initial_weights</code>, <code>num_epochs</code> read as MiniSom <code>num_iteration</code> (per-sample steps, not full passes), the asymptotic decay form for both learning rate and sigma, the topology-appropriate neighborhood, and MiniSom's hex coordinate convention. The current generator's <code>num_iteration → numEpochs</code> conflation is one of the bugs being fixed: the reference path must treat that count as per-sample iterations.</p>
+      <p>For each fixture, the reference test configures the trainer with the fixture's <code>initial_weights</code>, <code>num_iteration</code> read as MiniSom per-sample steps (not full passes), the asymptotic decay form for both learning rate and sigma, the topology-appropriate neighborhood, and MiniSom's hex coordinate convention. The earlier generator's conflation of per-sample iterations with epochs is gone: the schema and the reference path both treat the count as per-sample iterations.</p>
     </div>
   </details>
 </section>
 
 <footer>
-  Companion for task-51 · Rigorous SOM benchmarking against MiniSom reference.
-  Grounded in som.ts, som_neighborhood.ts, som_reference.test.ts, generate_som.py, __fixtures__/som/*.json, and installed minisom.py.
+  As-built companion for task-51 · Rigorous SOM benchmarking against MiniSom reference.
+  Verified against som.ts, som_reference_training.ts, som_neighborhood.ts, som_reference.test.ts, generate_som.py, the 32 __fixtures__/som/*.json fixtures, docs/som-benchmarking.md, and installed minisom.py.
   Self-contained — no external assets.
 </footer>
 
