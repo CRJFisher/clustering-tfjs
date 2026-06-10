@@ -11,6 +11,19 @@ import { improved_jacobi_eigen } from './improved';
 const LANCZOS_THRESHOLD = 100;
 
 /**
+ * Eigenvalues at or below this value are treated as numerically zero when
+ * counting near-zero eigenvalues (connected-component detection). Used by
+ * both the Lanczos and Jacobi paths so that path routing at n=100 cannot
+ * change the returned embedding dimension.
+ *
+ * Value is chosen above the Lanczos convergence tolerance (1e-6) so that
+ * true structural zeros — which for a disconnected Laplacian can emerge
+ * as small positives up to ~1e-6 before PSD clamping — are reliably
+ * counted on both paths. Matches PSD_CLAMP_TOL in lanczos.ts.
+ */
+const NEAR_ZERO_TOL = 1e-5;
+
+/**
  * Returns the `k` smallest eigenvectors AND eigenvalues of the provided symmetric matrix.
  * This is needed for spectral embedding normalization (dividing by D^{1/2}).
  *
@@ -69,10 +82,9 @@ function lanczos_path(
     });
 
     // Determine number of numerically-zero eigenvalues
-    const TOL = 1e-2;
     let c = 0;
     for (const v of result.eigenvalues) {
-      if (v <= TOL) c += 1;
+      if (v <= NEAR_ZERO_TOL) c += 1;
       else break;
     }
 
@@ -131,10 +143,9 @@ function jacobi_path(
     });
 
     // Determine number of numerically-zero eigenvalues
-    const TOL = 1e-7;
     let c = 0;
     for (const v of processed.eigenvalues) {
-      if (v <= TOL) c += 1;
+      if (v <= NEAR_ZERO_TOL) c += 1;
       else break;
     }
 
