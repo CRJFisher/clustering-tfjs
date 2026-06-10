@@ -13,11 +13,15 @@ dependencies:
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
+
 Evaluate whether to keep ml-matrix as a fallback linear algebra backend when TensorFlow.js backends are unavailable or underperforming. Eigendecomposition in ml-matrix for SpectralClustering is 10x faster than our Jacobi implementation. We should also evaluate broader usage of ml-matrix in other places.
+
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
+
 <!-- AC:BEGIN -->
+
 - [ ] #1 Benchmark ml-matrix vs TensorFlow.js for key operations:
 - [ ] #2 Identify scenarios where ml-matrix is beneficial:
 - [ ] #3 Evaluate package size impact
@@ -28,6 +32,7 @@ Evaluate whether to keep ml-matrix as a fallback linear algebra backend when Ten
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
+
 ### Key Considerations
 
 1. **Current ml-matrix usage**:
@@ -50,4 +55,5 @@ Evaluate whether to keep ml-matrix as a fallback linear algebra backend when Ten
    - Rarely better → Remove to reduce bundle size
    - Much smaller than TF.js → Consider ml-matrix-only version
    ```
-<!-- SECTION:PLAN:END -->
+
+   <!-- SECTION:PLAN:END -->

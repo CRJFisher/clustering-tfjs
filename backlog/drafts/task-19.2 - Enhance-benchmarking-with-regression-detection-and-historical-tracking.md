@@ -38,12 +38,12 @@ rather than hand-rolling storage, threshold comparison, and charting. The action
 handles four acceptance criteria out of the box, so the only custom code is a
 results emitter, ARI integration, workflow wiring, and docs.
 
-| Acceptance criterion | Covered by |
-| --- | --- |
-| Historical data across commits | History auto-committed to a `gh-pages` branch (`data.js`) |
-| Trend visualization over time | Trend chart page auto-published on gh-pages |
-| Regression detection w/ thresholds | `alert-threshold` config |
-| Automated CI alerts | `comment-on-alert`, `fail-on-alert`, `alert-comment-cc-users` (@mention) |
+| Acceptance criterion               | Covered by                                                               |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| Historical data across commits     | History auto-committed to a `gh-pages` branch (`data.js`)                |
+| Trend visualization over time      | Trend chart page auto-published on gh-pages                              |
+| Regression detection w/ thresholds | `alert-threshold` config                                                 |
+| Automated CI alerts                | `comment-on-alert`, `fail-on-alert`, `alert-comment-cc-users` (@mention) |
 
 ### Current state (starting point)
 
@@ -71,7 +71,7 @@ github-action-benchmark requires one metric direction per file, so emit two:
 3. Update `scripts/benchmark.ts` to also write `benchmarks/output/perf.json` and
    `benchmarks/output/quality.json` (keep existing YAML/MD for the human PR
    comment).
-4. **Noise control:** define a single deterministic *tracked* config (one Node
+4. **Noise control:** define a single deterministic _tracked_ config (one Node
    version, `cpu` backend, fixed datasets) that feeds the historical series; the
    full backend × Node matrix stays informational only. GitHub-hosted runners
    are noisy (±20–50% on timing) so only one stable config is authoritative.
