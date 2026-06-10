@@ -13,6 +13,7 @@ import {
 import {
   SparseMatrix,
   sparse_stats,
+  sparse_to_dense_tensor,
 } from '../graph/sparse';
 import { is_tensor } from '../tensor/tensor_guards';
 import type { ClusterRepresentations } from './representations';
@@ -569,8 +570,9 @@ export class SpectralClustering
       x_tensor.dispose();
       throw new Error('n_clusters cannot exceed number of samples.');
     }
+    const use_sparse_nearest_neighbors = this.params.affinity === 'nearest_neighbors';
     const max_samples_debug = this.params.max_samples ?? 10_000;
-    if (n_samples_debug > max_samples_debug) {
+    if (!use_sparse_nearest_neighbors && n_samples_debug > max_samples_debug) {
       x_tensor.dispose();
       throw new Error(
         `Input has ${n_samples_debug} samples, which exceeds the maximum of ${max_samples_debug} ` +
@@ -580,33 +582,52 @@ export class SpectralClustering
     }
 
     /* ---------------------------- 1) Affinity ----------------------------- */
-    const affinity = SpectralClustering.compute_affinity_matrix(
-      x_tensor,
-      this.params,
-    );
+    let sparse_affinity: SparseMatrix | null = null;
+    let affinity: tf.Tensor2D;
 
-    const affinity_sum_tensor = affinity.sum();
-    const affinity_sum = (await affinity_sum_tensor.data())[0];
-    affinity_sum_tensor.dispose();
+    if (use_sparse_nearest_neighbors) {
+      const k = SpectralClustering.default_neighbors(this.params, n_samples_debug);
+      sparse_affinity = compute_sparse_knn_affinity(x_tensor, k, true);
+      this.sparse_affinity_matrix_ = sparse_affinity;
+      affinity = sparse_to_dense_tensor(sparse_affinity);
+    } else {
+      affinity = SpectralClustering.compute_affinity_matrix(x_tensor, this.params);
+    }
+
+    let affinity_sum: number;
+    if (sparse_affinity != null) {
+      affinity_sum = 0;
+      for (const value of sparse_affinity.data) affinity_sum += value;
+    } else {
+      const affinity_sum_tensor = affinity.sum();
+      affinity_sum = (await affinity_sum_tensor.data())[0];
+      affinity_sum_tensor.dispose();
+    }
     if (affinity_sum === 0) {
+      affinity.dispose();
+      x_tensor.dispose();
       throw new Error(
         'Affinity matrix contains only zeros – cannot perform spectral clustering.',
       );
     }
 
     // Capture affinity statistics
-    const affinity_data = await affinity.data();
-    const affinity_array = Array.from(affinity_data);
-    const nnz = affinity_array.filter((v: number) => v !== 0).length;
-    this.debug_info_.affinity_stats = {
-      shape: affinity.shape,
-      nnz,
-      min: Math.min(...affinity_array),
-      max: Math.max(...affinity_array),
-      mean:
-        affinity_array.reduce((a: number, b: number) => a + b, 0) /
-        affinity_array.length,
-    };
+    if (sparse_affinity != null) {
+      this.debug_info_.affinity_stats = sparse_stats(sparse_affinity);
+    } else {
+      const affinity_data = await affinity.data();
+      const affinity_array = Array.from(affinity_data);
+      const nnz = affinity_array.filter((v: number) => v !== 0).length;
+      this.debug_info_.affinity_stats = {
+        shape: affinity.shape,
+        nnz,
+        min: Math.min(...affinity_array),
+        max: Math.max(...affinity_array),
+        mean:
+          affinity_array.reduce((a: number, b: number) => a + b, 0) /
+          affinity_array.length,
+      };
+    }
 
     /* ---------------------------- 2) Laplacian ----------------------------- */
     const { normalised_laplacian } = await import('../graph/laplacian');
@@ -706,7 +727,9 @@ export class SpectralClustering
 
     // Store labels for consistency
     this.labels_ = labels;
-    this.affinity_matrix_ = tf.clone(affinity);
+    if (sparse_affinity == null) {
+      this.affinity_matrix_ = tf.clone(affinity);
+    }
 
     /* --------------------------- Clean-up --------------------------------- */
     affinity.dispose();
