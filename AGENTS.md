@@ -24,3 +24,11 @@ The library is organized by **what the code does** (action/domain folders), not 
 - `src/visualization/` — SOM visualization helpers.
 
 Test files are **colocated** with the source they test (`foo.ts` ↔ `foo.test.ts`); there is no separate `test/` tree. Shared reference fixtures live under `__fixtures__/`.
+
+## Testing practices
+
+- **Test at scale.** Any method operating on per-sample arrays must have at least one test at n ≥ 300k. JS argument-spread (`Math.max(...array)`) silently crashes above ~200k.
+- **Test equivalent paths equivalently.** When the same logic has two implementations behind a size or mode gate, run both on the same input and assert identical results. The boundary value is the highest-risk case.
+- **Test state invariants under failure.** For every stateful estimator, verify that a failed `fit()` leaves all output fields in their prior state — not null, not partially updated.
+- **Use geometry-specific fixtures, not just blobs.** Generic blob data does not exercise metric edge cases. Cosine tests need antipodal unit vectors; manhattan tests need axis-aligned clusters. Each metric variant needs at least one fixture that would expose a Euclidean-centric implementation.
+- **Degenerate inputs are first-class.** All-noise labels, empty input, and single-cluster input must have explicit test cases. Silent return values (0, `[]`) for degenerate inputs are bugs, not acceptable defaults.
