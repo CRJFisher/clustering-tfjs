@@ -254,7 +254,10 @@ export class AgglomerativeClustering
     // The cluster count is determined by the fitted partition: with
     // `distance_threshold` (rather than `n_clusters`) the number of clusters is
     // data-driven, so derive it from the contiguous `0..k-1` labels.
-    const n_clusters = Math.max(-1, ...this.labels_) + 1;
+    let n_clusters = 0;
+    for (const label of this.labels_) {
+      if (label >= n_clusters) n_clusters = label + 1;
+    }
     const { indices } = await select_medoids(
       X,
       this.labels_,

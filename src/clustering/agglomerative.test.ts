@@ -386,3 +386,17 @@ describe("AgglomerativeClustering – transductive: no predict or JSON serializa
     expect("from_json" in AgglomerativeClustering).toBe(false);
   });
 });
+
+describe("AgglomerativeClustering – compute_medoids large-n smoke test", () => {
+  it("does not throw RangeError with 300k samples", async () => {
+    const n = 300_000;
+    const k = 3;
+    // Bypass fit() — labels_ is public and can be set directly to test
+    // compute_medoids in isolation without an O(n²) agglomerative fit.
+    const model = new AgglomerativeClustering({ n_clusters: k });
+    model.labels_ = Array.from({ length: n }, (_, i) => i % k);
+    const X: number[][] = Array.from({ length: n }, (_, i) => [i % k, 0]);
+    await expect(model.compute_medoids(X)).resolves.toBeDefined();
+    expect(model.medoid_indices_).toHaveLength(k);
+  }, 30_000);
+});
