@@ -9,6 +9,27 @@ import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 import type { ValidationMetric } from './silhouette';
 
 /**
+ * Spherical centroid for cosine metric: L2-normalise the Euclidean mean so the
+ * centroid lies on the unit sphere.  This is a semantic requirement — both
+ * cluster_dispersion and pairwise_distance_matrix already normalise their
+ * inputs internally, so the DB score is numerically invariant to this for any
+ * non-zero mean.  The practical benefit is in davies_bouldin_efficient, where
+ * the centroid is serialised to a JS float array before reconstruction; storing
+ * a unit vector avoids directional precision loss for near-zero-magnitude means.
+ * When the mean is exactly [0,…,0] (perfectly-antipodal cluster) the direction
+ * is undefined and the centroid remains a zero vector.
+ */
+function cluster_centroid(
+  cluster_data: tf.Tensor2D,
+  metric: ValidationMetric,
+): tf.Tensor1D {
+  const mean = cluster_data.mean(0) as tf.Tensor1D;
+  if (metric !== 'cosine') return mean;
+  const norm = mean.square().sum().sqrt().add(tf.scalar(1e-8));
+  return mean.div(norm) as tf.Tensor1D;
+}
+
+/**
  * Mean distance of a cluster's points to its centroid under the given metric.
  */
 function cluster_dispersion(
@@ -100,8 +121,7 @@ export function davies_bouldin(
       // Extract cluster points
       const cluster_data = tf.gather(work_data, cluster_indices) as tf.Tensor2D;
 
-      // Compute centroid
-      const centroid = cluster_data.mean(0) as tf.Tensor1D;
+      const centroid = cluster_centroid(cluster_data, metric);
       centroids.push(centroid);
 
       // Compute intra-cluster dispersion (average distance to centroid)
@@ -214,7 +234,7 @@ export function davies_bouldin_efficient(
 
     tf.tidy(() => {
       const cluster_data = tf.gather(work_data, cluster_indices) as tf.Tensor2D;
-      const centroid = cluster_data.mean(0) as tf.Tensor1D;
+      const centroid = cluster_centroid(cluster_data, metric);
       centroid_arrays.push(Array.from(centroid.dataSync()));
 
       if (cluster_indices.length > 1) {

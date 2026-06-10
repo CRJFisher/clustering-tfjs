@@ -340,3 +340,86 @@ describe("Davies-Bouldin – noise (-1) awareness", () => {
     expect(Number.isFinite(s)).toBe(true);
   });
 });
+
+describe("Davies-Bouldin – cosine metric centroid (spherical centroid)", () => {
+  beforeEach(() => {
+    tf.engine().startScope();
+  });
+
+  afterEach(() => {
+    tf.engine().endScope();
+  });
+
+  // AC#2: well-separated directional clusters score lower than poorly-separated ones.
+  it("gives lower score for well-separated cosine clusters than poorly-separated ones", () => {
+    // Well-separated: cluster 0 points right (+x), cluster 1 points up (+y).
+    const well_separated = [
+      [1, 0.05], [0.95, 0.1],   // cluster 0: roughly +x direction
+      [0.05, 1], [0.1, 0.95],   // cluster 1: roughly +y direction
+    ];
+    const labels_ws = [0, 0, 1, 1];
+
+    // Poorly-separated: both clusters point diagonally, close in cosine space.
+    const poorly_separated = [
+      [1, 0.9], [0.9, 1],     // cluster 0: ~45 degrees
+      [1, 1.1], [1.1, 0.9],   // cluster 1: ~45 degrees, adjacent
+    ];
+    const labels_ps = [0, 0, 1, 1];
+
+    const score_ws = davies_bouldin(well_separated, labels_ws, "cosine");
+    const score_ps = davies_bouldin(poorly_separated, labels_ps, "cosine");
+
+    expect(score_ws).toBeLessThan(score_ps);
+    expect(Number.isFinite(score_ws)).toBe(true);
+    expect(Number.isFinite(score_ps)).toBe(true);
+  });
+
+  it("efficient version also gives lower score for well-separated cosine clusters", () => {
+    const well_separated = [
+      [1, 0.05], [0.95, 0.1],
+      [0.05, 1], [0.1, 0.95],
+    ];
+    const poorly_separated = [
+      [1, 0.9], [0.9, 1],
+      [1, 1.1], [1.1, 0.9],
+    ];
+
+    const score_ws = davies_bouldin_efficient(well_separated, [0, 0, 1, 1], "cosine");
+    const score_ps = davies_bouldin_efficient(poorly_separated, [0, 0, 1, 1], "cosine");
+
+    expect(score_ws).toBeLessThan(score_ps);
+    expect(Number.isFinite(score_ws)).toBe(true);
+  });
+
+  // AC#3: euclidean results are unchanged (verified by all existing Euclidean tests passing).
+
+  // AC#4: clusters whose Euclidean mean lies near the origin (near-antipodal members).
+  // cluster_centroid normalises the mean to a unit vector so the centroid representation
+  // is semantically correct for cosine space.  Note: because cluster_dispersion and
+  // pairwise_distance_matrix both re-normalise internally, the DB *score* is numerically
+  // the same with or without pre-normalisation for any non-zero mean — this test verifies
+  // the API contract (finite, positive, consistent between both functions) rather than a
+  // change in the numerical output.  Exactly-antipodal points (mean = [0,…,0]) remain an
+  // undefined case; the test uses a small directional bias so each cluster has a clear
+  // residual direction.
+  it("produces a finite sensible score when clusters contain near-antipodal unit vectors", () => {
+    const X = [
+      // Cluster 0: nearly antipodal along x-axis, small +y bias → centroid direction [0, 1].
+      [1, 0.05],   // near +x
+      [-1, 0.05],  // near -x
+      // Cluster 1: nearly antipodal along y-axis, small +x bias → centroid direction [1, 0].
+      [0.05, 1],   // near +y
+      [0.05, -1],  // near -y
+    ];
+    const labels = [0, 0, 1, 1];
+
+    const score = davies_bouldin(X, labels, "cosine");
+    const score_eff = davies_bouldin_efficient(X, labels, "cosine");
+
+    // Must be a finite positive number – not NaN, not Infinity, not zero.
+    expect(Number.isFinite(score)).toBe(true);
+    expect(score).toBeGreaterThan(0);
+    // Both functions must agree.
+    expect(score_eff).toBeCloseTo(score, 5);
+  });
+});
