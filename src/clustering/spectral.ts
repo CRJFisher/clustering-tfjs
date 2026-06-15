@@ -418,12 +418,19 @@ export class SpectralClustering
         './spectral_optimization'
       );
 
-      const result = await intensive_parameter_sweep(
-        x_tensor,
-        this.params,
-        this.compute_embedding_from_affinity.bind(this),
-        SpectralClustering.compute_affinity_matrix,
-      );
+      let result;
+      try {
+        result = await intensive_parameter_sweep(
+          x_tensor,
+          this.params,
+          this.compute_embedding_from_affinity.bind(this),
+          SpectralClustering.compute_affinity_matrix,
+        );
+      } catch (err) {
+        U.dispose();
+        x_tensor.dispose();
+        throw err;
+      }
 
       this.labels_ = result.labels;
 

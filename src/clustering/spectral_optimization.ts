@@ -97,6 +97,9 @@ export async function validation_based_optimization(
  * Optimized: computes the eigendecomposition (via embedding) only ONCE per
  * gamma value, then reuses it across all metric/attempt combinations.
  * This reduces eigendecompositions from 9×(1+3×3)=90 to just 9.
+ *
+ * @throws {Error} If every gamma value produces a degenerate embedding so that
+ *   no valid clustering is found.
  */
 export async function intensive_parameter_sweep(
   X: tf.Tensor2D,
@@ -131,15 +134,14 @@ export async function intensive_parameter_sweep(
   // Process each gamma value: compute affinity + embedding ONCE,
   // then run all k-means variations against the cached embedding.
   for (const gamma of gamma_range) {
-    const affinity_matrix = compute_affinity_matrix(X, {
-      ...params,
-      gamma,
-    });
-
-    const embedding = await compute_embedding_from_affinity(affinity_matrix);
-    affinity_matrix.dispose(); // No longer needed after embedding is computed
-
+    let embedding: tf.Tensor2D | null = null;
     try {
+      const affinity_matrix = compute_affinity_matrix(X, { ...params, gamma });
+      try {
+        embedding = await compute_embedding_from_affinity(affinity_matrix);
+      } finally {
+        affinity_matrix.dispose(); // Dispose regardless of embedding success
+      }
       // Phase A: non-validation k-means with n_init=10
       const km = new KMeans({
         n_clusters: params.n_clusters,
@@ -220,7 +222,7 @@ export async function intensive_parameter_sweep(
     } catch {
       // This gamma produced a degenerate embedding or threw during scoring — skip it
     } finally {
-      embedding.dispose(); // Guaranteed cleanup
+      embedding?.dispose(); // Guaranteed cleanup
     }
   }
 

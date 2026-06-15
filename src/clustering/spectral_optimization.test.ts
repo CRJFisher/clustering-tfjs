@@ -150,7 +150,7 @@ describe("intensive_parameter_sweep", () => {
     try {
       await expect(
         intensive_parameter_sweep(X, params, degenerate_embedding, trivial_affinity),
-      ).rejects.toThrow();
+      ).rejects.toThrow(/all gamma attempts produced degenerate embeddings/);
     } finally {
       X.dispose();
     }

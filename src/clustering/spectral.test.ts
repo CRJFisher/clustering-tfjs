@@ -66,4 +66,21 @@ describe("SpectralClustering – fit_predict output contract", () => {
     const labels = await sc.fit_predict(X);
     expect(labels.length).toBe(X.length);
   });
+
+  it("returns labels array of length n_samples via intensive_parameter_sweep", async () => {
+    const X = [
+      [0, 0], [0.1, 0.1], [0.2, 0],
+      [5, 5], [5.1, 5.1], [5.2, 5],
+      [10, 0], [10.1, 0.1], [10.2, 0],
+    ];
+    const sc = new SpectralClustering({
+      n_clusters: 3,
+      random_state: 42,
+      intensive_parameter_sweep: true,
+      affinity: 'rbf',
+      gamma_range: [1.0],
+    });
+    const labels = await sc.fit_predict(X);
+    expect(labels.length).toBe(X.length);
+  });
 });
