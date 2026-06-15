@@ -238,6 +238,33 @@ describe('HDBSCAN – API surface', () => {
     await expect(model.fit([])).rejects.toThrow('at least one sample');
   });
 
+  it('preserves prior fitted state when fit throws on invalid input', async () => {
+    const model = new HDBSCAN({ min_cluster_size: 4, store_exemplars: true });
+    await model.fit(X);
+
+    const saved_labels = model.labels_!.slice();
+    const saved_probs = model.probabilities_!.slice();
+    const saved_exemplars = new Map(model.exemplar_indices_!);
+
+    // Empty input: n === 0 guard fires before dispose(), state must survive.
+    await expect(model.fit([])).rejects.toThrow('at least one sample');
+    expect(model.labels_).toEqual(saved_labels);
+    expect(model.probabilities_).toEqual(saved_probs);
+    expect(model.exemplar_indices_).toEqual(saved_exemplars);
+
+    // Ragged input: distance_matrix throws before dispose() is reached,
+    // state must also survive.
+    await expect(
+      model.fit([
+        [1, 2],
+        [1, 2, 3],
+      ]),
+    ).rejects.toThrow('rectangular');
+    expect(model.labels_).toEqual(saved_labels);
+    expect(model.probabilities_).toEqual(saved_probs);
+    expect(model.exemplar_indices_).toEqual(saved_exemplars);
+  });
+
   it('labels a single sample noise (deliberate deviation: sklearn raises)', async () => {
     const with_ex = new HDBSCAN({ min_cluster_size: 4, store_exemplars: true });
     await with_ex.fit([[1, 2]]);

@@ -167,11 +167,11 @@ export class HDBSCAN
     const D = await this.distance_matrix(X);
     const n = D.length;
 
-    this.dispose();
-
     if (n === 0) {
       throw new Error('Input data must contain at least one sample.');
     }
+
+    this.dispose();
     // Intentional deviation from scikit-learn (which raises for n_samples=1):
     // a lone sample is trivially noise, so degrade gracefully.
     if (n === 1) {
