@@ -171,6 +171,9 @@ export class HDBSCAN
       throw new Error('Input data must contain at least one sample.');
     }
 
+    // All input validation must pass before dispose() so a failed re-fit
+    // leaves the prior fitted state intact (distance_matrix validates shape;
+    // the n===0 guard above covers empty input).
     this.dispose();
     // Intentional deviation from scikit-learn (which raises for n_samples=1):
     // a lone sample is trivially noise, so degrade gracefully.

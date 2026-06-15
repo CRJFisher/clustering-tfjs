@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>task-52 — correctness-bug fixes overview</title>
+<style>
+  :root {
+    --ivory:#f7f3ec; --slate:#2e2c28; --clay:#b5683f; --olive:#6f7a4e;
+    --oat:#e7ddca; --rust:#8f3a23; --g1:#cfc7b7; --g2:#9a9182; --g3:#6b6458;
+    --serif: ui-serif, Georgia, "Iowan Old Style", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--ivory); color:var(--slate); font-family:var(--sans); line-height:1.5; }
+  nav.top { position:sticky; top:0; z-index:10; background:var(--ivory); border-bottom:1px solid var(--oat);
+    display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; padding:.6rem 5%; }
+  nav.top .crumb { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--g2); margin-right:auto; }
+  nav.top .grp { display:flex; gap:.3rem; align-items:center; }
+  nav.top a, nav.top .pending, nav.top .here {
+    font-family:var(--mono); font-size:.72rem; text-decoration:none; padding:.28rem .58rem;
+    border-radius:999px; border:1px solid var(--oat); background:#fff; color:var(--slate); }
+  nav.top a:hover { border-color:var(--clay); }
+  nav.top .here { background:var(--slate); color:var(--ivory); border-color:var(--slate); }
+  nav.top .pending { color:var(--g2); background:transparent; border-style:dashed; }
+  nav.top .pending small { color:var(--g2); }
+  main { width:90%; max-width:1600px; margin-inline:auto; padding:2rem 0 5rem; }
+  section { scroll-margin-top:62px; margin-bottom:3rem; }
+  .eyebrow { font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--clay); margin:0 0 .3rem; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:2rem; margin:.1rem 0 .6rem; }
+  h2 { font-family:var(--serif); font-weight:600; font-size:1.35rem; margin:0 0 1rem; }
+  .meta { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .chip { font-family:var(--mono); font-size:.72rem; background:#fff; border:1px solid var(--oat);
+    border-radius:999px; padding:.25rem .6rem; }
+  figure { margin:0; } figcaption { font-size:.85rem; color:var(--g3); margin-top:.6rem; font-style:italic; }
+  .map { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1rem; }
+  .map svg { display:block; width:100%; height:auto; }
+  aside.callout { border-left:4px solid var(--clay); background:#fff; border-radius:0 12px 12px 0;
+    padding:1rem 1.2rem; }
+  aside.callout .k { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.1em;
+    color:var(--clay); margin-bottom:.3rem; }
+  aside.callout .big { font-family:var(--serif); font-size:1.05rem; }
+  /* subtask cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.9rem; }
+  .card { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:.9rem 1rem;
+    display:flex; flex-direction:column; gap:.4rem; }
+  .card .id { font-family:var(--mono); font-size:.72rem; color:var(--clay); }
+  .card .ttl { font-family:var(--serif); font-size:1rem; line-height:1.25; }
+  .card .area { font-family:var(--mono); font-size:.68rem; color:var(--g2); text-transform:uppercase; letter-spacing:.06em; }
+  .card .foot { margin-top:auto; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+  .tag { font-family:var(--mono); font-size:.66rem; padding:.18rem .45rem; border-radius:999px; }
+  .t-doc { background:var(--olive); color:#fff; text-decoration:none; }
+  .t-pending { background:transparent; border:1px dashed var(--g1); color:var(--g2); }
+  .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
+  .d-conf { background:var(--rust); } .d-plaus { background:var(--clay); }
+  @media (max-width:760px){ }
+</style>
+</head>
+<body>
+<nav class="top">
+  <span class="crumb">task-52 family</span>
+  <span class="here" aria-current="page">overview</span>
+  <span class="grp">
+    <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
+    <span class="pending">.6 spectral empty labels <small>· not yet generated</small></span>
+    <span class="pending">.7 spectral dispose medoid_indices_ <small>· not yet generated</small></span>
+    <span class="pending">.8 find_optimal_clusters threshold <small>· not yet generated</small></span>
+    <span class="pending">.9 agglomerative symmetrisation <small>· not yet generated</small></span>
+    <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
+    <span class="pending">.11 Lanczos k=5 overshoot <small>· not yet generated</small></span>
+  </span>
+</nav>
+
+<main>
+  <header>
+    <p class="eyebrow">Correctness review · fixes/outstanding-backlog-tasks</p>
+    <h1>Ten correctness findings from a code review, one fix per sub-task</h1>
+    <div class="meta">
+      <span class="chip">6 confirmed bugs</span>
+      <span class="chip">4 plausible (investigate)</span>
+      <span class="chip">gate: fix before merge</span>
+      <span class="chip">each fix gets a test that would have caught it</span>
+    </div>
+  </header>
+
+  <section id="goal">
+    <h2>What this task delivers</h2>
+    <aside class="callout">
+      <div class="k">Intention</div>
+      <div class="big">A multi-angle review of the merge branch surfaced correctness bugs across the clustering stack — HDBSCAN, spectral, agglomerative, Davies–Bouldin validation, eigendecomposition, and model selection. Each finding becomes one sub-task. Confirmed bugs are fixed before merge; plausible ones are fixed or explicitly recorded as won't-fix with justification. Every fix ships with a regression test that reproduces the original defect.</div>
+    </aside>
+  </section>
+
+  <section id="spread">
+    <h2>Where the ten findings land across the stack</h2>
+    <figure>
+      <div class="map">
+        <svg viewBox="0 0 880 250" role="img" aria-label="Findings grouped by subsystem across the clustering library">
+          <!-- column headers -->
+          <g font-family="ui-monospace,monospace" font-size="11" fill="#6b6458">
+            <text x="110" y="28" text-anchor="middle">HDBSCAN</text>
+            <text x="300" y="28" text-anchor="middle">Spectral</text>
+            <text x="490" y="28" text-anchor="middle">Agglomerative</text>
+            <text x="660" y="28" text-anchor="middle">Validation / metrics</text>
+            <text x="820" y="28" text-anchor="middle">Eigen</text>
+          </g>
+          <line x1="20" y1="38" x2="860" y2="38" stroke="#e7ddca"/>
+          <!-- nodes -->
+          <g font-family="ui-monospace,monospace" font-size="10">
+            <!-- .5 highlighted -->
+            <rect x="40" y="56" width="150" height="46" rx="10" fill="#fbeae3" stroke="#8f3a23" stroke-width="1.8"/>
+            <text x="115" y="76" text-anchor="middle" fill="#8f3a23">.5 dispose order</text>
+            <text x="115" y="92" text-anchor="middle" fill="#8f3a23">(this page)</text>
+
+            <rect x="225" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="300" y="80" text-anchor="middle" fill="#2e2c28">.6 empty labels</text>
+            <rect x="225" y="108" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="300" y="132" text-anchor="middle" fill="#2e2c28">.7 dispose medoids</text>
+
+            <rect x="415" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="490" y="80" text-anchor="middle" fill="#2e2c28">.9 symmetrise</text>
+
+            <rect x="595" y="56" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="675" y="80" text-anchor="middle" fill="#2e2c28">.8 find_optimal</text>
+            <rect x="595" y="108" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="675" y="132" text-anchor="middle" fill="#2e2c28">.10 silhouette</text>
+
+            <rect x="775" y="56" width="90" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="820" y="80" text-anchor="middle" fill="#2e2c28">.11 Lanczos</text>
+          </g>
+          <!-- legend -->
+          <g font-family="ui-monospace,monospace" font-size="10" fill="#6b6458">
+            <rect x="40" y="200" width="11" height="11" rx="3" fill="#8f3a23"/>
+            <text x="58" y="210">confirmed bug · fixed before merge</text>
+            <rect x="300" y="200" width="11" height="11" rx="3" fill="#b5683f"/>
+            <text x="318" y="210">plausible · investigate, fix or document won't-fix</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>The findings cluster by subsystem; this companion documents the HDBSCAN <code>fit()</code> state-corruption fix (.5). Other sub-tasks gain their own pages as they are picked up.</figcaption>
+    </figure>
+  </section>
+
+  <section id="subtasks">
+    <h2>The sub-tasks</h2>
+    <div class="cards">
+      <div class="card">
+        <span class="id">task-52.5</span>
+        <span class="ttl">HDBSCAN dispose() runs before the empty-input guard</span>
+        <span class="area">HDBSCAN · fit()</span>
+        <div class="foot"><span class="dot d-conf"></span>
+          <a class="tag t-doc" href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">open detail →</a>
+        </div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.6</span>
+        <span class="ttl">SpectralClustering returns empty labels array when all gamma attempts fail</span>
+        <span class="area">Spectral</span>
+        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.7</span>
+        <span class="ttl">SpectralClustering dispose() not clearing medoid_indices_</span>
+        <span class="area">Spectral · dispose()</span>
+        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.8</span>
+        <span class="ttl">find_optimal_clusters passes distance_threshold via algorithm_params to Agglomerative</span>
+        <span class="area">Model selection</span>
+        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.9</span>
+        <span class="ttl">Agglomerative compute_distance_matrix missing symmetrisation vs pairwise</span>
+        <span class="area">Agglomerative</span>
+        <div class="foot"><span class="dot d-plaus"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.10</span>
+        <span class="ttl">silhouette_score returns 0 silently for all-noise input instead of throwing</span>
+        <span class="area">Validation / metrics</span>
+        <div class="foot"><span class="dot d-plaus"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+      <div class="card">
+        <span class="id">task-52.11</span>
+        <span class="ttl">Lanczos k=5 overshoot cap causing path divergence for 5-component graphs</span>
+        <span class="area">Eigendecomposition</span>
+        <div class="foot"><span class="dot d-plaus"></span><span class="tag t-pending">detail not yet generated</span></div>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>

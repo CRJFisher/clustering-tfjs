@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>HDBSCAN fit() — dispose order fix (as built)</title>
+<style>
+  :root {
+    --ivory:#f7f3ec; --slate:#2e2c28; --clay:#b5683f; --olive:#6f7a4e;
+    --oat:#e7ddca; --rust:#8f3a23; --g1:#cfc7b7; --g2:#9a9182; --g3:#6b6458;
+    --serif: ui-serif, Georgia, "Iowan Old Style", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin:0; background:var(--ivory); color:var(--slate);
+    font-family:var(--sans); line-height:1.5;
+  }
+  nav.top {
+    position:sticky; top:0; z-index:10; background:var(--ivory);
+    border-bottom:1px solid var(--oat);
+    display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+    padding:.6rem 5%;
+  }
+  nav.top .crumb { font-family:var(--mono); font-size:.7rem; text-transform:uppercase;
+    letter-spacing:.08em; color:var(--g2); margin-right:auto; }
+  nav.top a, nav.top .here {
+    font-family:var(--mono); font-size:.72rem; text-decoration:none;
+    padding:.28rem .6rem; border-radius:999px; border:1px solid var(--oat);
+    color:var(--slate); background:#fff;
+  }
+  nav.top .here { background:var(--slate); color:var(--ivory); border-color:var(--slate); }
+  nav.top .built { background:var(--olive); color:var(--ivory); border-color:var(--olive); }
+  nav.outline {
+    position:sticky; top:42px; z-index:9; background:var(--ivory);
+    border-bottom:1px solid var(--oat); padding:.45rem 5%;
+    display:flex; flex-wrap:wrap; gap:.4rem;
+  }
+  nav.outline a {
+    font-family:var(--mono); font-size:.7rem; text-decoration:none; color:var(--g3);
+    padding:.2rem .5rem; border-radius:999px;
+  }
+  nav.outline a:hover { background:var(--oat); color:var(--slate); }
+  main { width:90%; max-width:1600px; margin-inline:auto; padding:2rem 0 5rem; }
+  section { scroll-margin-top:96px; margin-bottom:3rem; }
+  .eyebrow { font-family:var(--mono); font-size:.72rem; text-transform:uppercase;
+    letter-spacing:.12em; color:var(--clay); margin:0 0 .3rem; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:2.1rem; margin:.1rem 0 .6rem; }
+  h2 { font-family:var(--serif); font-weight:600; font-size:1.4rem; margin:0 0 1rem; }
+  .meta { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .chip { font-family:var(--mono); font-size:.72rem; background:#fff; border:1px solid var(--oat);
+    border-radius:999px; padding:.25rem .6rem; }
+  .chip strong { color:var(--rust); }
+  .chip.ok strong { color:var(--olive); }
+  .badge-built { font-family:var(--mono); font-size:.72rem; text-transform:uppercase;
+    letter-spacing:.08em; background:var(--olive); color:var(--ivory);
+    border-radius:999px; padding:.25rem .7rem; display:inline-flex; align-items:center; gap:.35rem; }
+  .badge-built::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--ivory); }
+  figure { margin:0; }
+  figcaption { font-size:.85rem; color:var(--g3); margin-top:.6rem; font-style:italic; }
+  .legend { display:flex; flex-wrap:wrap; gap:1rem; margin-top:.8rem; font-family:var(--mono);
+    font-size:.72rem; color:var(--g3); }
+  .legend span::before { content:""; display:inline-block; width:11px; height:11px;
+    border-radius:3px; margin-right:.4rem; vertical-align:-1px; }
+  .lg-add::before { background:var(--olive); }
+  .lg-mod::before { background:var(--clay); }
+  .lg-bad::before { background:var(--rust); }
+
+  /* before/after grid */
+  .ba { display:grid; grid-template-columns:1fr auto 1fr; gap:1rem; align-items:stretch; }
+  .ba .arrow { display:flex; align-items:center; justify-content:center;
+    font-family:var(--mono); color:var(--clay); font-size:1.6rem; }
+  .panel { background:#fff; border:1px solid var(--oat); border-radius:12px; overflow:hidden; }
+  .panel .ptitle { font-family:var(--mono); font-size:.7rem; text-transform:uppercase;
+    letter-spacing:.1em; padding:.55rem .8rem; border-bottom:1px solid var(--oat); }
+  .ptitle.cur { background:#fbeae3; color:var(--rust); }
+  .ptitle.new { background:#eef0e4; color:var(--olive); }
+  .panel svg { display:block; width:100%; height:auto; }
+
+  /* code */
+  .code { background:#23211d; border-radius:12px; overflow:hidden; }
+  .code .file { font-family:var(--mono); font-size:.72rem; color:#cdbfa3;
+    padding:.5rem .9rem; border-bottom:1px solid #3a372f; display:flex; gap:.6rem; align-items:center; }
+  .code .file .grow { margin-left:auto; color:#9fae6f; }
+  .code pre { margin:0; padding:1rem .9rem; overflow-x:auto; }
+  .code code { font-family:var(--mono); font-size:.82rem; line-height:1.7; color:#e9e2d4;
+    white-space:pre; }
+  .kw { color:#c98a5e; } .str{color:#9fae6f;} .cm{color:#6b675c; font-style:italic;}
+  .fn{color:#d8c98a;} .num{color:#c98a5e;}
+  .ln { color:#54504688; user-select:none; display:inline-block; width:2.4em; text-align:right;
+    margin-right:1em; }
+  .add { display:inline-block; width:100%; background:rgba(111,122,78,.28); }
+  .del { display:inline-block; width:100%; background:rgba(143,58,35,.32); }
+  .hl  { display:inline-block; width:100%; background:rgba(181,104,63,.30); }
+  .review { color:#c98a5e; font-style:italic; }
+
+  /* timeline */
+  .tl { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1.2rem 1.4rem; }
+  .tl .row { display:grid; grid-template-columns:130px 24px 1fr; gap:.5rem; align-items:start; }
+  .tl .when { font-family:var(--mono); font-size:.72rem; color:var(--g2); padding-top:.1rem; }
+  .tl .dotcol { display:flex; flex-direction:column; align-items:center; }
+  .tl .dot { width:14px; height:14px; border-radius:50%; margin-top:.15rem; }
+  .tl .conn { width:2px; flex:1; min-height:34px; background:var(--oat); }
+  .tl .row:last-child .conn { display:none; }
+  .tl .body { padding-bottom:1.1rem; }
+  .tl .body b { font-family:var(--serif); }
+  .tl .state { font-family:var(--mono); font-size:.72rem; margin-top:.2rem; }
+  .d-ok { background:var(--olive); } .d-bad { background:var(--rust); } .d-act { background:var(--clay); }
+  .s-ok { color:var(--olive); } .s-bad { color:var(--rust); }
+
+  aside.callout { border-left:4px solid var(--clay); background:#fff;
+    border-radius:0 12px 12px 0; padding:1rem 1.2rem; }
+  aside.callout.bad { border-left-color:var(--rust); }
+  aside.callout.ok { border-left-color:var(--olive); }
+  aside.callout .k { font-family:var(--mono); font-size:.7rem; text-transform:uppercase;
+    letter-spacing:.1em; color:var(--clay); margin-bottom:.3rem; }
+  aside.callout.bad .k { color:var(--rust); }
+  aside.callout.ok .k { color:var(--olive); }
+  aside.callout .big { font-family:var(--serif); font-size:1.05rem; }
+
+  .scope { background:#fff; border:1px solid var(--oat); border-radius:12px; overflow:hidden; }
+  .scope .srow { display:grid; grid-template-columns:24px 1fr; gap:.7rem; align-items:start;
+    padding:.8rem 1.1rem; border-top:1px solid var(--oat); }
+  .scope .srow:first-child { border-top:none; }
+  .scope .sdot { width:13px; height:13px; border-radius:50%; margin-top:.25rem; }
+  .scope .sdot.no { background:var(--g2); }
+  .scope .sdot.yes { background:var(--olive); }
+  .scope .stitle { font-family:var(--serif); font-size:1.02rem; }
+  .scope .swhy { font-size:.85rem; color:var(--g3); margin-top:.15rem; }
+  .scope .stag { font-family:var(--mono); font-size:.68rem; text-transform:uppercase;
+    letter-spacing:.06em; color:var(--g2); }
+
+  .where { font-family:var(--mono); font-size:.8rem; background:var(--oat);
+    border-radius:6px; padding:.15rem .45rem; }
+
+  /* test steps */
+  .steps { display:grid; gap:.7rem; }
+  .step { display:grid; grid-template-columns:40px 1fr; gap:.7rem; align-items:start; }
+  .step .badge { width:34px; height:34px; border-radius:50%; display:flex; align-items:center;
+    justify-content:center; font-family:var(--mono); font-weight:600; color:#fff; font-size:.85rem; }
+  .b-ok{background:var(--olive);} .b-throw{background:var(--rust);} .b-check{background:var(--clay);}
+  .step .scard { background:#fff; border:1px solid var(--oat); border-radius:10px; padding:.6rem .9rem; }
+  .step .scode { font-family:var(--mono); font-size:.8rem; }
+  .step .note { font-size:.85rem; color:var(--g3); margin-top:.2rem; }
+
+  footer.stamp { font-family:var(--mono); font-size:.7rem; color:var(--g2);
+    border-top:1px solid var(--oat); padding-top:1rem; margin-top:2rem; }
+
+  @media (max-width:760px) {
+    .ba { grid-template-columns:1fr; }
+    .ba .arrow { transform:rotate(90deg); }
+    .tl .row { grid-template-columns:96px 24px 1fr; }
+  }
+</style>
+</head>
+<body>
+<nav class="top">
+  <span class="crumb">task-52 · subtask .5</span>
+  <a href="task-52 - Fix-correctness-bugs-identified-in-fixes-outstanding-backlog-tasks-review.overview.html">↑ task-52 overview</a>
+  <span class="here built" aria-current="page">.5 dispose order · as built</span>
+</nav>
+<nav class="outline">
+  <a href="#flow">Before / after flow</a>
+  <a href="#why">Why ordering corrupted state</a>
+  <a href="#fix">The committed code</a>
+  <a href="#test">State-preservation test</a>
+  <a href="#scope">In scope vs out of scope</a>
+</nav>
+
+<main>
+  <header>
+    <p class="eyebrow">HDBSCAN · fit() · validation ordering · committed</p>
+    <h1>The n===0 guard now runs before dispose() — a failed re-fit leaves a good model intact</h1>
+    <div class="meta">
+      <span class="badge-built">As built · matches committed code</span>
+      <span class="chip">src/clustering/<strong>hdbscan.ts</strong></span>
+      <span class="chip">fit() · lines <strong>166–185</strong></span>
+      <span class="chip ok">test <strong>+1</strong> · hdbscan.test.ts</span>
+      <span class="chip">change: reorder 2 statements + comment</span>
+    </div>
+  </header>
+
+  <section id="flow">
+    <h2>What shipped: the n===0 guard moved above dispose()</h2>
+    <figure>
+      <div class="ba">
+        <div class="panel">
+          <div class="ptitle cur">Before — fit([])</div>
+          <svg viewBox="0 0 280 360" role="img" aria-label="Before flow: distance_matrix, then dispose wipes state, then n===0 throws">
+            <defs>
+              <marker id="arr1" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#6b6458"/>
+              </marker>
+              <marker id="arrR" markerWidth="9" markerHeight="9" refX="7" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill="#8f3a23"/>
+              </marker>
+            </defs>
+            <rect x="60" y="14" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="140" y="33" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2e2c28">distance_matrix(X)</text>
+            <text x="140" y="47" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#9a9182">n = 0</text>
+            <line x1="140" y1="54" x2="140" y2="84" stroke="#6b6458" stroke-width="1.6" marker-end="url(#arr1)"/>
+
+            <rect x="50" y="86" width="180" height="56" rx="10" fill="#fbeae3" stroke="#8f3a23" stroke-width="1.8"/>
+            <text x="140" y="108" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">this.dispose()</text>
+            <text x="140" y="126" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#8f3a23">labels_/probs_/exemplars_ = null</text>
+            <line x1="140" y1="142" x2="140" y2="172" stroke="#6b6458" stroke-width="1.6" marker-end="url(#arr1)"/>
+
+            <path d="M140,174 L210,212 L140,250 L70,212 Z" fill="#fff" stroke="#9a9182"/>
+            <text x="140" y="208" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2e2c28">n === 0 ?</text>
+            <text x="140" y="223" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4e">yes</text>
+            <line x1="140" y1="250" x2="140" y2="282" stroke="#8f3a23" stroke-width="1.8" marker-end="url(#arrR)"/>
+
+            <rect x="50" y="284" width="180" height="58" rx="10" fill="#fff" stroke="#8f3a23" stroke-width="1.8"/>
+            <text x="140" y="306" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">throw Error</text>
+            <text x="140" y="324" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="10.5" fill="#8f3a23">…but state already gone</text>
+          </svg>
+        </div>
+
+        <div class="arrow">→</div>
+
+        <div class="panel">
+          <div class="ptitle new">After (committed) — fit([])</div>
+          <svg viewBox="0 0 280 360" role="img" aria-label="After flow: distance_matrix, then n===0 throws before dispose, state untouched">
+            <rect x="60" y="14" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+            <text x="140" y="33" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2e2c28">distance_matrix(X)</text>
+            <text x="140" y="47" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#9a9182">n = 0</text>
+            <line x1="140" y1="54" x2="140" y2="84" stroke="#6b6458" stroke-width="1.6" marker-end="url(#arr1)"/>
+
+            <path d="M140,86 L210,124 L140,162 L70,124 Z" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.8"/>
+            <text x="140" y="120" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#2e2c28">n === 0 ?</text>
+            <text x="140" y="135" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6f7a4e">yes</text>
+            <line x1="140" y1="162" x2="140" y2="194" stroke="#8f3a23" stroke-width="1.8" marker-end="url(#arrR)"/>
+
+            <rect x="50" y="196" width="180" height="58" rx="10" fill="#fff" stroke="#8f3a23" stroke-width="1.8"/>
+            <text x="140" y="218" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">throw Error</text>
+            <text x="140" y="236" text-anchor="middle" font-family="ui-serif,Georgia,serif" font-size="10.5" fill="#6f7a4e">state never touched ✓</text>
+
+            <rect x="50" y="284" width="180" height="56" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.8" stroke-dasharray="5 4"/>
+            <text x="140" y="306" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#6f7a4e">this.dispose()</text>
+            <text x="140" y="324" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#6f7a4e">only on valid input (n≥1)</text>
+          </svg>
+        </div>
+      </div>
+      <figcaption>The committed code reorders the two statements: the <code>n===0</code> guard now sits above <code>dispose()</code>, so an empty input throws before any state is cleared. <code>dispose()</code> runs only once the input is known valid.</figcaption>
+    </figure>
+    <div class="legend">
+      <span class="lg-bad">erases live model state</span>
+      <span class="lg-add">safe (no state change)</span>
+      <span class="lg-mod">moved node</span>
+    </div>
+  </section>
+
+  <section id="why">
+    <h2>Why the old ordering corrupted state: fields disappeared before the error</h2>
+    <figure>
+      <div class="tl">
+        <div class="row">
+          <div class="when">call #1</div>
+          <div class="dotcol"><div class="dot d-ok"></div><div class="conn"></div></div>
+          <div class="body">
+            <b>fit(valid_data)</b> succeeds
+            <div class="state s-ok">labels_ = [0,0,1,…] · probabilities_ = [.9,…] · exemplar_indices_ = Map{…}</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="when">call #2 · step 1</div>
+          <div class="dotcol"><div class="dot d-act"></div><div class="conn"></div></div>
+          <div class="body">
+            <b>fit([])</b> → <code>distance_matrix([])</code> returns, <code>n = 0</code>
+            <div class="state s-ok">state still intact</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="when">call #2 · step 2</div>
+          <div class="dotcol"><div class="dot d-bad"></div><div class="conn"></div></div>
+          <div class="body">
+            <b>this.dispose()</b> ran <em>before</em> validation
+            <div class="state s-bad">labels_ = null · probabilities_ = null · exemplar_indices_ = null</div>
+          </div>
+        </div>
+        <div class="row">
+          <div class="when">call #2 · step 3</div>
+          <div class="dotcol"><div class="dot d-bad"></div></div>
+          <div class="body">
+            <b>throw "Input data must contain at least one sample."</b>
+            <div class="state s-bad">caller catches the error — but the good model from call #1 was permanently gone</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>The error was recoverable; the wiped state was not. Between step 2 and step 3 the model silently became unusable, even though the operation that "failed" never legitimately replaced it. The committed reorder removes this gap entirely.</figcaption>
+    </figure>
+    <aside class="callout bad">
+      <div class="k">Risk scenario this closes</div>
+      <div class="big">A caller re-trains on accidentally-empty input (a filtered-to-nothing batch), catches the throw, and assumes the prior fitted model is intact. With the fix it now is — <code>labels_</code>, <code>probabilities_</code>, and <code>exemplar_indices_</code> survive a failed re-fit.</div>
+    </aside>
+  </section>
+
+  <section id="fix">
+    <h2>The committed code: src/clustering/hdbscan.ts, fit()</h2>
+    <figure>
+      <div class="code">
+        <div class="file">src/clustering/hdbscan.ts · fit() <span class="grow">lines 166–185 · committed</span></div>
+<pre><code><span class="ln">166</span><span class="kw">async</span> <span class="fn">fit</span>(X: DataMatrix): Promise&lt;<span class="kw">void</span>&gt; {
+<span class="ln">167</span>  <span class="kw">const</span> D = <span class="kw">await</span> <span class="kw">this</span>.<span class="fn">distance_matrix</span>(X);
+<span class="ln">168</span>  <span class="kw">const</span> n = D.length;
+<span class="ln">169</span>
+<span class="add"><span class="ln">170</span>  <span class="kw">if</span> (n === <span class="num">0</span>) {</span>
+<span class="add"><span class="ln">171</span>    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'Input data must contain at least one sample.'</span>);</span>
+<span class="add"><span class="ln">172</span>  }</span>
+<span class="ln">173</span>
+<span class="add"><span class="ln">174</span>  <span class="cm review">// All input validation must pass before dispose() so a failed re-fit</span></span>
+<span class="add"><span class="ln">175</span>  <span class="cm review">// leaves the prior fitted state intact (distance_matrix validates shape;</span></span>
+<span class="add"><span class="ln">176</span>  <span class="cm review">// the n===0 guard above covers empty input).</span></span>
+<span class="hl"><span class="ln">177</span>  <span class="kw">this</span>.<span class="fn">dispose</span>();</span>
+<span class="ln">178</span>  <span class="cm">// Intentional deviation from scikit-learn (which raises for n_samples=1):</span>
+<span class="ln">179</span>  <span class="cm">// a lone sample is trivially noise, so degrade gracefully.</span>
+<span class="ln">180</span>  <span class="kw">if</span> (n === <span class="num">1</span>) {
+<span class="ln">181</span>    <span class="kw">this</span>.labels_ = [<span class="num">-1</span>];
+<span class="ln">182</span>    <span class="kw">this</span>.probabilities_ = [<span class="num">0</span>];
+<span class="ln">183</span>    <span class="kw">this</span>.exemplar_indices_ = <span class="kw">this</span>.params.store_exemplars ? <span class="kw">new</span> Map() : <span class="kw">null</span>;
+<span class="ln">184</span>    <span class="kw">return</span>;
+<span class="ln">185</span>  }
+<span class="ln">…</span>  <span class="cm">// rest of the algorithm unchanged</span>
+}</code></pre>
+      </div>
+      <figcaption>The committed diff: the <code>n===0</code> guard (170–172) precedes <code>dispose()</code> (177). Lines 174–176 are the review-added comment documenting the ordering invariant; the highlighted line 177 is where <code>dispose()</code> now sits — reached only for valid input.</figcaption>
+    </figure>
+    <aside class="callout ok">
+      <div class="k">Added during review</div>
+      <div class="big">The three-line comment above <code>dispose()</code> (lines 174–176) was added in review to make the ordering invariant explicit and self-documenting — corroborated by three reviewer lenses (information-architecture navigability and two cold reads). Without it, a future edit could silently reintroduce the bug by moving <code>dispose()</code> back up.</div>
+    </aside>
+  </section>
+
+  <section id="test">
+    <h2>The committed test: a failed re-fit is a no-op against a fitted model</h2>
+    <figure>
+      <div class="code">
+        <div class="file">src/clustering/hdbscan.test.ts <span class="grow">lines 241–266 · committed</span></div>
+<pre><code><span class="fn">it</span>(<span class="str">'preserves prior fitted state when fit throws on invalid input'</span>, <span class="kw">async</span> () =&gt; {
+  <span class="kw">const</span> model = <span class="kw">new</span> <span class="fn">HDBSCAN</span>({ min_cluster_size: <span class="num">4</span>, store_exemplars: <span class="kw">true</span> });
+  <span class="kw">await</span> model.<span class="fn">fit</span>(X);
+
+  <span class="kw">const</span> saved_labels = model.labels_!.<span class="fn">slice</span>();
+  <span class="kw">const</span> saved_probs = model.probabilities_!.<span class="fn">slice</span>();
+  <span class="kw">const</span> saved_exemplars = <span class="kw">new</span> <span class="fn">Map</span>(model.exemplar_indices_!);
+
+  <span class="cm">// Empty input: n === 0 guard fires before dispose(), state must survive.</span>
+  <span class="kw">await</span> <span class="fn">expect</span>(model.<span class="fn">fit</span>([])).rejects.<span class="fn">toThrow</span>(<span class="str">'at least one sample'</span>);
+  <span class="fn">expect</span>(model.labels_).<span class="fn">toEqual</span>(saved_labels);
+  <span class="fn">expect</span>(model.probabilities_).<span class="fn">toEqual</span>(saved_probs);
+  <span class="fn">expect</span>(model.exemplar_indices_).<span class="fn">toEqual</span>(saved_exemplars);
+
+  <span class="cm">// Ragged input: distance_matrix throws before dispose() is reached,</span>
+  <span class="cm">// state must also survive.</span>
+  <span class="kw">await</span> <span class="fn">expect</span>(model.<span class="fn">fit</span>([[<span class="num">1</span>,<span class="num">2</span>],[<span class="num">1</span>,<span class="num">2</span>,<span class="num">3</span>]])).rejects.<span class="fn">toThrow</span>(<span class="str">'rectangular'</span>);
+  <span class="fn">expect</span>(model.labels_).<span class="fn">toEqual</span>(saved_labels);
+  <span class="fn">expect</span>(model.probabilities_).<span class="fn">toEqual</span>(saved_probs);
+  <span class="fn">expect</span>(model.exemplar_indices_).<span class="fn">toEqual</span>(saved_exemplars);
+});</code></pre>
+      </div>
+      <figcaption>Two distinct failing re-fits — empty input (guard at 170) and ragged input (caught even earlier inside <code>distance_matrix</code>) — each followed by the same three assertions.</figcaption>
+    </figure>
+    <div class="steps">
+      <div class="step">
+        <div class="badge b-ok">1</div>
+        <div class="scard">
+          <div class="scode"><b>await model.fit(X)</b> · snapshot all three fields</div>
+          <div class="note">store_exemplars on, so the exemplar Map is populated and copied.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="badge b-throw">2</div>
+        <div class="scard">
+          <div class="scode"><b>model.fit([])</b> → rejects 'at least one sample'</div>
+          <div class="note">Empty input. Throws via the guard at line 170 — before dispose() at 177.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="badge b-throw">3</div>
+        <div class="scard">
+          <div class="scode"><b>model.fit([[1,2],[1,2,3]])</b> → rejects 'rectangular'</div>
+          <div class="note">A second, different failure that throws even earlier, inside distance_matrix(). Covers the guarantee across two error paths.</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="badge b-check">4</div>
+        <div class="scard">
+          <div class="scode"><b>after each throw:</b> labels_ / probabilities_ / exemplar_indices_ === snapshot</div>
+          <div class="note">All three fields equal their post-success values. None is null.</div>
+        </div>
+      </div>
+    </div>
+    <aside class="callout">
+      <div class="k">The invariant locked in</div>
+      <div class="big">A failed <code>fit()</code> never mutates the model. Either the input is valid and the model is fully replaced, or it is invalid and the prior model is left exactly as it was.</div>
+    </aside>
+  </section>
+
+  <section id="scope">
+    <h2>Reviewed and deliberately left out of scope</h2>
+    <figure>
+      <div class="scope">
+        <div class="srow">
+          <div class="sdot no"></div>
+          <div>
+            <div class="stitle">Mid-pipeline throws after dispose() still corrupt state</div>
+            <div class="swhy">For <code>n ≥ 2</code>, a failure deeper in the algorithm runs after <code>dispose()</code> has cleared state. Not addressed.</div>
+            <div class="stag">out of scope · YAGNI</div>
+          </div>
+        </div>
+        <div class="srow">
+          <div class="sdot no"></div>
+          <div>
+            <div class="stitle">Cross-estimator asymmetry with KMeans / Spectral</div>
+            <div class="swhy">HDBSCAN now preserves state on failed input; KMeans and Spectral do not. Left as-is.</div>
+            <div class="stag">intentional · per spec</div>
+          </div>
+        </div>
+      </div>
+      <figcaption>Both observations were noted in review and consciously not actioned — recorded here so the scope boundary is explicit.</figcaption>
+    </figure>
+  </section>
+
+  <footer class="stamp">
+    As-built record · matches committed code in src/clustering/hdbscan.ts (fit, lines 166–185) and src/clustering/hdbscan.test.ts (lines 241–266) · task-52.5
+  </footer>
+</main>
+</body>
+</html>
