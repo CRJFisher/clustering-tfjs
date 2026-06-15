@@ -217,10 +217,17 @@ export async function intensive_parameter_sweep(
           }
         }
       }
+    } catch {
+      // This gamma produced a degenerate embedding or threw during scoring — skip it
     } finally {
       embedding.dispose(); // Guaranteed cleanup
     }
   }
 
+  if (best_result.labels.length === 0) {
+    throw new Error(
+      'SpectralClustering: all gamma attempts produced degenerate embeddings — no valid clustering was found.',
+    );
+  }
   return best_result;
 }

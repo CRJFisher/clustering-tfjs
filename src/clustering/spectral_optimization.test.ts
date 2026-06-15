@@ -1,5 +1,6 @@
 import * as tf from "../../test_support/tensorflow_helper";
-import { validation_based_optimization } from "./spectral_optimization";
+import { validation_based_optimization, intensive_parameter_sweep } from "./spectral_optimization";
+import type { SpectralClusteringParams } from "./types";
 
 describe("validationBasedOptimization", () => {
   const embedding_data = [
@@ -121,6 +122,37 @@ describe("validationBasedOptimization", () => {
       }
     } finally {
       embedding.dispose();
+    }
+  });
+});
+
+describe("intensive_parameter_sweep", () => {
+  it("throws when all gamma attempts produce degenerate embeddings", async () => {
+    const n = 6;
+    const X = tf.zeros([n, 2]) as tf.Tensor2D;
+    const params: SpectralClusteringParams = {
+      n_clusters: 2,
+      affinity: 'rbf',
+      gamma_range: [1.0],
+    };
+
+    // All-zero embedding: metric scores become NaN (or the metric throws for k≤1),
+    // so no gamma ever beats the -Infinity baseline.
+    const degenerate_embedding = async (a: tf.Tensor2D): Promise<tf.Tensor2D> => {
+      a.dispose();
+      return tf.zeros([n, 2]) as tf.Tensor2D;
+    };
+
+    const trivial_affinity = (_x: tf.Tensor2D, _p: SpectralClusteringParams): tf.Tensor2D => {
+      return tf.eye(n) as tf.Tensor2D;
+    };
+
+    try {
+      await expect(
+        intensive_parameter_sweep(X, params, degenerate_embedding, trivial_affinity),
+      ).rejects.toThrow();
+    } finally {
+      X.dispose();
     }
   });
 });
