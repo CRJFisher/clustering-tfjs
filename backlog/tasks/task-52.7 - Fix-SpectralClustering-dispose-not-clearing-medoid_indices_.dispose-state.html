@@ -34,6 +34,7 @@
   .meta { display:flex; flex-wrap:wrap; gap:.5rem; }
   .chip { font-family:var(--mono); font-size:.72rem; background:#fff; border:1px solid var(--oat);
     border-radius:999px; padding:.25rem .6rem; }
+  .chip.done { background:var(--olive); color:#fff; border-color:var(--olive); }
   figure { margin:0; }
   figcaption { font-size:.85rem; color:var(--g3); margin-top:.7rem; font-style:italic; max-width:80ch; }
   .panel { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1.1rem; }
@@ -41,9 +42,11 @@
   aside.callout { border-left:4px solid var(--rust); background:#fff; border-radius:0 12px 12px 0;
     padding:1rem 1.2rem; }
   aside.callout.fix { border-left-color:var(--olive); }
+  aside.callout.note { border-left-color:var(--clay); }
   aside.callout .k { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.1em;
     color:var(--rust); margin-bottom:.3rem; }
   aside.callout.fix .k { color:var(--olive); }
+  aside.callout.note .k { color:var(--clay); }
   aside.callout .big { font-family:var(--serif); font-size:1.05rem; }
   /* legend */
   .legend { display:flex; flex-wrap:wrap; gap:1rem; margin-top:.8rem; font-family:var(--mono); font-size:.72rem; color:var(--g3); }
@@ -60,48 +63,59 @@
   .del{display:inline-block; width:100%; background:rgba(143,58,35,.30); text-decoration:line-through; text-decoration-color:#b97a68;}
   .hl{display:inline-block; width:100%; background:rgba(181,104,63,.22);}
   /* state table */
-  table.state { border-collapse:collapse; width:100%; font-family:var(--mono); font-size:.8rem; background:#fff;
+  table.state { border-collapse:collapse; width:100%; font-family:var(--mono); font-size:.78rem; background:#fff;
     border:1px solid var(--oat); border-radius:12px; overflow:hidden; }
-  table.state th, table.state td { padding:.6rem .7rem; text-align:left; border-bottom:1px solid var(--oat); }
-  table.state th { background:var(--oat); font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--g3); }
+  table.state th, table.state td { padding:.55rem .6rem; text-align:left; border-bottom:1px solid var(--oat); }
+  table.state th { background:var(--oat); font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--g3); }
   table.state td.field { color:var(--slate); }
   .v-null { color:var(--olive); }
   .v-set { color:var(--clay); }
   .v-stale { color:var(--rust); font-weight:700; }
   .cap { display:inline-block; font-family:var(--mono); font-size:.66rem; text-transform:uppercase;
     letter-spacing:.06em; padding:.15rem .45rem; border-radius:999px; background:var(--oat); color:var(--g3); }
+  /* test grid */
+  .tests { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:.9rem; }
+  .tcard { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:.9rem 1rem;
+    display:flex; flex-direction:column; gap:.5rem; }
+  .tcard .ac { font-family:var(--mono); font-size:.68rem; color:#fff; background:var(--olive);
+    align-self:flex-start; padding:.16rem .5rem; border-radius:999px; }
+  .tcard .tt { font-family:var(--serif); font-size:1rem; line-height:1.2; }
+  .tcard ul { margin:.1rem 0 0; padding-left:1.05rem; font-family:var(--mono); font-size:.74rem; color:var(--g3); line-height:1.55; }
+  .tcard code { color:var(--slate); }
+  @media (max-width:760px){ .tests { grid-template-columns:1fr; } }
 </style>
 </head>
 <body>
 <nav class="top">
   <span class="crumb">task-52.7 · spectral.ts dispose()</span>
   <a href="task-52 - Fix-correctness-bugs-identified-in-fixes-outstanding-backlog-tasks-review.overview.html">↑ task-52 overview</a>
-  <span class="here" aria-current="page">.7 dispose medoid_indices_</span>
+  <span class="here" aria-current="page">.7 dispose medoid_indices_ · done</span>
   <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
 </nav>
 
 <main>
   <header>
     <p class="eyebrow">SpectralClustering · per-fit state lifecycle</p>
-    <h1>A re-fit clears every per-fit field except <code>medoid_indices_</code> — so old medoids pass for new data</h1>
+    <h1>A re-fit cleared every per-fit field except <code>medoid_indices_</code> — so old medoids passed for new data</h1>
     <div class="meta">
+      <span class="chip done">done ✓</span>
       <span class="chip">src/clustering/spectral.ts</span>
-      <span class="chip">dispose() :121–129</span>
-      <span class="chip">fit() calls dispose() :167</span>
-      <span class="chip">fix: +1 line</span>
-      <span class="chip">+1 state-reset test</span>
+      <span class="chip">dispose() :121–130</span>
+      <span class="chip">fit() calls dispose() :168</span>
+      <span class="chip">fix: +1 reset line, +3 _debug_ flags</span>
+      <span class="chip">+3 tests (AC#1–3)</span>
     </div>
   </header>
 
   <section id="crux">
     <aside class="callout">
       <div class="k">The silent corruption</div>
-      <div class="big"><code>fit()</code> starts by calling <code>dispose()</code> to wipe the previous fit. <code>dispose()</code> nulls <code>labels_</code> and the affinity matrices but forgets <code>medoid_indices_</code>. After <code>fit(data1) → compute_medoids() → fit(data2)</code>, the medoid indices still point into <code>data1</code>'s rows and are presented as valid for <code>data2</code>. No error, no warning — wrong answer.</div>
+      <div class="big"><code>fit()</code> starts by calling <code>dispose()</code> to wipe the previous fit. <code>dispose()</code> nulled <code>labels_</code>, <code>affinity_matrix_</code>, and <code>sparse_affinity_matrix_</code> but forgot <code>medoid_indices_</code>. After <code>fit(data1) → compute_medoids(data1) → fit(data2)</code>, the medoid indices still pointed into <code>data1</code>'s rows and were presented as valid for <code>data2</code>. No error, no warning — wrong answer.</div>
     </aside>
   </section>
 
   <section id="states">
-    <h2>What each per-fit field holds across the re-use sequence</h2>
+    <h2>What each per-fit field held across the re-use sequence</h2>
     <figure>
       <table class="state">
         <thead>
@@ -109,89 +123,93 @@
             <th>step</th>
             <th>labels_</th>
             <th>affinity_matrix_</th>
+            <th>sparse_affinity_matrix_</th>
             <th>medoid_indices_</th>
           </tr>
         </thead>
         <tbody>
           <tr>
             <td class="field">① <code>new SpectralClustering()</code></td>
-            <td class="v-null">null</td><td class="v-null">null</td><td class="v-null">null</td>
+            <td class="v-null">null</td><td class="v-null">null</td><td class="v-null">null</td><td class="v-null">null</td>
           </tr>
           <tr>
             <td class="field">② <code>await fit(data1)</code></td>
-            <td class="v-set">labels(data1)</td><td class="v-set">A(data1)</td><td class="v-null">null</td>
+            <td class="v-set">labels(data1)</td><td class="v-set">A(data1)</td><td class="v-null">null</td><td class="v-null">null</td>
           </tr>
           <tr>
             <td class="field">③ <code>await compute_medoids(data1)</code></td>
-            <td class="v-set">labels(data1)</td><td class="v-set">A(data1)</td><td class="v-set">medoids(data1)</td>
+            <td class="v-set">labels(data1)</td><td class="v-set">A(data1)</td><td class="v-null">null</td><td class="v-set">medoids(data1)</td>
           </tr>
           <tr>
             <td class="field">④ <code>await fit(data2)</code> → calls <code>dispose()</code> first</td>
-            <td class="v-set">labels(data2)</td><td class="v-set">A(data2)</td><td class="v-stale">medoids(data1) ✗ STALE</td>
+            <td class="v-set">labels(data2)</td><td class="v-set">A(data2)</td><td class="v-null">null</td><td class="v-stale">medoids(data1) ✗ was STALE</td>
           </tr>
         </tbody>
       </table>
-      <figcaption>At step ④, <code>fit()</code>'s opening <code>dispose()</code> refreshes <code>labels_</code> and <code>affinity_matrix_</code> for <code>data2</code> but leaves <code>medoid_indices_</code> untouched — indices into <code>data1</code>'s label space silently survive into a <code>data2</code> session.</figcaption>
+      <figcaption>At step ④, before the fix, <code>fit()</code>'s opening <code>dispose()</code> refreshed three fields for <code>data2</code> but left <code>medoid_indices_</code> untouched — indices into <code>data1</code>'s label space silently survived into a <code>data2</code> session. The fix makes step ④'s last cell read <code>null</code>.</figcaption>
     </figure>
     <div class="legend">
       <span><span class="sw" style="background:#6f7a4e"></span> null / cleared (safe)</span>
       <span><span class="sw" style="background:#b5683f"></span> set for the current data</span>
-      <span><span class="sw" style="background:#8f3a23"></span> stale — set for the wrong data</span>
+      <span><span class="sw" style="background:#8f3a23"></span> was stale — set for the wrong data</span>
     </div>
   </section>
 
   <section id="flow">
-    <h2>Why the field survives: dispose() is the only reset, and it skips one field</h2>
+    <h2>Why the field survived: dispose() was the only reset, and it skipped one of four fields</h2>
     <figure>
       <div class="panel">
-        <svg viewBox="0 0 940 300" role="img" aria-label="fit() calls dispose() which clears two of three per-fit fields, leaving medoid_indices_ stale">
+        <svg viewBox="0 0 940 318" role="img" aria-label="fit() calls dispose() which now clears all four per-fit fields, no longer leaving medoid_indices_ stale">
           <defs>
             <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
               <path d="M0,0 L10,5 L0,10 z" fill="#6b6458"/>
             </marker>
-            <marker id="arrR" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-              <path d="M0,0 L10,5 L0,10 z" fill="#8f3a23"/>
+            <marker id="arrO" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L10,5 L0,10 z" fill="#6f7a4e"/>
             </marker>
           </defs>
           <!-- fit(data2) entry -->
-          <rect x="20" y="124" width="150" height="52" rx="10" fill="#fff" stroke="#2e2c28" stroke-width="1.6"/>
-          <text x="95" y="148" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#2e2c28">fit(data2)</text>
-          <text x="95" y="165" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6b6458">line 165</text>
+          <rect x="20" y="138" width="150" height="52" rx="10" fill="#fff" stroke="#2e2c28" stroke-width="1.6"/>
+          <text x="95" y="162" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#2e2c28">fit(data2)</text>
+          <text x="95" y="179" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#6b6458">line 168</text>
 
-          <line x1="170" y1="150" x2="232" y2="150" stroke="#6b6458" stroke-width="1.6" marker-end="url(#arr)"/>
-          <text x="201" y="142" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#6b6458">first line</text>
+          <line x1="170" y1="164" x2="232" y2="164" stroke="#6b6458" stroke-width="1.6" marker-end="url(#arr)"/>
+          <text x="201" y="156" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#6b6458">first line</text>
 
-          <!-- dispose() box containing the three clears -->
-          <rect x="236" y="40" width="300" height="220" rx="12" fill="#faf6ee" stroke="#b5683f" stroke-width="1.6"/>
-          <text x="386" y="62" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#b5683f">dispose()  :121–129</text>
+          <!-- dispose() box containing the four clears -->
+          <rect x="236" y="22" width="300" height="280" rx="12" fill="#faf6ee" stroke="#b5683f" stroke-width="1.6"/>
+          <text x="386" y="44" text-anchor="middle" font-family="ui-monospace,monospace" font-size="12" fill="#b5683f">dispose()  :121–130</text>
 
-          <rect x="258" y="80" width="256" height="38" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.4"/>
-          <text x="386" y="104" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">affinity_matrix_ = null  ✓</text>
+          <rect x="258" y="60" width="256" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.4"/>
+          <text x="386" y="82" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">affinity_matrix_ = null  ✓</text>
 
-          <rect x="258" y="126" width="256" height="38" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.4"/>
-          <text x="386" y="150" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">labels_ = null  ✓</text>
+          <rect x="258" y="100" width="256" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.4"/>
+          <text x="386" y="122" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">sparse_affinity_matrix_ = null  ✓</text>
 
-          <rect x="258" y="172" width="256" height="46" rx="8" fill="#fbeae3" stroke="#8f3a23" stroke-width="1.8" stroke-dasharray="6 4"/>
-          <text x="386" y="192" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">medoid_indices_  — never reset</text>
-          <text x="386" y="208" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8f3a23">the missing line</text>
+          <rect x="258" y="140" width="256" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.4"/>
+          <text x="386" y="162" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">labels_ = null  ✓</text>
 
-          <!-- escape arrow: stale field survives forward into the new fit -->
-          <path d="M514,195 C640,195 660,150 712,150" stroke="#8f3a23" stroke-width="1.8" fill="none" stroke-dasharray="6 4" marker-end="url(#arrR)"/>
-          <rect x="716" y="110" width="200" height="80" rx="12" fill="#fbeae3" stroke="#8f3a23" stroke-width="1.6"/>
-          <text x="816" y="138" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">data2 session sees</text>
-          <text x="816" y="156" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#8f3a23">medoids(data1)</text>
-          <text x="816" y="174" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#8f3a23">no error raised</text>
+          <rect x="258" y="180" width="256" height="48" rx="8" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.8"/>
+          <text x="386" y="200" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">medoid_indices_ = null  ✓</text>
+          <text x="386" y="216" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#3f4a26">the added line (was missing)</text>
+
+          <!-- exit arrow: now all-clean state flows forward into the new fit -->
+          <path d="M514,204 C640,204 660,164 712,164" stroke="#6f7a4e" stroke-width="1.8" fill="none" marker-end="url(#arrO)"/>
+          <rect x="716" y="124" width="200" height="80" rx="12" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.6"/>
+          <text x="816" y="152" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">data2 session starts</text>
+          <text x="816" y="170" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3f4a26">medoid_indices_ = null</text>
+          <text x="816" y="188" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#3f4a26">no stale carry-over</text>
         </svg>
       </div>
-      <figcaption>Inside <code>dispose()</code>, two fields are cleared; the third is never touched, so it leaks forward through the new <code>fit()</code> into the <code>data2</code> session.</figcaption>
+      <figcaption>After the fix, all four per-fit output fields are cleared inside <code>dispose()</code>; the new <code>fit()</code> begins each field from <code>null</code>, so nothing from <code>data1</code> leaks into the <code>data2</code> session.</figcaption>
     </figure>
   </section>
 
   <section id="fix">
-    <h2>The fix: one line, restoring the three-field reset</h2>
+    <h2>The fix: one reset line, restoring a complete four-field reset</h2>
     <figure>
       <div class="code">
-        <span class="file-label">src/clustering/spectral.ts — dispose()  :121–129</span>
+        <span class="file-label">src/clustering/spectral.ts — dispose()  :121–130</span>
 <pre><span class="kw">public</span> <span class="fn">dispose</span>(): <span class="kw">void</span> {
   <span class="kw">if</span> (<span class="kw">this</span>.affinity_matrix_ != <span class="kw">null</span>) {
     <span class="kw">this</span>.affinity_matrix_.<span class="fn">dispose</span>();
@@ -200,16 +218,74 @@
 
   <span class="kw">this</span>.sparse_affinity_matrix_ = <span class="kw">null</span>;
   <span class="kw">this</span>.labels_ = <span class="kw">null</span>;
-<span class="del">  <span class="cm">// BUG: medoid_indices_ is not reset here</span></span>
 <span class="add">  <span class="kw">this</span>.medoid_indices_ = <span class="kw">null</span>;</span>
 }
 </pre>
       </div>
       <figcaption>Adding <code>this.medoid_indices_ = null;</code> makes <code>dispose()</code> reset every per-fit output field, so a re-fit starts each field from <code>null</code>.</figcaption>
     </figure>
+  </section>
+
+  <section id="secondary">
+    <h2>Secondary finding: a second fit() threw before it could re-run</h2>
+    <figure>
+      <div class="code">
+        <span class="file-label">src/clustering/spectral.ts — three _debug_ accessors (×3, fit())</span>
+<pre>Object.<span class="fn">defineProperty</span>(<span class="kw">this</span>, <span class="str">'_debug_intensive_sweep_config_'</span>, {
+  value: <span class="cm">/* … */</span>,
+<span class="del">  writable: false,</span>
+<span class="del">  configurable: false,   <span class="cm">// 2nd fit() → TypeError: Cannot redefine property</span></span>
+<span class="add">  writable: true,</span>
+<span class="add">  configurable: true,    <span class="cm">// re-defineable on every fit()</span></span>
+  enumerable: false,
+});
+</pre>
+      </div>
+      <figcaption>The re-fit test scenarios exposed a pre-existing defect: with <code>configurable: false</code>, the three <code>_debug_*</code> property definitions could not be re-applied on a second <code>fit()</code>, so the call threw <code>TypeError: Cannot redefine property</code> before any state reset could be observed. Switching all three to <code>configurable: true, writable: true</code> lets <code>fit()</code> be called repeatedly.</figcaption>
+    </figure>
+    <aside class="callout note" style="margin-top:1rem;">
+      <div class="k">Why it surfaced now</div>
+      <div class="big">No prior test called <code>fit()</code> twice on one instance, so the locked <code>_debug_*</code> descriptors never collided. Writing the re-fit regression tests for the medoid bug was the first code path to trigger a second <code>fit()</code> — making this defect a blocker for the medoid fix's own tests.</div>
+    </aside>
+  </section>
+
+  <section id="tests">
+    <h2>Three tests pin all four per-fit field states</h2>
+    <figure>
+      <div class="tests">
+        <div class="tcard">
+          <span class="ac">AC #1</span>
+          <span class="tt">Explicit <code>dispose()</code> clears everything</span>
+          <ul>
+            <li><code>fit(X1)</code> → <code>compute_medoids(X1)</code></li>
+            <li>call <code>dispose()</code> directly</li>
+            <li>assert all four null: <code>labels_</code>, <code>affinity_matrix_</code>, <code>sparse_affinity_matrix_</code>, <code>medoid_indices_</code></li>
+          </ul>
+        </div>
+        <div class="tcard">
+          <span class="ac">AC #2</span>
+          <span class="tt">Re-fit leaves <code>medoid_indices_</code> null</span>
+          <ul>
+            <li><code>fit(X1)</code> → <code>compute_medoids(X1)</code></li>
+            <li>then <code>fit(X2)</code></li>
+            <li>assert <code>medoid_indices_</code> is null until <code>compute_medoids()</code> runs again</li>
+          </ul>
+        </div>
+        <div class="tcard">
+          <span class="ac">AC #3</span>
+          <span class="tt">Re-fit state is complete</span>
+          <ul>
+            <li>after re-fit on <code>X2</code>:</li>
+            <li><code>labels_</code> &amp; <code>affinity_matrix_</code> populated</li>
+            <li><code>sparse_affinity_matrix_</code> &amp; <code>medoid_indices_</code> null</li>
+          </ul>
+        </div>
+      </div>
+      <figcaption>The three tests live under <code>describe("SpectralClustering – dispose() clears all per-fit state")</code> in <code>spectral.test.ts</code>; each one also exercises a second <code>fit()</code>, which is what would have caught the <code>configurable:false</code> defect too.</figcaption>
+    </figure>
     <aside class="callout fix" style="margin-top:1rem;">
-      <div class="k">Acceptance — what the test must show</div>
-      <div class="big">After <code>await fit(data2)</code> completes and <strong>before any accessor is called</strong>, all three per-fit fields read <code>null</code> for the freshly-fitted-then-not-yet-medoided estimator: <code>labels_</code> is repopulated by <code>fit</code>, while <code>medoid_indices_</code> stays <code>null</code> until <code>compute_medoids()</code> is invoked again. <span class="cap">AC #1 #2 #3</span></div>
+      <div class="k">Acceptance — all satisfied</div>
+      <div class="big">After <code>await fit(data2)</code>, the four per-fit fields read exactly: <code>labels_</code> and <code>affinity_matrix_</code> repopulated for <code>data2</code>; <code>sparse_affinity_matrix_</code> and <code>medoid_indices_</code> both <code>null</code> until their producing call runs again. <span class="cap">AC #1 ✓ #2 ✓ #3 ✓</span></div>
     </aside>
   </section>
 </main>

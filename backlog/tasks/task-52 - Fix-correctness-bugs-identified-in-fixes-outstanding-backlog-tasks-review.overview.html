@@ -25,6 +25,8 @@
     font-family:var(--mono); font-size:.72rem; text-decoration:none; padding:.28rem .58rem;
     border-radius:999px; border:1px solid var(--oat); background:#fff; color:var(--slate); }
   nav.top a:hover { border-color:var(--clay); }
+  nav.top a.done { border-color:var(--olive); }
+  nav.top a.done::after { content:" ✓"; color:var(--olive); }
   nav.top .here { background:var(--slate); color:var(--ivory); border-color:var(--slate); }
   nav.top .pending { color:var(--g2); background:transparent; border-style:dashed; }
   nav.top .pending small { color:var(--g2); }
@@ -49,6 +51,7 @@
   .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:.9rem; }
   .card { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:.9rem 1rem;
     display:flex; flex-direction:column; gap:.4rem; }
+  .card.done { border-color:var(--olive); }
   .card .id { font-family:var(--mono); font-size:.72rem; color:var(--clay); }
   .card .ttl { font-family:var(--serif); font-size:1rem; line-height:1.25; }
   .card .area { font-family:var(--mono); font-size:.68rem; color:var(--g2); text-transform:uppercase; letter-spacing:.06em; }
@@ -56,6 +59,7 @@
   .tag { font-family:var(--mono); font-size:.66rem; padding:.18rem .45rem; border-radius:999px; }
   .t-doc { background:var(--olive); color:#fff; text-decoration:none; }
   .t-pending { background:transparent; border:1px dashed var(--g1); color:var(--g2); }
+  .t-done { background:var(--olive); color:#fff; }
   .dot { width:9px; height:9px; border-radius:50%; display:inline-block; }
   .d-conf { background:var(--rust); } .d-plaus { background:var(--clay); }
   @media (max-width:760px){ }
@@ -67,7 +71,7 @@
   <span class="here" aria-current="page">overview</span>
   <span class="grp">
     <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
-    <a href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
+    <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
     <span class="pending">.8 find_optimal_clusters threshold <small>· not yet generated</small></span>
     <span class="pending">.9 agglomerative symmetrisation <small>· not yet generated</small></span>
     <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
@@ -114,10 +118,10 @@
             <text x="115" y="76" text-anchor="middle" fill="#3f4a26">.5 dispose order</text>
             <text x="115" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
 
-            <!-- .7 highlighted (this family's newest companion) -->
-            <rect x="225" y="56" width="150" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.8"/>
+            <!-- .7 done -->
+            <rect x="225" y="56" width="150" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
             <text x="300" y="76" text-anchor="middle" fill="#3f4a26">.7 dispose medoids</text>
-            <text x="300" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
+            <text x="300" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
 
             <rect x="415" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="490" y="80" text-anchor="middle" fill="#2e2c28">.9 symmetrise</text>
@@ -140,7 +144,7 @@
           </g>
         </svg>
       </div>
-      <figcaption>The findings cluster by subsystem; two spectral-vs-HDBSCAN <code>dispose()</code> state bugs (.5, .7) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
+      <figcaption>The findings cluster by subsystem; the two <code>dispose()</code> state bugs in spectral (.7, done) and HDBSCAN (.5) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
     </figure>
   </section>
 
@@ -155,11 +159,12 @@
           <a class="tag t-doc" href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">open detail →</a>
         </div>
       </div>
-      <div class="card">
+      <div class="card done">
         <span class="id">task-52.7</span>
         <span class="ttl">SpectralClustering dispose() not clearing medoid_indices_</span>
         <span class="area">Spectral · dispose()</span>
         <div class="foot"><span class="dot d-conf"></span>
+          <span class="tag t-done">done ✓</span>
           <a class="tag t-doc" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">open detail →</a>
         </div>
       </div>
