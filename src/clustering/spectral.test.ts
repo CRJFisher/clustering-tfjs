@@ -55,6 +55,39 @@ describe("SpectralClustering – transductive: no predict or JSON serialization"
   });
 });
 
+describe("SpectralClustering – dispose() resets all per-fit state", () => {
+  const X1 = [
+    [0, 0], [0.1, 0.1], [0.2, 0],
+    [5, 5], [5.1, 5.1], [5.2, 5],
+  ];
+  const X2 = [
+    [1, 1], [1.1, 1.1],
+    [8, 8], [8.1, 8.1],
+  ];
+
+  it("clears medoid_indices_ on re-fit (AC#1, AC#2)", async () => {
+    const sc = new SpectralClustering({ n_clusters: 2, random_state: 0 });
+    await sc.fit(X1);
+    await sc.compute_medoids(X1);
+    expect(sc.medoid_indices_).not.toBeNull();
+
+    await sc.fit(X2);
+    expect(sc.medoid_indices_).toBeNull();
+  });
+
+  it("only medoid_indices_ stays null after re-fit; labels_ and affinity_matrix_ are repopulated (AC#3)", async () => {
+    const sc = new SpectralClustering({ n_clusters: 2, random_state: 0 });
+    await sc.fit(X1);
+    await sc.compute_medoids(X1);
+
+    await sc.fit(X2);
+
+    expect(sc.labels_).not.toBeNull();
+    expect(sc.affinity_matrix_).not.toBeNull();
+    expect(sc.medoid_indices_).toBeNull();
+  });
+});
+
 describe("SpectralClustering – fit_predict output contract", () => {
   it("returns labels array of length n_samples", async () => {
     const X = [

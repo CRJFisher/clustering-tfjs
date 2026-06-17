@@ -20,7 +20,7 @@
     display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; padding:.6rem 5%; }
   nav.top .crumb { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em;
     color:var(--g2); margin-right:auto; }
-  nav.top .grp { display:flex; gap:.3rem; align-items:center; }
+  nav.top .grp { display:flex; gap:.3rem; align-items:center; flex-wrap:wrap; }
   nav.top a, nav.top .pending, nav.top .here {
     font-family:var(--mono); font-size:.72rem; text-decoration:none; padding:.28rem .58rem;
     border-radius:999px; border:1px solid var(--oat); background:#fff; color:var(--slate); }
@@ -67,8 +67,7 @@
   <span class="here" aria-current="page">overview</span>
   <span class="grp">
     <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
-    <span class="pending">.6 spectral empty labels <small>· not yet generated</small></span>
-    <span class="pending">.7 spectral dispose medoid_indices_ <small>· not yet generated</small></span>
+    <a href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
     <span class="pending">.8 find_optimal_clusters threshold <small>· not yet generated</small></span>
     <span class="pending">.9 agglomerative symmetrisation <small>· not yet generated</small></span>
     <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
@@ -79,7 +78,7 @@
 <main>
   <header>
     <p class="eyebrow">Correctness review · fixes/outstanding-backlog-tasks</p>
-    <h1>Ten correctness findings from a code review, one fix per sub-task</h1>
+    <h1>A code-review backlog of correctness findings, one fix per sub-task</h1>
     <div class="meta">
       <span class="chip">6 confirmed bugs</span>
       <span class="chip">4 plausible (investigate)</span>
@@ -97,11 +96,10 @@
   </section>
 
   <section id="spread">
-    <h2>Where the ten findings land across the stack</h2>
+    <h2>Where the findings land across the stack</h2>
     <figure>
       <div class="map">
         <svg viewBox="0 0 880 250" role="img" aria-label="Findings grouped by subsystem across the clustering library">
-          <!-- column headers -->
           <g font-family="ui-monospace,monospace" font-size="11" fill="#6b6458">
             <text x="110" y="28" text-anchor="middle">HDBSCAN</text>
             <text x="300" y="28" text-anchor="middle">Spectral</text>
@@ -110,17 +108,16 @@
             <text x="820" y="28" text-anchor="middle">Eigen</text>
           </g>
           <line x1="20" y1="38" x2="860" y2="38" stroke="#e7ddca"/>
-          <!-- nodes -->
           <g font-family="ui-monospace,monospace" font-size="10">
-            <!-- .5 highlighted -->
-            <rect x="40" y="56" width="150" height="46" rx="10" fill="#fbeae3" stroke="#8f3a23" stroke-width="1.8"/>
-            <text x="115" y="76" text-anchor="middle" fill="#8f3a23">.5 dispose order</text>
-            <text x="115" y="92" text-anchor="middle" fill="#8f3a23">(this page)</text>
+            <!-- .5 has a companion -->
+            <rect x="40" y="56" width="150" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.6"/>
+            <text x="115" y="76" text-anchor="middle" fill="#3f4a26">.5 dispose order</text>
+            <text x="115" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
 
-            <rect x="225" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
-            <text x="300" y="80" text-anchor="middle" fill="#2e2c28">.6 empty labels</text>
-            <rect x="225" y="108" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
-            <text x="300" y="132" text-anchor="middle" fill="#2e2c28">.7 dispose medoids</text>
+            <!-- .7 highlighted (this family's newest companion) -->
+            <rect x="225" y="56" width="150" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.8"/>
+            <text x="300" y="76" text-anchor="middle" fill="#3f4a26">.7 dispose medoids</text>
+            <text x="300" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
 
             <rect x="415" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="490" y="80" text-anchor="middle" fill="#2e2c28">.9 symmetrise</text>
@@ -133,16 +130,17 @@
             <rect x="775" y="56" width="90" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="820" y="80" text-anchor="middle" fill="#2e2c28">.11 Lanczos</text>
           </g>
-          <!-- legend -->
           <g font-family="ui-monospace,monospace" font-size="10" fill="#6b6458">
-            <rect x="40" y="200" width="11" height="11" rx="3" fill="#8f3a23"/>
-            <text x="58" y="210">confirmed bug · fixed before merge</text>
-            <rect x="300" y="200" width="11" height="11" rx="3" fill="#b5683f"/>
-            <text x="318" y="210">plausible · investigate, fix or document won't-fix</text>
+            <rect x="40" y="200" width="11" height="11" rx="3" fill="#6f7a4e"/>
+            <text x="58" y="210">has a comprehension page</text>
+            <rect x="280" y="200" width="11" height="11" rx="3" fill="#8f3a23"/>
+            <text x="298" y="210">confirmed bug</text>
+            <rect x="430" y="200" width="11" height="11" rx="3" fill="#b5683f"/>
+            <text x="448" y="210">plausible · investigate, fix or document won't-fix</text>
           </g>
         </svg>
       </div>
-      <figcaption>The findings cluster by subsystem; this companion documents the HDBSCAN <code>fit()</code> state-corruption fix (.5). Other sub-tasks gain their own pages as they are picked up.</figcaption>
+      <figcaption>The findings cluster by subsystem; two spectral-vs-HDBSCAN <code>dispose()</code> state bugs (.5, .7) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
     </figure>
   </section>
 
@@ -158,16 +156,12 @@
         </div>
       </div>
       <div class="card">
-        <span class="id">task-52.6</span>
-        <span class="ttl">SpectralClustering returns empty labels array when all gamma attempts fail</span>
-        <span class="area">Spectral</span>
-        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
-      </div>
-      <div class="card">
         <span class="id">task-52.7</span>
         <span class="ttl">SpectralClustering dispose() not clearing medoid_indices_</span>
         <span class="area">Spectral · dispose()</span>
-        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
+        <div class="foot"><span class="dot d-conf"></span>
+          <a class="tag t-doc" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">open detail →</a>
+        </div>
       </div>
       <div class="card">
         <span class="id">task-52.8</span>

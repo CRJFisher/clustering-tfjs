@@ -126,6 +126,7 @@ export class SpectralClustering
 
     this.sparse_affinity_matrix_ = null;
     this.labels_ = null;
+    this.medoid_indices_ = null;
   }
 
   // Allowed affinity options when provided as a string
@@ -437,8 +438,8 @@ export class SpectralClustering
       // Store debug info
       Object.defineProperty(this, '_debug_intensive_sweep_config_', {
         value: result.config,
-        writable: false,
-        configurable: false,
+        writable: true,
+        configurable: true,
         enumerable: false,
       });
     }
@@ -465,8 +466,8 @@ export class SpectralClustering
       // Store debug info
       Object.defineProperty(this, '_debug_validation_score_', {
         value: result.score,
-        writable: false,
-        configurable: false,
+        writable: true,
+        configurable: true,
         enumerable: false,
       });
     } else {
@@ -485,8 +486,8 @@ export class SpectralClustering
       // Expose for unit-testing (non-enumerable to avoid polluting logs)
       Object.defineProperty(this, '_debug_last_kmeans_params_', {
         value: km_params,
-        writable: false,
-        configurable: false,
+        writable: true,
+        configurable: true,
         enumerable: false,
       });
 
