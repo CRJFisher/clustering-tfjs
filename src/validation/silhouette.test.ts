@@ -418,9 +418,13 @@ describe("Silhouette – noise (-1) awareness", () => {
     expect(with_noise).toBeCloseTo(base, 6);
   });
 
-  it("returns defined 0 when every label is noise", () => {
-    expect(silhouette_score(two_clusters, [-1, -1, -1, -1])).toBe(0);
-    expect(silhouette_samples(two_clusters, [-1, -1, -1, -1])).toEqual([]);
+  it("throws when every label is noise", () => {
+    expect(() => silhouette_score(two_clusters, [-1, -1, -1, -1])).toThrow(
+      "all labels are noise",
+    );
+    expect(() => silhouette_samples(two_clusters, [-1, -1, -1, -1])).toThrow(
+      "all labels are noise",
+    );
   });
 
   it("returns defined 0 for a single cluster plus noise", () => {
@@ -435,12 +439,47 @@ describe("Silhouette – noise (-1) awareness", () => {
       [0, 2, 4],
     );
     expect(with_noise).toBeCloseTo(base, 6);
-    // All-noise subset is defined 0.
-    expect(silhouette_score_subset(two_clusters, [-1, -1, -1, -1], [0, 1])).toBe(0);
+    // All-noise dataset throws.
+    expect(() =>
+      silhouette_score_subset(two_clusters, [-1, -1, -1, -1], [0, 1]),
+    ).toThrow("all labels are noise");
   });
 
   it("supports the cosine metric", () => {
     const s = silhouette_score(two_clusters, [0, 0, 1, 1], "cosine");
     expect(Number.isFinite(s)).toBe(true);
+  });
+});
+
+describe("Silhouette – degenerate-input contract (AC#3)", () => {
+  const X2 = [[0, 0], [1, 0]];
+
+  it("all-noise labels throw with a descriptive message", () => {
+    const msg = "all labels are noise";
+    expect(() => silhouette_score(X2, [-1, -1])).toThrow(msg);
+    expect(() => silhouette_samples(X2, [-1, -1])).toThrow(msg);
+    expect(() => silhouette_score_subset(X2, [-1, -1], [0])).toThrow(msg);
+  });
+
+  it("single-cluster labels (no noise) throw", () => {
+    const msg = "Silhouette score requires at least 2 clusters";
+    expect(() => silhouette_score(X2, [0, 0])).toThrow(msg);
+    expect(() => silhouette_samples(X2, [0, 0])).toThrow(msg);
+    expect(() => silhouette_score_subset(X2, [0, 0], [0])).toThrow(msg);
+  });
+
+  it("two-point two-cluster input returns a finite score", () => {
+    const score = silhouette_score(X2, [0, 1]);
+    expect(Number.isFinite(score)).toBe(true);
+    expect(score).toBeGreaterThanOrEqual(-1);
+    expect(score).toBeLessThanOrEqual(1);
+  });
+
+  it("n_samples=0 throws on labels length mismatch", () => {
+    expect(() => silhouette_score([], [0])).toThrow();
+  });
+
+  it("single cluster plus noise returns defined 0, not a throw", () => {
+    expect(silhouette_score([[0, 0], [1, 0], [2, 0]], [0, 0, -1])).toBe(0);
   });
 });

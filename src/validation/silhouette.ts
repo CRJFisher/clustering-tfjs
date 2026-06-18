@@ -23,15 +23,16 @@ export type ValidationMetric = 'euclidean' | 'cosine';
  * - -1: Sample might have been assigned to the wrong cluster
  *
  * Noise (`-1`) samples are excluded before any distance is computed, so the
- * returned array holds one score per non-noise sample. When excluding noise
- * leaves fewer than two clusters the result is all-zeros (defined, non-throwing);
- * genuine single-cluster input with no noise throws.
+ * returned array holds one score per non-noise sample. When all labels are
+ * noise an error is thrown. When exactly one valid cluster remains after
+ * filtering noise the result is all-zeros (defined, non-throwing). Genuine
+ * single-cluster input with no noise throws.
  *
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
  * @param metric - Distance metric: 'euclidean' (default) or 'cosine'
  * @returns Array of per-sample silhouette scores (non-noise samples)
- * @throws Error if there are fewer than 2 clusters and no noise was present
+ * @throws Error if fewer than 2 valid clusters remain after excluding noise
  */
 export function silhouette_samples(
   X: DataMatrix,
@@ -56,9 +57,14 @@ export function silhouette_samples(
     const k = unique_labels.length;
 
     // Validate inputs
-    if (k <= 1) {
-      // A noise-induced degenerate case (all noise, or one cluster + noise) is
-      // defined and non-throwing; genuine single-cluster input is an error.
+    if (k === 0) {
+      // All labels were noise — silhouette is undefined.
+      throw new Error(
+        'Silhouette score requires at least 2 clusters; all labels are noise',
+      );
+    }
+    if (k === 1) {
+      // One cluster remains after noise filtering — defined, non-throwing.
       if (had_noise) {
         return new Array<number>(n).fill(0);
       }
@@ -140,7 +146,7 @@ export function silhouette_samples(
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
  * @returns The mean silhouette score across all samples
- * @throws Error if k <= 1 or labels length doesn't match data rows
+ * @throws Error if fewer than 2 valid clusters remain after excluding noise, or labels length doesn't match data rows
  */
 export function silhouette_score(
   X: DataMatrix,
@@ -148,10 +154,6 @@ export function silhouette_score(
   metric: ValidationMetric = 'euclidean',
 ): number {
   const samples = silhouette_samples(X, labels, metric);
-  // All-noise input yields no samples; return a defined 0 (no division by zero).
-  if (samples.length === 0) {
-    return 0;
-  }
   return samples.reduce((sum, val) => sum + val, 0) / samples.length;
 }
 
@@ -183,11 +185,18 @@ export function silhouette_score_subset(
   const k = unique_labels.length;
 
   // Validate
-  if (k <= 1) {
+  if (k === 0) {
     if (owns_tensor) {
       data.dispose();
     }
-    // Noise-induced degenerate case is defined and non-throwing.
+    throw new Error(
+      'Silhouette score requires at least 2 clusters; all labels are noise',
+    );
+  }
+  if (k === 1) {
+    if (owns_tensor) {
+      data.dispose();
+    }
     if (had_noise) {
       return 0;
     }
