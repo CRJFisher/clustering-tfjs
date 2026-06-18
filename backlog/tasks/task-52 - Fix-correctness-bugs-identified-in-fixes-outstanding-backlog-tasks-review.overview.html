@@ -70,10 +70,10 @@
   <span class="crumb">task-52 family</span>
   <span class="here" aria-current="page">overview</span>
   <span class="grp">
-    <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
+    <a class="done" href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
     <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
-    <a href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">.8 find_optimal threshold</a>
-    <span class="pending">.9 agglomerative symmetrisation <small>· not yet generated</small></span>
+    <a class="done" href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">.8 find_optimal threshold</a>
+    <a class="done" href="task-52.9 - Investigate-agglomerative-compute_distance_matrix-missing-symmetrisation-vs-pairwise_distance_matrix.distance-matrix-symmetry.html">.9 agglomerative symmetry</a>
     <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
     <span class="pending">.11 Lanczos k=5 overshoot <small>· not yet generated</small></span>
   </span>
@@ -113,22 +113,25 @@
           </g>
           <line x1="20" y1="38" x2="860" y2="38" stroke="#e7ddca"/>
           <g font-family="ui-monospace,monospace" font-size="10">
-            <!-- .5 has a companion -->
-            <rect x="40" y="56" width="150" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.6"/>
+            <!-- .5 done -->
+            <rect x="40" y="56" width="150" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
             <text x="115" y="76" text-anchor="middle" fill="#3f4a26">.5 dispose order</text>
-            <text x="115" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
+            <text x="115" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
 
             <!-- .7 done -->
             <rect x="225" y="56" width="150" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
             <text x="300" y="76" text-anchor="middle" fill="#3f4a26">.7 dispose medoids</text>
             <text x="300" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
 
-            <rect x="415" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
-            <text x="490" y="80" text-anchor="middle" fill="#2e2c28">.9 symmetrise</text>
+            <!-- .9 done -->
+            <rect x="415" y="56" width="150" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
+            <text x="490" y="76" text-anchor="middle" fill="#3f4a26">.9 symmetry</text>
+            <text x="490" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
 
-            <rect x="595" y="56" width="160" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.6"/>
+            <!-- .8 done -->
+            <rect x="595" y="56" width="160" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
             <text x="675" y="76" text-anchor="middle" fill="#3f4a26">.8 find_optimal</text>
-            <text x="675" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
+            <text x="675" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
             <rect x="595" y="108" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="675" y="132" text-anchor="middle" fill="#2e2c28">.10 silhouette</text>
 
@@ -137,26 +140,27 @@
           </g>
           <g font-family="ui-monospace,monospace" font-size="10" fill="#6b6458">
             <rect x="40" y="200" width="11" height="11" rx="3" fill="#6f7a4e"/>
-            <text x="58" y="210">has a comprehension page</text>
-            <rect x="280" y="200" width="11" height="11" rx="3" fill="#8f3a23"/>
-            <text x="298" y="210">confirmed bug</text>
-            <rect x="430" y="200" width="11" height="11" rx="3" fill="#b5683f"/>
-            <text x="448" y="210">plausible · investigate, fix or document won't-fix</text>
+            <text x="58" y="210">done · has a comprehension page</text>
+            <rect x="320" y="200" width="11" height="11" rx="3" fill="#8f3a23"/>
+            <text x="338" y="210">confirmed bug</text>
+            <rect x="470" y="200" width="11" height="11" rx="3" fill="#b5683f"/>
+            <text x="488" y="210">plausible · investigate, fix or document won't-fix</text>
           </g>
         </svg>
       </div>
-      <figcaption>The findings cluster by subsystem; spectral (.7, done), HDBSCAN (.5), and the model-selection boundary fix (.8) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
+      <figcaption>Four findings are resolved with detail pages — HDBSCAN dispose order (.5), spectral dispose medoids (.7), the model-selection boundary fix (.8), and the agglomerative distance-matrix investigation (.9). The remaining two — silhouette all-noise (.10) and the Lanczos overshoot cap (.11) — are still open and gain pages as they are picked up.</figcaption>
     </figure>
   </section>
 
   <section id="subtasks">
     <h2>The sub-tasks</h2>
     <div class="cards">
-      <div class="card">
+      <div class="card done">
         <span class="id">task-52.5</span>
         <span class="ttl">HDBSCAN dispose() runs before the empty-input guard</span>
         <span class="area">HDBSCAN · fit()</span>
         <div class="foot"><span class="dot d-conf"></span>
+          <span class="tag t-done">done ✓</span>
           <a class="tag t-doc" href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">open detail →</a>
         </div>
       </div>
@@ -169,19 +173,23 @@
           <a class="tag t-doc" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">open detail →</a>
         </div>
       </div>
-      <div class="card">
+      <div class="card done">
         <span class="id">task-52.8</span>
         <span class="ttl">find_optimal_clusters passes distance_threshold via algorithm_params to Agglomerative</span>
         <span class="area">Model selection</span>
         <div class="foot"><span class="dot d-conf"></span>
+          <span class="tag t-done">done ✓</span>
           <a class="tag t-doc" href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">open detail →</a>
         </div>
       </div>
-      <div class="card">
+      <div class="card done">
         <span class="id">task-52.9</span>
         <span class="ttl">Agglomerative compute_distance_matrix missing symmetrisation vs pairwise</span>
         <span class="area">Agglomerative</span>
-        <div class="foot"><span class="dot d-plaus"></span><span class="tag t-pending">detail not yet generated</span></div>
+        <div class="foot"><span class="dot d-plaus"></span>
+          <span class="tag t-done">done · not a bug ✓</span>
+          <a class="tag t-doc" href="task-52.9 - Investigate-agglomerative-compute_distance_matrix-missing-symmetrisation-vs-pairwise_distance_matrix.distance-matrix-symmetry.html">open detail →</a>
+        </div>
       </div>
       <div class="card">
         <span class="id">task-52.10</span>

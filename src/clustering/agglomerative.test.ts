@@ -388,8 +388,9 @@ describe("AgglomerativeClustering – transductive: no predict or JSON serializa
 });
 
 describe("AgglomerativeClustering – compute_distance_matrix algebraic properties", () => {
-  // Access the private static method for white-box testing of matrix properties.
-  const compute_distance_matrix = (AgglomerativeClustering as any)[
+  // White-box access to the private static via bracket notation (TypeScript's
+  // private check does not apply to string-literal bracket access).
+  const compute_distance_matrix = AgglomerativeClustering[
     "compute_distance_matrix"
   ] as (data: number[][], metric: "euclidean" | "manhattan" | "cosine") => Float64Array;
 
@@ -407,9 +408,12 @@ describe("AgglomerativeClustering – compute_distance_matrix algebraic properti
     ),
   ) as { X: number[][] };
 
+  // compute_distance_matrix accepts euclidean | manhattan | cosine only.
+  // 'precomputed' is excluded because it bypasses this function — the caller
+  // supplies the distance matrix directly.
   const CASES: { metric: "euclidean" | "manhattan" | "cosine"; X: number[][] }[] = [
     { metric: "euclidean", X: EUCLIDEAN_FIXTURE.X },
-    // Manhattan uses the same 2D point data — no manhattan-specific fixture exists.
+    // Manhattan uses the same 2D point data (only X coordinates matter for this algebraic test).
     { metric: "manhattan", X: EUCLIDEAN_FIXTURE.X },
     { metric: "cosine", X: COSINE_FIXTURE.X },
   ];
