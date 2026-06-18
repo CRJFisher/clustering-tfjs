@@ -52,14 +52,6 @@ python tools/sklearn_comparison/compare_step_by_step.py
 # Results are saved to tools/sklearn_comparison/fixtures/
 ```
 
-## Key Findings
-
-These tools were instrumental in discovering critical issues:
-
-1. **Dual Implementation Bug**: Tests were using outdated `src/*.js` files while production used `dist/*.js`
-2. **Eigenvector Recovery vs Diffusion Scaling**: The old implementation used eigenvector recovery which worked better for disconnected components
-3. **3-Components-2-Clusters Problem**: k-NN graphs can create more connected components than desired clusters
-
 ## Adding New Debug Tools
 
 When adding new debug scripts:
@@ -91,28 +83,28 @@ plot_embedding_2d(embedding, labels)
 
 ### Capturing Debug Information
 
-Use the new `captureDebugInfo` flag in SpectralClustering:
+Use the `capture_debug_info` flag in SpectralClustering:
 
 ```typescript
 const spectral = new SpectralClustering({
-  nClusters: 2,
+  n_clusters: 2,
   affinity: 'rbf',
-  captureDebugInfo: true
+  capture_debug_info: true
 });
 
 await spectral.fit(X);
-const debugInfo = spectral.getDebugInfo();
+const debugInfo = spectral.get_debug_info();
 console.log(debugInfo);
 ```
 
-Or use the `fitWithIntermediateSteps` method to get all intermediate results:
+Or use the `fit_with_intermediate_steps` method to get all intermediate results:
 
 ```typescript
 const spectral = new SpectralClustering({
-  nClusters: 2,
+  n_clusters: 2,
   affinity: 'rbf'
 });
 
-const intermediateSteps = await spectral.fitWithIntermediateSteps(X);
+const intermediateSteps = await spectral.fit_with_intermediate_steps(X);
 // intermediateSteps contains: affinity, laplacian, embedding, labels
 ```

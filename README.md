@@ -10,7 +10,7 @@ Native TypeScript implementation of clustering algorithms powered by TensorFlow.
 ## Features
 
 - ✅ Pure TypeScript/JavaScript (no Python required)
-- ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative, SOM)
+- ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative, SOM, HDBSCAN)
 - ✅ Powered by TensorFlow.js for performance
 - ✅ **Works in both Node.js and browsers**
 - ✅ Platform-optimized bundles (49KB for browser, 163KB for Node.js)
@@ -164,6 +164,13 @@ npm install clustering-tfjs @tensorflow/tfjs
 - Flexible neighborhood functions (gaussian, bubble, mexican_hat)
 - Incremental/online learning support for streaming data
 - Ideal for visualization and exploratory data analysis
+
+### HDBSCAN
+
+- Hierarchical density-based clustering with automatic cluster count
+- Robust to noise — points that do not belong to any cluster are labelled `-1`
+- Supports `euclidean` and `precomputed` distance metrics
+- Two cluster selection methods: `eom` (excess of mass, default) and `leaf`
 
 ## Validation Metrics
 
@@ -320,6 +327,19 @@ new SOM({
 
 Note: SOM additionally provides `predict()` and `partial_fit()` methods for labeling new data and online learning.
 
+### HDBSCAN
+
+```typescript
+new HDBSCAN({
+  min_cluster_size?: number;   // integer >= 2, default 5
+  min_samples?: number;        // integer >= 1, default = min_cluster_size
+  metric?: 'euclidean' | 'precomputed';  // default 'euclidean'
+  cluster_selection_method?: 'eom' | 'leaf';  // default 'eom'
+})
+```
+
+HDBSCAN determines the number of clusters automatically from the data. Points that do not belong to any cluster are assigned label `-1` (noise). Use `metric: 'precomputed'` to supply a square, symmetric, zero-diagonal distance matrix directly.
+
 ### Validation Metrics
 
 ```typescript
@@ -357,6 +377,8 @@ Based on our benchmarks:
 - Spectral nearest-neighbors: sparse graph memory scales with `n_neighbors`,
   making large sample counts feasible when dense RBF affinity would be O(n²)
 - Agglomerative: 5ms - 500ms
+- SOM: training time scales with grid size and number of epochs
+- HDBSCAN: dominated by mutual reachability distance computation, O(n²) for euclidean
 
 See [benchmarks/](benchmarks/) for detailed performance data.
 
@@ -370,7 +392,7 @@ labels = kmeans.fit_predict(X)
 ```
 
 ```typescript
-// clustering-js
+// clustering-tfjs
 import { KMeans } from 'clustering-tfjs';
 const kmeans = new KMeans({ n_clusters: 3 });
 const labels = await kmeans.fit_predict(X);
@@ -393,7 +415,3 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on contributing to this pr
 ## License
 
 MIT
-
----
-
-**Note**: This library is under active development. APIs may change in future versions.
