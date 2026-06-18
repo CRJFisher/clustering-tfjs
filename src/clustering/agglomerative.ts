@@ -312,10 +312,25 @@ export class AgglomerativeClustering
 
   /**
    * Computes the full `n×n` pairwise distance matrix in float64, laid out
-   * row-major (`i*n+j`) to match the NN-chain engine. Only the upper triangle
-   * is computed and mirrored. Distances use the same definitions as
-   * scikit-learn's `pairwise_distances`, so results are bit-identical to
-   * sklearn for the same coordinates — required for exact tie resolution.
+   * row-major (`i*n+j`) to match the NN-chain engine.
+   *
+   * **Symmetry**: for every `(i, j)` pair the same scalar `dist` is assigned
+   * to both `D[i*n+j]` and `D[j*n+i]`, so `D[i,j] ≡ D[j,i]` exactly —
+   * not approximately.  `(D+Dᵀ)/2` symmetrisation is unnecessary here
+   * because asymmetry cannot arise from this mirror pattern.
+   *
+   * **Zero diagonal**: `Float64Array` zero-initialises; the inner loop
+   * iterates `j > i` and never writes `D[i*n+i]`.
+   *
+   * **float64 only**: `pairwise_distance_matrix` in `distance/pairwise_distance.ts`
+   * operates on float32 TensorFlow tensors and applies Gram-matrix shortcuts
+   * that require clamping and explicit symmetrisation.  This method uses
+   * direct scalar arithmetic at float64 precision, which the NN-chain
+   * tie-resolution requires to reproduce sklearn's merge order exactly.
+   * Delegating to the tensor path would silently degrade precision.
+   *
+   * Distances use the same definitions as scikit-learn's `pairwise_distances`,
+   * so results are bit-identical to sklearn for the same coordinates.
    */
   private static compute_distance_matrix(
     data: number[][],

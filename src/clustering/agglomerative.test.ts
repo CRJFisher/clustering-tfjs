@@ -387,6 +387,51 @@ describe("AgglomerativeClustering – transductive: no predict or JSON serializa
   });
 });
 
+describe("AgglomerativeClustering – compute_distance_matrix algebraic properties", () => {
+  // Access the private static method for white-box testing of matrix properties.
+  const compute_distance_matrix = (AgglomerativeClustering as any)[
+    "compute_distance_matrix"
+  ] as (data: number[][], metric: "euclidean" | "manhattan" | "cosine") => Float64Array;
+
+  const EUCLIDEAN_FIXTURE = JSON.parse(
+    fs.readFileSync(
+      path.join(COSINE_FIXTURE_DIR, "blobs_n3_ward_euclidean.json"),
+      "utf-8",
+    ),
+  ) as { X: number[][] };
+
+  const COSINE_FIXTURE = JSON.parse(
+    fs.readFileSync(
+      path.join(COSINE_FIXTURE_DIR, "blobs_n3_average_cosine.json"),
+      "utf-8",
+    ),
+  ) as { X: number[][] };
+
+  const CASES: { metric: "euclidean" | "manhattan" | "cosine"; X: number[][] }[] = [
+    { metric: "euclidean", X: EUCLIDEAN_FIXTURE.X },
+    // Manhattan uses the same 2D point data — no manhattan-specific fixture exists.
+    { metric: "manhattan", X: EUCLIDEAN_FIXTURE.X },
+    { metric: "cosine", X: COSINE_FIXTURE.X },
+  ];
+
+  for (const { metric, X } of CASES) {
+    it(`${metric}: |D − Dᵀ|_max < 1e-10 and diag(D) = 0`, () => {
+      const n = X.length;
+      const D = compute_distance_matrix(X, metric);
+
+      let max_asymmetry = 0;
+      for (let i = 0; i < n; i++) {
+        expect(D[i * n + i]).toBe(0);
+        for (let j = i + 1; j < n; j++) {
+          const diff = Math.abs(D[i * n + j] - D[j * n + i]);
+          if (diff > max_asymmetry) max_asymmetry = diff;
+        }
+      }
+      expect(max_asymmetry).toBeLessThan(1e-10);
+    });
+  }
+});
+
 describe("AgglomerativeClustering – compute_medoids large-n smoke test", () => {
   it("does not throw RangeError with 300k samples", async () => {
     const n = 300_000;
