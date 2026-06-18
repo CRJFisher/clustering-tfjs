@@ -86,6 +86,56 @@ describe('smallest_eigenvectors_with_values – path tolerance alignment', () =>
 });
 
 /* =========================================================================
+   AC#1: path equivalence for matrices with >5 structural zeros (k+5 buffer exhaustion)
+   ========================================================================= */
+
+describe('smallest_eigenvectors_with_values – >5 near-zero eigenpairs', () => {
+  // Builds an n×n block-diagonal complete-graph Laplacian with `num_blocks`
+  // disconnected components, each a complete graph on `block_size` nodes.
+  // Each component contributes exactly one zero eigenvalue (the block
+  // indicator vector); all other eigenvalues equal `block_size`.
+  // The large spectral gap (0 vs block_size) lets Lanczos converge quickly.
+  function complete_graph_block_laplacian(block_size: number, num_blocks: number): tf.Tensor2D {
+    const n = block_size * num_blocks;
+    const flat = new Array(n * n).fill(0);
+    for (let b = 0; b < num_blocks; b++) {
+      const offset = b * block_size;
+      for (let i = 0; i < block_size; i++) {
+        for (let j = 0; j < block_size; j++) {
+          flat[(offset + i) * n + (offset + j)] = i === j ? block_size - 1 : -1;
+        }
+      }
+    }
+    return tf.tensor2d(flat, [n, n]);
+  }
+
+  it('Lanczos path (n=102, k=6, 6 components) returns same eigenvector count as Jacobi path (n=12, k=6, 6 components)', () => {
+    // n=12 → Jacobi; n=102 → Lanczos (k=6 < 34 = 102/3).
+    // With k=6 and 6 zero eigenvalues, k_request=11 and Lanczos finds c=6 near-zeros,
+    // so k+c=12 > 11 → the retry is required to get the correct slice_cols=12.
+    const k = 6;
+    const num_blocks = 6;
+    const expected_cols = k + num_blocks; // 12
+
+    const M_jacobi = complete_graph_block_laplacian(2, num_blocks);  // n=12
+    const M_lanczos = complete_graph_block_laplacian(17, num_blocks); // n=102
+
+    const r_jacobi = smallest_eigenvectors_with_values(M_jacobi, k);
+    const r_lanczos = smallest_eigenvectors_with_values(M_lanczos, k);
+
+    expect(r_jacobi.eigenvectors.shape[1]).toBe(expected_cols);
+    expect(r_lanczos.eigenvectors.shape[1]).toBe(expected_cols);
+
+    r_jacobi.eigenvectors.dispose();
+    r_jacobi.eigenvalues.dispose();
+    r_lanczos.eigenvectors.dispose();
+    r_lanczos.eigenvalues.dispose();
+    M_jacobi.dispose();
+    M_lanczos.dispose();
+  });
+});
+
+/* =========================================================================
    AC#4: SpectralClustering n=99 (Jacobi) vs n=101 (Lanczos) path boundary
    ========================================================================= */
 

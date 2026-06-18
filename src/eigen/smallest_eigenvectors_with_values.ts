@@ -62,6 +62,15 @@ function is_lanczos_operator(
   );
 }
 
+function count_near_zeros(eigenvalues: number[]): number {
+  let c = 0;
+  for (const v of eigenvalues) {
+    if (v <= NEAR_ZERO_TOL) c += 1;
+    else break;
+  }
+  return c;
+}
+
 /**
  * Lanczos path: iterative eigensolver for large matrices.
  * Falls back to Jacobi if Lanczos fails.
@@ -76,16 +85,22 @@ function lanczos_path(
   const k_request = Math.min(k + 5, n);
 
   try {
-    const result = lanczos_smallest_eigenpairs(matrix, k_request, {
+    let result = lanczos_smallest_eigenpairs(matrix, k_request, {
       is_psd: true,
       random_seed: 42,
     });
 
-    // Determine number of numerically-zero eigenvalues
-    let c = 0;
-    for (const v of result.eigenvalues) {
-      if (v <= NEAR_ZERO_TOL) c += 1;
-      else break;
+    let c = count_near_zeros(result.eigenvalues);
+
+    // If near-zeros consumed the entire buffer, there may be more beyond k_request.
+    // Retry with enough room to capture all of them.
+    if (k + c > result.eigenvalues.length && result.eigenvalues.length < n) {
+      const k_retry = Math.min(k + c + 5, n);
+      result = lanczos_smallest_eigenpairs(matrix, k_retry, {
+        is_psd: true,
+        random_seed: 42,
+      });
+      c = count_near_zeros(result.eigenvalues);
     }
 
     const slice_cols = Math.min(k + c, result.eigenvalues.length);
@@ -142,13 +157,7 @@ function jacobi_path(
       eigenvectors,
     });
 
-    // Determine number of numerically-zero eigenvalues
-    let c = 0;
-    for (const v of processed.eigenvalues) {
-      if (v <= NEAR_ZERO_TOL) c += 1;
-      else break;
-    }
-
+    const c = count_near_zeros(processed.eigenvalues);
     const n = processed.eigenvectors.length;
     const slice_cols = Math.min(k + c, n);
 
