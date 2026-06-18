@@ -72,7 +72,7 @@
   <span class="grp">
     <a href="task-52.5 - Fix-HDBSCAN-dispose-called-before-empty-input-validation-guard.dispose-order.html">.5 HDBSCAN dispose order</a>
     <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
-    <span class="pending">.8 find_optimal_clusters threshold <small>· not yet generated</small></span>
+    <a href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">.8 find_optimal threshold</a>
     <span class="pending">.9 agglomerative symmetrisation <small>· not yet generated</small></span>
     <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
     <span class="pending">.11 Lanczos k=5 overshoot <small>· not yet generated</small></span>
@@ -126,8 +126,9 @@
             <rect x="415" y="56" width="150" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="490" y="80" text-anchor="middle" fill="#2e2c28">.9 symmetrise</text>
 
-            <rect x="595" y="56" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
-            <text x="675" y="80" text-anchor="middle" fill="#2e2c28">.8 find_optimal</text>
+            <rect x="595" y="56" width="160" height="46" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="1.6"/>
+            <text x="675" y="76" text-anchor="middle" fill="#3f4a26">.8 find_optimal</text>
+            <text x="675" y="92" text-anchor="middle" fill="#3f4a26">detail ✓</text>
             <rect x="595" y="108" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="675" y="132" text-anchor="middle" fill="#2e2c28">.10 silhouette</text>
 
@@ -144,7 +145,7 @@
           </g>
         </svg>
       </div>
-      <figcaption>The findings cluster by subsystem; the two <code>dispose()</code> state bugs in spectral (.7, done) and HDBSCAN (.5) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
+      <figcaption>The findings cluster by subsystem; spectral (.7, done), HDBSCAN (.5), and the model-selection boundary fix (.8) have detail pages. Remaining sub-tasks gain pages as they are picked up.</figcaption>
     </figure>
   </section>
 
@@ -172,7 +173,9 @@
         <span class="id">task-52.8</span>
         <span class="ttl">find_optimal_clusters passes distance_threshold via algorithm_params to Agglomerative</span>
         <span class="area">Model selection</span>
-        <div class="foot"><span class="dot d-conf"></span><span class="tag t-pending">detail not yet generated</span></div>
+        <div class="foot"><span class="dot d-conf"></span>
+          <a class="tag t-doc" href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">open detail →</a>
+        </div>
       </div>
       <div class="card">
         <span class="id">task-52.9</span>

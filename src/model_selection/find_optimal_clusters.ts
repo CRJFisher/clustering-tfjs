@@ -191,6 +191,11 @@ export async function find_optimal_clusters(
   if (max_clusters < min_clusters) {
     throw new Error('max_clusters must be greater than or equal to min_clusters');
   }
+  if (algorithm === 'agglomerative' && 'distance_threshold' in algorithm_params) {
+    throw new Error(
+      "algorithm_params must not include 'distance_threshold': find_optimal_clusters controls the stopping criterion via the k-sweep loop.",
+    );
+  }
 
   // Convert data to tensor if needed
   const is_input_tensor = is_tensor(X);

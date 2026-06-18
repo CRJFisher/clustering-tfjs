@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>task-52.8 — distance_threshold validation boundary</title>
+<style>
+  :root {
+    --ivory:#f7f3ec; --slate:#2e2c28; --clay:#b5683f; --olive:#6f7a4e;
+    --oat:#e7ddca; --rust:#8f3a23; --g1:#cfc7b7; --g2:#9a9182; --g3:#6b6458;
+    --serif: ui-serif, Georgia, "Iowan Old Style", serif;
+    --sans: ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing:border-box; }
+  html { scroll-behavior:smooth; }
+  body { margin:0; background:var(--ivory); color:var(--slate); font-family:var(--sans); line-height:1.5; }
+  nav.top { position:sticky; top:0; z-index:10; background:var(--ivory); border-bottom:1px solid var(--oat);
+    display:flex; flex-wrap:wrap; gap:.45rem; align-items:center; padding:.6rem 5%; }
+  nav.top .crumb { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--g2); margin-right:auto; }
+  nav.top a, nav.top .here { font-family:var(--mono); font-size:.72rem; text-decoration:none; padding:.28rem .58rem;
+    border-radius:999px; border:1px solid var(--oat); background:#fff; color:var(--slate); }
+  nav.top a:hover { border-color:var(--clay); }
+  nav.top a.done::after { content:" ✓"; color:var(--olive); }
+  nav.top .here { background:var(--slate); color:var(--ivory); border-color:var(--slate); }
+  main { width:90%; max-width:1600px; margin-inline:auto; padding:2rem 0 5rem; }
+  section { scroll-margin-top:62px; margin-bottom:3rem; }
+  .eyebrow { font-family:var(--mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.12em;
+    color:var(--clay); margin:0 0 .3rem; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:2rem; margin:.1rem 0 .6rem; line-height:1.15; }
+  h2 { font-family:var(--serif); font-weight:600; font-size:1.35rem; margin:0 0 1rem; }
+  .meta { display:flex; flex-wrap:wrap; gap:.5rem; }
+  .chip { font-family:var(--mono); font-size:.72rem; background:#fff; border:1px solid var(--oat);
+    border-radius:999px; padding:.25rem .6rem; }
+  .chip strong { color:var(--clay); }
+  figure { margin:0; } figcaption { font-size:.85rem; color:var(--g3); margin-top:.6rem; font-style:italic; max-width:80ch; }
+  .prompt { border:1px solid var(--oat); border-left:4px solid var(--g2); background:#fff; border-radius:0 10px 10px 0;
+    padding:.7rem 1rem; }
+  .prompt .label { font-family:var(--mono); font-size:.66rem; text-transform:uppercase; letter-spacing:.1em; color:var(--g2); margin-bottom:.25rem; }
+  .prompt code { font-family:var(--mono); font-size:.78rem; }
+  /* before/after */
+  .ba { display:grid; grid-template-columns:1fr auto 1fr; gap:0; align-items:stretch; }
+  .ba .panel { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1rem; }
+  .ba .arrow { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 .7rem;
+    font-family:var(--mono); font-size:.66rem; color:var(--g2); text-transform:uppercase; letter-spacing:.08em; }
+  .ba .arrow .a { font-size:1.6rem; color:var(--clay); line-height:1; }
+  .ba .ptitle { font-family:var(--mono); font-size:.68rem; text-transform:uppercase; letter-spacing:.1em; margin-bottom:.5rem; }
+  .ba .ptitle.cur { color:var(--rust); } .ba .ptitle.plan { color:var(--olive); }
+  .ba svg { display:block; width:100%; height:auto; }
+  .legend { display:flex; flex-wrap:wrap; gap:1rem; margin-top:.7rem; font-family:var(--mono); font-size:.7rem; color:var(--g3); }
+  .legend span { display:inline-flex; align-items:center; gap:.35rem; }
+  .legend i { width:11px; height:11px; border-radius:3px; display:inline-block; }
+  aside.callout { border-left:4px solid var(--clay); background:#fff; border-radius:0 12px 12px 0; padding:1rem 1.2rem; }
+  aside.callout .k { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--clay); margin-bottom:.3rem; }
+  aside.callout .big { font-family:var(--serif); font-size:1.05rem; }
+  /* code */
+  .code { background:#22201d; color:#e7ddca; border-radius:12px; padding:0; overflow:hidden; }
+  .code .file-label { font-family:var(--mono); font-size:.7rem; color:var(--g1); padding:.5rem .9rem; border-bottom:1px solid #38342f; background:#2b2824; }
+  .code pre { margin:0; padding:.9rem 1rem; font-family:var(--mono); font-size:.78rem; line-height:1.55; overflow-x:auto; white-space:pre; }
+  .kw{color:#c98a5e;} .str{color:#a3b07a;} .cm{color:#6b6458;} .fn{color:#d9b48f;}
+  .add{display:inline-block; width:100%; background:rgba(111,122,78,.22);}
+  .del{display:inline-block; width:100%; background:rgba(143,58,35,.25); text-decoration:line-through; text-decoration-color:#8f3a23;}
+  .hl{display:inline-block; width:100%; background:rgba(181,104,63,.20);}
+  /* gate flow */
+  .gate { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1rem; }
+  .gate svg { display:block; width:100%; height:auto; }
+  /* test table */
+  .tests { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; }
+  .tcard { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:0; overflow:hidden; }
+  .tcard .h { padding:.6rem .9rem; font-family:var(--mono); font-size:.72rem; display:flex; align-items:center; gap:.4rem; border-bottom:1px solid var(--oat); }
+  .tcard.reject .h { background:rgba(143,58,35,.08); color:var(--rust); }
+  .tcard.accept .h { background:rgba(111,122,78,.1); color:var(--olive); }
+  .tdot { width:9px; height:9px; border-radius:50%; }
+  .tcard.reject .tdot { background:var(--rust); } .tcard.accept .tdot { background:var(--olive); }
+  @media (max-width:820px){
+    .ba { grid-template-columns:1fr; }
+    .ba .arrow { flex-direction:row; padding:.6rem 0; }
+    .ba .arrow .a { transform:rotate(90deg); }
+    .tests { grid-template-columns:1fr; }
+  }
+</style>
+</head>
+<body>
+<nav class="top">
+  <span class="crumb">task-52.8 · model selection</span>
+  <a href="task-52 - Fix-correctness-bugs-identified-in-fixes-outstanding-backlog-tasks-review.overview.html">task-52 overview</a>
+  <span class="here" aria-current="page">.8 distance_threshold boundary</span>
+  <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose</a>
+</nav>
+
+<main>
+  <header>
+    <p class="eyebrow">Model selection · find_optimal_clusters</p>
+    <h1>A loop-owned parameter must be rejected at the door, not deep inside the clusterer</h1>
+    <div class="meta">
+      <span class="chip">algorithm <strong>agglomerative</strong></span>
+      <span class="chip">guard at <strong>input validation</strong></span>
+      <span class="chip">no type change</span>
+      <span class="chip">+1 reject test · +1 accept test</span>
+    </div>
+  </header>
+
+  <section id="provenance">
+    <div class="prompt">
+      <div class="label">Source · what produces the collision</div>
+      <code>find_optimal_clusters.ts:276</code> spreads <code>{ n_clusters: k, ...algorithm_params }</code> into <code>new AgglomerativeClustering(...)</code>; <code>agglomerative.ts:282</code> throws when both are set.
+    </div>
+  </section>
+
+  <section id="ba">
+    <h2>Where the error surfaces — current vs planned</h2>
+    <figure>
+      <div class="ba">
+        <div class="panel">
+          <div class="ptitle cur">Current</div>
+          <svg viewBox="0 0 360 290" role="img" aria-label="Current control flow: distance_threshold reaches AgglomerativeClustering and throws there">
+            <defs>
+              <marker id="ar-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#8f3a23"/></marker>
+              <marker id="ar-g1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#9a9182"/></marker>
+            </defs>
+            <g font-family="ui-monospace,monospace" font-size="10.5" fill="#2e2c28">
+              <rect x="70" y="14" width="220" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+              <text x="180" y="32" text-anchor="middle">caller: algorithm_params =</text>
+              <text x="180" y="46" text-anchor="middle">{ distance_threshold: 2.5 }</text>
+
+              <rect x="70" y="86" width="220" height="44" rx="10" fill="#f3ece0" stroke="#9a9182"/>
+              <text x="180" y="104" text-anchor="middle">find_optimal_clusters</text>
+              <text x="180" y="118" text-anchor="middle" fill="#6b6458">input validation (no guard)</text>
+
+              <rect x="70" y="160" width="220" height="44" rx="10" fill="#f3ece0" stroke="#9a9182"/>
+              <text x="180" y="178" text-anchor="middle">k-sweep: new Agglomerative({</text>
+              <text x="180" y="192" text-anchor="middle" fill="#6b6458">n_clusters: k, ...params })</text>
+
+              <rect x="50" y="234" width="260" height="44" rx="10" fill="#f6e3dc" stroke="#8f3a23" stroke-width="2"/>
+              <text x="180" y="252" text-anchor="middle" fill="#8f3a23">✗ validate_params throws</text>
+              <text x="180" y="266" text-anchor="middle" fill="#8f3a23">"exactly one of n_clusters / threshold"</text>
+            </g>
+            <line x1="180" y1="54" x2="180" y2="84" stroke="#9a9182" stroke-width="1.5" marker-end="url(#ar-g1)"/>
+            <line x1="180" y1="130" x2="180" y2="158" stroke="#9a9182" stroke-width="1.5" marker-end="url(#ar-g1)"/>
+            <line x1="180" y1="204" x2="180" y2="232" stroke="#8f3a23" stroke-width="2" marker-end="url(#ar-r)"/>
+          </svg>
+        </div>
+        <div class="arrow"><span>fix</span><span class="a">→</span></div>
+        <div class="panel">
+          <div class="ptitle plan">Planned</div>
+          <svg viewBox="0 0 360 290" role="img" aria-label="Planned control flow: guard rejects distance_threshold at the find_optimal_clusters boundary before the loop">
+            <defs>
+              <marker id="ar-r2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#8f3a23"/></marker>
+              <marker id="ar-g2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0 L10 5 L0 10 z" fill="#9a9182"/></marker>
+            </defs>
+            <g font-family="ui-monospace,monospace" font-size="10.5" fill="#2e2c28">
+              <rect x="70" y="14" width="220" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
+              <text x="180" y="32" text-anchor="middle">caller: algorithm_params =</text>
+              <text x="180" y="46" text-anchor="middle">{ distance_threshold: 2.5 }</text>
+
+              <rect x="50" y="86" width="260" height="58" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="2"/>
+              <text x="180" y="104" text-anchor="middle" fill="#3f4a26">find_optimal_clusters · NEW GUARD</text>
+              <text x="180" y="120" text-anchor="middle" fill="#3f4a26">agglomerative &amp;&amp;</text>
+              <text x="180" y="134" text-anchor="middle" fill="#3f4a26">'distance_threshold' in params ?</text>
+
+              <rect x="36" y="170" width="150" height="44" rx="10" fill="#f6e3dc" stroke="#8f3a23" stroke-width="2"/>
+              <text x="111" y="188" text-anchor="middle" fill="#8f3a23">✗ throw here</text>
+              <text x="111" y="202" text-anchor="middle" fill="#8f3a23">clear boundary error</text>
+
+              <rect x="200" y="170" width="124" height="44" rx="10" fill="#f3ece0" stroke="#9a9182"/>
+              <text x="262" y="188" text-anchor="middle">k-sweep runs</text>
+              <text x="262" y="202" text-anchor="middle" fill="#6b6458">params safe</text>
+
+              <rect x="200" y="232" width="124" height="40" rx="10" fill="#dfe7cf" stroke="#6f7a4e"/>
+              <text x="262" y="256" text-anchor="middle" fill="#3f4a26">✓ Agglomerative</text>
+            </g>
+            <line x1="180" y1="54" x2="180" y2="84" stroke="#9a9182" stroke-width="1.5" marker-end="url(#ar-g2)"/>
+            <path d="M150 144 L111 168" stroke="#8f3a23" stroke-width="2" fill="none" marker-end="url(#ar-r2)"/>
+            <path d="M210 144 L262 168" stroke="#6f7a4e" stroke-width="1.8" fill="none" marker-end="url(#ar-g2)"/>
+            <line x1="262" y1="214" x2="262" y2="230" stroke="#6f7a4e" stroke-width="1.8" marker-end="url(#ar-g2)"/>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#dfe7cf;border:1px solid #6f7a4e;"></i> added — boundary guard</span>
+        <span><i style="background:#f6e3dc;border:1px solid #8f3a23;"></i> error surfaces here</span>
+        <span><i style="background:#f3ece0;border:1px solid #9a9182;"></i> unchanged path</span>
+      </div>
+      <figcaption>Today the bad parameter travels three hops down and throws inside AgglomerativeClustering with a message about a contradiction the caller never wrote; the fix rejects it at the first hop with a message naming <code>algorithm_params</code> and the k-sweep that owns <code>distance_threshold</code>.</figcaption>
+    </figure>
+  </section>
+
+  <section id="why">
+    <aside class="callout">
+      <div class="k">Why the guard, not a type</div>
+      <div class="big"><code>distance_threshold</code> is owned by the k-sweep loop — it sets <code>n_clusters: k</code> on every iteration, so the two parameters are mutually exclusive by construction. <code>algorithm_params</code> stays <code>Record&lt;string, unknown&gt;</code>: TypeScript cannot check <code>'distance_threshold' in</code> an untyped spread at the type level, so a runtime guard at the caller boundary is the root-cause fix, not a type change.</div>
+    </aside>
+  </section>
+
+  <section id="fix">
+    <h2>The change — one guard at input validation</h2>
+    <figure>
+      <div class="code">
+        <div class="file-label">src/model_selection/find_optimal_clusters.ts · within input validation (~line 187–211)</div>
+<pre><span class="cm">  // Validate inputs</span>
+  <span class="kw">if</span> (min_clusters &lt; <span class="str">2</span>) {
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'min_clusters must be at least 2'</span>);
+  }
+  <span class="kw">if</span> (max_clusters &lt; min_clusters) {
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'max_clusters must be greater than or equal to min_clusters'</span>);
+  }
+<span class="add">  // distance_threshold is controlled by the k-sweep loop, which sets</span>
+<span class="add">  // n_clusters on every iteration; the two are mutually exclusive.</span>
+<span class="add">  if (algorithm === 'agglomerative' &amp;&amp; 'distance_threshold' in algorithm_params) {</span>
+<span class="add">    throw new Error(</span>
+<span class="add">      "find_optimal_clusters does not accept 'distance_threshold' in " +</span>
+<span class="add">      "algorithm_params for the agglomerative algorithm: the cluster count " +</span>
+<span class="add">      "is swept via n_clusters. Remove distance_threshold.",</span>
+<span class="add">    );</span>
+<span class="add">  }</span></pre>
+      </div>
+      <figcaption>The guard sits beside the existing <code>min_clusters</code>/<code>max_clusters</code> checks — before any tensor allocation or the k-sweep — so it fails fast and leaks nothing.</figcaption>
+    </figure>
+  </section>
+
+  <section id="gate">
+    <h2>What the guard lets through</h2>
+    <figure>
+      <div class="gate">
+        <svg viewBox="0 0 880 150" role="img" aria-label="The guard rejects distance_threshold but passes linkage and metric through to AgglomerativeClustering">
+          <defs>
+            <marker id="g-ok" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#6f7a4e"/></marker>
+            <marker id="g-no" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0 0 L10 5 L0 10 z" fill="#8f3a23"/></marker>
+          </defs>
+          <g font-family="ui-monospace,monospace" font-size="11">
+            <rect x="20" y="14" width="190" height="34" rx="8" fill="#f6e3dc" stroke="#8f3a23"/>
+            <text x="115" y="35" text-anchor="middle" fill="#8f3a23">distance_threshold: 2.5</text>
+            <rect x="20" y="58" width="190" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e"/>
+            <text x="115" y="79" text-anchor="middle" fill="#3f4a26">linkage: 'average'</text>
+            <rect x="20" y="102" width="190" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e"/>
+            <text x="115" y="123" text-anchor="middle" fill="#3f4a26">metric: 'manhattan'</text>
+
+            <rect x="360" y="48" width="160" height="56" rx="12" fill="#fff" stroke="#2e2c28" stroke-width="1.8"/>
+            <text x="440" y="72" text-anchor="middle" fill="#2e2c28">boundary guard</text>
+            <text x="440" y="89" text-anchor="middle" fill="#6b6458" font-size="10">'distance_threshold' in ?</text>
+
+            <rect x="660" y="14" width="200" height="34" rx="8" fill="#f6e3dc" stroke="#8f3a23"/>
+            <text x="760" y="35" text-anchor="middle" fill="#8f3a23">✗ rejected at boundary</text>
+            <rect x="660" y="80" width="200" height="48" rx="8" fill="#dfe7cf" stroke="#6f7a4e"/>
+            <text x="760" y="100" text-anchor="middle" fill="#3f4a26">✓ spread into clusterer</text>
+            <text x="760" y="116" text-anchor="middle" fill="#3f4a26" font-size="10">{ n_clusters: k, linkage, metric }</text>
+          </g>
+          <path d="M210 31 L356 60" stroke="#8f3a23" stroke-width="1.6" fill="none"/>
+          <path d="M210 75 L356 76" stroke="#6f7a4e" stroke-width="1.6" fill="none"/>
+          <path d="M210 119 L356 92" stroke="#6f7a4e" stroke-width="1.6" fill="none"/>
+          <path d="M520 64 L656 31" stroke="#8f3a23" stroke-width="2" fill="none" marker-end="url(#g-no)"/>
+          <path d="M520 88 L656 100" stroke="#6f7a4e" stroke-width="2" fill="none" marker-end="url(#g-ok)"/>
+        </svg>
+      </div>
+      <figcaption>Only <code>distance_threshold</code> is blocked; every other agglomerative parameter — <code>linkage</code>, <code>metric</code> — flows through untouched and is validated by AgglomerativeClustering as before.</figcaption>
+    </figure>
+  </section>
+
+  <section id="tests">
+    <h2>The two boundary tests</h2>
+    <div class="tests">
+      <div class="tcard reject">
+        <div class="h"><span class="tdot"></span> AC#3 · rejects distance_threshold</div>
+        <div class="code" style="border-radius:0;">
+<pre><span class="cm">// throws at the find_optimal_clusters boundary</span>
+<span class="kw">await</span> <span class="fn">expect</span>(
+  <span class="fn">find_optimal_clusters</span>(data, {
+    algorithm: <span class="str">'agglomerative'</span>,
+    algorithm_params: { <span class="hl">distance_threshold: <span class="str">2.5</span></span> },
+  }),
+).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">/distance_threshold/</span>);</pre>
+        </div>
+      </div>
+      <div class="tcard accept">
+        <div class="h"><span class="tdot"></span> AC#3 · accepts linkage &amp; metric</div>
+        <div class="code" style="border-radius:0;">
+<pre><span class="cm">// linkage + metric pass through and cluster</span>
+<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">find_optimal_clusters</span>(data, {
+  algorithm: <span class="str">'agglomerative'</span>,
+  max_clusters: <span class="str">4</span>,
+  algorithm_params: { <span class="hl">linkage: <span class="str">'average'</span>, metric: <span class="str">'manhattan'</span></span> },
+});
+<span class="fn">expect</span>(res.optimal.k).<span class="fn">toBeGreaterThanOrEqual</span>(<span class="str">2</span>);</pre>
+        </div>
+      </div>
+    </div>
+    <figcaption>One test reproduces the original crash and asserts the clear boundary message; the companion test proves the guard is surgical — legitimate agglomerative params still sweep k successfully.</figcaption>
+  </section>
+</main>
+</body>
+</html>

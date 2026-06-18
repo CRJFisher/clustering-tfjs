@@ -243,6 +243,43 @@ describe("findOptimalClusters", () => {
     expect(result.optimal.k).toBeLessThanOrEqual(3);
   });
 
+  it("agglomerative: rejects distance_threshold in algorithm_params at the find_optimal_clusters boundary", async () => {
+    const data = [[1, 2], [2, 3], [10, 11], [11, 12]];
+
+    await expect(
+      find_optimal_clusters(data, {
+        algorithm: 'agglomerative',
+        algorithm_params: { distance_threshold: 2.5 },
+      })
+    ).rejects.toThrow(
+      "algorithm_params must not include 'distance_threshold'",
+    );
+  });
+
+  it("agglomerative: accepts linkage and metric via algorithm_params", async () => {
+    const { X } = make_blobs({
+      n_samples: 30,
+      n_features: 2,
+      centers: 3,
+      cluster_std: 0.3,
+      random_state: 7,
+    });
+
+    try {
+      const result = await find_optimal_clusters(X, {
+        algorithm: 'agglomerative',
+        algorithm_params: { linkage: 'complete', metric: 'euclidean' },
+        min_clusters: 2,
+        max_clusters: 4,
+      });
+
+      expect(result.optimal.k).toBeGreaterThanOrEqual(2);
+      expect(result.optimal.k).toBeLessThanOrEqual(4);
+    } finally {
+      X.dispose();
+    }
+  });
+
   describe("Normalized scoring (AC#1)", () => {
     it("should produce combined scores in [0, 1] range", async () => {
       const data = [
