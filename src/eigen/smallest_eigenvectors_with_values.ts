@@ -81,25 +81,23 @@ function lanczos_path(
   n: number,
   allow_jacobi_fallback: boolean,
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
-  // Request extra eigenpairs to capture near-zero eigenvalues for component detection
-  const k_request = Math.min(k + 5, n);
+  const lanczos_opts = { is_psd: true, random_seed: 42 };
 
   try {
-    let result = lanczos_smallest_eigenpairs(matrix, k_request, {
-      is_psd: true,
-      random_seed: 42,
-    });
-
+    let k_cur = Math.min(k + 5, n);
+    let result = lanczos_smallest_eigenpairs(matrix, k_cur, lanczos_opts);
     let c = count_near_zeros(result.eigenvalues);
+    let prev_c = -1;
 
-    // If near-zeros consumed the entire buffer, there may be more beyond k_request.
-    // Retry with enough room to capture all of them.
-    if (k + c > result.eigenvalues.length && result.eigenvalues.length < n) {
-      const k_retry = Math.min(k + c + 5, n);
-      result = lanczos_smallest_eigenpairs(matrix, k_retry, {
-        is_psd: true,
-        random_seed: 42,
-      });
+    // Expand k_cur until the near-zero count stabilizes. A single k+5 buffer
+    // can miss structural zeros when k is small relative to the number of
+    // disconnected components: Lanczos needs a Krylov subspace large enough
+    // to fully resolve the degenerate zero eigenspace. Each iteration grows
+    // k_cur by c+5, so convergence is typically reached in two or three calls.
+    while (c > 0 && c > prev_c && k_cur < n) {
+      prev_c = c;
+      k_cur = Math.min(k_cur + c + 5, n);
+      result = lanczos_smallest_eigenpairs(matrix, k_cur, lanczos_opts);
       c = count_near_zeros(result.eigenvalues);
     }
 

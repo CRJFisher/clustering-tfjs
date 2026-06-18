@@ -109,30 +109,36 @@ describe('smallest_eigenvectors_with_values – >5 near-zero eigenpairs', () => 
     return tf.tensor2d(flat, [n, n]);
   }
 
-  it('Lanczos path (n=102, k=6, 6 components) returns same eigenvector count as Jacobi path (n=12, k=6, 6 components)', () => {
-    // n=12 → Jacobi; n=102 → Lanczos (k=6 < 34 = 102/3).
-    // With k=6 and 6 zero eigenvalues, k_request=11 and Lanczos finds c=6 near-zeros,
-    // so k+c=12 > 11 → the retry is required to get the correct slice_cols=12.
-    const k = 6;
-    const num_blocks = 6;
-    const expected_cols = k + num_blocks; // 12
+  it.each([
+    { k: 2, num_blocks: 6, jacobi_block_size: 2, lanczos_block_size: 17 },
+    { k: 6, num_blocks: 6, jacobi_block_size: 2, lanczos_block_size: 17 },
+    { k: 2, num_blocks: 8, jacobi_block_size: 2, lanczos_block_size: 13 },
+  ])(
+    'Lanczos (n=$lanczos_block_size×$num_blocks, k=$k, $num_blocks components) matches Jacobi column count',
+    ({ k, num_blocks, jacobi_block_size, lanczos_block_size }) => {
+      // Jacobi path: n = jacobi_block_size * num_blocks ≤ 100
+      // Lanczos path: n = lanczos_block_size * num_blocks > 100, k < n/3
+      // Both must return k + num_blocks columns — the near-zero count matches
+      // the number of disconnected components.
+      const expected_cols = k + num_blocks;
 
-    const M_jacobi = complete_graph_block_laplacian(2, num_blocks);  // n=12
-    const M_lanczos = complete_graph_block_laplacian(17, num_blocks); // n=102
+      const M_jacobi = complete_graph_block_laplacian(jacobi_block_size, num_blocks);
+      const M_lanczos = complete_graph_block_laplacian(lanczos_block_size, num_blocks);
 
-    const r_jacobi = smallest_eigenvectors_with_values(M_jacobi, k);
-    const r_lanczos = smallest_eigenvectors_with_values(M_lanczos, k);
+      const r_jacobi = smallest_eigenvectors_with_values(M_jacobi, k);
+      const r_lanczos = smallest_eigenvectors_with_values(M_lanczos, k);
 
-    expect(r_jacobi.eigenvectors.shape[1]).toBe(expected_cols);
-    expect(r_lanczos.eigenvectors.shape[1]).toBe(expected_cols);
+      expect(r_jacobi.eigenvectors.shape[1]).toBe(expected_cols);
+      expect(r_lanczos.eigenvectors.shape[1]).toBe(expected_cols);
 
-    r_jacobi.eigenvectors.dispose();
-    r_jacobi.eigenvalues.dispose();
-    r_lanczos.eigenvectors.dispose();
-    r_lanczos.eigenvalues.dispose();
-    M_jacobi.dispose();
-    M_lanczos.dispose();
-  });
+      r_jacobi.eigenvectors.dispose();
+      r_jacobi.eigenvalues.dispose();
+      r_lanczos.eigenvectors.dispose();
+      r_lanczos.eigenvalues.dispose();
+      M_jacobi.dispose();
+      M_lanczos.dispose();
+    },
+  );
 });
 
 /* =========================================================================
