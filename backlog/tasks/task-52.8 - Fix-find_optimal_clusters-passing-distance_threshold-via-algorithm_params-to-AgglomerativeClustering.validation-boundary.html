@@ -35,6 +35,7 @@
   .chip { font-family:var(--mono); font-size:.72rem; background:#fff; border:1px solid var(--oat);
     border-radius:999px; padding:.25rem .6rem; }
   .chip strong { color:var(--clay); }
+  .chip.ok strong { color:var(--olive); }
   figure { margin:0; } figcaption { font-size:.85rem; color:var(--g3); margin-top:.6rem; font-style:italic; max-width:80ch; }
   .prompt { border:1px solid var(--oat); border-left:4px solid var(--g2); background:#fff; border-radius:0 10px 10px 0;
     padding:.7rem 1rem; }
@@ -55,6 +56,13 @@
   aside.callout { border-left:4px solid var(--clay); background:#fff; border-radius:0 12px 12px 0; padding:1rem 1.2rem; }
   aside.callout .k { font-family:var(--mono); font-size:.7rem; text-transform:uppercase; letter-spacing:.1em; color:var(--clay); margin-bottom:.3rem; }
   aside.callout .big { font-family:var(--serif); font-size:1.05rem; }
+  /* surfaces touched */
+  .surfaces { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:.8rem; }
+  .scard { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:.85rem .9rem; }
+  .scard .where { font-family:var(--mono); font-size:.68rem; color:var(--clay); margin-bottom:.35rem; }
+  .scard .what { font-size:.85rem; }
+  .scard .tag { display:inline-block; font-family:var(--mono); font-size:.6rem; text-transform:uppercase; letter-spacing:.08em;
+    background:var(--oat); border-radius:999px; padding:.12rem .45rem; margin-top:.5rem; color:var(--g3); }
   /* code */
   .code { background:#22201d; color:#e7ddca; border-radius:12px; padding:0; overflow:hidden; }
   .code .file-label { font-family:var(--mono); font-size:.7rem; color:var(--g1); padding:.5rem .9rem; border-bottom:1px solid #38342f; background:#2b2824; }
@@ -63,6 +71,7 @@
   .add{display:inline-block; width:100%; background:rgba(111,122,78,.22);}
   .del{display:inline-block; width:100%; background:rgba(143,58,35,.25); text-decoration:line-through; text-decoration-color:#8f3a23;}
   .hl{display:inline-block; width:100%; background:rgba(181,104,63,.20);}
+  .twocol { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem; align-items:start; }
   /* gate flow */
   .gate { background:#fff; border:1px solid var(--oat); border-radius:12px; padding:1rem; }
   .gate svg { display:block; width:100%; height:auto; }
@@ -78,13 +87,14 @@
     .ba { grid-template-columns:1fr; }
     .ba .arrow { flex-direction:row; padding:.6rem 0; }
     .ba .arrow .a { transform:rotate(90deg); }
-    .tests { grid-template-columns:1fr; }
+    .tests, .twocol { grid-template-columns:1fr; }
+    .surfaces { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
 </style>
 </head>
 <body>
 <nav class="top">
-  <span class="crumb">task-52.8 · model selection</span>
+  <span class="crumb">task-52.8 · model selection · delivered</span>
   <a href="task-52 - Fix-correctness-bugs-identified-in-fixes-outstanding-backlog-tasks-review.overview.html">task-52 overview</a>
   <span class="here" aria-current="page">.8 distance_threshold boundary</span>
   <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose</a>
@@ -92,30 +102,30 @@
 
 <main>
   <header>
-    <p class="eyebrow">Model selection · find_optimal_clusters</p>
-    <h1>A loop-owned parameter must be rejected at the door, not deep inside the clusterer</h1>
+    <p class="eyebrow">Model selection · find_optimal_clusters · shipped</p>
+    <h1>A loop-owned parameter is rejected at the door, not deep inside the clusterer</h1>
     <div class="meta">
       <span class="chip">algorithm <strong>agglomerative</strong></span>
-      <span class="chip">guard at <strong>input validation</strong></span>
+      <span class="chip">guard at <strong>input validation · line 199</strong></span>
       <span class="chip">no type change</span>
-      <span class="chip">+1 reject test · +1 accept test</span>
+      <span class="chip ok">+2 tests · <strong>23 pass</strong></span>
     </div>
   </header>
 
   <section id="provenance">
     <div class="prompt">
       <div class="label">Source · what produces the collision</div>
-      <code>find_optimal_clusters.ts:276</code> spreads <code>{ n_clusters: k, ...algorithm_params }</code> into <code>new AgglomerativeClustering(...)</code>; <code>agglomerative.ts:282</code> throws when both are set.
+      <code>find_optimal_clusters.ts</code> spreads <code>{ n_clusters: k, ...algorithm_params }</code> into <code>new AgglomerativeClustering(...)</code> on every k-sweep iteration; AgglomerativeClustering throws when both <code>n_clusters</code> and <code>distance_threshold</code> are set.
     </div>
   </section>
 
   <section id="ba">
-    <h2>Where the error surfaces — current vs planned</h2>
+    <h2>Where the error surfaces — before vs after</h2>
     <figure>
       <div class="ba">
         <div class="panel">
-          <div class="ptitle cur">Current</div>
-          <svg viewBox="0 0 360 290" role="img" aria-label="Current control flow: distance_threshold reaches AgglomerativeClustering and throws there">
+          <div class="ptitle cur">Before</div>
+          <svg viewBox="0 0 360 290" role="img" aria-label="Before: distance_threshold reaches AgglomerativeClustering and throws there">
             <defs>
               <marker id="ar-r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0 L10 5 L0 10 z" fill="#8f3a23"/></marker>
@@ -136,7 +146,7 @@
               <text x="180" y="192" text-anchor="middle" fill="#6b6458">n_clusters: k, ...params })</text>
 
               <rect x="50" y="234" width="260" height="44" rx="10" fill="#f6e3dc" stroke="#8f3a23" stroke-width="2"/>
-              <text x="180" y="252" text-anchor="middle" fill="#8f3a23">✗ validate_params throws</text>
+              <text x="180" y="252" text-anchor="middle" fill="#8f3a23">✗ AgglomerativeClustering throws</text>
               <text x="180" y="266" text-anchor="middle" fill="#8f3a23">"exactly one of n_clusters / threshold"</text>
             </g>
             <line x1="180" y1="54" x2="180" y2="84" stroke="#9a9182" stroke-width="1.5" marker-end="url(#ar-g1)"/>
@@ -144,10 +154,10 @@
             <line x1="180" y1="204" x2="180" y2="232" stroke="#8f3a23" stroke-width="2" marker-end="url(#ar-r)"/>
           </svg>
         </div>
-        <div class="arrow"><span>fix</span><span class="a">→</span></div>
+        <div class="arrow"><span>shipped</span><span class="a">→</span></div>
         <div class="panel">
-          <div class="ptitle plan">Planned</div>
-          <svg viewBox="0 0 360 290" role="img" aria-label="Planned control flow: guard rejects distance_threshold at the find_optimal_clusters boundary before the loop">
+          <div class="ptitle plan">After</div>
+          <svg viewBox="0 0 360 290" role="img" aria-label="After: guard rejects distance_threshold at the find_optimal_clusters boundary before the loop">
             <defs>
               <marker id="ar-r2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0 L10 5 L0 10 z" fill="#8f3a23"/></marker>
@@ -160,7 +170,7 @@
               <text x="180" y="46" text-anchor="middle">{ distance_threshold: 2.5 }</text>
 
               <rect x="50" y="86" width="260" height="58" rx="10" fill="#eef0e4" stroke="#6f7a4e" stroke-width="2"/>
-              <text x="180" y="104" text-anchor="middle" fill="#3f4a26">find_optimal_clusters · NEW GUARD</text>
+              <text x="180" y="104" text-anchor="middle" fill="#3f4a26">find_optimal_clusters · GUARD (line 199)</text>
               <text x="180" y="120" text-anchor="middle" fill="#3f4a26">agglomerative &amp;&amp;</text>
               <text x="180" y="134" text-anchor="middle" fill="#3f4a26">'distance_threshold' in params ?</text>
 
@@ -187,41 +197,85 @@
         <span><i style="background:#f6e3dc;border:1px solid #8f3a23;"></i> error surfaces here</span>
         <span><i style="background:#f3ece0;border:1px solid #9a9182;"></i> unchanged path</span>
       </div>
-      <figcaption>Today the bad parameter travels three hops down and throws inside AgglomerativeClustering with a message about a contradiction the caller never wrote; the fix rejects it at the first hop with a message naming <code>algorithm_params</code> and the k-sweep that owns <code>distance_threshold</code>.</figcaption>
+      <figcaption>Before, the bad parameter travelled three hops down and threw inside AgglomerativeClustering with a message about a contradiction the caller never wrote; now it is rejected at the first hop with a message naming <code>algorithm_params</code> and the k-sweep that owns <code>distance_threshold</code>.</figcaption>
     </figure>
+  </section>
+
+  <section id="surfaces">
+    <h2>Four surfaces changed — the guard plus the places that announce it</h2>
+    <div class="surfaces">
+      <div class="scard">
+        <div class="where">find_optimal_clusters.ts :199</div>
+        <div class="what">Runtime guard rejecting <code>distance_threshold</code> for agglomerative.</div>
+        <span class="tag">behavior</span>
+      </div>
+      <div class="scard">
+        <div class="where">find_optimal_clusters.ts :57–62</div>
+        <div class="what">JSDoc on <code>algorithm_params</code> states the restriction at the interface.</div>
+        <span class="tag">api surface</span>
+      </div>
+      <div class="scard">
+        <div class="where">API.md · option table</div>
+        <div class="what"><code>algorithm_params</code> row notes the agglomerative restriction.</div>
+        <span class="tag">docs</span>
+      </div>
+      <div class="scard">
+        <div class="where">find_optimal_clusters.test.ts</div>
+        <div class="what">One reject test, one accept test — 23 tests pass.</div>
+        <span class="tag">tests</span>
+      </div>
+    </div>
+    <figcaption>Review surfaced that a guard invisible to a caller reading the interface is a half-fix; the JSDoc and API.md rows were added so the constraint shows up wherever the option is documented.</figcaption>
   </section>
 
   <section id="why">
     <aside class="callout">
-      <div class="k">Why the guard, not a type</div>
+      <div class="k">Why a guard, not a type</div>
       <div class="big"><code>distance_threshold</code> is owned by the k-sweep loop — it sets <code>n_clusters: k</code> on every iteration, so the two parameters are mutually exclusive by construction. <code>algorithm_params</code> stays <code>Record&lt;string, unknown&gt;</code>: TypeScript cannot check <code>'distance_threshold' in</code> an untyped spread at the type level, so a runtime guard at the caller boundary is the root-cause fix, not a type change.</div>
     </aside>
   </section>
 
   <section id="fix">
-    <h2>The change — one guard at input validation</h2>
-    <figure>
-      <div class="code">
-        <div class="file-label">src/model_selection/find_optimal_clusters.ts · within input validation (~line 187–211)</div>
+    <h2>The change — one guard plus the JSDoc that surfaces it</h2>
+    <div class="twocol">
+      <figure>
+        <div class="code">
+          <div class="file-label">src/model_selection/find_optimal_clusters.ts · :192–203</div>
 <pre><span class="cm">  // Validate inputs</span>
   <span class="kw">if</span> (min_clusters &lt; <span class="str">2</span>) {
     <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'min_clusters must be at least 2'</span>);
   }
   <span class="kw">if</span> (max_clusters &lt; min_clusters) {
-    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'max_clusters must be greater than or equal to min_clusters'</span>);
+    <span class="kw">throw new</span> <span class="fn">Error</span>(<span class="str">'max_clusters must be ...'</span>);
   }
-<span class="add">  // distance_threshold is controlled by the k-sweep loop, which sets</span>
-<span class="add">  // n_clusters on every iteration; the two are mutually exclusive.</span>
 <span class="add">  if (algorithm === 'agglomerative' &amp;&amp; 'distance_threshold' in algorithm_params) {</span>
 <span class="add">    throw new Error(</span>
-<span class="add">      "find_optimal_clusters does not accept 'distance_threshold' in " +</span>
-<span class="add">      "algorithm_params for the agglomerative algorithm: the cluster count " +</span>
-<span class="add">      "is swept via n_clusters. Remove distance_threshold.",</span>
+<span class="add">      "algorithm_params must not include 'distance_threshold': "</span>
+<span class="add">      + "find_optimal_clusters controls the stopping criterion "</span>
+<span class="add">      + "via the k-sweep loop.",</span>
 <span class="add">    );</span>
 <span class="add">  }</span></pre>
-      </div>
-      <figcaption>The guard sits beside the existing <code>min_clusters</code>/<code>max_clusters</code> checks — before any tensor allocation or the k-sweep — so it fails fast and leaks nothing.</figcaption>
-    </figure>
+        </div>
+        <figcaption>The guard sits beside the existing <code>min_clusters</code>/<code>max_clusters</code> checks — before any tensor allocation or the k-sweep — so it fails fast and leaks nothing.</figcaption>
+      </figure>
+      <figure>
+        <div class="code">
+          <div class="file-label">src/model_selection/find_optimal_clusters.ts · :57–63 (FindOptimalClustersOptions)</div>
+<pre>  <span class="del">/** Algorithm-specific parameters */</span>
+<span class="add">  /**</span>
+<span class="add">   * Algorithm-specific parameters forwarded to the</span>
+<span class="add">   * clusterer constructor.</span>
+<span class="add">   * For `algorithm: 'agglomerative'`,</span>
+<span class="add">   * `distance_threshold` is rejected because</span>
+<span class="add">   * `find_optimal_clusters` controls the stopping</span>
+<span class="add">   * criterion via the k-sweep loop; use</span>
+<span class="add">   * `min_clusters`/`max_clusters` to bound the sweep.</span>
+<span class="add">   */</span>
+  <span class="fn">algorithm_params</span>?: <span class="kw">Record</span>&lt;<span class="kw">string</span>, <span class="kw">unknown</span>&gt;;</pre>
+        </div>
+        <figcaption>The same sentence the guard throws now lives on the option's JSDoc and in the API.md option table, so the constraint is visible before a caller ever triggers it.</figcaption>
+      </figure>
+    </div>
   </section>
 
   <section id="gate">
@@ -239,9 +293,9 @@
             <rect x="20" y="14" width="190" height="34" rx="8" fill="#f6e3dc" stroke="#8f3a23"/>
             <text x="115" y="35" text-anchor="middle" fill="#8f3a23">distance_threshold: 2.5</text>
             <rect x="20" y="58" width="190" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e"/>
-            <text x="115" y="79" text-anchor="middle" fill="#3f4a26">linkage: 'average'</text>
+            <text x="115" y="79" text-anchor="middle" fill="#3f4a26">linkage: 'complete'</text>
             <rect x="20" y="102" width="190" height="34" rx="8" fill="#eef0e4" stroke="#6f7a4e"/>
-            <text x="115" y="123" text-anchor="middle" fill="#3f4a26">metric: 'manhattan'</text>
+            <text x="115" y="123" text-anchor="middle" fill="#3f4a26">metric: 'euclidean'</text>
 
             <rect x="360" y="48" width="160" height="56" rx="12" fill="#fff" stroke="#2e2c28" stroke-width="1.8"/>
             <text x="440" y="72" text-anchor="middle" fill="#2e2c28">boundary guard</text>
@@ -265,34 +319,51 @@
   </section>
 
   <section id="tests">
-    <h2>The two boundary tests</h2>
+    <h2>The two boundary tests — as written</h2>
     <div class="tests">
       <div class="tcard reject">
-        <div class="h"><span class="tdot"></span> AC#3 · rejects distance_threshold</div>
+        <div class="h"><span class="tdot"></span> rejects distance_threshold at the boundary</div>
         <div class="code" style="border-radius:0;">
-<pre><span class="cm">// throws at the find_optimal_clusters boundary</span>
+<pre><span class="cm">// asserts the exact boundary message</span>
+<span class="kw">const</span> data = [[<span class="str">1</span>,<span class="str">2</span>],[<span class="str">2</span>,<span class="str">3</span>],[<span class="str">10</span>,<span class="str">11</span>],[<span class="str">11</span>,<span class="str">12</span>]];
 <span class="kw">await</span> <span class="fn">expect</span>(
   <span class="fn">find_optimal_clusters</span>(data, {
     algorithm: <span class="str">'agglomerative'</span>,
     algorithm_params: { <span class="hl">distance_threshold: <span class="str">2.5</span></span> },
   }),
-).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(<span class="str">/distance_threshold/</span>);</pre>
+).<span class="fn">rejects</span>.<span class="fn">toThrow</span>(
+  <span class="str">"algorithm_params must not include 'distance_threshold'"</span>,
+);</pre>
         </div>
       </div>
       <div class="tcard accept">
-        <div class="h"><span class="tdot"></span> AC#3 · accepts linkage &amp; metric</div>
+        <div class="h"><span class="tdot"></span> accepts linkage and metric via algorithm_params</div>
         <div class="code" style="border-radius:0;">
 <pre><span class="cm">// linkage + metric pass through and cluster</span>
-<span class="kw">const</span> res = <span class="kw">await</span> <span class="fn">find_optimal_clusters</span>(data, {
-  algorithm: <span class="str">'agglomerative'</span>,
-  max_clusters: <span class="str">4</span>,
-  algorithm_params: { <span class="hl">linkage: <span class="str">'average'</span>, metric: <span class="str">'manhattan'</span></span> },
+<span class="kw">const</span> { X } = <span class="fn">make_blobs</span>({
+  n_samples: <span class="str">30</span>, n_features: <span class="str">2</span>, centers: <span class="str">3</span>,
+  cluster_std: <span class="str">0.3</span>, random_state: <span class="str">7</span>,
 });
-<span class="fn">expect</span>(res.optimal.k).<span class="fn">toBeGreaterThanOrEqual</span>(<span class="str">2</span>);</pre>
+<span class="kw">const</span> result = <span class="kw">await</span> <span class="fn">find_optimal_clusters</span>(X, {
+  algorithm: <span class="str">'agglomerative'</span>,
+  algorithm_params: { <span class="hl">linkage: <span class="str">'complete'</span>, metric: <span class="str">'euclidean'</span></span> },
+  min_clusters: <span class="str">2</span>, max_clusters: <span class="str">4</span>,
+});
+<span class="fn">expect</span>(result.optimal.k).<span class="fn">toBeGreaterThanOrEqual</span>(<span class="str">2</span>);
+<span class="fn">expect</span>(result.optimal.k).<span class="fn">toBeLessThanOrEqual</span>(<span class="str">4</span>);</pre>
         </div>
       </div>
     </div>
-    <figcaption>One test reproduces the original crash and asserts the clear boundary message; the companion test proves the guard is surgical — legitimate agglomerative params still sweep k successfully.</figcaption>
+    <figcaption>The reject test pins the literal boundary message; the accept test proves the guard is surgical — legitimate agglomerative params still sweep k and land in [2, 4]. The full suite is 23 tests, all passing.</figcaption>
+  </section>
+
+  <section id="open">
+    <aside class="callout" style="border-left-color:var(--g2);">
+      <div class="k" style="color:var(--g2);">Deliberately left as-is</div>
+      <div class="big" style="font-size:.98rem;">
+        <code>'distance_threshold' in</code> is stricter than the downstream <code>!= null</code> check — it rejects even <code>{ distance_threshold: undefined }</code>, which matches the spec intent of forbidding the key outright. Two pre-existing issues stay out of scope: <code>n_clusters</code> inside <code>algorithm_params</code> still silently overrides the k-sweep, and AgglomerativeClustering keeps its own threshold validation — the boundary guard duplicates it on purpose, because AC#2 requires the error to surface at the <code>find_optimal_clusters</code> boundary.
+      </div>
+    </aside>
   </section>
 </main>
 </body>

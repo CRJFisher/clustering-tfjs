@@ -577,7 +577,7 @@ function find_optimal_clusters(
 | `min_clusters`     | `number`                                             | `2`                                                     | Minimum clusters to test      |
 | `max_clusters`     | `number`                                             | `10`                                                    | Maximum clusters to test      |
 | `algorithm`        | `'kmeans' \| 'spectral' \| 'agglomerative' \| 'som'` | `'kmeans'`                                              | Algorithm to use              |
-| `algorithm_params` | `object`                                             | `{}`                                                    | Algorithm-specific parameters |
+| `algorithm_params` | `object`                                             | `{}`                                                    | Algorithm-specific parameters. For `agglomerative`, `distance_threshold` is rejected — use `min_clusters`/`max_clusters` to bound the sweep. |
 | `metrics`          | `string[]`                                           | `['silhouette', 'davies_bouldin', 'calinski_harabasz']` | Metrics to compute            |
 | `scoring_function` | `(eval: ClusterEvaluation) => number`                | Combined score                                          | Custom scoring                |
 | `method`           | `'combined' \| 'elbow' \| 'silhouette'`              | `'combined'`                                            | Selection method              |

@@ -54,7 +54,12 @@ export interface FindOptimalClustersOptions {
   max_clusters?: number;
   /** Algorithm to use (default: 'kmeans') */
   algorithm?: 'kmeans' | 'spectral' | 'agglomerative' | 'som';
-  /** Algorithm-specific parameters */
+  /**
+   * Algorithm-specific parameters forwarded to the clusterer constructor.
+   * For `algorithm: 'agglomerative'`, `distance_threshold` is rejected because
+   * `find_optimal_clusters` controls the stopping criterion via the k-sweep loop;
+   * use `min_clusters`/`max_clusters` to bound the sweep instead.
+   */
   algorithm_params?: Record<string, unknown>;
   /** Metrics to use for evaluation (default: all). Only used with 'combined' method. */
   metrics?: Array<'silhouette' | 'davies_bouldin' | 'calinski_harabasz'>;
