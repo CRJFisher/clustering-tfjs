@@ -474,9 +474,9 @@ Cluster labels carry one library-wide meaning (see
 in no cluster. Internal-validation metrics measure genuine clusters, so
 `silhouette_*`, `davies_bouldin*`, and `calinski_harabasz*` **exclude `-1`
 samples before computing any distance or dispersion**. They stay well-defined at
-the degenerate boundaries this introduces: all-noise input, or one cluster plus
-noise, return a defined `0` with no division by zero. A genuine fewer-than-two-
-clusters input with **no** noise still throws.
+the degenerate boundaries this introduces: one cluster plus noise returns a
+defined `0` with no division by zero; all-noise input (every label `-1`) throws.
+A genuine fewer-than-two-clusters input with **no** noise also throws.
 
 `silhouette_score` and `davies_bouldin` also accept a `metric` argument
 (`'euclidean' | 'cosine'`); `calinski_harabasz` is variance-based and

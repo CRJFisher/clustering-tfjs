@@ -146,7 +146,8 @@ export function silhouette_samples(
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
  * @returns The mean silhouette score across all samples
- * @throws Error if fewer than 2 valid clusters remain after excluding noise, or labels length doesn't match data rows
+ * @throws Error if all labels are noise, or if fewer than 2 clusters are present
+ *   with no noise, or if labels length doesn't match data rows
  */
 export function silhouette_score(
   X: DataMatrix,
@@ -161,10 +162,18 @@ export function silhouette_score(
  * Computes the Silhouette score for specific samples (subset).
  * Useful for large datasets where computing all pairwise distances is prohibitive.
  *
+ * Noise (`-1`) samples are excluded before any distance computation. The degenerate
+ * contract mirrors silhouette_samples: all-noise input throws; exactly one valid
+ * cluster remaining after noise filtering returns a defined 0; genuine single-cluster
+ * input with no noise throws.
+ *
  * @param X - Data matrix of shape [n_samples, n_features]
  * @param labels - Cluster labels for each sample
  * @param sample_indices - Indices of samples to compute silhouette for
+ * @param metric - Distance metric: 'euclidean' (default) or 'cosine'
  * @returns The mean silhouette score for the specified samples
+ * @throws Error if all labels are noise, or if fewer than 2 valid clusters remain
+ *   with no noise present, or if labels length doesn't match data rows
  */
 export function silhouette_score_subset(
   X: DataMatrix,
