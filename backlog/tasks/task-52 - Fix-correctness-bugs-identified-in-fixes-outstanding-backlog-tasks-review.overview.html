@@ -74,7 +74,7 @@
     <a class="done" href="task-52.7 - Fix-SpectralClustering-dispose-not-clearing-medoid_indices_.dispose-state.html">.7 spectral dispose medoids</a>
     <a class="done" href="task-52.8 - Fix-find_optimal_clusters-passing-distance_threshold-via-algorithm_params-to-AgglomerativeClustering.validation-boundary.html">.8 find_optimal threshold</a>
     <a class="done" href="task-52.9 - Investigate-agglomerative-compute_distance_matrix-missing-symmetrisation-vs-pairwise_distance_matrix.distance-matrix-symmetry.html">.9 agglomerative symmetry</a>
-    <span class="pending">.10 silhouette all-noise <small>· not yet generated</small></span>
+    <a class="done" href="task-52.10 - Fix-silhouette_score-returning-0-silently-for-all-noise-input-instead-of-throwing.all-noise-contract.html">.10 silhouette all-noise</a>
     <span class="pending">.11 Lanczos k=5 overshoot <small>· not yet generated</small></span>
   </span>
 </nav>
@@ -132,8 +132,10 @@
             <rect x="595" y="56" width="160" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
             <text x="675" y="76" text-anchor="middle" fill="#3f4a26">.8 find_optimal</text>
             <text x="675" y="92" text-anchor="middle" fill="#3f4a26">done ✓</text>
-            <rect x="595" y="108" width="160" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
-            <text x="675" y="132" text-anchor="middle" fill="#2e2c28">.10 silhouette</text>
+            <!-- .10 done -->
+            <rect x="595" y="108" width="160" height="46" rx="10" fill="#dfe7cf" stroke="#6f7a4e" stroke-width="2.2"/>
+            <text x="675" y="128" text-anchor="middle" fill="#3f4a26">.10 silhouette</text>
+            <text x="675" y="144" text-anchor="middle" fill="#3f4a26">done ✓</text>
 
             <rect x="775" y="56" width="90" height="40" rx="10" fill="#fff" stroke="#9a9182"/>
             <text x="820" y="80" text-anchor="middle" fill="#2e2c28">.11 Lanczos</text>
@@ -148,7 +150,7 @@
           </g>
         </svg>
       </div>
-      <figcaption>Four findings are resolved with detail pages — HDBSCAN dispose order (.5), spectral dispose medoids (.7), the model-selection boundary fix (.8), and the agglomerative distance-matrix investigation (.9). The remaining two — silhouette all-noise (.10) and the Lanczos overshoot cap (.11) — are still open and gain pages as they are picked up.</figcaption>
+      <figcaption>Five findings are resolved with detail pages — HDBSCAN dispose order (.5), spectral dispose medoids (.7), the model-selection boundary fix (.8), the agglomerative distance-matrix investigation (.9), and the silhouette all-noise contract (.10). The last open item — the Lanczos overshoot cap (.11) — gains a page as it is picked up.</figcaption>
     </figure>
   </section>
 
@@ -191,11 +193,14 @@
           <a class="tag t-doc" href="task-52.9 - Investigate-agglomerative-compute_distance_matrix-missing-symmetrisation-vs-pairwise_distance_matrix.distance-matrix-symmetry.html">open detail →</a>
         </div>
       </div>
-      <div class="card">
+      <div class="card done">
         <span class="id">task-52.10</span>
         <span class="ttl">silhouette_score returns 0 silently for all-noise input instead of throwing</span>
         <span class="area">Validation / metrics</span>
-        <div class="foot"><span class="dot d-plaus"></span><span class="tag t-pending">detail not yet generated</span></div>
+        <div class="foot"><span class="dot d-plaus"></span>
+          <span class="tag t-done">done ✓</span>
+          <a class="tag t-doc" href="task-52.10 - Fix-silhouette_score-returning-0-silently-for-all-noise-input-instead-of-throwing.all-noise-contract.html">open detail →</a>
+        </div>
       </div>
       <div class="card">
         <span class="id">task-52.11</span>
