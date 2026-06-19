@@ -1,7 +1,7 @@
 # clustering-tfjs
 
 [![npm version](https://badge.fury.io/js/clustering-tfjs.svg)](https://www.npmjs.com/package/clustering-tfjs)
-[![Build Status](https://github.com/CRJFisher/clustering-js/workflows/CI/badge.svg)](https://github.com/CRJFisher/clustering-js/actions)
+[![Build Status](https://github.com/CRJFisher/clustering-tfjs/workflows/CI/badge.svg)](https://github.com/CRJFisher/clustering-tfjs/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
@@ -168,8 +168,8 @@ npm install clustering-tfjs @tensorflow/tfjs
 ### HDBSCAN
 
 - Hierarchical density-based clustering with automatic cluster count
-- Robust to noise — points that do not belong to any cluster are labelled `-1`
-- Supports `euclidean` and `precomputed` distance metrics
+- Robust to noise — points that do not belong to any cluster are labeled `-1`
+- Supports `euclidean`, `manhattan`, and `precomputed` distance metrics
 - Two cluster selection methods: `eom` (excess of mass, default) and `leaf`
 
 ## Validation Metrics
@@ -199,7 +199,7 @@ import { find_optimal_clusters } from 'clustering-tfjs';
 const result = await find_optimal_clusters(data, {
   min_clusters: 2,
   max_clusters: 10,
-  algorithm: 'kmeans', // or 'spectral', 'agglomerative'
+  algorithm: 'kmeans', // or 'spectral', 'agglomerative', 'som'
 });
 
 console.log(`Optimal number of clusters: ${result.optimal.k}`);
@@ -331,14 +331,15 @@ Note: SOM additionally provides `predict()` and `partial_fit()` methods for labe
 
 ```typescript
 new HDBSCAN({
-  min_cluster_size?: number;   // integer >= 2, default 5
-  min_samples?: number;        // integer >= 1, default = min_cluster_size
-  metric?: 'euclidean' | 'precomputed';  // default 'euclidean'
-  cluster_selection_method?: 'eom' | 'leaf';  // default 'eom'
+  min_cluster_size?: number;          // integer >= 2, default 5
+  min_samples?: number;               // integer >= 1, default = min_cluster_size
+  metric?: 'euclidean' | 'manhattan' | 'precomputed';  // default 'euclidean'
+  cluster_selection_method?: 'eom' | 'leaf';           // default 'eom'
+  cluster_selection_epsilon?: number; // >= 0, default 0
 })
 ```
 
-HDBSCAN determines the number of clusters automatically from the data. Points that do not belong to any cluster are assigned label `-1` (noise). Use `metric: 'precomputed'` to supply a square, symmetric, zero-diagonal distance matrix directly.
+HDBSCAN determines the number of clusters automatically from the data. Points that do not belong to any cluster are assigned label `-1` (noise). After fitting, `labels_` exposes per-point cluster assignments and `probabilities_` exposes per-point cluster membership strength (0 for noise). Use `metric: 'precomputed'` to supply a square, symmetric, zero-diagonal distance matrix directly. Because HDBSCAN determines its own cluster count, it is not a valid `algorithm` for `find_optimal_clusters`.
 
 ### Validation Metrics
 

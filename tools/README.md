@@ -93,8 +93,8 @@ const spectral = new SpectralClustering({
 });
 
 await spectral.fit(X);
-const debugInfo = spectral.get_debug_info();
-console.log(debugInfo);
+const debug_info = spectral.get_debug_info();
+console.log(debug_info);
 ```
 
 Or use the `fit_with_intermediate_steps` method to get all intermediate results:
@@ -105,6 +105,6 @@ const spectral = new SpectralClustering({
   affinity: 'rbf'
 });
 
-const intermediateSteps = await spectral.fit_with_intermediate_steps(X);
-// intermediateSteps contains: affinity, laplacian, embedding, labels
+const intermediate_steps = await spectral.fit_with_intermediate_steps(X);
+// intermediate_steps contains: affinity, laplacian, embedding, labels
 ```

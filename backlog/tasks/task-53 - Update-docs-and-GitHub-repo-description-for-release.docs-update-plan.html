@@ -1,0 +1,528 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>task-53 · Docs update for release — shipped</title>
+<style>
+  :root{
+    --ivory:#f7f4ec; --slate:#2f3133; --clay:#b9743f; --olive:#6f7a4a;
+    --oat:#e7e0cf; --rust:#9c4a2e; --g100:#efebe1; --g300:#d6cfbf;
+    --g500:#9a948a; --g700:#5c5851;
+    --serif:ui-serif,Georgia,"Times New Roman",serif;
+    --sans:system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5}
+
+  .toc{position:sticky;top:0;z-index:10;background:var(--oat);
+    border-bottom:1px solid var(--g300);padding:.55rem 5%;
+    display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .toc .brand{font-family:var(--mono);font-size:.7rem;letter-spacing:.12em;
+    text-transform:uppercase;color:var(--g700);margin-right:.6rem}
+  .toc a{font-family:var(--mono);font-size:.72rem;text-decoration:none;color:var(--slate);
+    background:var(--ivory);border:1px solid var(--g300);border-radius:999px;
+    padding:.25rem .65rem;display:inline-flex;gap:.4rem;align-items:center}
+  .toc a:hover{border-color:var(--clay)}
+  .toc a .dot{width:7px;height:7px;border-radius:50%;background:var(--clay)}
+
+  main{width:90%;max-width:1600px;margin-inline:auto;padding:2rem 0 5rem}
+  section{scroll-margin-top:64px;margin-top:2.6rem}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--clay)}
+  h1{font-family:var(--serif);font-weight:600;font-size:2.1rem;margin:.3rem 0 .5rem}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem;
+    display:flex;align-items:baseline;gap:.6rem;flex-wrap:wrap}
+  h2 .file{font-family:var(--mono);font-size:.82rem;background:var(--oat);
+    border:1px solid var(--g300);border-radius:6px;padding:.1rem .45rem;color:var(--g700)}
+  h3{font-family:var(--sans);font-weight:600;font-size:.95rem;margin:1.4rem 0 .6rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--g100);
+    border:1px solid var(--g300);border-radius:999px;padding:.2rem .6rem}
+  .chip strong{color:var(--olive)}
+  .chip.warn strong{color:var(--clay)}
+  .pill{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;
+    border-radius:999px;padding:.18rem .6rem;background:var(--olive);color:#fff}
+
+  .prose{max-width:68ch}
+  figcaption{font-family:var(--sans);font-size:.85rem;color:var(--g700);
+    margin-top:.5rem;max-width:88ch}
+
+  .edits{display:flex;flex-direction:column;gap:.9rem;margin:.4rem 0 0}
+  .edit{border:1px solid var(--g300);border-radius:12px;background:#fff;overflow:hidden}
+  .edit.flagged{border-color:var(--clay);box-shadow:0 0 0 1px var(--clay)}
+  .edit .ehead{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;
+    padding:.55rem .8rem;background:var(--g100);border-bottom:1px solid var(--g300)}
+  .edit.flagged .ehead{background:#f4e6da}
+  .edit .num{font-family:var(--mono);font-size:.72rem;font-weight:700;color:#fff;
+    background:var(--slate);border-radius:50%;width:22px;height:22px;
+    display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .edit .what{font-weight:600;font-size:.92rem}
+  .edit .loc{font-family:var(--mono);font-size:.7rem;color:var(--g500);margin-left:auto}
+  .tag{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;
+    letter-spacing:.06em;border-radius:999px;padding:.12rem .5rem}
+  .tag.add{background:#eef0e3;color:var(--olive);border:1px solid #c7cfa8}
+  .tag.fix{background:#f4e6da;color:var(--clay);border:1px solid #e0c3a4}
+  .tag.del{background:#f3ddd5;color:var(--rust);border:1px solid #ddb3a4}
+  .tag.review{background:var(--clay);color:#fff;border:1px solid var(--clay)}
+
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .ba > div{padding:.7rem .8rem}
+  .ba .before{border-right:1px solid var(--g300)}
+  .ba .label{font-family:var(--mono);font-size:.66rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--g500);margin-bottom:.4rem}
+  .ba .before .label{color:var(--rust)}
+  .ba .after .label{color:var(--olive)}
+  code,pre.snip{font-family:var(--mono);font-size:.8rem}
+  pre.snip{margin:0;white-space:pre-wrap;word-break:break-word;
+    background:#2c2e30;color:#e7e2d6;border-radius:8px;padding:.6rem .7rem;line-height:1.45}
+  pre.snip .del{color:#e6a48f;text-decoration:line-through}
+  pre.snip .add{color:#b9c98a}
+  pre.snip .cm{color:#8d897e}
+  pre.snip .kw{color:#cda3d6}
+  pre.snip .str{color:#cbb37a}
+  pre.snip .mark{background:#5a4327;color:#f0d9a8;border-radius:3px;padding:0 .15rem}
+  .note{font-size:.86rem;color:var(--g700)}
+
+  aside.call{border-left:4px solid var(--clay);background:#fff;
+    border-radius:0 10px 10px 0;padding:.9rem 1.1rem;margin:1rem 0}
+  aside.call.warn{border-left-color:var(--rust)}
+  aside.call.good{border-left-color:var(--olive)}
+  aside.call .k{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;
+    text-transform:uppercase;color:var(--clay)}
+  aside.call.warn .k{color:var(--rust)}
+  aside.call.good .k{color:var(--olive)}
+  aside.call p{margin:.35rem 0 0;font-size:.9rem;max-width:80ch}
+
+  /* review-corrections table */
+  table.rev{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.6rem;background:#fff;
+    border:1px solid var(--g300);border-radius:12px;overflow:hidden}
+  table.rev th,table.rev td{text-align:left;padding:.55rem .7rem;border-bottom:1px solid var(--g300);vertical-align:top}
+  table.rev th{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--g700);background:var(--g100)}
+  table.rev tr:last-child td{border-bottom:none}
+  table.rev td.f{font-family:var(--mono);font-size:.78rem;color:var(--rust);white-space:nowrap}
+  table.rev td.fixed{font-family:var(--mono);font-size:.78rem;color:var(--olive)}
+  table.rev .where{font-family:var(--mono);font-size:.7rem;color:var(--g500)}
+
+  .apicode{background:#2c2e30;color:#e7e2d6;border-radius:12px;padding:1rem 1.1rem;
+    font-family:var(--mono);font-size:.82rem;line-height:1.6;overflow-x:auto}
+  .apicode .kw{color:#cda3d6}.apicode .str{color:#cbb37a}
+  .apicode .cm{color:#8d897e}.apicode .opt{color:#88b0c4}
+  .apicode .mark{background:#3c4a2c;color:#cfe09a;border-radius:3px;padding:0 .2rem}
+  .params{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));
+    gap:.7rem;margin-top:1rem}
+  .pcard{border:1px solid var(--g300);border-radius:10px;background:#fff;padding:.7rem .8rem}
+  .pcard.new{border-color:var(--olive);box-shadow:0 0 0 1px var(--olive)}
+  .pcard .pname{font-family:var(--mono);font-weight:700;font-size:.84rem;color:var(--slate)}
+  .pcard .ptype{font-family:var(--mono);font-size:.72rem;color:var(--clay);margin-top:.15rem}
+  .pcard .pdesc{font-size:.82rem;color:var(--g700);margin-top:.35rem}
+  .pcard .pdef{font-family:var(--mono);font-size:.7rem;color:var(--olive);margin-top:.35rem}
+  .pcard .added{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;
+    color:var(--olive);margin-top:.4rem;display:inline-block;border:1px solid #c7cfa8;
+    background:#eef0e3;border-radius:999px;padding:.1rem .45rem}
+
+  table.perf{width:100%;border-collapse:collapse;font-size:.85rem;margin-top:.5rem;background:#fff;
+    border:1px solid var(--g300);border-radius:12px;overflow:hidden}
+  table.perf th,table.perf td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--g300)}
+  table.perf th{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;
+    letter-spacing:.06em;color:var(--g700);background:var(--g100)}
+  table.perf tr:last-child td{border-bottom:none}
+  table.perf td.algo{font-family:var(--mono);font-weight:600}
+  table.perf tr.new td{background:#eef0e3}
+  table.perf tr.new td.algo{color:var(--olive)}
+
+  .check{list-style:none;padding:0;margin:.4rem 0 0;display:flex;flex-direction:column;gap:.5rem}
+  .check li{display:flex;gap:.7rem;align-items:flex-start;border:1px solid var(--g300);
+    background:#fff;border-radius:10px;padding:.6rem .8rem}
+  .check input{appearance:none;width:20px;height:20px;flex:0 0 auto;margin-top:.05rem;
+    border:2px solid var(--g500);border-radius:5px;cursor:pointer;position:relative}
+  .check input:checked{background:var(--olive);border-color:var(--olive)}
+  .check input:checked::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;
+    border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .check .ctxt{font-size:.9rem}
+  .check .cn{font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+  .check label{cursor:pointer}
+
+  footer{margin-top:3rem;padding-top:1rem;border-top:1px solid var(--g300);
+    font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+
+  @media(max-width:720px){
+    .ba{grid-template-columns:1fr}
+    .ba .before{border-right:none;border-bottom:1px solid var(--g300)}
+    .params{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="toc" aria-label="Sections">
+  <span class="brand">task-53 · release docs · shipped</span>
+  <a href="#corrections"><span class="dot"></span>Review fixes</a>
+  <a href="#readme"><span class="dot" style="background:var(--olive)"></span>README.md</a>
+  <a href="#hdbscan"><span class="dot" style="background:var(--olive)"></span>HDBSCAN API</a>
+  <a href="#tools"><span class="dot"></span>tools/README.md</a>
+  <a href="#gh"><span class="dot" style="background:var(--g700)"></span>GitHub repo</a>
+  <a href="#done"><span class="dot" style="background:var(--olive)"></span>Done</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Documentation · release readiness · <span style="color:var(--olive)">committed</span></div>
+    <h1>Docs updated for the 5-algorithm release</h1>
+    <div class="prose note">The docs now describe all five algorithms — KMeans, Agglomerative, Spectral, SOM, and HDBSCAN — and drop pre-release and old-naming language. Each edit below shows the previous text next to the text that shipped. A first pass got six details wrong; review caught and corrected every one before commit.</div>
+    <div class="meta">
+      <span class="pill">all edits committed</span>
+      <span class="chip">README edits <strong>8</strong></span>
+      <span class="chip">tools/README edits <strong>3</strong></span>
+      <span class="chip warn">review corrections <strong>6</strong></span>
+      <span class="chip">files confirmed no-change <strong>2</strong></span>
+      <span class="chip warn">repo edit <strong>handed to user</strong></span>
+    </div>
+  </header>
+
+  <aside class="call">
+    <div class="k">What changed vs. the plan</div>
+    <p>No code changed — every edit is wording or structure in existing Markdown. The plan's single new-content item, HDBSCAN, shipped fuller than first drafted: <code>manhattan</code> metric, a fifth constructor param (<code>cluster_selection_epsilon</code>), and the post-fit <code>labels_</code>/<code>probabilities_</code> attributes were all added during review. HDBSCAN remains the one algorithm excluded from <code>find_optimal_clusters</code> because it discovers its own cluster count.</p>
+  </aside>
+
+  <!-- ===================== Review corrections — the crux ===================== -->
+  <section id="corrections">
+    <h2>Six corrections review made to the first pass</h2>
+    <figcaption>The first implementation was incomplete or wrong in these six places. Each row is a defect the review found and the corrected text that shipped — left column is what was wrong, right column is committed.</figcaption>
+
+    <table class="rev">
+      <thead>
+        <tr><th>Where</th><th>First pass (wrong)</th><th>Shipped (corrected)</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="f">HDBSCAN metric union<div class="where">README · API ref</div></td>
+          <td><code>'euclidean' | 'precomputed'</code> — <span style="color:var(--rust)">omitted <code>'manhattan'</code></span></td>
+          <td class="fixed"><code>'euclidean' | 'manhattan' | 'precomputed'</code></td>
+        </tr>
+        <tr>
+          <td class="f">5th constructor param<div class="where">README · API ref</div></td>
+          <td><span style="color:var(--rust)">absent</span> — <code>cluster_selection_epsilon</code> undocumented</td>
+          <td class="fixed"><code>cluster_selection_epsilon?: number</code> · ≥ 0, default 0</td>
+        </tr>
+        <tr>
+          <td class="f">Post-fit attributes<div class="where">README · API ref</div></td>
+          <td><span style="color:var(--rust)">absent</span> — <code>labels_</code> / <code>probabilities_</code> undocumented</td>
+          <td class="fixed">both documented in post-fit prose</td>
+        </tr>
+        <tr>
+          <td class="f">find_optimal_clusters list<div class="where">README · line 202</div></td>
+          <td><code>// or 'spectral', 'agglomerative'</code> — <span style="color:var(--rust)">missing <code>'som'</code></span></td>
+          <td class="fixed"><code>// or 'spectral', 'agglomerative', 'som'</code></td>
+        </tr>
+        <tr>
+          <td class="f">Build Status badge<div class="where">README · line 4</div></td>
+          <td><span style="color:var(--rust)">stale</span> <code>clustering-js</code> in CI badge URL</td>
+          <td class="fixed"><code>clustering-tfjs</code> workflow URL</td>
+        </tr>
+        <tr>
+          <td class="f">Debug example naming<div class="where">tools/README</div></td>
+          <td><span style="color:var(--rust)">camelCase</span> <code>debugInfo</code> / <code>intermediateSteps</code> variables</td>
+          <td class="fixed"><code>debug_info</code> / <code>intermediate_steps</code></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <aside class="call good">
+      <div class="k">Why these mattered</div>
+      <p>The metric union, fifth param, and post-fit attributes are <em>contract</em> errors — they document an API narrower than what the code accepts. The <code>'som'</code> omission and stale badge URL are public-facing release blockers. The camelCase variables violate the project's snake_case convention. All six were corrected in the review commits before the task doc was archived.</p>
+    </aside>
+  </section>
+
+  <!-- ===================== README ===================== -->
+  <section id="readme">
+    <h2>README.md <span class="file">/README.md</span></h2>
+    <figcaption>Eight edits shipped: three add HDBSCAN, two fix stale package naming, one fills the perf list, one fixes the optimal-clusters comment, one removes the pre-release footer. Left = previous, right = committed.</figcaption>
+
+    <div class="edits">
+
+      <div class="edit">
+        <div class="ehead"><span class="num">1</span><span class="what">Features list — HDBSCAN added</span><span class="tag add">add</span><span class="loc">line 13</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip">- ✅ Multiple clustering algorithms <span class="del">(K-Means, Spectral, Agglomerative, SOM)</span></pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip">- ✅ Multiple clustering algorithms <span class="add">(K-Means, Spectral, Agglomerative, SOM, HDBSCAN)</span></pre></div>
+        </div>
+      </div>
+
+      <div class="edit flagged">
+        <div class="ehead"><span class="num">2</span><span class="what">Build Status badge — stale package name</span><span class="tag review">review fix</span><span class="loc">line 4</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip">[![Build Status](.../workflows/CI/badge.svg)]
+(.../<span class="del">clustering-js</span>/actions)</pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip">[![Build Status](.../workflows/CI/badge.svg)]
+(.../<span class="add">clustering-tfjs</span>/actions)</pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">3</span><span class="what">Algorithms section — HDBSCAN subsection added</span><span class="tag add">add</span><span class="loc">lines 168–173</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip"><span class="cm">### Self-Organizing Maps (SOM)</span>
+...
+<span class="del">(section ended — no HDBSCAN)</span></pre></div>
+          <div class="after"><div class="label">shipped — verbatim</div>
+            <pre class="snip"><span class="add">### HDBSCAN
+
+- Hierarchical density-based clustering with
+  automatic cluster count
+- Robust to noise — points that do not belong
+  to any cluster are labeled `-1`</span>
+<span class="add">- Supports `euclidean`, <span class="mark">`manhattan`</span>, and
+  `precomputed` distance metrics
+- Two cluster selection methods: `eom`
+  (excess of mass, default) and `leaf`</span></pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">4</span><span class="what">API Reference — full HDBSCAN constructor block</span><span class="tag add">add</span><span class="loc">lines 330–342</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip"><span class="cm">### SOM (Self-Organizing Maps)</span>
+...
+<span class="del">(no ### HDBSCAN entry)</span></pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip"><span class="add">### HDBSCAN — full block + post-fit prose</span>
+(see <a href="#hdbscan" style="color:#88b0c4">HDBSCAN API</a> section for the
+ exact committed signature)</pre></div>
+        </div>
+      </div>
+
+      <div class="edit flagged">
+        <div class="ehead"><span class="num">5</span><span class="what">find_optimal_clusters comment — missing 'som'</span><span class="tag review">review fix</span><span class="loc">line 202</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip">algorithm: <span class="str">'kmeans'</span>, <span class="cm">// or 'spectral', 'agglomerative'</span></pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip">algorithm: <span class="str">'kmeans'</span>, <span class="cm">// or 'spectral', 'agglomerative', <span class="mark">'som'</span></span></pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">6</span><span class="what">Migration example — old package name in comment</span><span class="tag fix">fix</span><span class="loc">line 396</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip"><span class="del">// clustering-js</span>
+import { KMeans } from <span class="str">'clustering-tfjs'</span>;</pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip"><span class="add">// clustering-tfjs</span>
+import { KMeans } from <span class="str">'clustering-tfjs'</span>;</pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">7</span><span class="what">Footer note — "under active development" removed</span><span class="tag del">remove</span><span class="loc">end of file</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip"><span class="del">**Note**: This library is under active
+development. APIs may change in future versions.</span></pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip"><span class="add">(line removed — release docs do not
+carry a pre-release disclaimer)</span></pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">8</span><span class="what">Performance — SOM and HDBSCAN bullets added</span><span class="tag add">add</span><span class="loc">lines 376–382</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was — 3 algorithms</div>
+            <pre class="snip">- K-Means: 0.5ms - 200ms ...
+- Spectral: 10ms - 2s ...
+- Agglomerative: 5ms - 500ms
+<span class="del">(SOM and HDBSCAN missing)</span></pre></div>
+          <div class="after"><div class="label">shipped — verbatim</div>
+            <pre class="snip">- Agglomerative: 5ms - 500ms
+<span class="add">- SOM: training time scales with grid
+  size and number of epochs
+- HDBSCAN: dominated by mutual reachability
+  distance computation, O(n²) for euclidean</span></pre></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ===================== HDBSCAN API ===================== -->
+  <section id="hdbscan">
+    <h2>HDBSCAN API — as committed</h2>
+    <figcaption>The constructor block that shipped to the API Reference. Highlighted items were added during review — the first draft had four params and an <code>'euclidean' | 'precomputed'</code> metric union.</figcaption>
+
+    <div class="apicode">
+<span class="kw">new</span> HDBSCAN({
+  min_cluster_size<span class="opt">?</span>: <span class="kw">number</span>;          <span class="cm">// integer >= 2, default 5</span>
+  min_samples<span class="opt">?</span>: <span class="kw">number</span>;               <span class="cm">// integer >= 1, default = min_cluster_size</span>
+  metric<span class="opt">?</span>: <span class="str">'euclidean'</span> | <span class="mark"><span class="str">'manhattan'</span></span> | <span class="str">'precomputed'</span>;  <span class="cm">// default 'euclidean'</span>
+  cluster_selection_method<span class="opt">?</span>: <span class="str">'eom'</span> | <span class="str">'leaf'</span>;           <span class="cm">// default 'eom'</span>
+  <span class="mark">cluster_selection_epsilon<span class="opt">?</span>: <span class="kw">number</span>;</span> <span class="cm">// >= 0, default 0</span>
+})
+    </div>
+
+    <div class="params">
+      <div class="pcard">
+        <div class="pname">min_cluster_size</div>
+        <div class="ptype">number · int ≥ 2</div>
+        <div class="pdesc">Smallest grouping treated as a cluster; smaller groupings become noise.</div>
+        <div class="pdef">default: 5</div>
+      </div>
+      <div class="pcard">
+        <div class="pname">min_samples</div>
+        <div class="ptype">number · int ≥ 1</div>
+        <div class="pdesc">How conservative the density estimate is — higher means more points labelled noise.</div>
+        <div class="pdef">default: = min_cluster_size</div>
+      </div>
+      <div class="pcard">
+        <div class="pname">metric</div>
+        <div class="ptype">'euclidean' | 'manhattan' | 'precomputed'</div>
+        <div class="pdesc">Distance measure; 'precomputed' takes a square, symmetric, zero-diagonal distance matrix directly.</div>
+        <div class="pdef">default: 'euclidean'</div>
+        <div class="added">+ 'manhattan' added in review</div>
+      </div>
+      <div class="pcard">
+        <div class="pname">cluster_selection_method</div>
+        <div class="ptype">'eom' | 'leaf'</div>
+        <div class="pdesc">How clusters are extracted from the hierarchy — Excess of Mass vs. leaf clusters.</div>
+        <div class="pdef">default: 'eom'</div>
+      </div>
+      <div class="pcard new">
+        <div class="pname">cluster_selection_epsilon</div>
+        <div class="ptype">number · ≥ 0</div>
+        <div class="pdesc">Distance threshold below which clusters are merged; 0 disables the merge.</div>
+        <div class="pdef">default: 0</div>
+        <div class="added">+ added in review</div>
+      </div>
+    </div>
+
+    <aside class="call good">
+      <div class="k">Post-fit attributes — added in review</div>
+      <p>After <code>fit</code>, <code>labels_</code> holds per-point cluster assignments (<code>-1</code> for noise) and <code>probabilities_</code> holds per-point membership strength (0 for noise). Because HDBSCAN determines its own cluster count, it is not a valid <code>algorithm</code> for <code>find_optimal_clusters</code> — the post-fit prose states this explicitly.</p>
+    </aside>
+  </section>
+
+  <!-- ===================== tools/README ===================== -->
+  <section id="tools">
+    <h2>tools/README.md <span class="file">/tools/README.md</span></h2>
+    <figcaption>Three edits shipped: the debug examples now use the real snake_case API names and variable names, and the historical "Key Findings" section is removed for documentation-style compliance.</figcaption>
+
+    <div class="edits">
+
+      <div class="edit">
+        <div class="ehead"><span class="num">1</span><span class="what">Debug example — API names → snake_case</span><span class="tag fix">fix</span><span class="loc">lines 86–96</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was</div>
+            <pre class="snip">new SpectralClustering({
+  <span class="del">nClusters</span>: 2,
+  <span class="del">captureDebugInfo</span>: true
+});
+const debugInfo = spectral.<span class="del">getDebugInfo()</span>;</pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip">new SpectralClustering({
+  <span class="add">n_clusters</span>: 2,
+  <span class="add">capture_debug_info</span>: true
+});
+const debug_info = spectral.<span class="add">get_debug_info()</span>;</pre></div>
+        </div>
+      </div>
+
+      <div class="edit flagged">
+        <div class="ehead"><span class="num">2</span><span class="what">Intermediate-steps example — method + variable names</span><span class="tag review">review fix</span><span class="loc">lines 100–109</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was — camelCase</div>
+            <pre class="snip">const <span class="del">intermediateSteps</span> = await
+  spectral.<span class="del">fitWithIntermediateSteps</span>(X);
+// intermediateSteps contains: ...</pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip">const <span class="add">intermediate_steps</span> = await
+  spectral.<span class="add">fit_with_intermediate_steps</span>(X);
+<span class="add">// intermediate_steps</span> contains: affinity,
+// laplacian, embedding, labels</pre></div>
+        </div>
+      </div>
+
+      <div class="edit">
+        <div class="ehead"><span class="num">3</span><span class="what">"Key Findings" section — historical context removed</span><span class="tag del">remove</span><span class="loc">old lines 55–62</span></div>
+        <div class="ba">
+          <div class="before"><div class="label">was — historical framing</div>
+            <pre class="snip"><span class="del">## Key Findings
+1. Dual Implementation Bug ...
+2. Eigenvector Recovery vs Diffusion
+   ("the old implementation used ...")
+3. 3-Components-2-Clusters Problem ...</span></pre></div>
+          <div class="after"><div class="label">shipped</div>
+            <pre class="snip"><span class="add">(section removed — canonical docs
+describe the system as it IS; debugging
+history belongs in commit messages and
+task notes, not the reference.)</span></pre></div>
+        </div>
+      </div>
+
+    </div>
+
+    <aside class="call good">
+      <div class="k">Why these are fixes, not preferences</div>
+      <p>CLAUDE.md mandates snake_case for params and methods, so the camelCase examples documented an API that does not exist. The "Key Findings" text referenced "the old implementation" — exactly the historical framing <code>documentation-style.md</code> forbids in canonical docs.</p>
+    </aside>
+  </section>
+
+  <!-- ===================== GitHub repo ===================== -->
+  <section id="gh">
+    <h2>GitHub repo description &amp; topics</h2>
+    <figcaption>The repo edit is the one item not run in this cycle — the command needs <code>gh</code> permissions that were blocked in the automated run, so it was handed to the user to execute.</figcaption>
+
+    <aside class="call warn">
+      <div class="k">Action for the user</div>
+      <p>Run the command below from a shell with <code>gh</code> auth. Confirm the repo slug first with <code>gh repo view</code> — the README badges still reference <code>CRJFisher/clustering-tfjs</code>; pass <code>--repo OWNER/NAME</code> if it differs from the cwd default remote.</p>
+    </aside>
+
+    <div class="apicode">
+<span class="cm"># Description: TypeScript ML library, 5 algorithms incl. HDBSCAN</span>
+gh repo edit \
+  --description <span class="str">"Native TypeScript clustering for TensorFlow.js — K-Means, Spectral, Agglomerative, SOM &amp; HDBSCAN, with scikit-learn parity (browser + Node.js)"</span> \
+  --add-topic <span class="str">clustering</span> \
+  --add-topic <span class="str">machine-learning</span> \
+  --add-topic <span class="str">typescript</span> \
+  --add-topic <span class="str">tensorflow-js</span> \
+  --add-topic <span class="str">hdbscan</span> \
+  --add-topic <span class="str">kmeans</span> \
+  --add-topic <span class="str">spectral-clustering</span> \
+  --add-topic <span class="str">som</span>
+    </div>
+  </section>
+
+  <!-- ===================== Done ===================== -->
+  <section id="done">
+    <h2>Acceptance criteria — state at commit</h2>
+    <figcaption>The five clauses of the single acceptance criterion, marked with what shipped. Boxes are pre-checked where the work is committed.</figcaption>
+    <ul class="check">
+      <li><input type="checkbox" id="d1" checked><label for="d1" class="ctxt"><span class="cn">AC#1a</span> README.md reflects all five algorithms and the full HDBSCAN API — README edits 1–8</label></li>
+      <li><input type="checkbox" id="d2" checked><label for="d2" class="ctxt"><span class="cn">AC#1b</span> examples/observable/README.md — reviewed, confirmed current, no edits needed</label></li>
+      <li><input type="checkbox" id="d3" checked><label for="d3" class="ctxt"><span class="cn">AC#1c</span> scripts/README.md confirmed current · tools/README.md updated — edits 1–3</label></li>
+      <li><input type="checkbox" id="d4"><label for="d4" class="ctxt"><span class="cn">AC#1d</span> GitHub repo description and topics — command prepared, <strong style="color:var(--clay)">left for the user to run</strong> (gh blocked in automated run)</label></li>
+      <li><input type="checkbox" id="d5" checked><label for="d5" class="ctxt"><span class="cn">AC#1e</span> No <code>clustering-js</code> / camelCase API / TDT references remain in public-facing docs</label></li>
+    </ul>
+    <aside class="call good">
+      <div class="k">Verified clean</div>
+      <p>A sweep of the public docs for leftover old naming returns zero matches outside the corrected lines: <code>grep -rniE "clustering-js|nClusters|captureDebugInfo|getDebugInfo|TDT" README.md tools/ examples/ scripts/</code>.</p>
+    </aside>
+  </section>
+
+  <footer>
+    Source: task-53 · README.md · tools/README.md — clustering-tfjs · reflects committed state · generated 2026-06-19
+  </footer>
+</main>
+
+</body>
+</html>
