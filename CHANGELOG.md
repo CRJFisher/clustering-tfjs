@@ -5,7 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-06-22
+
+### Added
+
+- **HDBSCAN** density-based clustering estimator — condensed tree with
+  excess-of-mass cluster selection, `-1` noise labels, and per-point
+  `probabilities_`. Supports euclidean and manhattan metrics.
+- Density-clustering graph primitives: minimum spanning tree, k-distance, and
+  mutual-reachability distance.
+- **PCA** estimator exported from the package root, with `power_iteration_eig`
+  and JSON serialization (`PCAParams`, `PCAJSON`, `EigResult`).
+- **Cosine** as a first-class metric across clustering estimators and
+  validation metrics, including noise-aware (`-1`) semantics.
+- `KMeans.predict()` nearest-centroid assignment, `cluster_centers_` accessor,
+  and JSON serialization (`KMeansJSON`) with predict-after-restore.
+- Uniform cluster-representative accessors: `ClusterRepresentations`,
+  `select_medoids`, and `MedoidResult`.
+- `silhouette_score_subset` for scoring a labelled subset of samples.
 
 ### Changed
 
@@ -27,6 +44,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BREAKING** — the `clustering-tfjs/utils` subpath export. Its members
   (`pairwise_distance_matrix`, `find_optimal_clusters`, `compute_wss`,
   `find_knee`) are available from the package root.
+
+### Fixed
+
+- Correctness bugs across HDBSCAN, spectral, agglomerative, Davies-Bouldin,
+  eigendecomposition, and model selection surfaced in a multi-angle code
+  review: `dispose()` ordering before input validation, empty `labels_` when
+  every spectral gamma attempt fails, Lanczos near-zero buffer exhaustion for
+  graphs with more than five connected components, Davies-Bouldin centroid
+  computation for the cosine metric, and `silhouette_score` now throwing on
+  all-noise input instead of silently returning 0.
 
 ## [0.5.0] - 2026-03-20
 

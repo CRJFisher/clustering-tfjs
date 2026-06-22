@@ -1,7 +1,7 @@
 ---
 id: TASK-52
 title: Fix correctness bugs identified in fixes/outstanding-backlog-tasks review
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-06-10 08:55'
 labels:
@@ -23,7 +23,7 @@ A multi-angle code review of the `fixes/outstanding-backlog-tasks` branch surfac
 
 <!-- AC:BEGIN -->
 
-- [ ] #1 All 10 subtasks are resolved (fixed or documented won't-fix with justification)
-- [ ] #2 No regressions in existing test suite
-- [ ] #3 Each fix has a corresponding test that would have caught the bug
+- [x] #1 All 10 subtasks are resolved (fixed or documented won't-fix with justification)
+- [x] #2 No regressions in existing test suite
+- [x] #3 Each fix has a corresponding test that would have caught the bug
 <!-- AC:END -->
