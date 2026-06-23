@@ -114,13 +114,17 @@ jobs:
   node-backends-test:
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        # windows-2022 ships Visual Studio 2022, which the bundled node-gyp
+        # supports when building @tensorflow/tfjs-node from source. The
+        # windows-latest image (VS2026) is not recognized by node-gyp.
+        os: [ubuntu-latest, windows-2022, macos-latest]
         backend: [tfjs-node, tfjs]
         node-version: [18.x, 20.x, 22.x]
         exclude:
           # tfjs-node-gpu only works on Linux
-          - os: windows-latest
+          - os: windows-2022
             backend: tfjs-node-gpu
           - os: macos-latest
             backend: tfjs-node-gpu
