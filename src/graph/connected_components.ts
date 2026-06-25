@@ -5,10 +5,11 @@ import { SparseMatrix } from './sparse';
  * Detects the number of connected components in a graph based on its affinity matrix.
  *
  * A graph is considered fully connected if there's only 1 component.
- * Multiple components are detected by counting near-zero eigenvalues of the Laplacian.
+ * Components are found by breadth-first traversal of the affinity graph,
+ * treating two nodes as connected when their edge weight exceeds `tolerance`.
  *
  * @param affinity - Affinity/adjacency matrix (n x n)
- * @param tolerance - Tolerance for detecting zero eigenvalues (default: 1e-2)
+ * @param tolerance - Minimum edge weight for two nodes to count as connected (default: 1e-2)
  * @returns Object containing:
  *   - num_components: Number of connected components
  *   - is_fully_connected: Whether the graph has only 1 component
@@ -66,6 +67,15 @@ export function detect_connected_components(
   };
 }
 
+/**
+ * CSR-sparse counterpart of {@link detect_connected_components}: the same
+ * breadth-first component labelling, traversing only the stored non-zero edges
+ * of each row instead of scanning a dense `(n, n)` matrix.
+ *
+ * @param affinity - Square sparse affinity matrix in CSR form.
+ * @param tolerance - Minimum edge weight for two nodes to count as connected (default: 1e-2)
+ * @throws If the affinity matrix is not square.
+ */
 export function detect_sparse_connected_components(
   affinity: SparseMatrix,
   tolerance: number = 1e-2,
@@ -121,7 +131,7 @@ export function detect_sparse_connected_components(
  * Issues a warning if the graph is not fully connected, similar to sklearn.
  *
  * @param affinity - Affinity matrix to check
- * @param tolerance - Tolerance for detecting zero eigenvalues
+ * @param tolerance - Minimum edge weight for two nodes to count as connected
  * @returns true if graph is fully connected, false otherwise
  */
 export function check_graph_connectivity(
