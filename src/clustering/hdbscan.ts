@@ -20,10 +20,11 @@ import {
  * stable clusters by Excess of Mass. It is fit-only — like
  * AgglomerativeClustering there is no principled `predict` for unseen points.
  *
- * Density and tree primitives are consumed from their domain modules rather
- * than reimplemented: core distances from an on-tensor `tf.topk` scan, mutual
- * reachability and the minimum spanning tree from `graph/`, and the condensed
- * tree from `graph/condensation_tree`.
+ * The front-half (distance matrix, core distances, mutual reachability) runs
+ * on the TensorFlow.js backend in a single fused `tf.tidy` inside `fit`. Core
+ * distances use a `tf.topk` order-statistic; mutual reachability is a broadcast
+ * `tf.maximum`. The minimum spanning tree comes from `graph/minimum_spanning_tree`
+ * and the condensed tree from `graph/condensation_tree`.
  *
  * Parity: labels and probabilities match scikit-learn closely but not
  * bit-for-bit. Mutual-reachability weight ties are ordered differently across
@@ -234,8 +235,8 @@ export class HDBSCAN
       );
 
       // Fuse core distances and mutual-reachability on-tensor in a single
-      // tf.tidy block. All intermediates (negated D, topk outputs, reshaped
-      // core vectors) are disposed by the tidy; M_tensor is the sole output.
+      // tf.tidy; the core vector, its two reshaped views, and the intermediate
+      // tf.maximum are freed on exit; M_tensor is the sole output.
       // M[i,j] = max(core[i], core[j], D[i,j]) via broadcast tf.maximum.
       M_tensor = tf.tidy(() => {
         const core = this.core_distances(D_tensor, min_samples);
