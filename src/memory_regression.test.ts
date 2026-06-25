@@ -239,6 +239,8 @@ describe('Memory regression tests', () => {
 
     it('fit() + dispose() with tensor input should not leak tensors', async () => {
       const X = tf.tensor2d(data);
+      // X is created before `before` so it is already counted in the baseline;
+      // fit() never disposes the caller's tensor (euclidean path does not clone).
       const before = tf.memory().numTensors;
 
       const hdb = new HDBSCAN(hdbscan_params);
@@ -247,6 +249,8 @@ describe('Memory regression tests', () => {
 
       const after = tf.memory().numTensors;
       expect(after).toBe(before);
+      // Confirm fit() did not free the caller's tensor.
+      expect(X.isDisposed).toBe(false);
 
       X.dispose();
     });
@@ -275,7 +279,7 @@ describe('Memory regression tests', () => {
       expect(after).toBe(before);
     });
 
-    it('precomputed metric should not leak tensors', async () => {
+    it('precomputed metric (number[][]) should not leak tensors', async () => {
       const precomputed = [
         [0, 1, Math.sqrt(2)],
         [1, 0, 1],
@@ -291,11 +295,37 @@ describe('Memory regression tests', () => {
       expect(after).toBe(before);
     });
 
+    it('precomputed metric (Tensor2D) should not leak tensors', async () => {
+      // Exercises the tensor-clone branch of distance_matrix: the caller's
+      // tensor is cloned internally and the clone is disposed in finally; the
+      // caller's tensor must survive.
+      const D = tf.tensor2d([
+        [0, 1, Math.sqrt(2)],
+        [1, 0, 1],
+        [Math.sqrt(2), 1, 0],
+      ]);
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN({ ...hdbscan_params, metric: 'precomputed' });
+      await hdb.fit(D);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+      expect(D.isDisposed).toBe(false);
+
+      D.dispose();
+    });
+
     it(
       'large-n fit should not leak tensors',
       async () => {
-        // n=500 is within the O(n²) memory ceiling; validates no argument-spread
-        // RangeError arises from the JS tail at this scale.
+        // n=500 exercises the full pipeline at a scale within the O(n²) memory
+        // ceiling (n=500 → 1MB distance matrix). The JS tail has spread-into-
+        // push patterns (condensation_tree.ts:83,262,266) that would crash above
+        // ~65k elements; at n=500 the frontier arrays are at most ~n, so no
+        // RangeError is expected. A full end-to-end fit at the AGENTS.md n≥300k
+        // threshold is infeasible due to the O(n²) ceiling.
         const n = 500;
         const large_data = Array.from({ length: n }, (_, i) => [
           Math.sin(i * 0.1),
@@ -306,6 +336,10 @@ describe('Memory regression tests', () => {
 
         const hdb = new HDBSCAN({ min_cluster_size: 5 });
         await hdb.fit(large_data);
+
+        expect(hdb.labels_).not.toBeNull();
+        expect(hdb.labels_!.length).toBe(n);
+
         hdb.dispose();
 
         const after = tf.memory().numTensors;
