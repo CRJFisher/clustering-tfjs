@@ -70,12 +70,12 @@ export function normalised_laplacian(
   });
 }
 
-export interface MatrixFreeOperator {
+interface MatrixFreeOperator {
   n: number;
   matvec: (vector: Float64Array) => Float64Array;
 }
 
-export interface SparseNormalisedLaplacian {
+interface SparseNormalisedLaplacian {
   operator: MatrixFreeOperator;
   sqrt_degrees: Float64Array;
   degrees: Float64Array;
