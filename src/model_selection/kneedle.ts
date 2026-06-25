@@ -14,11 +14,7 @@ export interface KneedleResult {
   differences: number[];
 }
 
-/**
- * Simplified Kneedle algorithm (Satopaa et al., 2011).
- *
- * @param x_values - Monotonically increasing x-values.
- */
+/** Simplified Kneedle algorithm (Satopaa et al., 2011). */
 export function find_knee(
   x_values: number[],
   y_values: number[],
