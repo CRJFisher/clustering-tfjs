@@ -1,27 +1,17 @@
-/**
- * Node.js-specific TensorFlow.js loader
- * 
- * This module attempts to load the best available TensorFlow.js backend
- * for Node.js environments, with automatic fallback.
- */
-
 export async function load_tensor_flow() {
-  // Try GPU backend first
   try {
-    // Use require.resolve to check if module exists before importing
     require.resolve('@tensorflow/tfjs-node-gpu');
+    // `as string` prevents TS from resolving types for this optional peer dep at build time.
     const tf_gpu = await import('@tensorflow/tfjs-node-gpu' as string);
     console.log('Using TensorFlow.js GPU backend');
     return tf_gpu as typeof import('@tensorflow/tfjs');
   } catch {
-    // GPU backend not available, try CPU backend
     try {
       require.resolve('@tensorflow/tfjs-node');
       const tf_node = await import('@tensorflow/tfjs-node');
       console.log('Using TensorFlow.js Node.js CPU backend');
       return tf_node as typeof import('@tensorflow/tfjs');
     } catch {
-      // Neither Node backend available, fall back to pure JS
       try {
         require.resolve('@tensorflow/tfjs');
         const tf_js = await import('@tensorflow/tfjs');

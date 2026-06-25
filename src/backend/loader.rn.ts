@@ -1,38 +1,21 @@
-/**
- * React Native-specific TensorFlow.js loader
- * 
- * This module loads TensorFlow.js for React Native environments
- * with rn-webgl backend and CPU fallback.
- * 
- * Users must install:
- * - @tensorflow/tfjs-react-native
- * - @tensorflow/tfjs-react-native-platform (for Expo)
- * - expo-gl and expo-gl-cpp (for Expo)
- * OR
- * - gl-react-native (for bare React Native)
- */
-
 export async function load_tensor_flow() {
   try {
-    // Dynamic import to avoid build-time dependency
-    // The actual module name is passed as a string to bypass TypeScript checking
+    // Module name as variable + webpackIgnore: prevents bundlers from statically
+    // resolving this optional peer dep and avoids TS type errors when it's absent.
     const tf_rn_module = '@tensorflow/tfjs-react-native';
     const tf = await import(/* webpackIgnore: true */ tf_rn_module as string) as typeof import('@tensorflow/tfjs');
-    
-    // Wait for TensorFlow.js to initialize
+
     await tf.ready();
-    
-    // Try to set rn-webgl backend for GPU acceleration
+
     try {
       await tf.setBackend('rn-webgl');
       console.log('Using TensorFlow.js React Native WebGL backend (GPU accelerated)');
     } catch {
-      // Fallback to CPU backend if WebGL not available
       console.warn('WebGL backend not available, falling back to CPU');
       await tf.setBackend('cpu');
       console.log('Using TensorFlow.js CPU backend');
     }
-    
+
     return tf;
   } catch {
     throw new Error(
