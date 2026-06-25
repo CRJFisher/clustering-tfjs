@@ -2,7 +2,7 @@ import * as tf from "../../test_support/tensorflow_helper";
 
 import { create_component_indicators } from "./component_indicators";
 
-describe("createComponentIndicators", () => {
+describe("create_component_indicators", () => {
   const tensors: tf.Tensor[] = [];
 
   function tracked<T extends tf.Tensor>(t: T): T {
@@ -16,19 +16,16 @@ describe("createComponentIndicators", () => {
   });
 
   it("produces correct values for 2 equal-size components", () => {
-    // 4 nodes: [0,0,1,1]
     const labels = new Int32Array([0, 0, 1, 1]);
     const result = tracked(create_component_indicators(labels, 2, 2));
     const data = result.arraySync() as number[][];
 
-    // Component 0 has size 2 -> value = 1/sqrt(2)
     const v = 1 / Math.sqrt(2);
     expect(data[0][0]).toBeCloseTo(v);
     expect(data[1][0]).toBeCloseTo(v);
     expect(data[0][1]).toBeCloseTo(0);
     expect(data[1][1]).toBeCloseTo(0);
 
-    // Component 1 has size 2 -> value = 1/sqrt(2)
     expect(data[2][0]).toBeCloseTo(0);
     expect(data[3][0]).toBeCloseTo(0);
     expect(data[2][1]).toBeCloseTo(v);
@@ -36,7 +33,6 @@ describe("createComponentIndicators", () => {
   });
 
   it("normalizes correctly for 3 components of varying sizes", () => {
-    // 6 nodes: component 0 has 3, component 1 has 2, component 2 has 1
     const labels = new Int32Array([0, 0, 0, 1, 1, 2]);
     const result = tracked(create_component_indicators(labels, 3, 3));
     const data = result.arraySync() as number[][];
@@ -45,19 +41,16 @@ describe("createComponentIndicators", () => {
     const v1 = 1 / Math.sqrt(2);
     const v2 = 1 / Math.sqrt(1);
 
-    // Component 0 nodes
     for (let i = 0; i < 3; i++) {
       expect(data[i][0]).toBeCloseTo(v0);
       expect(data[i][1]).toBeCloseTo(0);
       expect(data[i][2]).toBeCloseTo(0);
     }
-    // Component 1 nodes
     for (let i = 3; i < 5; i++) {
       expect(data[i][0]).toBeCloseTo(0);
       expect(data[i][1]).toBeCloseTo(v1);
       expect(data[i][2]).toBeCloseTo(0);
     }
-    // Component 2 node
     expect(data[5][0]).toBeCloseTo(0);
     expect(data[5][1]).toBeCloseTo(0);
     expect(data[5][2]).toBeCloseTo(v2);
@@ -78,21 +71,19 @@ describe("createComponentIndicators", () => {
     }
   });
 
-  it("caps columns with maxIndicators when numComponents > maxIndicators", () => {
-    // 4 components but max 2 indicators
+  it("caps columns at max_indicators; nodes in excess components get zero rows", () => {
     const labels = new Int32Array([0, 1, 2, 3]);
     const result = tracked(create_component_indicators(labels, 4, 2));
     expect(result.shape).toEqual([4, 2]);
 
-    // Nodes in components beyond the indicator cap get all-zero rows.
     const data = result.arraySync() as number[][];
-    expect(data[0]).toEqual([1, 0]); // component 0 (kept)
-    expect(data[1]).toEqual([0, 1]); // component 1 (kept)
-    expect(data[2]).toEqual([0, 0]); // component 2 (capped out)
-    expect(data[3]).toEqual([0, 0]); // component 3 (capped out)
+    expect(data[0]).toEqual([1, 0]);
+    expect(data[1]).toEqual([0, 1]);
+    expect(data[2]).toEqual([0, 0]);
+    expect(data[3]).toEqual([0, 0]);
   });
 
-  it("uses all components when maxIndicators >= numComponents", () => {
+  it("uses all components when max_indicators >= num_components", () => {
     const labels = new Int32Array([0, 0, 1, 1]);
     const result = tracked(create_component_indicators(labels, 2, 10));
     expect(result.shape).toEqual([4, 2]);
@@ -111,12 +102,10 @@ describe("createComponentIndicators", () => {
   });
 
   it("produces an identity matrix for single-node components", () => {
-    // Each node is its own component
     const labels = new Int32Array([0, 1, 2]);
     const result = tracked(create_component_indicators(labels, 3, 3));
     const data = result.arraySync() as number[][];
 
-    // 1/sqrt(1) = 1 on diagonal, 0 elsewhere -> identity
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         expect(data[i][j]).toBeCloseTo(i === j ? 1.0 : 0.0);
@@ -142,7 +131,6 @@ describe("createComponentIndicators", () => {
     const result = create_component_indicators(labels, 2, 2);
     const after = tf.memory().numTensors;
 
-    // Only the returned tensor should be new
     expect(after - before).toBe(1);
 
     result.dispose();
