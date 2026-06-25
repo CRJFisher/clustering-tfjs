@@ -14,7 +14,8 @@ describe("KMeans – parameter validation", () => {
   });
 
   it("throws for invalid metric", () => {
-    expect(() => new KMeans({ n_clusters: 2, metric: "manhattan" as never })).toThrow("metric");
+    // @ts-expect-error - invalid metric value; testing runtime validation
+    expect(() => new KMeans({ n_clusters: 2, metric: "manhattan" })).toThrow("metric");
   });
 
   it("throws for max_iter < 1", () => {
@@ -66,18 +67,16 @@ describe("KMeans", () => {
     [9.9, 9.9],
   ];
 
-  it("should cluster two obvious blobs", async () => {
+  it("clusters two obvious blobs", async () => {
     const km = new KMeans({ n_clusters: 2, random_state: 42 });
     const labels = await km.fit_predict(X);
 
     const cluster0 = labels.slice(0, 3);
     const cluster1 = labels.slice(3);
 
-    // within each true group, predicted labels must be identical
     expect(new Set(cluster0).size).toBe(1);
     expect(new Set(cluster1).size).toBe(1);
 
-    // and across groups they must differ
     expect(cluster0[0]).not.toBe(cluster1[0]);
 
     expect(km.centroids_).not.toBeNull();
@@ -96,7 +95,7 @@ describe("KMeans", () => {
     expect(inertia10).toBeCloseTo(inertia1, 6);
   });
 
-  it("n_init=10 should not yield higher inertia than n_init=1 on random data", async () => {
+  it("n_init=10 does not yield higher inertia than n_init=1 on random data", async () => {
     // create random data with some overlap to make optimisation harder
     const rng = make_random_stream(42);
     const data: number[][] = Array.from({ length: 200 }, () => [rng.rand() * 10, rng.rand() * 10]);
@@ -215,11 +214,8 @@ describe("KMeans", () => {
       const km = new KMeans({ n_clusters: 2, random_state: 42 });
       const labels = await km.fit_predict(data);
 
-      // First three should share a label
       expect(new Set(labels.slice(0, 3)).size).toBe(1);
-      // Last three should share a label
       expect(new Set(labels.slice(3)).size).toBe(1);
-      // The two groups should differ
       expect(labels[0]).not.toBe(labels[3]);
       km.dispose();
     });
@@ -397,14 +393,12 @@ describe("KMeans – cosine (spherical) metric", () => {
     ];
     const model = new KMeans({ n_clusters: 2, metric: "cosine", random_state: 0 });
     const labels = await model.fit_predict(X);
-    // First three share a label, last three share the other.
     expect(labels[0]).toBe(labels[1]);
     expect(labels[1]).toBe(labels[2]);
     expect(labels[3]).toBe(labels[4]);
     expect(labels[4]).toBe(labels[5]);
     expect(labels[0]).not.toBe(labels[3]);
 
-    // predict reproduces fitted labels for the same data.
     const predicted = await model.predict(X);
     expect(predicted).toEqual(labels);
     model.dispose();

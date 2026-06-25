@@ -8,14 +8,13 @@ import { is_tensor } from '../tensor/tensor_guards';
 import { make_random_stream } from '../random';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 
-/** A serialized fitted KMeans model. */
 export interface KMeansJSON {
   params: KMeansParams;
   centroids_: number[][];
   inertia_: number | null;
 }
 
-/** L2-normalizes each row of a matrix onto the unit sphere (zero rows kept). */
+// zero-norm rows returned unchanged
 function l2_normalize_rows(rows: number[][]): number[][] {
   return rows.map((row) => {
     let norm = 0;
@@ -35,13 +34,10 @@ function l2_normalize_rows(rows: number[][]): number[][] {
 export class KMeans implements BaseClustering<KMeansParams> {
   public readonly params: KMeansParams;
 
-  /** Lazily populated labels after calling {@link fit}. */
   public labels_: number[] | null = null;
 
-  /** Final cluster centroids (shape: n_clusters × n_features). */
   public centroids_: tf.Tensor2D | null = null;
 
-  /** Final value of the inertia criterion (sum of squared distances). */
   public inertia_: number | null = null;
 
   private static readonly DEFAULT_MAX_ITER = 300;
@@ -52,19 +48,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
   // clustering tests.
   private static readonly DEFAULT_N_INIT = 10;
 
-  /**
-   * @param params - Configuration for K-Means clustering.
-   */
   constructor(params: KMeansParams) {
     this.params = { ...params };
     KMeans.validate_params(this.params);
   }
 
-  /* --------------------------------------------------------------------- */
-  /*                               Internals                                */
-  /* --------------------------------------------------------------------- */
-
-  /** Provides deterministic or non-deterministic random stream aligned with NumPy. */
   private static make_random_stream(seed?: number) {
     return make_random_stream(seed);
   }
@@ -92,13 +80,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
     }
   }
 
-  /* --------------------------------------------------------------------- */
-  /*                                   API                                  */
-  /* --------------------------------------------------------------------- */
-
-  /**
-   * Disposes any tensors kept as instance state and resets internal caches.
-   */
   public dispose(): void {
     if (this.centroids_ != null) {
       this.centroids_.dispose();
@@ -109,10 +90,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Fits the K-Means model to the input data.
-   *
-   * @param X - Input data matrix of shape [n_samples, n_features].
-   * @returns A promise that resolves when fitting is complete.
    * @throws {Error} If input data is empty or n_clusters exceeds n_samples.
    *
    * @example
@@ -384,10 +361,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Fits the model and returns cluster labels.
-   *
-   * @param X - Input data matrix of shape [n_samples, n_features].
-   * @returns Array of cluster labels for each sample.
    * @throws {Error} If input data is empty or n_clusters exceeds n_samples.
    */
   async fit_predict(X: DataMatrix): Promise<number[]> {
@@ -399,13 +372,9 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Assigns each row of `X` to its nearest fitted centroid.
-   *
    * Distances are computed with `pairwise_distance_matrix` under the model's
    * metric (cosine rows are L2-normalized first, matching `fit`).
    *
-   * @param X - Data matrix of shape [n_samples, n_features].
-   * @returns Cluster label per row.
    * @throws {Error} If called before `fit()` has populated `centroids_`.
    */
   async predict(X: DataMatrix): Promise<number[]> {
@@ -455,9 +424,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Returns the learned centroids as a plain `number[][]` of shape
-   * `n_clusters × n_features`.
-   *
    * @throws {Error} If the model is unfitted.
    */
   get_centroids(): number[][] {
@@ -468,8 +434,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Serializes the fitted model to a plain JSON-serializable object. The
-   * centroid matrix fully determines cluster assignment; together with the
+   * The centroid matrix fully determines cluster assignment; together with the
    * constructor params and `inertia_` it forms a complete snapshot.
    *
    * @throws {Error} If the model is unfitted.
@@ -486,8 +451,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
   }
 
   /**
-   * Reconstructs a fitted KMeans from a {@link to_json} snapshot. The restored
-   * model reproduces cluster assignment via {@link predict} without re-fitting.
+   * The restored model reproduces cluster assignment via {@link predict} without re-fitting.
    */
   static from_json(json: KMeansJSON): KMeans {
     const model = new KMeans(json.params);
@@ -520,7 +484,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
     this.dispose();
 
     const n_features = points_raw[0].length;
-    const points = l2_normalize_rows(points_raw); // unit rows
+    const points = l2_normalize_rows(points_raw);
 
     const max_iter = this.params.max_iter ?? KMeans.DEFAULT_MAX_ITER;
     const tol = this.params.tol ?? KMeans.DEFAULT_TOL;
@@ -532,7 +496,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
       return pairwise_distance_matrix(x, 'cosine').arraySync() as number[][];
     });
 
-    /** Cross cosine distances between every point and every centroid. */
     const cross_cosine = (centroids: number[][]): number[][] => {
       return tf.tidy(() => {
         const combined = tf.tensor2d(
