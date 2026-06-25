@@ -27,7 +27,10 @@ describe("find_knee", () => {
   });
 
   it("returns null for fewer than 3 points", () => {
-    expect(find_knee([2, 3], [100, 50]).knee_x).toBeNull();
+    const two = find_knee([2, 3], [100, 50]);
+    expect(two.knee_x).toBeNull();
+    expect(two.knee_index).toBeNull();
+    expect(two.differences).toHaveLength(0);
     expect(find_knee([2], [100]).knee_x).toBeNull();
     expect(find_knee([], []).knee_x).toBeNull();
   });
