@@ -252,7 +252,7 @@ describe("Silhouette Score", () => {
     });
   });
 
-  describe("NaN fix (AC#4)", () => {
+  describe("Zero-distance (identical points) handling", () => {
     it("should return 0 when a==0 and b==0 (all identical points)", () => {
       const X = [
         [1, 1], [1, 1], [1, 1],
@@ -292,7 +292,7 @@ describe("Silhouette Score", () => {
     });
   });
 
-  describe("Labels length validation (AC#6)", () => {
+  describe("Labels length validation", () => {
     it("should throw when labels length mismatches data rows (array)", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
@@ -324,7 +324,7 @@ describe("Silhouette Score", () => {
     });
   });
 
-  describe("silhouetteSamples (AC#7)", () => {
+  describe("silhouette_samples", () => {
     it("should return correct number of per-sample scores", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0],
@@ -348,6 +348,26 @@ describe("Silhouette Score", () => {
       const score = silhouette_score(X, labels);
 
       expect(mean).toBeCloseTo(score, 10);
+    });
+
+    it("matches hand-computed per-sample coefficients", () => {
+      // Collinear points: cluster 0 = {[0,0],[2,0]}, cluster 1 = {[10,0],[12,0]}.
+      // sample [0,0]:  a=2, b=mean(10,12)=11 -> (11-2)/11 = 9/11
+      // sample [2,0]:  a=2, b=mean(8,10)=9   -> (9-2)/9  = 7/9
+      // sample [10,0]: a=2, b=mean(10,8)=9   -> (9-2)/9  = 7/9
+      // sample [12,0]: a=2, b=mean(12,10)=11 -> (11-2)/11 = 9/11
+      const X = [
+        [0, 0],
+        [2, 0],
+        [10, 0],
+        [12, 0],
+      ];
+      const labels = [0, 0, 1, 1];
+      const samples = silhouette_samples(X, labels);
+      expect(samples[0]).toBeCloseTo(9 / 11, 5);
+      expect(samples[1]).toBeCloseTo(7 / 9, 5);
+      expect(samples[2]).toBeCloseTo(7 / 9, 5);
+      expect(samples[3]).toBeCloseTo(9 / 11, 5);
     });
 
     it("should have all values in [-1, 1]", () => {
@@ -451,7 +471,7 @@ describe("Silhouette – noise (-1) awareness", () => {
   });
 });
 
-describe("Silhouette – degenerate-input contract (AC#3)", () => {
+describe("Silhouette – degenerate-input contract", () => {
   const X2 = [[0, 0], [1, 0]];
 
   it("all-noise labels throw with a descriptive message", () => {
