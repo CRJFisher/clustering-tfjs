@@ -1,20 +1,17 @@
 import * as tf from '../backend/adapter';
 
 /**
- * Improved Jacobi eigendecomposition for symmetric matrices.
- *
- * Enhancements over the basic Jacobi method:
- * 1. Cyclic Jacobi - systematically sweep through all pairs
- * 2. Threshold scaling - adapt threshold as we converge
- * 3. Better handling of small pivots
- * 4. Post-processing to ensure non-negative eigenvalues for PSD matrices
+ * Cyclic sweeps guarantee convergence; adaptive threshold reduction avoids wasted
+ * iterations once off-diagonal elements are already small. With `is_psd: true`,
+ * tiny negative eigenvalues produced by floating-point error are clamped to zero —
+ * appropriate for graph Laplacians where exact zeros represent connected components.
  */
 export function improved_jacobi_eigen(
   matrix: tf.Tensor2D,
   {
     max_iterations = 3000,
     tolerance = 1e-14,
-    is_psd = false, // Is matrix positive semi-definite?
+    is_psd = false,
   }: { max_iterations?: number; tolerance?: number; is_psd?: boolean } = {},
 ): { eigenvalues: number[]; eigenvectors: number[][] } {
   if (matrix.shape.length !== 2 || matrix.shape[0] !== matrix.shape[1]) {
@@ -24,7 +21,6 @@ export function improved_jacobi_eigen(
   const A = matrix.arraySync() as number[][];
   const n = A.length;
 
-  // Check if already diagonal
   const is_approximately_diagonal = (): boolean => {
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
@@ -43,15 +39,12 @@ export function improved_jacobi_eigen(
     return { eigenvalues: diag, eigenvectors: V };
   }
 
-  // Deep copy for working matrix
   const D: number[][] = A.map((row) => [...row]);
 
-  // Eigenvector accumulator
   const V: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => (i === j ? 1 : 0)),
   );
 
-  // Compute Frobenius norm of off-diagonal elements
   const off_diag_norm = (M: number[][]): number => {
     let sum = 0;
     for (let i = 0; i < n; i++) {
@@ -65,7 +58,6 @@ export function improved_jacobi_eigen(
   let sweep = 0;
   let changed = true;
 
-  // Adaptive threshold based on matrix norm
   const matrix_norm = Math.sqrt(
     A.reduce((sum, row) => sum + row.reduce((s, v) => s + v * v, 0), 0),
   );
@@ -74,19 +66,16 @@ export function improved_jacobi_eigen(
   while (sweep < max_iterations && changed) {
     changed = false;
 
-    // Cyclic Jacobi: sweep through all pairs
     for (let p = 0; p < n - 1; p++) {
       for (let q = p + 1; q < n; q++) {
         const a_pq = D[p][q];
 
-        // Skip if already small
         if (Math.abs(a_pq) < threshold) continue;
 
         changed = true;
         const a_pp = D[p][p];
         const a_qq = D[q][q];
 
-        // Compute rotation angle
         const diff = a_qq - a_pp;
         let t: number;
 
@@ -111,12 +100,10 @@ export function improved_jacobi_eigen(
         const s = t * c;
         const tau = s / (1 + c);
 
-        // Update diagonal elements
         D[p][p] = a_pp - t * a_pq;
         D[q][q] = a_qq + t * a_pq;
         D[p][q] = D[q][p] = 0;
 
-        // Update row p and column p (j < p)
         for (let j = 0; j < p; j++) {
           const g = D[j][p];
           const h = D[j][q];
@@ -124,7 +111,6 @@ export function improved_jacobi_eigen(
           D[j][q] = D[q][j] = h + s * (g - h * tau);
         }
 
-        // Update row p and column p (p < j < q)
         for (let j = p + 1; j < q; j++) {
           const g = D[p][j];
           const h = D[j][q];
@@ -132,7 +118,6 @@ export function improved_jacobi_eigen(
           D[j][q] = D[q][j] = h + s * (g - h * tau);
         }
 
-        // Update row p and column p (j > q)
         for (let j = q + 1; j < n; j++) {
           const g = D[p][j];
           const h = D[q][j];
@@ -140,7 +125,6 @@ export function improved_jacobi_eigen(
           D[q][j] = D[j][q] = h + s * (g - h * tau);
         }
 
-        // Update eigenvectors
         for (let j = 0; j < n; j++) {
           const g = V[j][p];
           const h = V[j][q];
@@ -152,7 +136,6 @@ export function improved_jacobi_eigen(
 
     sweep++;
 
-    // Adaptive threshold reduction
     if (sweep % 5 === 0) {
       const current_norm = off_diag_norm(D);
       if (current_norm < threshold * n) {
@@ -168,7 +151,6 @@ export function improved_jacobi_eigen(
     );
   }
 
-  // Extract eigenvalues
   let eigenvalues: number[] = D.map((row, i) => row[i]);
 
   // Post-processing for PSD matrices: clamp only negative eigenvalues to zero.
@@ -189,7 +171,6 @@ export function improved_jacobi_eigen(
     });
   }
 
-  // Sort eigen-pairs
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
@@ -206,7 +187,6 @@ export function improved_jacobi_eigen(
     }
   }
 
-  // Post-condition: validate eigenvector orthonormality
   let max_orth_error = 0;
   let max_norm_error = 0;
   for (let i = 0; i < n; i++) {

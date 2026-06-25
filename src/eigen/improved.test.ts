@@ -190,6 +190,37 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
     expect_reconstruction(data, eigenvalues, eigenvectors);
   });
 
+  it("converges on a fully dense symmetric matrix", () => {
+    // All previous tests use diagonal or block-diagonal inputs that hit the fast
+    // path or require few sweeps. This verifies the main rotation loop converges
+    // for a genuinely dense symmetric A = V * diag(2, 5, 11) * V^T.
+    const theta = Math.PI / 7;
+    const c = Math.cos(theta);
+    const s_rot = Math.sin(theta);
+    const lambdas = [2, 5, 11];
+    const V_rot: number[][] = [
+      [c, -s_rot, 0],
+      [s_rot, c, 0],
+      [0, 0, 1],
+    ];
+    const A: number[][] = Array.from({ length: 3 }, () => Array(3).fill(0));
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        for (let k = 0; k < 3; k++) {
+          A[i][j] += V_rot[i][k] * lambdas[k] * V_rot[j][k];
+        }
+      }
+    }
+    const mat = tf.tensor2d(A);
+    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(mat);
+
+    expect(eigenvalues[0]).toBeCloseTo(2, 5);
+    expect(eigenvalues[1]).toBeCloseTo(5, 5);
+    expect(eigenvalues[2]).toBeCloseTo(11, 5);
+    expect_orthonormal(eigenvectors, 3);
+    expect_reconstruction(A, eigenvalues, eigenvectors, 1e-5);
+  });
+
   it("throws error for non-square matrix", () => {
     const mat = tf.tensor2d([[1, 2, 3], [4, 5, 6]]);
     expect(() => improved_jacobi_eigen(mat)).toThrow();
