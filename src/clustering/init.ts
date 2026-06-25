@@ -14,10 +14,7 @@ function is_plain_object(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
-/**
- * Deterministic JSON serialization with sorted keys at every nesting level.
- * Used to produce a stable string for config comparison.
- */
+/** Used to produce a stable string for config comparison. */
 function sorted_stringify(value: unknown): string {
   if (value === null || value === undefined) return String(value);
   if (typeof value !== 'object') return JSON.stringify(value);
@@ -30,7 +27,6 @@ function sorted_stringify(value: unknown): string {
   return `{${pairs.join(',')}}`;
 }
 
-/** Return the number of defined (non-undefined) values in an object. */
 function defined_key_count(obj: object): number {
   return Object.entries(obj).filter(([, v]) => v !== undefined).length;
 }
@@ -53,14 +49,9 @@ function strip_empty(config: BackendConfig): BackendConfig {
   return result;
 }
 
-/** Produce a stable config key for comparison. */
 function config_key(config: BackendConfig): string {
   return sorted_stringify(strip_empty(config));
 }
-
-const detect_platform = (): Platform => {
-  return get_platform();
-};
 
 const get_platform_features = (platform: Platform): PlatformFeatures => {
   switch (platform) {
@@ -96,12 +87,10 @@ const get_platform_features = (platform: Platform): PlatformFeatures => {
 };
 
 export const Clustering = {
-  platform: detect_platform(),
-  features: get_platform_features(detect_platform()),
-  
+  platform: get_platform(),
+  features: get_platform_features(get_platform()),
+
   /**
-   * Initialize the clustering library with the specified backend.
-   *
    * **Idempotent**: concurrent calls with the same (or equivalent) config
    * return the exact same `Promise` object. A second call after initialization
    * completes with the same config is a no-op that resolves immediately.
@@ -111,8 +100,6 @@ export const Clustering = {
    * {@link Clustering.reset | reset()} first to re-initialize with a new
    * configuration.
    *
-   * @param config - Backend configuration options
-   * @returns Promise that resolves when the backend is ready
    * @throws {Error} If called with a different config than a previous call
    *
    * @example
@@ -160,9 +147,8 @@ export const Clustering = {
   },
 
   /**
-   * Reset initialization state, allowing re-initialization with a different
-   * config. After calling this, {@link Clustering.init | init()} must be
-   * called again before using clustering algorithms.
+   * After calling this, {@link Clustering.init | init()} must be called again
+   * before using clustering algorithms.
    */
   reset(): void {
     reset_backend();
