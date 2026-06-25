@@ -1,7 +1,7 @@
 import * as tf from "../../test_support/tensorflow_helper";
 import { adjusted_rand_index } from "./adjusted_rand_index";
 
-describe("Adjusted Rand Index", () => {
+describe("adjusted_rand_index", () => {
   describe("Basic functionality", () => {
     it("returns 1.0 for perfect agreement", () => {
       expect(adjusted_rand_index([0, 0, 1, 1, 2, 2], [0, 0, 1, 1, 2, 2])).toBeCloseTo(1.0, 10);
