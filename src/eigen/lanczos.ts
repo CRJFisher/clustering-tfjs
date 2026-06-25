@@ -2,19 +2,10 @@ import * as tf from '../backend/adapter';
 import { reorthogonalize_vector } from './orthogonalize';
 import { make_random_stream } from '../random';
 
-/* -------------------------------------------------------------------------- */
-/*                     Lanczos Iterative Eigensolver                          */
-/* -------------------------------------------------------------------------- */
-
-/**
- * Options for the Lanczos eigensolver.
- */
 export interface LanczosOptions {
   /** Maximum Lanczos subspace size before restart. Default: min(max(2k+20, 4k), n, 200) */
   max_subspace_size?: number;
-  /** Maximum number of thick restarts. Default: 10 */
   max_restarts?: number;
-  /** Convergence tolerance for Ritz values. Default: 1e-6 */
   convergence_tol?: number;
   /** Random seed for deterministic starting vector. Default: 42 */
   random_seed?: number;
@@ -22,13 +13,8 @@ export interface LanczosOptions {
   is_psd?: boolean;
 }
 
-/**
- * Result from the Lanczos eigensolver.
- */
 export interface LanczosResult {
-  /** k smallest eigenvalues, sorted ascending */
   eigenvalues: number[];
-  /** Corresponding eigenvectors as column vectors [n][k] */
   eigenvectors: number[][];
 }
 
@@ -37,7 +23,6 @@ export interface LanczosOperator {
   matvec: (vector: Float64Array) => Float64Array;
 }
 
-/* ---- Float32 numerical constants ---- */
 const CONVERGENCE_TOL_DEFAULT = 1e-6;
 const BREAKDOWN_TOL = 1e-10;
 const PSD_CLAMP_TOL = 1e-5;
@@ -56,9 +41,6 @@ const NORM_REDUCTION_TRIGGER = 0.7071; // 1/sqrt(2) — triggers second reorth p
  * versus O(n³) for Jacobi. For n=5000, k=5, this is ~1000x faster.
  *
  * @param matrix  Symmetric n×n matrix (typically a normalized Laplacian)
- * @param k       Number of smallest eigenpairs to compute (1 ≤ k ≤ n)
- * @param options Configuration options
- * @returns       The k smallest eigenvalues and corresponding eigenvectors
  */
 export function lanczos_smallest_eigenpairs(
   matrix: tf.Tensor2D | LanczosOperator,
@@ -100,7 +82,6 @@ export function lanczos_smallest_eigenpairs(
 
   const rng = make_random_stream(random_seed);
 
-  // Generate random starting vector of unit norm
   const q = new Float64Array(n);
   let norm = 0;
   for (let i = 0; i < n; i++) {
@@ -110,12 +91,9 @@ export function lanczos_smallest_eigenpairs(
   norm = Math.sqrt(norm);
   for (let i = 0; i < n; i++) q[i] /= norm;
 
-  // Lanczos basis vectors (columns of Q), stored as array of Float64Array
   let basis_vectors: Float64Array[] = [q];
-
-  // Tridiagonal matrix entries
-  let alpha: number[] = []; // diagonal
-  let beta: number[] = [];  // sub/super-diagonal
+  let alpha: number[] = [];
+  let beta: number[] = [];
 
   let converged_eigenvalues: number[] | null = null;
   let converged_eigenvectors: number[][] | null = null;
@@ -212,13 +190,11 @@ export function lanczos_smallest_eigenpairs(
     }
 
     // Reached max subspace size — perform simple restart
-    // Solve tridiagonal eigenproblem
     const { values, vectors } = tridiagonal_ql(
       alpha.slice(),
       beta.slice(0, alpha.length - 1),
     );
 
-    // Check if converged at the boundary
     const converged = check_convergence(
       values, vectors, beta[beta.length - 1],
       k, convergence_tol,
@@ -237,7 +213,6 @@ export function lanczos_smallest_eigenpairs(
     converged_eigenvalues = restart_result.eigenvalues;
     converged_eigenvectors = restart_result.eigenvectors;
 
-    // Reconstruct the best Ritz vector (smallest eigenvalue)
     const m = alpha.length;
     const indices = values.map((v, i) => ({ v, i }));
     indices.sort((a, b) => a.v - b.v);
@@ -251,13 +226,11 @@ export function lanczos_smallest_eigenpairs(
       }
       restart_vec[row] = sum;
     }
-    // Normalize
     const restart_norm = vec_norm(restart_vec, n);
     if (restart_norm > BREAKDOWN_TOL) {
       for (let i = 0; i < n; i++) restart_vec[i] /= restart_norm;
     }
 
-    // Full reset with best Ritz vector as starting point
     basis_vectors = [restart_vec];
     alpha = [];
     beta = [];
@@ -279,9 +252,6 @@ export function lanczos_smallest_eigenpairs(
   return extract_smallest(values, vectors, basis_vectors, k, n, is_psd);
 }
 
-/* -------------------------------------------------------------------------- */
-/*                             Internal Helpers                               */
-/* -------------------------------------------------------------------------- */
 
 function is_lanczos_operator(
   matrix: tf.Tensor2D | LanczosOperator,
@@ -326,7 +296,6 @@ function random_orthogonal_vector(
   n: number,
   rng: ReturnType<typeof make_random_stream>,
 ): Float64Array | null {
-  // Try several random vectors
   for (let attempt = 0; attempt < 5; attempt++) {
     const v = new Float64Array(n);
     for (let i = 0; i < n; i++) v[i] = rng.rand() - 0.5;
@@ -358,7 +327,6 @@ function check_convergence(
   const m = values.length;
   if (m < k) return false;
 
-  // Sort by ascending value to get the k smallest
   const indices = values.map((v, i) => ({ v, i }));
   indices.sort((a, b) => a.v - b.v);
 
@@ -386,7 +354,6 @@ function extract_smallest(
 ): LanczosResult {
   const m = ritz_values.length;
 
-  // Sort by ascending eigenvalue to get the k smallest
   const indices = ritz_values.map((v, i) => ({ v, i }));
   indices.sort((a, b) => a.v - b.v);
 
@@ -399,7 +366,6 @@ function extract_smallest(
 
     let lambda = ritz_values[idx];
 
-    // PSD clamping
     if (is_psd && lambda < 0) {
       if (lambda < -PSD_CLAMP_TOL) {
         console.warn(
@@ -457,9 +423,6 @@ function extract_smallest(
   return { eigenvalues: sorted_values, eigenvectors: sorted_vectors };
 }
 
-/* -------------------------------------------------------------------------- */
-/*                  Corrected Tridiagonal QL Eigensolver                      */
-/* -------------------------------------------------------------------------- */
 
 /**
  * Implicit QL algorithm for symmetric tridiagonal matrices.
@@ -486,7 +449,6 @@ function tridiagonal_ql(
     return { values: [diagonal[0]], vectors: [[1]] };
   }
 
-  // Clone arrays
   const d = new Float64Array(diagonal);
   const e = new Float64Array(m);
   for (let i = 0; i < off_diagonal.length; i++) e[i] = off_diagonal[i];
@@ -565,7 +527,6 @@ function tridiagonal_ql(
     }
   }
 
-  // Convert to regular arrays
   const values = Array.from(d);
   return { values, vectors: V };
 }
