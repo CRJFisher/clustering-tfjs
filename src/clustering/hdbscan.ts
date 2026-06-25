@@ -3,6 +3,7 @@ import type { ClusterRepresentations } from './representations';
 import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
 import { kdistance } from '../distance/kdistance';
+import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 import { mutual_reachability } from '../graph/mutual_reachability';
 import { minimum_spanning_tree } from '../graph/minimum_spanning_tree';
 import {
@@ -105,21 +106,42 @@ export class HDBSCAN
   }
 
   /**
-   * Builds the dense distance matrix the density pipeline operates on.
+   * Builds the dense pairwise distance matrix as an `(n, n)` `Tensor2D`.
    *
-   * Native metrics are computed in plain JavaScript float64 rather than via
-   * the TensorFlow.js backend: the rest of the pipeline (MST, condensed tree)
-   * is float64, and a float32 round-trip would perturb mutual-reachability
-   * weights enough to break exact parity with scikit-learn on tie-free data.
+   * Native `euclidean`/`manhattan` metrics are delegated to
+   * `pairwise_distance_matrix`, which runs on the TensorFlow.js backend in
+   * float32. A `precomputed` matrix is validated for squareness and uploaded
+   * to a `Tensor2D` unchanged. The result is the first front-half stage and
+   * stays on the backend for the downstream core-distance and
+   * mutual-reachability stages.
+   *
+   * The returned tensor is always freshly owned: `fit` disposes it without
+   * touching a caller-supplied tensor (the precomputed-tensor case is cloned).
    */
-  private async distance_matrix(X: DataMatrix): Promise<number[][]> {
+  private distance_matrix(X: DataMatrix): tf.Tensor2D {
     const metric = this.params.metric ?? 'euclidean';
-    const rows: number[][] = is_tensor(X)
-      ? ((await (X as tf.Tensor2D).array()) as number[][])
-      : (X as number[][]);
+
+    // Reject empty input before any tensor allocation (tf.tensor2d cannot
+    // infer a shape from `[]`) and before fit() reaches dispose(), so a failed
+    // re-fit leaves prior fitted state intact.
+    const n = is_tensor(X)
+      ? (X as tf.Tensor2D).shape[0]
+      : (X as number[][]).length;
+    if (n === 0) {
+      throw new Error('Input data must contain at least one sample.');
+    }
 
     if (metric === 'precomputed') {
-      const n = rows.length;
+      if (is_tensor(X)) {
+        const matrix = X as tf.Tensor2D;
+        if (matrix.shape[0] !== matrix.shape[1]) {
+          throw new Error(
+            'precomputed metric requires a square (n, n) distance matrix.',
+          );
+        }
+        return matrix.clone();
+      }
+      const rows = X as number[][];
       for (const row of rows) {
         if (row.length !== n) {
           throw new Error(
@@ -127,11 +149,15 @@ export class HDBSCAN
           );
         }
       }
-      return rows;
+      return tf.tensor2d(rows);
     }
 
-    const n = rows.length;
-    const d = n > 0 ? rows[0].length : 0;
+    if (is_tensor(X)) {
+      return pairwise_distance_matrix(X as tf.Tensor2D, metric);
+    }
+
+    const rows = X as number[][];
+    const d = rows[0].length;
     for (const row of rows) {
       if (row.length !== d) {
         throw new Error(
@@ -139,86 +165,82 @@ export class HDBSCAN
         );
       }
     }
-    const D: number[][] = Array.from({ length: n }, () =>
-      new Array<number>(n).fill(0),
-    );
-    for (let i = 0; i < n; i++) {
-      const ri = rows[i];
-      for (let j = i + 1; j < n; j++) {
-        const rj = rows[j];
-        let s = 0;
-        if (metric === 'manhattan') {
-          for (let f = 0; f < ri.length; f++) s += Math.abs(ri[f] - rj[f]);
-        } else {
-          for (let f = 0; f < ri.length; f++) {
-            const diff = ri[f] - rj[f];
-            s += diff * diff;
-          }
-          s = Math.sqrt(s);
-        }
-        D[i][j] = s;
-        D[j][i] = s;
-      }
+    // Euclidean distances come from pairwise_euclidean_matrix, which uses the
+    // gram identity ‖x‖²+‖y‖²−2·xᵀy. Cancellation in that subtraction can yield
+    // tiny negative squared distances; the float32 `maximum(·, 0)` clamp inside
+    // the helper pins them to zero. Labels are verified robust to the resulting
+    // float32 drift — hdbscan.test.ts matches the scikit-learn oracle exactly
+    // under the task-54.2 tolerances.
+    const points = tf.tensor2d(rows);
+    try {
+      return pairwise_distance_matrix(points, metric);
+    } finally {
+      points.dispose();
     }
-    return D;
   }
 
   async fit(X: DataMatrix): Promise<void> {
-    const D = await this.distance_matrix(X);
-    const n = D.length;
+    // distance_matrix validates input shape and rejects empty input, all
+    // before dispose() so a failed re-fit leaves prior fitted state intact. It
+    // returns an (n, n) Tensor2D this method owns and disposes exactly once.
+    const D_tensor = this.distance_matrix(X);
+    try {
+      const n = D_tensor.shape[0];
 
-    if (n === 0) {
-      throw new Error('Input data must contain at least one sample.');
+      this.dispose();
+      // Intentional deviation from scikit-learn (which raises for n_samples=1):
+      // a lone sample is trivially noise, so degrade gracefully.
+      if (n === 1) {
+        this.labels_ = [-1];
+        this.probabilities_ = [0];
+        this.exemplar_indices_ = this.params.store_exemplars ? new Map() : null;
+        return;
+      }
+
+      const min_cluster_size =
+        this.params.min_cluster_size ?? HDBSCAN.DEFAULT_MIN_CLUSTER_SIZE;
+      // min_samples defaults to min_cluster_size, clamped to the sample count.
+      // Intentional deviation from scikit-learn, which raises when
+      // min_samples > n_samples; the clamp keeps small inputs usable.
+      const min_samples = Math.min(
+        this.params.min_samples ?? min_cluster_size,
+        n,
+      );
+
+      // Incremental: read the distance tensor back to JS so the existing
+      // float64 MST/condensation tail runs unchanged. Task-54.5 moves this
+      // readback to the MST input boundary, where the front-half speedup is
+      // realized.
+      const D = (await D_tensor.array()) as number[][];
+
+      // Core distances: k-th nearest neighbour distance (self counts first).
+      const neighbor_distances = D.map((row) => [...row].sort((a, b) => a - b));
+      const core = kdistance(neighbor_distances, min_samples);
+
+      // Mutual-reachability graph -> minimum spanning tree -> condensed tree.
+      const mreach = mutual_reachability(D, core);
+      const mst = minimum_spanning_tree(mreach);
+      const tree = build_condensation_tree(mst, n, min_cluster_size);
+
+      const selected = excess_of_mass(tree, n, {
+        cluster_selection_method: this.params.cluster_selection_method ?? 'eom',
+        cluster_selection_epsilon: this.params.cluster_selection_epsilon ?? 0,
+      });
+
+      const { labels, probabilities, exemplar_indices } = extract_labels(
+        tree,
+        selected,
+        n,
+      );
+
+      this.labels_ = labels;
+      this.probabilities_ = probabilities;
+      this.exemplar_indices_ = this.params.store_exemplars
+        ? exemplar_indices
+        : null;
+    } finally {
+      D_tensor.dispose();
     }
-
-    // All input validation must pass before dispose() so a failed re-fit
-    // leaves the prior fitted state intact (distance_matrix validates shape;
-    // the n===0 guard above covers empty input).
-    this.dispose();
-    // Intentional deviation from scikit-learn (which raises for n_samples=1):
-    // a lone sample is trivially noise, so degrade gracefully.
-    if (n === 1) {
-      this.labels_ = [-1];
-      this.probabilities_ = [0];
-      this.exemplar_indices_ = this.params.store_exemplars ? new Map() : null;
-      return;
-    }
-
-    const min_cluster_size =
-      this.params.min_cluster_size ?? HDBSCAN.DEFAULT_MIN_CLUSTER_SIZE;
-    // min_samples defaults to min_cluster_size, clamped to the sample count.
-    // Intentional deviation from scikit-learn, which raises when
-    // min_samples > n_samples; the clamp keeps small inputs usable.
-    const min_samples = Math.min(
-      this.params.min_samples ?? min_cluster_size,
-      n,
-    );
-
-    // Core distances: k-th nearest neighbour distance (self counts first).
-    const neighbor_distances = D.map((row) => [...row].sort((a, b) => a - b));
-    const core = kdistance(neighbor_distances, min_samples);
-
-    // Mutual-reachability graph -> minimum spanning tree -> condensed tree.
-    const mreach = mutual_reachability(D, core);
-    const mst = minimum_spanning_tree(mreach);
-    const tree = build_condensation_tree(mst, n, min_cluster_size);
-
-    const selected = excess_of_mass(tree, n, {
-      cluster_selection_method: this.params.cluster_selection_method ?? 'eom',
-      cluster_selection_epsilon: this.params.cluster_selection_epsilon ?? 0,
-    });
-
-    const { labels, probabilities, exemplar_indices } = extract_labels(
-      tree,
-      selected,
-      n,
-    );
-
-    this.labels_ = labels;
-    this.probabilities_ = probabilities;
-    this.exemplar_indices_ = this.params.store_exemplars
-      ? exemplar_indices
-      : null;
   }
 
   async fit_predict(X: DataMatrix): Promise<number[]> {
