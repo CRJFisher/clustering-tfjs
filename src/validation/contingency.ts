@@ -18,7 +18,6 @@ export function to_label_array(labels: LabelVector): number[] {
   return labels;
 }
 
-/** Maps arbitrary integer labels to dense 0-based indices before counting co-occurrences. */
 export function build_contingency_table(
   labels_true: number[],
   labels_pred: number[],
