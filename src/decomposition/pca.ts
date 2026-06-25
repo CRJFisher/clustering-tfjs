@@ -43,7 +43,7 @@ function to_array(X: DataMatrix): number[][] {
  * normalized, or the `c % d` standard basis vector when the candidate has
  * zero norm (so iteration always starts from a valid direction).
  */
-function unit_init_vector(candidate: number[], c: number): number[] {
+export function unit_init_vector(candidate: number[], c: number): number[] {
   const d = candidate.length;
   const vn = Math.sqrt(candidate.reduce((s, x) => s + x * x, 0));
   if (vn === 0) {
