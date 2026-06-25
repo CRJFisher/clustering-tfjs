@@ -48,6 +48,12 @@ export function build_single_linkage(
   const find = (x: number): number => {
     let root = x;
     while (parent[root] !== -1) root = parent[root];
+    let node = x;
+    while (node !== root) {
+      const next = parent[node];
+      parent[node] = root;
+      node = next;
+    }
     return root;
   };
 
