@@ -32,6 +32,24 @@ describe('kdistance', () => {
     expect(() => kdistance([[0, 1]], 3)).toThrow();
   });
 
+  it('returns an empty Float64Array for empty input', () => {
+    const result = kdistance([], 1);
+    expect(result).toBeInstanceOf(Float64Array);
+    expect(result.length).toBe(0);
+  });
+
+  it('returns Float64Array for single-point input (self-distance only)', () => {
+    const result = kdistance([[0]], 1);
+    expect(result).toBeInstanceOf(Float64Array);
+    expect(Array.from(result)).toEqual([0]);
+  });
+
+  it('accepts rows with exactly k entries without throwing', () => {
+    // row.length === k is the boundary: row[k-1] is the last valid index
+    expect(() => kdistance([[0, 1, 2]], 3)).not.toThrow();
+    expect(Array.from(kdistance([[0, 1, 2]], 3))).toEqual([2]);
+  });
+
   it('matches scipy-derived core distances on fixtures', () => {
     const files = fs
       .readdirSync(FIXTURE_DIR)
