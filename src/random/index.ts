@@ -1,9 +1,7 @@
 import { MT19937 } from './mt19937';
 
 export interface RandomStream {
-  /** Float in [0, 1). */
   rand(): number;
-  /** Integer in [0, max). */
   rand_int(max: number): number;
 }
 
