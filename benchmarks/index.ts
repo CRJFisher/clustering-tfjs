@@ -31,6 +31,17 @@ export const BENCHMARK_CONFIGS: BenchmarkConfig[] = [
   { samples: 100, features: 10, centers: 3, label: 'small' },
   { samples: 1000, features: 50, centers: 5, label: 'medium' },
   { samples: 10000, features: 100, centers: 10, label: 'large' },
+  // HDBSCAN front-half sweep (task-54). The front-half cost is O(n²·d), so
+  // these vary d at a fixed n to isolate the dimensionality effect, then push n
+  // toward the dense-matrix memory ceiling (5000) where the tfjs front-half is
+  // expected to overtake the float64-JS pipeline. The n=10000 'large' config
+  // above stays skipped for HDBSCAN by the O(n²) guard in run_benchmark_suite.
+  { samples: 2000, features: 2, centers: 8, label: 'hdbscan_n2000_d2' },
+  { samples: 2000, features: 16, centers: 8, label: 'hdbscan_n2000_d16' },
+  { samples: 2000, features: 64, centers: 8, label: 'hdbscan_n2000_d64' },
+  { samples: 2000, features: 128, centers: 8, label: 'hdbscan_n2000_d128' },
+  { samples: 5000, features: 16, centers: 8, label: 'hdbscan_n5000_d16' },
+  { samples: 5000, features: 128, centers: 8, label: 'hdbscan_n5000_d128' },
 ];
 
 export async function benchmark_algorithm(

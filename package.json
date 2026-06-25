@@ -64,6 +64,8 @@
     "lint": "eslint src test_support benchmarks",
     "type-check": "tsc --noEmit",
     "benchmark": "ts-node scripts/benchmark.ts",
+    "benchmark:hdbscan": "ts-node scripts/benchmark-hdbscan.ts",
+    "hdbscan:oracle": "ts-node scripts/hdbscan-oracle.ts",
     "benchmark:node": "ts-node scripts/benchmark.ts",
     "benchmark:native": "npm install @tensorflow/tfjs-node && ts-node scripts/benchmark.ts",
     "benchmark:compare": "ts-node scripts/compare-benchmarks.ts",
