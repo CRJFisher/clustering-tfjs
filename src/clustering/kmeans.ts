@@ -44,7 +44,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
   /** Final value of the inertia criterion (sum of squared distances). */
   public inertia_: number | null = null;
 
-  // Reasonable defaults mirroring scikit-learn
   private static readonly DEFAULT_MAX_ITER = 300;
   private static readonly DEFAULT_TOL = 1e-4;
   // scikit-learn defaults to 10 initialisations which results in more
@@ -124,7 +123,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
    * ```
    */
   async fit(X: DataMatrix): Promise<void> {
-    // Spherical k-means takes a dedicated cosine-distance path.
     if (this.params.metric === 'cosine') {
       await this.fit_cosine(X);
       return;
@@ -140,11 +138,8 @@ export class KMeans implements BaseClustering<KMeansParams> {
       throw new Error('n_clusters cannot exceed number of samples.');
     }
 
-    // Dispose previous state if the estimator is re-used.
     this.dispose();
 
-    // Convert to a Tensor2D of dtype float32 – keep original around for
-    // potential multiple initialisations.
     // When X is already a tensor we clone to avoid mutating the caller's data.
     // When X is a plain array, tf.tensor2d already creates a new tensor.
     const x_tensor: tf.Tensor2D = is_tensor(X)
@@ -155,15 +150,11 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
     const n_init = this.params.n_init ?? KMeans.DEFAULT_N_INIT;
 
-    // Pre-compute helper structures reused across inits (use full precision
-    // original data when available to avoid float32 rounding affecting
-    // k-means++ probabilities).
-
+    // Use full-precision original data to avoid float32 rounding in k-means++ probabilities.
     const points_arr: number[][] = Array.isArray(X)
       ? (X as number[][])
       : ((await x_tensor.array()) as number[][]);
 
-    // Store best solution across runs
     let best_inertia = Number.POSITIVE_INFINITY;
     let best_labels: Int32Array | null = null;
     let best_centroids: tf.Tensor2D | null = null;
@@ -186,7 +177,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
       const rand = rand_stream.rand;
 
-      // ----------------------- k-means++ seeding ----------------------- //
       const centroid_idxs: number[] = [];
       const centroid_set = new Set<number>();
       const first_idx = rand_stream.rand_int(n_samples);
@@ -194,7 +184,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
       centroid_set.add(first_idx);
 
       while (centroid_idxs.length < K) {
-        // 1) Compute squared distance to nearest existing centroid for each point
         const distances: number[] = points_arr.map((p, idx) => {
           if (centroid_set.has(idx)) return 0;
           let min_d2 = Number.POSITIVE_INFINITY;
@@ -212,7 +201,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
 
         const current_pot = distances.reduce((a, b) => a + b, 0);
         if (current_pot === 0) {
-          // All remaining points identical to existing centroids – pick first unused index deterministically
           for (let i = 0; i < n_samples; i++) {
             if (!centroid_set.has(i)) {
               centroid_idxs.push(i);
@@ -223,7 +211,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
           continue;
         }
 
-        // 2) Sample candidate indices according to probability proportional to distance^2
         const local_trials = 2 + Math.floor(Math.log(K));
         const cumulative_distances: number[] = [];
         let cum_sum = 0;
@@ -235,7 +222,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
         const candidates: number[] = [];
         for (let t = 0; t < local_trials; t++) {
           const r = rand() * current_pot;
-          // binary search
           let lo = 0;
           let hi = n_samples - 1;
           while (lo < hi) {
@@ -249,7 +235,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
           candidates.push(lo);
         }
 
-        // 3) Compute potential for each candidate and choose best
         let best_candidate = candidates[0];
         let best_potential = Number.POSITIVE_INFINITY;
 
@@ -321,12 +306,10 @@ export class KMeans implements BaseClustering<KMeansParams> {
           }
         }
 
-        // Handle empty clusters using sklearn's strategy
         const empty_clusters: number[] = [];
         for (let k_idx = 0; k_idx < K; k_idx++) {
           if (counts[k_idx] === 0) {
             empty_clusters.push(k_idx);
-            // Keep old centroid temporarily
             const slice_tensor = centroids.slice([k_idx, 0], [1, n_features]);
             new_centroids_arr[k_idx] = Array.from(
               await slice_tensor.array(),
@@ -339,19 +322,15 @@ export class KMeans implements BaseClustering<KMeansParams> {
           }
         }
 
-        // If there are empty clusters, reassign them to points farthest from their nearest center
         if (empty_clusters.length > 0) {
-          // Compute distances from all points to their nearest center
           const dist_to_nearest = new Float32Array(n_samples);
           for (let i = 0; i < n_samples; i++) {
             dist_to_nearest[i] = min_dist_sq[i];
           }
 
-          // Find indices of points with largest distances
           const indices = Array.from({ length: n_samples }, (_, i) => i);
           indices.sort((a, b) => dist_to_nearest[b] - dist_to_nearest[a]);
 
-          // Assign farthest points as new centers for empty clusters
           for (let i = 0; i < empty_clusters.length && i < n_samples; i++) {
             const farthest_idx = indices[i];
             const empty_cluster_idx = empty_clusters[i];
@@ -397,7 +376,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
       }
     }
 
-    // Save best solution to instance
     this.centroids_ = best_centroids!;
     this.labels_ = Array.from(best_labels!);
     this.inertia_ = best_inertia;
@@ -549,7 +527,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
     const n_init = this.params.n_init ?? KMeans.DEFAULT_N_INIT;
     const base_seed = this.params.random_state;
 
-    // Cosine distance matrix among points — used for k-means++ seeding.
     const d_cos: number[][] = tf.tidy(() => {
       const x = tf.tensor2d(points, [n_samples, n_features], 'float32');
       return pairwise_distance_matrix(x, 'cosine').arraySync() as number[][];
@@ -580,7 +557,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
       );
       const rand = rand_stream.rand;
 
-      // ----------------------- k-means++ seeding ----------------------- //
       const centroid_idxs: number[] = [];
       const centroid_set = new Set<number>();
       const first_idx = rand_stream.rand_int(n_samples);
@@ -588,7 +564,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
       centroid_set.add(first_idx);
 
       while (centroid_idxs.length < K) {
-        // Squared cosine distance to nearest chosen centre (k-means++ weight).
         const distances: number[] = points.map((_p, idx) => {
           if (centroid_set.has(idx)) return 0;
           let min_d = Number.POSITIVE_INFINITY;
@@ -655,9 +630,7 @@ export class KMeans implements BaseClustering<KMeansParams> {
       const labels = new Int32Array(n_samples);
 
       for (let iter = 0; iter < max_iter; iter++) {
-        const dist_pc = cross_cosine(centroids); // (n, K) cosine distances
-
-        // Assign each point to nearest centroid; accumulate squared inertia.
+        const dist_pc = cross_cosine(centroids);
         let inertia = 0;
         const new_centroids: number[][] = Array.from({ length: K }, () =>
           new Array<number>(n_features).fill(0),
@@ -682,7 +655,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
           for (let f = 0; f < n_features; f++) new_centroids[best][f] += row[f];
         }
 
-        // Finalize means; reassign empty clusters to farthest points.
         const empty: number[] = [];
         for (let j = 0; j < K; j++) {
           if (counts[j] === 0) {
@@ -700,7 +672,6 @@ export class KMeans implements BaseClustering<KMeansParams> {
           }
         }
 
-        // Convergence: centroid shift and relative inertia change.
         let shift = 0;
         for (let j = 0; j < K; j++) {
           for (let f = 0; f < n_features; f++) {

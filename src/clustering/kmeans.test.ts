@@ -4,6 +4,58 @@ import { KMeans } from "..";
 import { make_random_stream } from "../random";
 import * as tf from "../../test_support/tensorflow_helper";
 
+describe("KMeans – parameter validation", () => {
+  it("throws for n_clusters < 1", () => {
+    expect(() => new KMeans({ n_clusters: 0 })).toThrow("n_clusters");
+  });
+
+  it("throws for non-integer n_clusters", () => {
+    expect(() => new KMeans({ n_clusters: 2.5 })).toThrow("n_clusters");
+  });
+
+  it("throws for invalid metric", () => {
+    expect(() => new KMeans({ n_clusters: 2, metric: "manhattan" as never })).toThrow("metric");
+  });
+
+  it("throws for max_iter < 1", () => {
+    expect(() => new KMeans({ n_clusters: 2, max_iter: 0 })).toThrow("max_iter");
+  });
+
+  it("throws for negative tol", () => {
+    expect(() => new KMeans({ n_clusters: 2, tol: -1 })).toThrow("tol");
+  });
+
+  it("throws for n_init < 1", () => {
+    expect(() => new KMeans({ n_clusters: 2, n_init: 0 })).toThrow("n_init");
+  });
+});
+
+describe("KMeans – fit error paths", () => {
+  it("throws for empty input", async () => {
+    const km = new KMeans({ n_clusters: 1 });
+    await expect(km.fit([])).rejects.toThrow("at least one sample");
+  });
+
+  it("throws when n_clusters exceeds n_samples", async () => {
+    const km = new KMeans({ n_clusters: 3 });
+    await expect(km.fit([[1, 2], [3, 4]])).rejects.toThrow("n_clusters cannot exceed");
+  });
+});
+
+describe("KMeans – dispose", () => {
+  it("clears all state after dispose()", async () => {
+    const km = new KMeans({ n_clusters: 2, random_state: 0 });
+    await km.fit([[0, 0], [1, 1], [10, 10], [11, 11]]);
+    expect(km.labels_).not.toBeNull();
+    expect(km.centroids_).not.toBeNull();
+    expect(km.inertia_).not.toBeNull();
+    km.dispose();
+    expect(km.labels_).toBeNull();
+    expect(km.centroids_).toBeNull();
+    expect(km.inertia_).toBeNull();
+  });
+});
+
 describe("KMeans", () => {
   const X = [
     [0, 0],
