@@ -229,6 +229,28 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
       eigenvectors,
     );
   });
+
+  it("clamps a genuine negative eigenvalue to 0 only when isPSD is set", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    // [[0,1],[1,0]] is symmetric but indefinite: eigenvalues are -1 and +1.
+    const mat = tf.tensor2d([
+      [0, 1],
+      [1, 0],
+    ]);
+
+    // Default (isPSD: false) keeps the true negative eigenvalue.
+    const raw = improved_jacobi_eigen(mat);
+    expect(raw.eigenvalues[0]).toBeCloseTo(-1, 6);
+    expect(raw.eigenvalues[1]).toBeCloseTo(1, 6);
+
+    // isPSD: true clamps the negative eigenvalue up to 0.
+    const psd = improved_jacobi_eigen(mat, { is_psd: true });
+    expect(psd.eigenvalues[0]).toBeCloseTo(0, 6);
+    expect(psd.eigenvalues[1]).toBeCloseTo(1, 6);
+
+    mat.dispose();
+    warn.mockRestore();
+  });
 });
 
 describe("laplacian_eigen_decomposition", () => {
