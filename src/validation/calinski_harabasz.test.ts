@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { calinski_harabasz, calinski_harabasz_efficient } from "./calinski_harabasz";
 import { make_random_stream } from "../random";
 
-describe("Calinski-Harabasz Score", () => {
+describe("calinski_harabasz", () => {
   beforeEach(() => {
     tf.engine().startScope();
   });
@@ -210,7 +209,7 @@ describe("Calinski-Harabasz Score", () => {
     });
   });
 });
-describe("Calinski-Harabasz – noise (-1) awareness", () => {
+describe("calinski_harabasz – noise (-1) awareness", () => {
   const two_clusters = [
     [0, 0],
     [0.1, 0],
