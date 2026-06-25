@@ -19,7 +19,6 @@ import { is_tensor } from '../tensor/tensor_guards';
 import type { ClusterRepresentations } from './representations';
 import { select_medoids } from './medoid_selection';
 
-// Types for intermediate step results
 export interface LaplacianResult {
   laplacian: tf.Tensor2D;
   /** D^{1/2} — square root of the degree vector, matching scipy's dd from csgraph_laplacian. */
@@ -86,7 +85,6 @@ export class SpectralClustering
   /** Hyper-parameters (deep-copied from user input). */
   public readonly params: SpectralClusteringParams;
 
-  /** Lazy-filled cluster labels after calling `fit`. */
   public labels_: number[] | null = null;
 
   /**
@@ -96,25 +94,15 @@ export class SpectralClustering
    */
   public medoid_indices_: Int32Array | null = null;
 
-  /** Cached affinity matrix (shape: n_samples × n_samples). */
   public affinity_matrix_: tf.Tensor2D | null = null;
 
-  /** Cached sparse affinity matrix for nearest-neighbor fits. */
   public sparse_affinity_matrix_: SparseMatrix | null = null;
 
-  /** Debug information (populated when using return_intermediate_steps) */
   private debug_info_: DebugInfo | null = null;
 
-  /** Whether to capture debug information (modular compatibility) */
   private capture_debug_info: boolean = false;
 
-  /* ------------------------------------------------------------------- */
-  /*                      Resource / memory management                    */
-  /* ------------------------------------------------------------------- */
-
   /**
-   * Disposes any tensors kept as instance state and resets internal caches.
-   *
    * The estimator instance can still be reused after calling `dispose()` by
    * invoking `fit` again.
    */
@@ -129,7 +117,6 @@ export class SpectralClustering
     this.medoid_indices_ = null;
   }
 
-  // Allowed affinity options when provided as a string
   private static readonly VALID_AFFINITIES = [
     'rbf',
     'nearest_neighbors',
@@ -137,9 +124,6 @@ export class SpectralClustering
     'precomputed',
   ] as const;
 
-  /**
-   * @param params - Configuration for spectral clustering.
-   */
   constructor(params: SpectralClusteringParams) {
     const { capture_debug_info = false, ...clustering_params } = params;
 
@@ -151,28 +135,16 @@ export class SpectralClustering
   }
 
   /**
-   * Fits the Spectral Clustering model to the input data and stores the
-   * resulting cluster labels in {@link labels_}.
-   *
-   * Pipeline (following scikit-learn implementation):
-   *   1. Build similarity graph – affinity matrix A
-   *   2. Compute normalised Laplacian L = I − D^{-1/2} A D^{-1/2}
-   *   3. Obtain k smallest eigenvectors of L → embedding U (n × k)
-   *   4. Run K-Means directly on the rows of U (no row normalization)
-   *
    * Note: Row normalization to unit length is only applied when using
    * assign_labels='discretize', not for the default k-means approach.
    */
   async fit(_X: DataMatrix): Promise<void> {
-    // Dispose previous state if the estimator is re-used.
     this.dispose();
 
-    // Reset debug info if capturing
     if (this.capture_debug_info) {
       this.debug_info_ = {};
     }
 
-    /* ---------------------------- 0) Input -------------------------------- */
     const x_tensor: tf.Tensor2D =
       is_tensor(_X)
         ? (tf.cast(_X as tf.Tensor2D, 'float32') as tf.Tensor2D)
@@ -196,7 +168,6 @@ export class SpectralClustering
       );
     }
 
-    /* ---------------------------- 1) Affinity ----------------------------- */
     let sparse_affinity: SparseMatrix | null = null;
 
     if (use_sparse_nearest_neighbors) {
@@ -225,7 +196,6 @@ export class SpectralClustering
       );
     }
 
-    // Capture affinity statistics if requested
     if (this.capture_debug_info) {
       if (sparse_affinity != null) {
         this.debug_info_!.affinity_stats = sparse_stats(sparse_affinity);
@@ -245,8 +215,6 @@ export class SpectralClustering
       }
     }
 
-    /* ---------------------------- 2) Component Detection ---------------------- */
-    // Detect connected components
     const { detect_connected_components, detect_sparse_connected_components } = await import(
       '../graph/connected_components'
     );
@@ -255,7 +223,6 @@ export class SpectralClustering
         ? detect_sparse_connected_components(sparse_affinity)
         : detect_connected_components(this.affinity_matrix_ as tf.Tensor2D);
 
-    // Warn if disconnected
     if (!is_fully_connected) {
       console.warn(
         'Graph is not fully connected, spectral embedding may not work as expected.',
@@ -264,9 +231,7 @@ export class SpectralClustering
 
     let U: tf.Tensor2D;
 
-    // If graph is disconnected and has enough components, use component indicators
     if (!is_fully_connected && num_components >= this.params.n_clusters) {
-      /* ------------------------ Use Component Indicators -------------------- */
       const { create_component_indicators } = await import(
         '../graph/component_indicators'
       );
@@ -281,10 +246,7 @@ export class SpectralClustering
 
       // Component indicators are already normalized, no scaling needed
 
-      // Capture debug info for component indicators
       if (this.capture_debug_info) {
-        // For disconnected components, we don't have a traditional Laplacian spectrum
-        // but we can still provide information about the components
         this.debug_info_!.laplacian_spectrum = Array(num_components).fill(0); // Components have eigenvalue 0
 
         const emb_data = await U.data();
@@ -304,7 +266,6 @@ export class SpectralClustering
         };
       }
     } else {
-      /* ---------------------------- Standard Approach ------------------------ */
       const { smallest_eigenvectors_with_values } = await import(
         '../eigen/smallest_eigenvectors_with_values'
       );
@@ -405,16 +366,13 @@ export class SpectralClustering
       U_full.dispose();
     }
 
-    /* -------------------------- 4) K-Means -------------------------------- */
     // IMPORTANT: sklearn does NOT row-normalize when using k-means!
     // Row normalization is only applied when assign_labels='discretize'
     // We pass the embedding directly to k-means without row normalization,
     // matching sklearn's default behavior
     const { KMeans } = await import('./kmeans');
 
-    // Check if we should use intensive parameter sweep
     if (this.params.intensive_parameter_sweep && this.params.affinity === 'rbf') {
-      // Intensive parameter sweep for difficult cases
       const { intensive_parameter_sweep } = await import(
         './spectral_optimization'
       );
@@ -435,7 +393,6 @@ export class SpectralClustering
 
       this.labels_ = result.labels;
 
-      // Store debug info
       Object.defineProperty(this, '_debug_intensive_sweep_config_', {
         value: result.config,
         writable: true,
@@ -443,9 +400,7 @@ export class SpectralClustering
         enumerable: false,
       });
     }
-    // Check if we should use validation-based optimization
     else if (this.params.use_validation && this.params.n_clusters >= 3) {
-      // Use validation metrics to find best clustering
       const { validation_based_optimization } = await import(
         './spectral_optimization'
       );
@@ -463,7 +418,6 @@ export class SpectralClustering
 
       this.labels_ = result.labels;
 
-      // Store debug info
       Object.defineProperty(this, '_debug_validation_score_', {
         value: result.score,
         writable: true,
@@ -471,7 +425,6 @@ export class SpectralClustering
         enumerable: false,
       });
     } else {
-      // Standard k-means without validation
       const km_params = {
         n_clusters: this.params.n_clusters,
         random_state: this.params.random_state,
@@ -491,12 +444,10 @@ export class SpectralClustering
         enumerable: false,
       });
 
-      // Pass the embedding directly to k-means without row normalization
       await km.fit(U);
 
       this.labels_ = km.labels_!;
 
-      // Capture clustering metrics if requested
       if (this.capture_debug_info && km.inertia_ !== null) {
         this.debug_info_!.clustering_metrics = {
           inertia: km.inertia_,
@@ -506,17 +457,12 @@ export class SpectralClustering
       km.dispose();
     }
 
-    /* --------------------------- Clean-up --------------------------------- */
     U.dispose();
 
     x_tensor.dispose();
   }
 
   /**
-   * Fits the model and returns cluster labels.
-   *
-   * @param X - Input data matrix of shape [n_samples, n_features].
-   * @returns Array of cluster labels for each sample.
    * @throws {Error} If n_clusters exceeds n_samples or n_samples exceeds max_samples.
    */
   async fit_predict(X: DataMatrix): Promise<number[]> {
@@ -528,13 +474,9 @@ export class SpectralClustering
   }
 
   /**
-   * Computes the representative sample (medoid) of every cluster — the sample
-   * closest to its cluster mean in the original feature space (Euclidean) — and
-   * stores them in {@link medoid_indices_}. SpectralClustering has no synthetic
-   * centroids, so medoids are its `ClusterRepresentations` surface.
+   * SpectralClustering has no synthetic centroids, so medoids are its
+   * `ClusterRepresentations` surface.
    *
-   * @param X The data the model was fitted on (same row order as `labels_`).
-   * @returns The populated `medoid_indices_`.
    * @throws {Error} If called before `fit()`.
    */
   async compute_medoids(X: DataMatrix): Promise<Int32Array> {
@@ -551,23 +493,14 @@ export class SpectralClustering
     return indices;
   }
 
-  /**
-   * Get debug information if available.
-   */
   public get_debug_info(): DebugInfo | null {
     return this.debug_info_;
   }
 
-  /**
-   * Fits the model and returns intermediate steps for debugging and analysis.
-   * This method is useful for comparing with reference implementations.
-   */
   async fit_with_intermediate_steps(X: DataMatrix): Promise<IntermediateSteps> {
-    // Dispose previous state if the estimator is re-used.
     this.dispose();
     this.debug_info_ = {};
 
-    /* ---------------------------- 0) Input -------------------------------- */
     const x_tensor: tf.Tensor2D =
       is_tensor(X)
         ? (tf.cast(X as tf.Tensor2D, 'float32') as tf.Tensor2D)
@@ -589,7 +522,6 @@ export class SpectralClustering
       );
     }
 
-    /* ---------------------------- 1) Affinity ----------------------------- */
     let sparse_affinity: SparseMatrix | null = null;
     let affinity: tf.Tensor2D;
 
@@ -619,7 +551,6 @@ export class SpectralClustering
       );
     }
 
-    // Capture affinity statistics
     if (sparse_affinity != null) {
       this.debug_info_.affinity_stats = sparse_stats(sparse_affinity);
     } else {
@@ -637,7 +568,6 @@ export class SpectralClustering
       };
     }
 
-    /* ---------------------------- 2) Laplacian ----------------------------- */
     const { normalised_laplacian } = await import('../graph/laplacian');
     const { laplacian, sqrt_degrees } = tf.tidy(() =>
       normalised_laplacian(affinity, true),
@@ -654,7 +584,6 @@ export class SpectralClustering
     spec_evals.dispose();
     spec_vecs.dispose();
 
-    /* ---------------------------- 3) Embedding ----------------------------- */
     const { smallest_eigenvectors_with_values } = await import(
       '../eigen/smallest_eigenvectors_with_values'
     );
@@ -675,7 +604,6 @@ export class SpectralClustering
       return U_selected.div(sqrt_deg_col) as tf.Tensor2D;
     });
 
-    // Capture embedding statistics
     const emb_data = await embedding.data();
     const [n, k] = embedding.shape;
     const unique_values_per_dim: number[] = [];
@@ -693,7 +621,6 @@ export class SpectralClustering
       scaling_factors: Array.from(eigen_data.slice(0, this.params.n_clusters)),
     };
 
-    /* ---------------------------- 4) Clustering ----------------------------- */
     const { KMeans } = await import('./kmeans');
     const km_params = {
       n_clusters: this.params.n_clusters,
@@ -705,7 +632,6 @@ export class SpectralClustering
     await km.fit(embedding);
     const labels = km.labels_!;
 
-    // Capture clustering metrics
     if (km.inertia_ !== null) {
       this.debug_info_.clustering_metrics = {
         inertia: km.inertia_,
@@ -714,7 +640,6 @@ export class SpectralClustering
     }
     km.dispose();
 
-    /* ---------------------------- Prepare Result ----------------------------- */
     // Compute D^{1/2} for the result (sqrt_degrees is D^{-1/2}, so pow(-1) gives D^{1/2})
     const degrees_intermediate = tf.pow(sqrt_degrees, -1) as tf.Tensor1D;
     const result: IntermediateSteps = {
@@ -733,13 +658,11 @@ export class SpectralClustering
     };
     degrees_intermediate.dispose();
 
-    // Store labels for consistency
     this.labels_ = labels;
     if (sparse_affinity == null) {
       this.affinity_matrix_ = tf.clone(affinity);
     }
 
-    /* --------------------------- Clean-up --------------------------------- */
     affinity.dispose();
     laplacian.dispose();
     sqrt_degrees.dispose();
@@ -752,19 +675,13 @@ export class SpectralClustering
     return result;
   }
 
-  /* ------------------------------------------------------------------- */
-  /*                     Static parameter validation                       */
-  /* ------------------------------------------------------------------- */
-
   private static validate_params(params: SpectralClusteringParams): void {
     const { n_clusters, affinity = 'rbf', gamma, n_neighbors } = params;
 
-    // n_clusters must be a positive integer
     if (!Number.isInteger(n_clusters) || n_clusters < 1) {
       throw new Error('n_clusters must be a positive integer (>= 1).');
     }
 
-    // Affinity string or callable
     const is_callable = typeof affinity === 'function';
     if (
       !is_callable &&
@@ -775,19 +692,15 @@ export class SpectralClustering
       );
     }
 
-    // gamma checks (only relevant for RBF affinity when provided as string)
     if (!is_callable && affinity === 'rbf') {
       if (gamma !== undefined && (typeof gamma !== 'number' || gamma <= 0)) {
         throw new Error('gamma must be a positive number if specified.');
       }
     } else if (gamma !== undefined) {
-      // If affinity is not RBF but user supplied gamma, warn
       throw new Error("gamma is only applicable when affinity is 'rbf'.");
     }
 
-    // n_neighbors checks for nearest_neighbors affinity
     if (!is_callable && affinity === 'nearest_neighbors') {
-      // If n_neighbors is provided, validate it
       if (
         n_neighbors !== undefined &&
         (!Number.isInteger(n_neighbors) || n_neighbors < 1)
@@ -801,7 +714,6 @@ export class SpectralClustering
       );
     }
 
-    // precomputed: gamma / n_neighbors not allowed
     if (!is_callable && affinity === 'precomputed') {
       if (gamma !== undefined) {
         throw new Error(
@@ -816,24 +728,18 @@ export class SpectralClustering
     }
   }
 
-  /* ------------------------------------------------------------------- */
-  /*                       Affinity matrix utilities                       */
-  /* ------------------------------------------------------------------- */
-
   static compute_affinity_matrix(
     X: tf.Tensor2D,
     params: SpectralClusteringParams,
   ): tf.Tensor2D {
     const { affinity = 'rbf' } = params;
 
-    // -------------------------- Callable affinity ------------------------ //
     if (typeof affinity === 'function') {
       const A = affinity(X);
       SpectralClustering.validate_affinity_matrix(A);
       return A;
     }
 
-    // ---------------------------- Precomputed ---------------------------- //
     if (affinity === 'precomputed') {
       SpectralClustering.validate_affinity_matrix(X);
       return X;
@@ -853,7 +759,6 @@ export class SpectralClustering
     return compute_knn_affinity(X, k, true);
   }
 
-  /** Returns defaulted k when undefined */
   static default_neighbors(
     params: SpectralClusteringParams,
     n_samples: number,
@@ -868,10 +773,7 @@ export class SpectralClustering
     return Math.max(1, default_k);
   }
 
-  /**
-   * Compute spectral embedding from affinity matrix.
-   * Extracted to support parameter sweep.
-   */
+  /** Extracted to support parameter sweep. */
   private async compute_embedding_from_affinity(
     affinity_matrix: tf.Tensor2D,
   ): Promise<tf.Tensor2D> {
@@ -939,7 +841,6 @@ export class SpectralClustering
       throw new Error('Affinity matrix must be square (n × n).');
     }
 
-    // Check symmetry & non-negativity using small tolerances.
     tf.tidy(() => {
       const tol = 1e-6;
       const diff = A.sub(A.transpose()).abs();
