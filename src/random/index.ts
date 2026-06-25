@@ -1,6 +1,5 @@
 import { MT19937 } from './mt19937';
 
-/** Lightweight interface used throughout the codebase for deterministic RNG. */
 export interface RandomStream {
   /** Float in [0, 1). */
   rand(): number;
