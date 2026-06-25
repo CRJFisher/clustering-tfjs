@@ -95,6 +95,18 @@ describe("convert_validation_inputs", () => {
     );
     expect(label_array).toEqual([3, 7]);
   });
+
+  it("array X + tensor labels: takes tensor ownership and rounds labels", () => {
+    const labels = tf.tensor1d([0, 1.9999999]);
+    const { data, label_array, owns_tensor } = convert_validation_inputs(
+      [[1, 2], [3, 4]],
+      labels,
+    );
+    expect(owns_tensor).toBe(true);
+    expect(label_array).toEqual([0, 2]);
+    data.dispose();
+    labels.dispose();
+  });
 });
 
 describe("noise_filtered_indices", () => {
