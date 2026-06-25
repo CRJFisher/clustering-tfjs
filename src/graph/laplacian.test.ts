@@ -98,6 +98,24 @@ describe("normalised_laplacian", () => {
       }
     }
   });
+
+  it("ignores diagonal entries (scipy parity)", () => {
+    const A_clean = tf.tensor2d([[0, 1], [1, 0]]);
+    const A_with_diag = tf.tensor2d([[5, 1], [1, 3]]);
+    const L1 = normalised_laplacian(A_clean);
+    const L2 = normalised_laplacian(A_with_diag);
+    const arr1 = L1.arraySync() as number[][];
+    const arr2 = L2.arraySync() as number[][];
+    L1.dispose();
+    L2.dispose();
+    A_clean.dispose();
+    A_with_diag.dispose();
+    for (let i = 0; i < 2; i++) {
+      for (let j = 0; j < 2; j++) {
+        expect(arr2[i][j]).toBeCloseTo(arr1[i][j], 6);
+      }
+    }
+  });
 });
 
 describe("sparse_normalised_laplacian_operator", () => {
@@ -163,6 +181,27 @@ describe("sparse_normalised_laplacian_operator", () => {
     expect(() => operator.matvec(new Float64Array([1, 2]))).toThrow(
       "does not match Laplacian size",
     );
+  });
+
+  it("ignores diagonal entries in degree computation and matvec", () => {
+    // Self-loop weight 9 on vertex 0 must not affect degrees or matvec.
+    const with_self_loop = sparse_matrix_from_row_maps([
+      new Map([[0, 9], [1, 1]]),
+      new Map([[0, 1]]),
+    ]);
+    const without_self_loop = sparse_matrix_from_row_maps([
+      new Map([[1, 1]]),
+      new Map([[0, 1]]),
+    ]);
+    const r1 = sparse_normalised_laplacian_operator(with_self_loop);
+    const r2 = sparse_normalised_laplacian_operator(without_self_loop);
+    expect(Array.from(r1.degrees)).toEqual(Array.from(r2.degrees));
+    const v = new Float64Array([1, 2]);
+    const mv1 = r1.operator.matvec(v);
+    const mv2 = r2.operator.matvec(v);
+    for (let i = 0; i < 2; i++) {
+      expect(mv1[i]).toBeCloseTo(mv2[i], 10);
+    }
   });
 
   it("isolated vertex (degree 0) gets inv_sqrt_degree = 1 and matvec row = v[i]", () => {
