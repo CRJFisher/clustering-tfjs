@@ -1,9 +1,3 @@
-/**
- * Main entry point for the clustering library
- * 
- * Provides initialization and configuration for multi-platform support.
- */
-
 import { initialize_backend, reset_backend, BackendConfig } from '../backend/backend';
 import { KMeans } from './kmeans';
 import { SpectralClustering } from './spectral';
@@ -13,9 +7,6 @@ import { SOM } from './som';
 import type { Platform, PlatformFeatures } from '../backend/platform_types';
 import { get_platform } from '../backend/platform';
 
-// ---------------------------------------------------------------------------
-// Idempotency guard state for Clustering.init()
-// ---------------------------------------------------------------------------
 let init_promise: Promise<void> | null = null;
 let init_config_key: string | null = null;
 
@@ -67,12 +58,10 @@ function config_key(config: BackendConfig): string {
   return sorted_stringify(strip_empty(config));
 }
 
-// Detect platform at runtime using utility function
 const detect_platform = (): Platform => {
   return get_platform();
 };
 
-// Get platform features based on detected platform
 const get_platform_features = (platform: Platform): PlatformFeatures => {
   switch (platform) {
     case 'browser':
@@ -84,7 +73,7 @@ const get_platform_features = (platform: Platform): PlatformFeatures => {
       };
     case 'node':
       return {
-        gpu_acceleration: false, // Will be updated after backend init
+        gpu_acceleration: false,
         wasm_simd: false,
         node_bindings: true,
         webgl: false,
@@ -106,18 +95,8 @@ const get_platform_features = (platform: Platform): PlatformFeatures => {
   }
 };
 
-/**
- * Main clustering namespace with platform awareness
- */
 export const Clustering = {
-  /**
-   * Current platform (detected at runtime)
-   */
   platform: detect_platform(),
-  
-  /**
-   * Platform features
-   */
   features: get_platform_features(detect_platform()),
   
   /**
@@ -191,7 +170,6 @@ export const Clustering = {
     init_config_key = null;
   },
 
-  // Re-export algorithms as properties for convenient access
   KMeans: KMeans,
   SpectralClustering: SpectralClustering,
   AgglomerativeClustering: AgglomerativeClustering,

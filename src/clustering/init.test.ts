@@ -1,5 +1,32 @@
 import { Clustering } from './init';
+import { KMeans } from './kmeans';
+import { SpectralClustering } from './spectral';
+import { AgglomerativeClustering } from './agglomerative';
+import { HDBSCAN } from './hdbscan';
+import { SOM } from './som';
 import { is_initialized } from '../backend/backend';
+
+describe('Clustering static properties', () => {
+  it('exposes the correct algorithm classes', () => {
+    expect(Clustering.KMeans).toBe(KMeans);
+    expect(Clustering.SpectralClustering).toBe(SpectralClustering);
+    expect(Clustering.AgglomerativeClustering).toBe(AgglomerativeClustering);
+    expect(Clustering.HDBSCAN).toBe(HDBSCAN);
+    expect(Clustering.SOM).toBe(SOM);
+  });
+
+  it('platform is a recognised platform string', () => {
+    expect(['browser', 'node', 'react-native', 'unknown']).toContain(Clustering.platform);
+  });
+
+  it('features has boolean fields for all platform capabilities', () => {
+    const f = Clustering.features;
+    expect(typeof f.gpu_acceleration).toBe('boolean');
+    expect(typeof f.wasm_simd).toBe('boolean');
+    expect(typeof f.node_bindings).toBe('boolean');
+    expect(typeof f.webgl).toBe('boolean');
+  });
+});
 
 describe('Clustering.init() idempotency and concurrency', () => {
   afterEach(() => {
