@@ -10,5 +10,4 @@ export {
   type ValidationMetric,
 } from './silhouette';
 export { adjusted_rand_index } from './adjusted_rand_index';
-export { normalized_mutual_info } from './normalized_mutual_info';
-export type { NMIAverage } from './normalized_mutual_info';
+export { normalized_mutual_info, type NMIAverage } from './normalized_mutual_info';
