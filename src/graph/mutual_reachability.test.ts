@@ -23,7 +23,6 @@ describe('mutual_reachability', () => {
     // diagonal = max(core_i, core_i, 0) = core_i
     expect(M[0][0]).toBe(3);
     expect(M[1][1]).toBe(0.5);
-    // symmetric
     expect(M[1][0]).toBe(M[0][1]);
   });
 

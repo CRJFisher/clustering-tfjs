@@ -1,8 +1,6 @@
 /**
- * Mutual-reachability distance for density-based clustering.
- *
- * The mutual-reachability distance between two points smooths the raw distance
- * by each point's core (k-)distance:
+ * The mutual-reachability distance smooths raw distance by each point's core
+ * (k-)distance:
  *
  *   d_mreach(i, j) = max(core_distance_i, core_distance_j, distance_i_j)
  *
@@ -13,14 +11,7 @@
  */
 
 /**
- * Builds the dense mutual-reachability matrix from a pairwise distance matrix
- * and per-point core distances.
- *
- * @param distance_matrix Symmetric `(n, n)` pairwise distance matrix.
- * @param core_distances Per-point core distances of length `n` (see
- *   {@link kdistance}).
- * @returns An `(n, n)` matrix `M` where `M[i][j] = max(core_i, core_j, d_ij)`.
- *   The diagonal is `max(core_i, 0) = core_i`.
+ * Diagonal is `core_i` since `distance[i][i] = 0`, giving `max(core_i, core_i, 0) = core_i`.
  * @throws If the dimensions of `distance_matrix` and `core_distances` disagree.
  */
 export function mutual_reachability(
