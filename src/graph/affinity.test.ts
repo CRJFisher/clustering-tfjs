@@ -9,20 +9,17 @@ import {
 import { sparse_to_dense_array } from "./sparse";
 
 describe("compute_rbf_affinity", () => {
-  afterEach(() => tf.engine().disposeVariables());
-
   it("produces a symmetric matrix with ones on the diagonal", () => {
     const X = tf.tensor2d([
       [0, 0],
       [1, 0],
       [0, 1],
     ]);
-
     const A = compute_rbf_affinity(X, 1);
-
     expect(A.shape).toEqual([3, 3]);
-
     const arr = A.arraySync() as number[][];
+    A.dispose();
+    X.dispose();
     for (let i = 0; i < 3; i++) {
       expect(arr[i][i]).toBeCloseTo(1);
       for (let j = 0; j < 3; j++) {
@@ -32,35 +29,32 @@ describe("compute_rbf_affinity", () => {
   });
 
   it("off-diagonal value equals exp(-gamma * squared_distance)", () => {
-    // Two points unit distance apart; squared distance is 1.
-    const X = tf.tensor2d([
-      [0, 0],
-      [1, 0],
-    ]);
-    const A = compute_rbf_affinity(X, 1).arraySync() as number[][];
-    expect(A[0][1]).toBeCloseTo(Math.exp(-1), 6);
+    const X = tf.tensor2d([[0, 0], [1, 0]]);
+    const At = compute_rbf_affinity(X, 1);
+    const arr = At.arraySync() as number[][];
+    At.dispose();
     X.dispose();
+    expect(arr[0][1]).toBeCloseTo(Math.exp(-1), 6);
   });
 
   it("defaults gamma to 1 / n_features when unspecified", () => {
-    // n_features = 2 -> gamma = 0.5; squared distance 1 -> exp(-0.5).
-    const X = tf.tensor2d([
-      [0, 0],
-      [1, 0],
-    ]);
-    const A = compute_rbf_affinity(X).arraySync() as number[][];
-    expect(A[0][1]).toBeCloseTo(Math.exp(-0.5), 6);
+    // n_features = 2 → gamma = 0.5; squared distance 1 → exp(-0.5).
+    const X = tf.tensor2d([[0, 0], [1, 0]]);
+    const At = compute_rbf_affinity(X);
+    const arr = At.arraySync() as number[][];
+    At.dispose();
     X.dispose();
+    expect(arr[0][1]).toBeCloseTo(Math.exp(-0.5), 6);
   });
 });
 
 describe("compute_knn_affinity", () => {
-  afterEach(() => tf.engine().disposeVariables());
-
   it("produces correct edge count and symmetric weights", () => {
     const X = tf.tensor2d([[0], [1], [2], [3]]);
     const A = compute_knn_affinity(X, 1);
     const arr = A.arraySync() as number[][];
+    A.dispose();
+    X.dispose();
     let edge_count = 0;
     for (let i = 0; i < 4; i++) {
       expect(arr[i][i]).toBe(1);
@@ -74,14 +68,16 @@ describe("compute_knn_affinity", () => {
 
   it("include_self=false yields zero diagonal and preserves symmetry", () => {
     const X = tf.tensor2d([[0], [1], [2], [3]]);
-    const A = compute_knn_affinity(X, 1, false).arraySync() as number[][];
+    const At = compute_knn_affinity(X, 1, false);
+    const arr = At.arraySync() as number[][];
+    At.dispose();
+    X.dispose();
     for (let i = 0; i < 4; i++) {
-      expect(A[i][i]).toBe(0); // no self-loops
+      expect(arr[i][i]).toBe(0);
       for (let j = 0; j < 4; j++) {
-        expect(A[i][j]).toBe(A[j][i]); // still symmetric
+        expect(arr[i][j]).toBe(arr[j][i]);
       }
     }
-    X.dispose();
   });
 });
 
@@ -131,8 +127,6 @@ describe("compute_sparse_knn_affinity", () => {
 });
 
 describe("compute_cosine_affinity", () => {
-  afterEach(() => tf.engine().disposeVariables());
-
   it("produces a symmetric similarity matrix with unit diagonal", () => {
     const X = tf.tensor2d([
       [1, 0],
