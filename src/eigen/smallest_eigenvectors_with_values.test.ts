@@ -28,7 +28,8 @@ function two_cluster_data(n: number): number[][] {
 }
 
 /* =========================================================================
-   AC#1 + AC#2: both paths use the same near-zero tolerance
+   Both eigensolver paths share the same near-zero tolerance, so path routing
+   at the n=100 boundary cannot change the returned embedding dimension.
    ========================================================================= */
 
 describe('smallest_eigenvectors_with_values – path tolerance alignment', () => {
@@ -86,7 +87,45 @@ describe('smallest_eigenvectors_with_values – path tolerance alignment', () =>
 });
 
 /* =========================================================================
-   AC#1: path equivalence for matrices with >5 structural zeros (k+5 buffer exhaustion)
+   Input validation and returned eigenvalue content.
+   ========================================================================= */
+
+describe('smallest_eigenvectors_with_values – input validation', () => {
+  it('rejects a non-positive or non-integer k', () => {
+    const M = diagonal_matrix([0, 1, 2, 3]);
+    expect(() => smallest_eigenvectors_with_values(M, 0)).toThrow(
+      'k must be a positive integer',
+    );
+    expect(() => smallest_eigenvectors_with_values(M, -2)).toThrow(
+      'k must be a positive integer',
+    );
+    expect(() => smallest_eigenvectors_with_values(M, 1.5)).toThrow(
+      'k must be a positive integer',
+    );
+    M.dispose();
+  });
+});
+
+describe('smallest_eigenvectors_with_values – eigenvalue content', () => {
+  it('returns the smallest eigenvalues in ascending order (Jacobi path)', () => {
+    // slice_cols = min(k + c, n) = min(2 + 1, 4) = 3, so the three smallest
+    // eigenvalues of the diagonal come back ascending.
+    const M = diagonal_matrix([1.5, 0, 1.0, 0.005]);
+    const result = smallest_eigenvectors_with_values(M, 2);
+    const vals = Array.from(result.eigenvalues.dataSync());
+    expect(vals).toHaveLength(3);
+    expect(vals[0]).toBeCloseTo(0, 5);
+    expect(vals[1]).toBeCloseTo(0.005, 5);
+    expect(vals[2]).toBeCloseTo(1.0, 5);
+    result.eigenvectors.dispose();
+    result.eigenvalues.dispose();
+    M.dispose();
+  });
+});
+
+/* =========================================================================
+   Path equivalence for matrices with more than 5 structural zeros, where the
+   k+5 Krylov buffer must expand to resolve the full degenerate zero eigenspace.
    ========================================================================= */
 
 describe('smallest_eigenvectors_with_values – >5 near-zero eigenpairs', () => {
@@ -142,7 +181,8 @@ describe('smallest_eigenvectors_with_values – >5 near-zero eigenpairs', () => 
 });
 
 /* =========================================================================
-   AC#4: SpectralClustering n=99 (Jacobi) vs n=101 (Lanczos) path boundary
+   SpectralClustering yields the same labelling on either side of the n=100
+   solver boundary: n=99 (Jacobi) vs n=101 (Lanczos).
    ========================================================================= */
 
 describe('SpectralClustering – n=99 vs n=101 path boundary equivalence', () => {
