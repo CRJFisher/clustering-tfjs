@@ -21,9 +21,7 @@ export function compute_rbf_affinity(
     const n_features = points.shape[1];
 
     // Default gamma mirrors scikit-learn behaviour for its RBF kernel used
-    // inside SpectralClustering: gamma = 1.0 / n_features when the user does
-    // not specify a value.  We align with that default to ensure parity with
-    // reference fixtures.
+    // inside SpectralClustering: gamma = 1.0 / n_features when not specified.
 
     const gamma_val = gamma ?? 1.0 / n_features;
 
@@ -81,9 +79,6 @@ export function compute_sparse_knn_affinity(
     );
   }
 
-  /* --------------------------------------------------------------------- */
-  /*  Implementation note – memory-efficient block-wise distance scanning    */
-  /* --------------------------------------------------------------------- */
   // A naive implementation constructs the full pair-wise distance matrix
   // (n×n) and then selects the k closest entries per row.  This requires
   // O(n²) memory which becomes prohibitive for large datasets.
