@@ -59,8 +59,7 @@ export class AgglomerativeClustering
 
   /**
    * Distance at which each merge in `children_` occurred. Aligned 1:1 with
-   * `children_` (same length and order). Enables dendrogram cutting and
-   * inspection of merge heights. Populated by `fit`.
+   * `children_` (same length and order).
    */
   public distances_: number[] | null = null;
 
