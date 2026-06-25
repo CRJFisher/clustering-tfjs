@@ -1,23 +1,7 @@
 import { LabelVector } from '../clustering/types';
 import { build_contingency_table, to_label_array } from './contingency';
 
-/**
- * Computes the Adjusted Rand Index (ARI) between two clusterings.
- *
- * The ARI is a measure of the similarity between two label assignments,
- * adjusted for chance. It ranges from -1 to 1:
- * - 1: Perfect agreement between the two labelings
- * - 0: Agreement is what would be expected by chance
- * - Negative: Agreement is less than expected by chance
- *
- * The ARI is symmetric and does not depend on the label values themselves,
- * only on the partitioning structure.
- *
- * @param labels_true - Ground truth class labels
- * @param labels_pred - Predicted cluster labels
- * @returns The Adjusted Rand Index (range: [-1, 1])
- * @throws Error if label vectors have different lengths or are empty
- */
+/** @throws if label vectors have different lengths or are empty */
 export function adjusted_rand_index(
   labels_true: LabelVector,
   labels_pred: LabelVector,

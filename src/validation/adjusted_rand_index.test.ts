@@ -64,6 +64,11 @@ describe("Adjusted Rand Index", () => {
     it("returns 1.0 for a single sample (trivially identical partitions)", () => {
       expect(adjusted_rand_index([0], [0])).toBeCloseTo(1.0, 10);
     });
+
+    it("returns 1.0 for a single sample even with different labels", () => {
+      // n_c2 = C(1,2) = 0 regardless of label values; partitions are trivially identical.
+      expect(adjusted_rand_index([0], [1])).toBeCloseTo(1.0, 10);
+    });
   });
 
   describe("Tensor inputs", () => {
