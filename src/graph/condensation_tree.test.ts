@@ -116,7 +116,6 @@ describe('condensation_tree – exact parity on sklearn hierarchy', () => {
 
       // Exact labelling (up to cluster-id permutation, noise consistent).
       expect(labels_equivalent_with_noise(labels, fixture.labels)).toBe(true);
-      // Exact probabilities.
       for (let i = 0; i < n; i++) {
         expect(probabilities[i]).toBeCloseTo(fixture.probabilities[i], 6);
       }

@@ -337,14 +337,10 @@ function epsilon_search(
 }
 
 /**
- * Selects the flat set of clusters from the condensed tree.
- *
  * `'eom'` (Excess of Mass) keeps a cluster when its own stability exceeds the
  * summed stability of its selected descendants; `'leaf'` keeps every leaf
  * cluster. `cluster_selection_epsilon` then merges clusters whose birth distance
  * (`1 / birth_lambda`) is below `epsilon` into a coarser ancestor.
- *
- * @returns The set of selected cluster ids.
  */
 export function excess_of_mass(
   tree: CondensedEdge[],
