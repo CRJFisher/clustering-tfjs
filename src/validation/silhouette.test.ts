@@ -12,8 +12,7 @@ describe("silhouette_score", () => {
   });
 
   describe("Basic functionality", () => {
-    it("should compute high score for well-separated 2D clusters", () => {
-      // Create well-separated clusters
+    it("computes high score for well-separated 2D clusters", () => {
       const X = [
         // Cluster 0: centered around (0, 0)
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
@@ -21,32 +20,27 @@ describe("silhouette_score", () => {
         [10, 10], [10.1, 10.1], [9.9, 9.9], [10.1, 9.9]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
-      
-      // Well-separated clusters should have high score
+
       expect(score).toBeGreaterThan(0.8);
       expect(score).toBeLessThanOrEqual(1.0);
     });
 
-    it("should compute low score for overlapping clusters", () => {
-      // Create overlapping clusters
+    it("computes low score for overlapping clusters", () => {
       const X = [
-        // Overlapping clusters
         [0, 0], [0.5, 0.5], [1, 1], [1.5, 1.5],
         [0.5, 0], [1, 0.5], [1.5, 1], [2, 1.5]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
-      
-      // Overlapping clusters should have lower score
+
       expect(score).toBeLessThan(0.5);
       expect(score).toBeGreaterThan(-1.0);
     });
 
-    it("should compute negative score for misclassified points", () => {
-      // Create clusters with misclassified points
+    it("computes negative score for misclassified points", () => {
       const X = [
         // Cluster 0 points
         [0, 0], [0.1, 0.1], [0.2, 0],
@@ -58,55 +52,54 @@ describe("silhouette_score", () => {
         [0.3, 0.3]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
-      
-      // Misclassified points should lower the score
+
       expect(score).toBeLessThan(0.5);
     });
 
-    it("should compute same score with tensor inputs", () => {
+    it("computes same score with tensor inputs", () => {
       const X = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
       const labels = [0, 0, 1, 1, 0, 1];
-      
+
       const score_array = silhouette_score(X, labels);
-      
+
       const X_tensor = tf.tensor2d(X);
       const labels_tensor = tf.tensor1d(labels);
       const score_tensor = silhouette_score(X_tensor, labels_tensor);
-      
+
       expect(score_tensor).toBeCloseTo(score_array, 5);
-      
+
       X_tensor.dispose();
       labels_tensor.dispose();
     });
   });
 
   describe("Edge cases", () => {
-    it("should throw error for single cluster", () => {
+    it("throws for single cluster", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 0, 0];
-      
+
       expect(() => silhouette_score(X, labels)).toThrow(
         "Silhouette score requires at least 2 clusters"
       );
     });
 
-    it("should handle single-point clusters", () => {
+    it("handles single-point clusters", () => {
       const X = [
         [0, 0], [0.1, 0.1], // Cluster 0 (2 points)
-        [5, 5],             // Cluster 1 (1 point) - should get score 0
+        [5, 5],             // Cluster 1 (1 point)
         [10, 10], [10.1, 10.1] // Cluster 2 (2 points)
       ];
       const labels = [0, 0, 1, 2, 2];
-      
+
       const score = silhouette_score(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThanOrEqual(-1);
       expect(score).toBeLessThanOrEqual(1);
     });
 
-    it("should handle clusters of different sizes", () => {
+    it("handles clusters of different sizes", () => {
       const X = [
         // Large cluster 0
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1], [0, -0.1],
@@ -116,7 +109,7 @@ describe("silhouette_score", () => {
         [0, 5], [0.1, 5], [-0.1, 5]
       ];
       const labels = [0, 0, 0, 0, 0, 1, 1, 2, 2, 2];
-      
+
       const score = silhouette_score(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
@@ -124,21 +117,20 @@ describe("silhouette_score", () => {
   });
 
   describe("Known values validation", () => {
-    it("should compute perfect score for perfectly separated clusters", () => {
+    it("computes perfect score for perfectly separated clusters", () => {
       // Two clusters far apart
       const X = [
         [0, 0], [0, 0], [0, 0],    // Cluster 0 (all same point)
         [100, 100], [100, 100], [100, 100]  // Cluster 1 (all same point, far away)
       ];
       const labels = [0, 0, 0, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
-      
-      // Should be close to 1 (perfect separation)
+
       expect(score).toBeCloseTo(1.0, 2);
     });
 
-    it("should compute zero score for points on decision boundary", () => {
+    it("computes zero score for points on decision boundary", () => {
       // Points equally distant from both clusters
       const X = [
         // Cluster 0
@@ -149,68 +141,64 @@ describe("silhouette_score", () => {
         [2, 0], [2, 2]
       ];
       const labels = [0, 0, 0, 0, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
-      
-      // Should be close to 0 (on boundary)
+
       expect(Math.abs(score)).toBeLessThan(0.2);
     });
   });
 
   describe("Subset computation", () => {
-    it("should compute same score for subset as full computation", () => {
+    it("computes same score for subset as full computation", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
         [5, 5], [5.1, 5.1], [4.9, 4.9], [5.1, 4.9]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
-      // Compute full score
+
       const full_score = silhouette_score(X, labels);
-      
-      // Compute subset score for all indices
+
       const all_indices = Array.from({ length: 8 }, (_, i) => i);
       const subset_score = silhouette_score_subset(X, labels, all_indices);
-      
+
       expect(subset_score).toBeCloseTo(full_score, 5);
     });
 
-    it("should handle partial subset correctly", () => {
+    it("handles partial subset correctly", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
         [5, 5], [5.1, 5.1], [4.9, 4.9], [5.1, 4.9]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1];
-      
-      // Compute score for subset of indices
+
       const subset_indices = [0, 2, 4, 6]; // Sample from each cluster
       const score = silhouette_score_subset(X, labels, subset_indices);
-      
-      expect(score).toBeGreaterThan(0.5); // Still well-separated
+
+      expect(score).toBeGreaterThan(0.5);
       expect(score).toBeLessThanOrEqual(1.0);
     });
   });
 
   describe("Numerical stability", () => {
-    it("should handle identical points in same cluster", () => {
+    it("handles identical points in same cluster", () => {
       const X = [
         [1, 1], [1, 1], [1, 1],    // Identical points in cluster 0
         [5, 5], [5.1, 5.1], [4.9, 4.9]  // Cluster 1
       ];
       const labels = [0, 0, 0, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
     });
 
-    it("should handle very small distances", () => {
+    it("handles very small distances", () => {
       const X = [
         [0, 0], [0.0001, 0.0001], [0.0002, 0],
         [1, 1], [1.0001, 1.0001], [1.0002, 1]
       ];
       const labels = [0, 0, 0, 1, 1, 1];
-      
+
       const score = silhouette_score(X, labels);
       expect(isFinite(score)).toBe(true);
       expect(score).toBeGreaterThan(0);
@@ -218,12 +206,11 @@ describe("silhouette_score", () => {
   });
 
   describe("Performance", () => {
-    it("subset computation should not be significantly slower than full computation", () => {
-      // Create 500 samples in 2 clusters
+    it("subset computation produces similar score to full with 10% sample", () => {
       const n = 500;
       const X: number[][] = [];
       const labels: number[] = [];
-      
+
       const rng = make_random_stream(42);
       for (let i = 0; i < n; i++) {
         const cluster = i < n/2 ? 0 : 1;
@@ -236,10 +223,9 @@ describe("silhouette_score", () => {
           X.push([5 + noise(), 5 + noise()]);
         }
       }
-      
+
       const full_score = silhouette_score(X, labels);
 
-      // Subset computation (10% of samples)
       const subset_size = Math.floor(n * 0.1);
       const subset_indices = Array.from({ length: subset_size },
         (_, i) => Math.floor(i * n / subset_size));
@@ -252,7 +238,7 @@ describe("silhouette_score", () => {
   });
 
   describe("Zero-distance (identical points) handling", () => {
-    it("should return 0 when a==0 and b==0 (all identical points)", () => {
+    it("returns 0 when a==0 and b==0 (all identical points)", () => {
       const X = [
         [1, 1], [1, 1], [1, 1],
         [1, 1], [1, 1], [1, 1],
@@ -264,7 +250,7 @@ describe("silhouette_score", () => {
       expect(isNaN(score)).toBe(false);
     });
 
-    it("should return 0 for identical points using silhouette_score_subset", () => {
+    it("returns 0 for identical points using silhouette_score_subset", () => {
       const X = [
         [1, 1], [1, 1], [1, 1],
         [1, 1], [1, 1], [1, 1],
@@ -277,7 +263,7 @@ describe("silhouette_score", () => {
       expect(isNaN(score)).toBe(false);
     });
 
-    it("should handle mixed: some identical, some not", () => {
+    it("handles mixed: some identical, some not", () => {
       const X = [
         [0, 0], [0, 0], [0, 0],
         [5, 5], [5.1, 5.1], [4.9, 4.9],
@@ -292,7 +278,7 @@ describe("silhouette_score", () => {
   });
 
   describe("Labels length validation", () => {
-    it("should throw when labels length mismatches data rows (array)", () => {
+    it("throws when labels length mismatches data rows (array)", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
@@ -301,7 +287,7 @@ describe("silhouette_score", () => {
       );
     });
 
-    it("should throw when labels length mismatches data rows (tensor)", () => {
+    it("throws when labels length mismatches data rows (tensor)", () => {
       const X = tf.tensor2d([[1, 2], [3, 4], [5, 6]]);
       const labels = tf.tensor1d([0, 1]);
 
@@ -313,7 +299,7 @@ describe("silhouette_score", () => {
       labels.dispose();
     });
 
-    it("should throw for silhouette_score_subset with mismatched labels", () => {
+    it("throws for silhouette_score_subset with mismatched labels", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
@@ -324,7 +310,7 @@ describe("silhouette_score", () => {
   });
 
   describe("silhouette_samples", () => {
-    it("should return correct number of per-sample scores", () => {
+    it("returns correct number of per-sample scores", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0],
         [5, 5], [5.1, 5.1], [4.9, 4.9]
@@ -335,7 +321,7 @@ describe("silhouette_score", () => {
       expect(samples).toHaveLength(6);
     });
 
-    it("should have mean equal to silhouette_score", () => {
+    it("mean equals silhouette_score", () => {
       const X = [
         [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1],
         [5, 5], [5.1, 5.1], [4.9, 4.9], [5.1, 4.9]
@@ -369,7 +355,7 @@ describe("silhouette_score", () => {
       expect(samples[3]).toBeCloseTo(9 / 11, 5);
     });
 
-    it("should have all values in [-1, 1]", () => {
+    it("all values are in [-1, 1]", () => {
       const X = [
         [0, 0], [0.1, 0.1], [5, 5], [5.1, 5.1]
       ];
@@ -382,7 +368,7 @@ describe("silhouette_score", () => {
       }
     });
 
-    it("should work with tensor inputs", () => {
+    it("works with tensor inputs", () => {
       const X = [[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]];
       const labels = [0, 0, 1, 1, 0, 1];
 
@@ -400,7 +386,7 @@ describe("silhouette_score", () => {
       labels_tensor.dispose();
     });
 
-    it("should throw on single cluster", () => {
+    it("throws on single cluster", () => {
       const X = [[1, 2], [3, 4]];
       const labels = [0, 0];
 
@@ -409,7 +395,7 @@ describe("silhouette_score", () => {
       );
     });
 
-    it("should throw when labels length mismatches data rows", () => {
+    it("throws when labels length mismatches data rows", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
 
