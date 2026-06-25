@@ -12,26 +12,32 @@ import {
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
 /**
- * float32 parity tolerances. The HDBSCAN front-half (distance matrix, core
- * distances, mutual reachability) runs on tensors in float32, which leaves
- * cluster labels unchanged but perturbs per-point membership probabilities.
- * These constants bound the probability tiers while the label assertions stay
- * exact. They carry deliberate float32 headroom over the observed drift;
- * task-54.9 re-measures and tightens them against the migrated pipeline.
+ * float32 parity tolerances for the HDBSCAN front-half. The front-half
+ * (distance matrix, core distances, mutual reachability) moves onto tensors in
+ * task-54, where it runs in float32: cluster labels are unaffected but per-point
+ * membership probabilities drift. These constants bound the probability tiers so
+ * the suite admits that drift while the label assertions stay exact. They are
+ * set from the float64 baseline plus the float32 drift the task-54 migration
+ * probe measured, with deliberate headroom; task-54.9 re-measures and tightens
+ * them against the migrated pipeline.
  */
-// Tie-free per-point probability drift. The float32 front-half probe measured
-// ~1e-4 worst-case overshoot; this bound leaves ~10x headroom.
+// Tie-free per-point probability drift. The task-54 float32 probe measured
+// ~1e-4 worst-case overshoot (nested_mcs8_ms2 fixture); ~10x headroom.
 const TIE_FREE_PROB_ATOL = 1e-3;
-// Tie-bound per-fixture probability MAE. The saturated-cosine precomputed
-// fixture sits highest at ~0.150; the bound adds slack for the extra boundary
-// points float32 tie-reordering can shift between equally valid hierarchies.
+// Tie-bound per-fixture probability MAE. The saturated-cosine fixture
+// (blobs_cosine_precomputed_mcs5) sits highest at ~0.150; every other fixture
+// is <= ~0.077. The bound adds slack over the 0.150 outlier for the extra
+// boundary points float32 tie-reordering can shift between equally valid
+// hierarchies.
 const TIE_BOUND_MAE_MAX = 0.18;
 // Tie-bound label agreement under optimal cluster-id alignment. The lowest
-// fixture sits at ~0.975; the bound admits a few additional float32 boundary
-// shifts without masking a genuine cluster-structure regression.
+// fixtures (circles/moons mcs5 leaf) sit at ~0.975; the bound admits a few
+// additional float32 boundary shifts without masking a genuine cluster-structure
+// regression.
 const TIE_BOUND_AGREEMENT_MIN = 0.94;
 // Upper guard on the [0, 1] probability range. float32 can round a true 1.0 to
-// just above 1, so the epsilon is float32-scale rather than float64-scale.
+// a few ULPs above 1 (float32 eps ~= 1.2e-7); 1e-6 clears that, where the
+// float64-scale round-off it replaces would not.
 const PROB_UPPER_BOUND = 1 + 1e-6;
 
 interface HdbscanFixture {
@@ -93,11 +99,12 @@ function fixture_params(fixture: HdbscanFixture): Partial<HDBSCANParams> {
  * `condensation_tree.test.ts`; here the full pipeline (including
  * minimum-spanning-tree construction) runs from raw input.
  *
- * The front-half runs in float32, so the contract is **strict labels, bounded
- * probabilities**. float32 does not change which mutual-reachability edges the
- * MST selects, so cluster membership is invariant and the label assertions are
- * exact (up to a cluster-id permutation, with `-1` noise held fixed). Per-point
- * probabilities depend on lambda ratios that float32 perturbs additively, so
+ * The front-half moves onto float32 tensors in task-54, so the contract is
+ * **strict labels, bounded probabilities**. float32 does not change which
+ * mutual-reachability edges the MST selects, so cluster membership is invariant
+ * and the label assertions are exact (up to a cluster-id permutation, with `-1`
+ * noise held fixed). Per-point probabilities depend on lambda ratios that
+ * float32 perturbs additively, so
  * they are bounded rather than exact.
  *
  * The assertion is tiered by the fixture's `tie_free` flag:
@@ -198,7 +205,7 @@ describe('HDBSCAN – API surface', () => {
     expect(labels).toContain(-1);
     for (const p of model.probabilities_!) {
       expect(p).toBeGreaterThanOrEqual(0);
-      expect(p).toBeLessThanOrEqual(1);
+      expect(p).toBeLessThanOrEqual(PROB_UPPER_BOUND);
     }
   });
 
