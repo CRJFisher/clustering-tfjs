@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-06-25
+
+### Changed
+
+- **HDBSCAN front-half on tensors.** The k-distance / mutual-reachability /
+  minimum-spanning-tree stage now runs on TensorFlow.js ops, giving a
+  2.9–12.6× speedup with `tfjs-node` across all measured input sizes. Cluster
+  labels are unchanged; per-point `probabilities_` may differ within float32
+  tolerance.
+
+### Removed
+
+- Dead `kdistance` module and fixtures, superseded by the tensor front-half.
+- Internal-only `MatrixFreeOperator` and `SparseNormalisedLaplacian` exports
+  made package-private. No public API change.
+
+### Internal
+
+- Comments across the codebase normalized to WHY-only; AGENTS/CLAUDE
+  conventions consolidated.
+
 ## [0.6.0] - 2026-06-22
 
 ### Added
