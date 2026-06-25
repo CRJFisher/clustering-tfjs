@@ -49,8 +49,8 @@ export class MT19937 {
    * conversion formula NumPy's `random_sample` uses.
    */
   public next_float(): number {
-    const a = this.next_uint32() >>> 5; // Upper 27 bits
-    const b = this.next_uint32() >>> 6; // Upper 26 bits
+    const a = this.next_uint32() >>> 5;
+    const b = this.next_uint32() >>> 6;
     return (a * 67108864 + b) * 1.1102230246251565e-16; // 1 / 2**53
   }
 
