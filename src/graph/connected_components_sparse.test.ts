@@ -4,7 +4,7 @@ import {
 } from './connected_components';
 import { sparse_matrix_from_row_maps, sparse_to_dense_tensor } from './sparse';
 
-describe('Sparse connected components', () => {
+describe('detect_sparse_connected_components – sparse/dense parity', () => {
   it('matches dense connected component labels', () => {
     const sparse = sparse_matrix_from_row_maps(
       [
