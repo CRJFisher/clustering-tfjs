@@ -83,6 +83,13 @@ describe("createComponentIndicators", () => {
     const labels = new Int32Array([0, 1, 2, 3]);
     const result = tracked(create_component_indicators(labels, 4, 2));
     expect(result.shape).toEqual([4, 2]);
+
+    // Nodes in components beyond the indicator cap get all-zero rows.
+    const data = result.arraySync() as number[][];
+    expect(data[0]).toEqual([1, 0]); // component 0 (kept)
+    expect(data[1]).toEqual([0, 1]); // component 1 (kept)
+    expect(data[2]).toEqual([0, 0]); // component 2 (capped out)
+    expect(data[3]).toEqual([0, 0]); // component 3 (capped out)
   });
 
   it("uses all components when maxIndicators >= numComponents", () => {
