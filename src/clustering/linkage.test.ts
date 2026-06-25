@@ -117,19 +117,58 @@ describe('nn_chain_cluster', () => {
     expect(merges[0].new_size).toBe(2); // merge of two singletons
     expect(merges[1].new_size).toBe(3); // merge size-2 with singleton
   });
+
+  it('n=2 produces a single merge with correct distance and size', () => {
+    const D = new Float64Array([0, 3.5, 3.5, 0]);
+    const merges = nn_chain_cluster(D, 2, 'single');
+    expect(merges.length).toBe(1);
+    expect(merges[0].cluster_a).toBe(0);
+    expect(merges[0].cluster_b).toBe(1);
+    expect(merges[0].distance).toBeCloseTo(3.5, 10);
+    expect(merges[0].new_size).toBe(2);
+  });
+
+  it('cluster_a < cluster_b in every merge record for all linkages', () => {
+    const D2d = [
+      [0, 1, 5, 9],
+      [1, 0, 4, 8],
+      [5, 4, 0, 3],
+      [9, 8, 3, 0],
+    ];
+    const linkages: LinkageCriterion[] = ['single', 'complete', 'average', 'ward'];
+    for (const linkage of linkages) {
+      const merges = nn_chain_cluster(to_flat(D2d), 4, linkage);
+      for (const m of merges) {
+        expect(m.cluster_a).toBeLessThan(m.cluster_b);
+      }
+    }
+  });
+
+  it('output is sorted: merge distances are non-decreasing', () => {
+    const D2d = [
+      [0, 1, 5, 9],
+      [1, 0, 4, 8],
+      [5, 4, 0, 3],
+      [9, 8, 3, 0],
+    ];
+    const linkages: LinkageCriterion[] = ['single', 'complete', 'average', 'ward'];
+    for (const linkage of linkages) {
+      const merges = nn_chain_cluster(to_flat(D2d), 4, linkage);
+      for (let i = 1; i < merges.length; i++) {
+        expect(merges[i].distance).toBeGreaterThanOrEqual(merges[i - 1].distance);
+      }
+    }
+  });
 });
 
 /**
  * Ward tie-breaking parity with scikit-learn on a symmetric integer grid.
  *
- * A regular grid has many exactly-tied distances, so the dendrogram is only
+ * A regular grid has many exactly-tied distances. The dendrogram is only
  * reproducible if the Lance–Williams update rounds bit-identically to scipy
- * and distances are computed in float64. These cases pin both: an earlier
- * `(sum)/total` arrangement and float32 distances each flipped ties here,
- * producing a "rows" split where sklearn produces "columns".
- *
- * Expected partitions are taken from `sklearn.cluster.AgglomerativeClustering`
- * (linkage='ward') and compared permutation-invariantly via group membership.
+ * and distances are stored as float64. Expected partitions are taken from
+ * `sklearn.cluster.AgglomerativeClustering(linkage='ward')` and compared
+ * permutation-invariantly via group membership.
  */
 describe('AgglomerativeClustering – ward tie parity with scikit-learn', () => {
   function grid_points(side: number): number[][] {

@@ -151,7 +151,6 @@ export function nn_chain_cluster(
       chain_len++;
     }
 
-    // Merge reciprocal nearest neighbors and pop both from the chain.
     chain_len -= 2;
 
     const lower = Math.min(x, y);
