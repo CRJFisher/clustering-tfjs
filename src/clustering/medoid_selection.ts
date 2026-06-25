@@ -8,24 +8,14 @@ import {
 } from '../tensor/tensor_ops';
 
 /**
- * Result of {@link select_medoids}: per-cluster medoid sample indices and their
- * distances to the cluster mean. Both arrays are indexed by cluster id and have
- * length `n_clusters`. A cluster with no assigned samples has index `-1` and
- * distance `Infinity`.
- *
- * Medoids are library-defined representatives — scikit-learn exposes no
- * equivalent attribute, so `indices` is covered by behavioural tests rather
- * than reference fixtures.
+ * A cluster with no assigned samples has index `-1` and distance `Infinity`.
+ * Library-defined: scikit-learn exposes no equivalent attribute.
  */
 export interface MedoidResult {
   indices: Int32Array;
   distances: Float32Array;
 }
 
-/**
- * Per-point distance to a matching reference point, under the given metric,
- * reusing the shared metric implementations from `tensor_ops`.
- */
 function pointwise_distance(
   points: tf.Tensor2D,
   references: tf.Tensor2D,
@@ -50,22 +40,9 @@ function pointwise_distance(
 }
 
 /**
- * For each cluster, finds the index of the sample closest to that cluster's
- * mean under the requested metric — the cluster medoid.
- *
- * Runs in `O(n·d)`: each cluster mean is computed in a single pass and each
- * sample's distance to its own cluster mean in a second pass. No `n×n`
- * pairwise distance matrix is materialised. Distance computation reuses the
- * shared metric implementations in `tensor_ops`.
- *
+ * O(n·d): each cluster mean is a single pass, no n×n pairwise matrix is materialised.
  * Noise samples (label `-1`) and labels outside `0..n_clusters-1` are ignored.
- * Ties are broken towards the lowest sample index. A cluster with no assigned
- * samples yields index `-1` (no fabricated medoid).
- *
- * @param X Data matrix, shape `n × d`.
- * @param labels Cluster labels, one per sample.
- * @param n_clusters Number of clusters (medoid slots returned).
- * @param metric Distance metric. Defaults to `'euclidean'`.
+ * Ties break towards the lowest sample index.
  */
 export async function select_medoids(
   X: DataMatrix,
@@ -85,7 +62,6 @@ export async function select_medoids(
   const n = data.length;
   const d = n > 0 ? data[0].length : 0;
 
-  // First pass: per-cluster sums and counts -> means.
   const sums: number[][] = Array.from({ length: n_clusters }, () =>
     new Array<number>(d).fill(0),
   );
@@ -109,8 +85,6 @@ export async function select_medoids(
     return { indices, distances };
   }
 
-  // Build, for every sample, the reference vector = its cluster mean (or the
-  // point itself for unassigned samples, which are skipped in the argmin).
   const reference_rows: number[][] = new Array<number[]>(n);
   for (let i = 0; i < n; i++) {
     const l = label_array[i];
@@ -124,7 +98,6 @@ export async function select_medoids(
     return pointwise_distance(points, references, metric);
   });
 
-  // Second pass: per-cluster argmin (lowest index breaks ties).
   for (let i = 0; i < n; i++) {
     const l = label_array[i];
     if (l < 0 || l >= n_clusters) continue;
