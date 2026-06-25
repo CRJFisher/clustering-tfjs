@@ -8,7 +8,7 @@ export interface SparseMatrix {
   data: Float64Array;
 }
 
-export interface SparseMatrixStats {
+interface SparseMatrixStats {
   shape: [number, number];
   nnz: number;
   min: number;
