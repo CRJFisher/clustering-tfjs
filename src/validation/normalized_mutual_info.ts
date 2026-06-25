@@ -47,7 +47,6 @@ export function normalized_mutual_info(
 
   const { table, row_sums, col_sums, n } = build_contingency_table(true_arr, pred_arr);
 
-  // Compute entropy H(U) from row sums
   let h_true = 0;
   for (const a of row_sums) {
     if (a > 0) {
@@ -56,7 +55,6 @@ export function normalized_mutual_info(
     }
   }
 
-  // Compute entropy H(V) from column sums
   let h_pred = 0;
   for (const b of col_sums) {
     if (b > 0) {
@@ -65,7 +63,6 @@ export function normalized_mutual_info(
     }
   }
 
-  // Compute mutual information MI(U, V)
   let mi = 0;
   for (let i = 0; i < table.length; i++) {
     for (let j = 0; j < table[i].length; j++) {
@@ -76,7 +73,6 @@ export function normalized_mutual_info(
     }
   }
 
-  // Compute normalizer based on average method
   let normalizer: number;
   switch (average) {
     case 'arithmetic':

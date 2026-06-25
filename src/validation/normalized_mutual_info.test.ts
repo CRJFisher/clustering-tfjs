@@ -1,121 +1,98 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { normalized_mutual_info } from "./normalized_mutual_info";
 
 describe("Normalized Mutual Information", () => {
   describe("Basic functionality", () => {
-    it("should return 1.0 for perfect agreement", () => {
-      const labels_true = [0, 0, 1, 1, 2, 2];
-      const labels_pred = [0, 0, 1, 1, 2, 2];
-
-      expect(normalized_mutual_info(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("returns 1.0 for perfect agreement", () => {
+      expect(normalized_mutual_info([0, 0, 1, 1, 2, 2], [0, 0, 1, 1, 2, 2])).toBeCloseTo(1.0, 10);
     });
 
-    it("should be permutation invariant", () => {
-      const labels_true = [0, 0, 1, 1];
-      const labels_pred = [1, 1, 0, 0];
-
-      expect(normalized_mutual_info(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("is permutation invariant", () => {
+      expect(normalized_mutual_info([0, 0, 1, 1], [1, 1, 0, 0])).toBeCloseTo(1.0, 10);
     });
 
-    it("should return 0 for independent labelings", () => {
-      // One has single cluster, the other doesn't -> NMI = 0
-      const labels_true = [0, 0, 0, 0];
-      const labels_pred = [0, 1, 2, 3];
-
-      expect(normalized_mutual_info(labels_true, labels_pred)).toBeCloseTo(0, 5);
+    it("is symmetric: NMI(a,b) == NMI(b,a)", () => {
+      const a = [0, 0, 1, 1, 2, 2];
+      const b = [0, 0, 0, 1, 1, 1];
+      expect(normalized_mutual_info(a, b)).toBeCloseTo(normalized_mutual_info(b, a), 10);
     });
 
-    it("should return value in [0, 1]", () => {
-      const labels_true = [0, 0, 1, 1, 2, 2];
-      const labels_pred = [0, 1, 1, 2, 2, 0];
+    it("returns 0 when true labels are all identical (independent clustering)", () => {
+      // H(true)=0, MI=0, normalizer=(H(true)+H(pred))/2 > 0 → NMI = 0
+      expect(normalized_mutual_info([0, 0, 0, 0], [0, 1, 2, 3])).toBeCloseTo(0, 5);
+    });
 
-      const nmi = normalized_mutual_info(labels_true, labels_pred);
+    it("result is always in [0, 1]", () => {
+      const nmi = normalized_mutual_info([0, 0, 1, 1, 2, 2], [0, 1, 1, 2, 2, 0]);
       expect(nmi).toBeGreaterThanOrEqual(0);
       expect(nmi).toBeLessThanOrEqual(1);
     });
   });
 
   describe("Average methods", () => {
-    it("should default to arithmetic", () => {
+    it("defaults to arithmetic average", () => {
       const labels_true = [0, 0, 1, 2];
       const labels_pred = [0, 0, 1, 1];
-
-      const default_result = normalized_mutual_info(labels_true, labels_pred);
-      const arithmetic_result = normalized_mutual_info(labels_true, labels_pred, "arithmetic");
-
-      expect(default_result).toBeCloseTo(arithmetic_result, 10);
+      expect(normalized_mutual_info(labels_true, labels_pred)).toBeCloseTo(
+        normalized_mutual_info(labels_true, labels_pred, "arithmetic"), 10,
+      );
     });
 
-    it("should compute different results for different average methods", () => {
+    it("each averaging method yields the correct exact sklearn value", () => {
+      // labels_true=[0,0,1,1,2], labels_pred=[0,0,1,1,1]
+      // pred is a coarsening of true (true clusters 1 and 2 merge into pred cluster 1)
+      // MI = H(pred) = 0.6730, H(true) = 1.0549
+      // arithmetic ≈ 0.7791, geometric ≈ 0.7988, min = 1.0, max ≈ 0.6381
       const labels_true = [0, 0, 1, 1, 2];
       const labels_pred = [0, 0, 1, 1, 1];
 
-      const arithmetic = normalized_mutual_info(labels_true, labels_pred, "arithmetic");
-      const geometric = normalized_mutual_info(labels_true, labels_pred, "geometric");
-      const min = normalized_mutual_info(labels_true, labels_pred, "min");
-      const max = normalized_mutual_info(labels_true, labels_pred, "max");
+      expect(normalized_mutual_info(labels_true, labels_pred, "arithmetic")).toBeCloseTo(0.7791, 3);
+      expect(normalized_mutual_info(labels_true, labels_pred, "geometric")).toBeCloseTo(0.7988, 3);
+      expect(normalized_mutual_info(labels_true, labels_pred, "min")).toBeCloseTo(1.0, 5);
+      expect(normalized_mutual_info(labels_true, labels_pred, "max")).toBeCloseTo(0.6381, 3);
+    });
 
-      // All should be in [0, 1]
-      for (const val of [arithmetic, geometric, min, max]) {
-        expect(val).toBeGreaterThanOrEqual(0);
-        expect(val).toBeLessThanOrEqual(1.001); // small tolerance
-      }
-
-      // min >= max (normalizing by max gives smaller NMI than normalizing by min)
-      expect(max).toBeLessThanOrEqual(min + 1e-10);
+    it("normalizer ordering: NMI_min >= NMI_geometric >= NMI_arithmetic >= NMI_max", () => {
+      // Entropy inequality: H_min <= sqrt(H*H) <= (H+H)/2 <= H_max
+      // Dividing MI by a larger normalizer yields a smaller NMI.
+      const a = [0, 0, 1, 1, 2];
+      const b = [0, 0, 1, 1, 1];
+      const nmi_min = normalized_mutual_info(a, b, "min");
+      const nmi_geo = normalized_mutual_info(a, b, "geometric");
+      const nmi_ari = normalized_mutual_info(a, b, "arithmetic");
+      const nmi_max = normalized_mutual_info(a, b, "max");
+      expect(nmi_min).toBeGreaterThanOrEqual(nmi_geo - 1e-10);
+      expect(nmi_geo).toBeGreaterThanOrEqual(nmi_ari - 1e-10);
+      expect(nmi_ari).toBeGreaterThanOrEqual(nmi_max - 1e-10);
     });
   });
 
   describe("Edge cases", () => {
-    it("should return 1.0 when both are single cluster", () => {
-      const labels_true = [0, 0, 0];
-      const labels_pred = [0, 0, 0];
-
-      expect(normalized_mutual_info(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("returns 1.0 when both are single cluster (normalizer=0, MI=0)", () => {
+      expect(normalized_mutual_info([0, 0, 0], [0, 0, 0])).toBeCloseTo(1.0, 10);
     });
 
-    it("should throw for empty arrays", () => {
-      expect(() => normalized_mutual_info([], [])).toThrow("must not be empty");
-    });
-
-    it("should throw for mismatched lengths", () => {
-      expect(() => normalized_mutual_info([0, 1], [0, 1, 2])).toThrow(
-        "same length"
-      );
-    });
-  });
-
-  describe("sklearn reference values", () => {
-    it("should return 1.0 for single sample", () => {
+    it("returns 1.0 for a single sample", () => {
       expect(normalized_mutual_info([0], [0])).toBeCloseTo(1.0, 10);
     });
 
-    it("should match sklearn for partial agreement with arithmetic average", () => {
-      // sklearn: normalized_mutual_info_score([0,0,1,1,2], [0,0,1,1,1], average_method='arithmetic')
-      // ≈ 0.7790
-      const labels_true = [0, 0, 1, 1, 2];
-      const labels_pred = [0, 0, 1, 1, 1];
+    it("throws for empty arrays", () => {
+      expect(() => normalized_mutual_info([], [])).toThrow("must not be empty");
+    });
 
-      const nmi = normalized_mutual_info(labels_true, labels_pred, "arithmetic");
-      expect(nmi).toBeGreaterThan(0.7);
-      expect(nmi).toBeLessThan(0.85);
+    it("throws for mismatched lengths", () => {
+      expect(() => normalized_mutual_info([0, 1], [0, 1, 2])).toThrow("same length");
     });
   });
 
   describe("Tensor inputs", () => {
-    it("should produce same result with tensor inputs", () => {
+    it("produces same result with tensor inputs", () => {
       const labels_true = [0, 0, 1, 1, 2, 2];
       const labels_pred = [0, 0, 1, 1, 2, 2];
-
       const array_result = normalized_mutual_info(labels_true, labels_pred);
-
       const true_tensor = tf.tensor1d(labels_true);
       const pred_tensor = tf.tensor1d(labels_pred);
-      const tensor_result = normalized_mutual_info(true_tensor, pred_tensor);
-
-      expect(tensor_result).toBeCloseTo(array_result, 10);
-
+      expect(normalized_mutual_info(true_tensor, pred_tensor)).toBeCloseTo(array_result, 10);
       true_tensor.dispose();
       pred_tensor.dispose();
     });
