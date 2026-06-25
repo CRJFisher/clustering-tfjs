@@ -48,7 +48,6 @@ export function mutual_reachability(
     for (let j = 0; j < n; j++) {
       const core_j = core_distances[j];
       const d = row[j];
-      // max(core_i, core_j, d)
       let m = core_i > core_j ? core_i : core_j;
       if (d > m) m = d;
       out[j] = m;
