@@ -1,42 +1,23 @@
-/**
- * Options for knee/elbow detection.
- */
 export interface KneedleOptions {
   /**
-   * Direction of the curve:
-   * - 'concave': for curves that decrease and flatten (e.g., WSS vs k)
-   * - 'convex': for curves that increase and flatten
-   * Default: 'concave'
+   * `'concave'`: curves that decrease and flatten; `'convex'`: curves that increase and flatten.
    */
   direction?: 'concave' | 'convex';
 
-  /**
-   * Sensitivity parameter S. Higher values require a more pronounced knee.
-   * Default: 1.0
-   */
+  /** Higher values require a more pronounced knee. */
   sensitivity?: number;
 }
 
-/**
- * Result of knee detection.
- */
 export interface KneedleResult {
-  /** The x-value at the detected knee, or null if no knee found */
   knee_x: number | null;
-  /** Index into the input arrays, or null if no knee found */
   knee_index: number | null;
-  /** Normalized difference values for each point (for scoring) */
   differences: number[];
 }
 
 /**
- * Detects the "knee" or "elbow" point in a curve using the simplified
- * Kneedle algorithm (Satopaa et al., 2011).
+ * Simplified Kneedle algorithm (Satopaa et al., 2011).
  *
- * @param x_values - Monotonically increasing x-values (e.g., k values)
- * @param y_values - Corresponding y-values (e.g., WSS values)
- * @param options - Configuration options
- * @returns KneedleResult with knee location and difference values
+ * @param x_values - Monotonically increasing x-values.
  */
 export function find_knee(
   x_values: number[],
@@ -97,7 +78,6 @@ export function find_knee(
   let best_deviation = -Infinity;
 
   for (let i = 1; i < n - 1; i++) {
-    // Absolute deviation from the diagonal
     const deviation =
       direction === 'concave' ? -differences[i] : differences[i];
     if (deviation > best_deviation) {

@@ -1,6 +1,6 @@
 import { find_knee } from "./kneedle";
 
-describe("find_knee (Kneedle algorithm)", () => {
+describe("find_knee", () => {
   it("detects knee in a typical WSS curve", () => {
     const k_values = [2, 3, 4, 5, 6, 7, 8];
     const wss_values = [100, 50, 30, 25, 23, 22, 21];
