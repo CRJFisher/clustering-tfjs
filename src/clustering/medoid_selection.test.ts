@@ -44,6 +44,17 @@ describe('select_medoids', () => {
     expect([0, 1]).toContain(indices[0]);
   });
 
+  it('ignores labels at or above n_clusters', async () => {
+    // Label 5 is outside 0..n_clusters-1 and must be skipped like noise.
+    const X = [
+      [0, 0],
+      [0.1, 0],
+      [99, 99],
+    ];
+    const { indices } = await select_medoids(X, [0, 0, 5], 1, 'euclidean');
+    expect([0, 1]).toContain(indices[0]);
+  });
+
   it('returns empty slots for empty input', async () => {
     const { indices, distances } = await select_medoids([], [], 2, 'euclidean');
     expect(Array.from(indices)).toEqual([-1, -1]);
