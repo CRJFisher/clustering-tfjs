@@ -20,7 +20,6 @@ describe("find_knee", () => {
 
     expect(result.knee_x).toBeNull();
     expect(result.knee_index).toBeNull();
-    // Confirm all differences are exactly zero
     for (const d of result.differences) {
       expect(d).toBeCloseTo(0, 10);
     }
