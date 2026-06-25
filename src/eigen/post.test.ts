@@ -56,3 +56,66 @@ describe("deterministicEigenpairProcessing", () => {
   });
 });
 
+describe("deterministic_eigenpair_processing – direct contract", () => {
+  it("reorders columns by ascending eigenvalue and flips signs to a positive max-abs entry", () => {
+    // Columns (by eigenvalue): 3 -> [0.6,-0.8], 1 -> [0.3,0.4], 2 -> [-0.9,0.1].
+    const { eigenvalues, eigenvectors } = deterministic_eigenpair_processing({
+      eigenvalues: [3, 1, 2],
+      eigenvectors: [
+        [0.6, 0.3, -0.9],
+        [-0.8, 0.4, 0.1],
+      ],
+    });
+
+    expect(eigenvalues).toEqual([1, 2, 3]);
+    // col 1 (max-abs 0.4 already positive) stays; col 2 (max-abs -0.9) flips;
+    // col 3 (max-abs -0.8) flips.
+    expect(eigenvectors[0][0]).toBeCloseTo(0.3, 10);
+    expect(eigenvectors[1][0]).toBeCloseTo(0.4, 10);
+    expect(eigenvectors[0][1]).toBeCloseTo(0.9, 10);
+    expect(eigenvectors[1][1]).toBeCloseTo(-0.1, 10);
+    expect(eigenvectors[0][2]).toBeCloseTo(-0.6, 10);
+    expect(eigenvectors[1][2]).toBeCloseTo(0.8, 10);
+  });
+
+  it("supports fewer eigenpairs than rows (m < n)", () => {
+    // 3 rows, 2 columns: eigenvalues 5 -> [0.1,0.2,-0.95], 1 -> [0.7,0.1,0.2].
+    const { eigenvalues, eigenvectors } = deterministic_eigenpair_processing({
+      eigenvalues: [5, 1],
+      eigenvectors: [
+        [0.1, 0.7],
+        [0.2, 0.1],
+        [-0.95, 0.2],
+      ],
+    });
+
+    expect(eigenvalues).toEqual([1, 5]);
+    expect(eigenvectors.length).toBe(3);
+    expect(eigenvectors[0].length).toBe(2);
+    // col for eigenvalue 1 stays (max-abs 0.7 positive); col for 5 flips.
+    expect(eigenvectors[2][0]).toBeCloseTo(0.2, 10);
+    expect(eigenvectors[2][1]).toBeCloseTo(0.95, 10);
+  });
+
+  it("returns empty structures for empty input", () => {
+    const out = deterministic_eigenpair_processing({
+      eigenvalues: [],
+      eigenvectors: [],
+    });
+    expect(out.eigenvalues).toEqual([]);
+    expect(out.eigenvectors).toEqual([]);
+  });
+
+  it("throws when a row's column count does not match the eigenvalue count", () => {
+    expect(() =>
+      deterministic_eigenpair_processing({
+        eigenvalues: [1, 2],
+        eigenvectors: [
+          [0.1, 0.2],
+          [0.3], // wrong width
+        ],
+      }),
+    ).toThrow("column count");
+  });
+});
+
