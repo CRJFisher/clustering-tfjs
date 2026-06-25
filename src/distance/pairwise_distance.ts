@@ -8,8 +8,8 @@ import { manhattan_distance, cosine_distance } from '../tensor/tensor_ops';
  */
 export function pairwise_euclidean_matrix(points: tf.Tensor2D): tf.Tensor2D {
   return tf.tidy(() => {
-    const squared_norms = points.square().sum(1).reshape([-1, 1]); // (n,1)
-    const gram = points.matMul(points.transpose()); // (n,n)
+    const squared_norms = points.square().sum(1).reshape([-1, 1]);
+    const gram = points.matMul(points.transpose());
 
     const distances_squared = squared_norms
       .add(squared_norms.transpose())
@@ -38,8 +38,8 @@ export function pairwise_distance_matrix(
     case 'manhattan':
       return tf.tidy(() => {
         const n = points.shape[0];
-        const expanded_a = points.expandDims(1); // (n,1,d)
-        const expanded_b = points.expandDims(0); // (1,n,d)
+        const expanded_a = points.expandDims(1);
+        const expanded_b = points.expandDims(0);
 
         const dist = manhattan_distance(expanded_a, expanded_b) as tf.Tensor2D;
 
@@ -55,8 +55,8 @@ export function pairwise_distance_matrix(
       // very large n, L2-normalize and feed a precomputed matrix instead.
       return tf.tidy(() => {
         const n = points.shape[0];
-        const expanded_a = points.expandDims(1); // (n,1,d)
-        const expanded_b = points.expandDims(0); // (1,n,d)
+        const expanded_a = points.expandDims(1);
+        const expanded_b = points.expandDims(0);
 
         const dist = cosine_distance(expanded_a, expanded_b) as tf.Tensor2D;
 
