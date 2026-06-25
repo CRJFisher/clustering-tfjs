@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { silhouette_score, silhouette_score_subset, silhouette_samples } from "./silhouette";
 import { make_random_stream } from "../random";
 
-describe("Silhouette Score", () => {
+describe("silhouette_score", () => {
   beforeEach(() => {
     tf.engine().startScope();
   });
@@ -420,7 +419,7 @@ describe("Silhouette Score", () => {
     });
   });
 });
-describe("Silhouette – noise (-1) awareness", () => {
+describe("silhouette_score – noise (-1) awareness", () => {
   const two_clusters = [
     [0, 0],
     [0.1, 0],
@@ -471,7 +470,7 @@ describe("Silhouette – noise (-1) awareness", () => {
   });
 });
 
-describe("Silhouette – degenerate-input contract", () => {
+describe("silhouette_score – degenerate-input contract", () => {
   const X2 = [[0, 0], [1, 0]];
 
   it("all-noise labels throw with a descriptive message", () => {
