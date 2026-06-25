@@ -17,7 +17,10 @@ describe("degree_vector", () => {
       ],
       [3, 3],
     );
-    const deg = degree_vector(A).arraySync();
+    const d = degree_vector(A);
+    const deg = d.arraySync();
+    d.dispose();
+    A.dispose();
     expect(deg).toEqual([3, 1, 2]);
   });
 
@@ -39,8 +42,8 @@ describe("normalised_laplacian", () => {
     );
     const L = normalised_laplacian(A);
     const Larr = L.arraySync() as number[][];
-    // For a 2-node line the normalised Laplacian is [[1,-1],[ -1,1 ]]
-    // after degree scaling (degrees are both 1 ⇒ scaling leaves unchanged)
+    L.dispose();
+    A.dispose();
     expect(Larr[0][0]).toBeCloseTo(1);
     expect(Larr[0][1]).toBeCloseTo(-1);
     expect(Larr[1][0]).toBeCloseTo(-1);
@@ -65,13 +68,15 @@ describe("normalised_laplacian", () => {
   });
 
   it("treats an isolated vertex as an identity row/column", () => {
-    // Vertex 2 has degree 0; its Laplacian row must be the identity row.
     const A = tf.tensor2d([
       [0, 1, 0],
       [1, 0, 0],
       [0, 0, 0],
     ]);
-    const L = normalised_laplacian(A).arraySync() as number[][];
+    const Ltensor = normalised_laplacian(A);
+    const L = Ltensor.arraySync() as number[][];
+    Ltensor.dispose();
+    A.dispose();
     expect(L[2]).toEqual([0, 0, 1]);
     expect(L[0][2]).toBe(0);
     expect(L[1][2]).toBe(0);
@@ -83,7 +88,10 @@ describe("normalised_laplacian", () => {
       [2, 0, 3],
       [1, 3, 0],
     ]);
-    const L = normalised_laplacian(A).arraySync() as number[][];
+    const Ltensor = normalised_laplacian(A);
+    const L = Ltensor.arraySync() as number[][];
+    Ltensor.dispose();
+    A.dispose();
     for (let i = 0; i < 3; i++) {
       for (let j = 0; j < 3; j++) {
         expect(L[i][j]).toBeCloseTo(L[j][i], 6);
@@ -122,9 +130,11 @@ describe("sparse_normalised_laplacian_operator", () => {
       [2, 3, 0],
     ]);
     const L = normalised_laplacian(dense_affinity);
-    const expected = Array.from(
-      (L.matMul(tf.tensor2d([[1], [2], [3]])).dataSync()),
-    );
+    const rhs = tf.tensor2d([[1], [2], [3]]);
+    const Lv = L.matMul(rhs);
+    const expected = Array.from(Lv.dataSync());
+    Lv.dispose();
+    rhs.dispose();
     L.dispose();
     dense_affinity.dispose();
 
@@ -156,7 +166,6 @@ describe("sparse_normalised_laplacian_operator", () => {
   });
 
   it("isolated vertex (degree 0) gets inv_sqrt_degree = 1 and matvec row = v[i]", () => {
-    // Node 2 is isolated: matvec must return v[2] unchanged (identity row).
     const sparse = sparse_matrix_from_row_maps([
       new Map([[1, 1]]),
       new Map([[0, 1]]),
