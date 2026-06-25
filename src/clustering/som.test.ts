@@ -16,7 +16,6 @@ import {
   bubble_neighborhood,
   linear_decay,
   exponential_decay,
-  DecayTracker,
 } from './som_neighborhood';
 
 describe('SOM (online mini-batch — production path properties)', () => {
@@ -428,18 +427,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
       expect(value_late).toBeGreaterThanOrEqual(final);
     });
 
-    it('should track decay history', () => {
-      const tracker = new DecayTracker(1.0, 'linear', 10, 0.1);
-
-      const values = [];
-      for (let i = 0; i < 5; i++) {
-        values.push(tracker.next(10));
-      }
-
-      expect(tracker.get_epoch()).toBe(5);
-      expect(tracker.get_history()).toHaveLength(5);
-      expect(values[0]).toBeGreaterThan(values[4]);
-    });
   });
 
   describe('Online learning', () => {

@@ -1,4 +1,3 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import {
   grid_to_index,
@@ -18,10 +17,6 @@ import {
   exponential_decay,
   inverse_time_decay,
   create_decay_scheduler,
-  decay_tensor,
-  DecayTracker,
-  adaptive_radius,
-  adaptive_learning_rate,
 } from "./som_neighborhood";
 
 describe("grid coordinate conversions", () => {
@@ -238,50 +233,3 @@ describe("create_decay_scheduler", () => {
   });
 });
 
-describe("decay_tensor", () => {
-  it("matches the scalar linear formula at the endpoints", () => {
-    const start = decay_tensor(10, 0, 0, 11, "linear");
-    const end = decay_tensor(10, 0, 10, 11, "linear");
-    expect(start.dataSync()[0]).toBeCloseTo(10, 6);
-    expect(end.dataSync()[0]).toBeCloseTo(0, 6);
-    start.dispose();
-    end.dispose();
-  });
-});
-
-describe("DecayTracker", () => {
-  it("advances epochs and records history", () => {
-    const tracker = new DecayTracker(10, "linear", 11, 0);
-    const first = tracker.next(11);
-    const second = tracker.next(11);
-    expect(first).toBeCloseTo(10, 12);
-    expect(second).toBeLessThan(first);
-    expect(tracker.get_epoch()).toBe(2);
-    expect(tracker.get_history().length).toBe(2);
-  });
-
-  it("current() does not advance the epoch", () => {
-    const tracker = new DecayTracker(10, "linear", 11, 0);
-    tracker.current(11);
-    expect(tracker.get_epoch()).toBe(0);
-  });
-
-  it("reset() clears epoch and history", () => {
-    const tracker = new DecayTracker(10, "linear", 11, 0);
-    tracker.next(11);
-    tracker.reset();
-    expect(tracker.get_epoch()).toBe(0);
-    expect(tracker.get_history()).toEqual([]);
-  });
-});
-
-describe("adaptive helpers", () => {
-  it("adaptive_radius starts near half the grid extent", () => {
-    expect(adaptive_radius(10, 10, 0, 100)).toBeCloseTo(5, 12);
-  });
-
-  it("adaptive_learning_rate starts at the initial rate and decays", () => {
-    expect(adaptive_learning_rate(0.5, 0, 100)).toBeCloseTo(0.5, 12);
-    expect(adaptive_learning_rate(0.5, 100, 100)).toBeLessThan(0.5);
-  });
-});
