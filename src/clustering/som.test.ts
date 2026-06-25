@@ -30,7 +30,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Basic functionality', () => {
-    it('should create SOM with valid parameters', () => {
+    it('Create SOM with valid parameters', () => {
       const som = new SOM({
         grid_width: 5,
         grid_height: 5,
@@ -44,7 +44,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       expect(som.params.neighborhood).toBe('gaussian');
     });
 
-    it('should throw error for invalid grid dimensions', () => {
+    it('Throw error for invalid grid dimensions', () => {
       expect(() => new SOM({
         grid_width: 0,
         grid_height: 5,
@@ -58,7 +58,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       })).toThrow('grid_height must be >= 1');
     });
 
-    it('should fit simple 2D data', async () => {
+    it('Fit simple 2D data', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -83,7 +83,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       X.dispose();
     });
 
-    it('should predict labels for new data', async () => {
+    it('Predict labels for new data', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -118,7 +118,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Grid initialization', () => {
-    it('should initialize weights with random strategy', () => {
+    it('Initialize weights with random strategy', () => {
       const X = tf.tensor2d([
         [0, 0],
         [1, 1],
@@ -138,7 +138,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       weights.dispose();
     });
 
-    it('should initialize weights with linear strategy', () => {
+    it('Initialize weights with linear strategy', () => {
       const X = tf.tensor2d([
         [0, 0],
         [1, 1],
@@ -153,7 +153,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       weights.dispose();
     });
 
-    it('should initialize weights with PCA strategy', () => {
+    it('Initialize weights with PCA strategy', () => {
       const X = tf.tensor2d([
         [0, 0],
         [1, 1],
@@ -321,7 +321,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('BMU calculation', () => {
-    it('should find BMU for single sample', () => {
+    it('Find BMU for single sample', () => {
       const sample = tf.tensor1d([0.5, 0.5]);
       const weights = tf.tensor3d([
         [[0, 0], [1, 0]],
@@ -331,7 +331,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
       const bmu = find_bmu(sample, weights);
       const bmu_array = bmu.arraySync();
 
-      // BMU should be closest to [0.5, 0.5]
       expect(bmu_array).toHaveLength(2);
       expect(bmu_array[0]).toBeGreaterThanOrEqual(0);
       expect(bmu_array[0]).toBeLessThan(2);
@@ -341,7 +340,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       bmu.dispose();
     });
 
-    it('should find BMUs for batch of samples', () => {
+    it('Find BMUs for batch of samples', () => {
       const samples = tf.tensor2d([
         [0, 0],
         [1, 1],
@@ -362,14 +361,13 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Neighborhood functions', () => {
-    it('should calculate Gaussian neighborhood', () => {
+    it('Calculate Gaussian neighborhood', () => {
       const distance = tf.tensor1d([0, 1, 2, 3]);
       const radius = 2;
 
       const influence = gaussian_neighborhood(distance, radius);
       const influence_array = influence.arraySync() as number[];
 
-      // Influence should decay with distance
       expect(influence_array[0]).toBeCloseTo(1, 5);
       expect(influence_array[1]).toBeLessThan(influence_array[0]);
       expect(influence_array[2]).toBeLessThan(influence_array[1]);
@@ -379,7 +377,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       influence.dispose();
     });
 
-    it('should calculate Bubble neighborhood', () => {
+    it('Calculate Bubble neighborhood', () => {
       const distance = tf.tensor1d([0, 1, 2, 3]);
       const radius = 2;
 
@@ -398,7 +396,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Decay strategies', () => {
-    it('should apply linear decay', () => {
+    it('Apply linear decay', () => {
       const initial = 1.0;
       const final = 0.1;
       const total_epochs = 10;
@@ -412,7 +410,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       expect(value9).toBeCloseTo(0.1, 5);
     });
 
-    it('should apply exponential decay', () => {
+    it('Apply exponential decay', () => {
       const initial = 1.0;
       const final = 0.1;
       const total_epochs = 10;
@@ -430,7 +428,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Online learning', () => {
-    it('should support partial fit', async () => {
+    it('Support partial fit', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -460,7 +458,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       batch2.dispose();
     });
 
-    it('should enable streaming mode', async () => {
+    it('Enable streaming mode', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -479,7 +477,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       sample.dispose();
     });
 
-    it('should provide streaming statistics', async () => {
+    it('Provide streaming statistics', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -506,7 +504,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Model persistence', () => {
-    it('should save and load state', async () => {
+    it('Save and load state', async () => {
       const som = new SOM({
         grid_width: 2,
         grid_height: 2,
@@ -540,7 +538,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       X.dispose();
     });
 
-    it('should save and load from JSON', async () => {
+    it('Save and load from JSON', async () => {
       const som = new SOM({
         grid_width: 2,
         grid_height: 2,
@@ -576,7 +574,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Quality metrics', () => {
-    it('should calculate U-matrix', async () => {
+    it('Calculate U-matrix', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -601,7 +599,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       u_matrix.dispose();
     });
 
-    it('should calculate quantization error', async () => {
+    it('Calculate quantization error', async () => {
       const som = new SOM({
         grid_width: 3,
         grid_height: 3,
@@ -628,7 +626,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
   });
 
   describe('Memory management', () => {
-    it('should dispose tensors properly', async () => {
+    it('Dispose tensors properly', async () => {
       const som = new SOM({
         grid_width: 2,
         grid_height: 2,
@@ -658,7 +656,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
   describe('Correctness properties', () => {
     describe('Weight update normalization', () => {
-      it('should produce finite weights with large batch sizes', async () => {
+      it('Produce finite weights with large batch sizes', async () => {
         const som = new SOM({
           grid_width: 2,
           grid_height: 2,
@@ -686,18 +684,16 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
 
     describe('Rectangular 8-connectivity consistency', () => {
-      it('should treat diagonal neighbors as neighbors in rectangular topology', () => {
+      it('Treat diagonal neighbors as neighbors in rectangular topology', () => {
         const som = new SOM({
           grid_width: 3,
           grid_height: 3,
         });
 
-        // Diagonal neighbors should be neighbors (8-connectivity)
         expect(som['are_neighbors'](0, 0, 1, 1, 3, 3, 'rectangular')).toBe(true);
         expect(som['are_neighbors'](1, 1, 0, 0, 3, 3, 'rectangular')).toBe(true);
         expect(som['are_neighbors'](1, 1, 2, 2, 3, 3, 'rectangular')).toBe(true);
 
-        // Non-adjacent should not be neighbors
         expect(som['are_neighbors'](0, 0, 2, 2, 3, 3, 'rectangular')).toBe(false);
         expect(som['are_neighbors'](0, 0, 0, 2, 3, 3, 'rectangular')).toBe(false);
 
@@ -710,7 +706,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
 
     describe('Data shuffling between epochs', () => {
-      it('should produce deterministic results with same randomState', async () => {
+      it('Produce deterministic results with same randomState', async () => {
         const X = tf.tensor2d([
           [0, 0], [0, 1], [1, 0], [1, 1],
           [0.5, 0.5], [0.2, 0.8], [0.8, 0.2], [0.3, 0.3],
@@ -731,7 +727,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
         const w1 = som1.get_weights();
         const w2 = som2.get_weights();
 
-        // Same seed should produce identical weights
         for (let i = 0; i < 3; i++) {
           for (let j = 0; j < 3; j++) {
             for (let k = 0; k < 2; k++) {
@@ -747,7 +742,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
 
     describe('Linear initialization with PCA', () => {
-      it('should span a 2D surface, not a 1D line', () => {
+      it('Span a 2D surface, not a 1D line', () => {
         // Data with clear 2-axis variance
         const X = tf.tensor2d([
           [3, 0, 0], [-3, 0, 0],
@@ -758,7 +753,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
         const weights = initialize_weights(X, 3, 3, 'linear');
         const w = weights.arraySync();
 
-        // Verify 2D surface: row direction and column direction should not be parallel
         const top_left = w[0][0];
         const top_right = w[0][2];
         const bottom_left = w[2][0];
@@ -769,11 +763,9 @@ describe('SOM (online mini-batch — production path properties)', () => {
         const mag_row = Math.sqrt(row_dir.reduce((s, v) => s + v * v, 0));
         const mag_col = Math.sqrt(col_dir.reduce((s, v) => s + v * v, 0));
 
-        // Both directions should have non-trivial magnitude
         expect(mag_row).toBeGreaterThan(0.01);
         expect(mag_col).toBeGreaterThan(0.01);
 
-        // Directions should not be parallel (cosine < 0.5)
         const dot = row_dir.reduce((s, v, i) => s + v * col_dir[i], 0);
         const cos_angle = Math.abs(dot / (mag_row * mag_col + 1e-10));
         expect(cos_angle).toBeLessThan(0.5);
@@ -784,7 +776,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
 
     describe('get_density_map Gaussian convolution', () => {
-      it('should apply smoothing and preserve output shape', async () => {
+      it('Apply smoothing and preserve output shape', async () => {
         const som = new SOM({
           grid_width: 3,
           grid_height: 3,
@@ -803,13 +795,11 @@ describe('SOM (online mini-batch — production path properties)', () => {
         const hit_map = await get_hit_map(som, X);
         const density_map = await get_density_map(som, X, 1.0);
 
-        // Shape should be preserved
         expect(density_map.shape).toEqual([3, 3]);
 
         const hit_data = await hit_map.array();
         const density_data = await density_map.array();
 
-        // Density map should differ from raw hit_map (smoothing applied)
         let has_difference = false;
         for (let i = 0; i < 3; i++) {
           for (let j = 0; j < 3; j++) {
@@ -820,7 +810,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
         }
         expect(has_difference).toBe(true);
 
-        // All density values should be non-negative
         for (const row of density_data) {
           for (const val of row) {
             expect(val).toBeGreaterThanOrEqual(0);
@@ -839,13 +828,13 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
     describe('SOM.cluster() method', () => {
 
-      it('should throw if called before fit', async () => {
+      it('Throw if called before fit', async () => {
         const som = new SOM({ grid_width: 3, grid_height: 3 });
         await expect(som.cluster(2)).rejects.toThrow('SOM must be fitted before clustering');
         som.dispose();
       });
 
-      it('should throw if n_clusters is not an integer', async () => {
+      it('Throw if n_clusters is not an integer', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 5, random_state: 42,
         });
@@ -858,7 +847,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should throw if n_clusters < 1', async () => {
+      it('Throw if n_clusters < 1', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 5, random_state: 42,
         });
@@ -872,7 +861,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should throw if n_clusters > total neurons', async () => {
+      it('Throw if n_clusters > total neurons', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -885,7 +874,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return labels with correct length matching training data', async () => {
+      it('Return labels with correct length matching training data', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -903,7 +892,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return labels with values in range [0, n_clusters-1]', async () => {
+      it('Return labels with values in range [0, n_clusters-1]', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -923,7 +912,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return exactly n_clusters distinct label values for well-separated data', async () => {
+      it('Return exactly n_clusters distinct label values for well-separated data', async () => {
         const som = new SOM({
           grid_width: 5, grid_height: 5, num_epochs: 50, random_state: 42,
         });
@@ -944,7 +933,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should produce meaningful groupings for well-separated clusters', async () => {
+      it('Produce meaningful groupings for well-separated clusters', async () => {
         const som = new SOM({
           grid_width: 5, grid_height: 5, num_epochs: 50, random_state: 42,
         });
@@ -960,7 +949,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
         const labels = await som.cluster(3);
 
-        // Points within same blob should get same label
         expect(labels[0]).toBe(labels[1]);
         expect(labels[0]).toBe(labels[2]);
         expect(labels[0]).toBe(labels[3]);
@@ -973,7 +961,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
         expect(labels[8]).toBe(labels[10]);
         expect(labels[8]).toBe(labels[11]);
 
-        // Different blobs should get different labels
         expect(labels[0]).not.toBe(labels[4]);
         expect(labels[0]).not.toBe(labels[8]);
         expect(labels[4]).not.toBe(labels[8]);
@@ -982,7 +969,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should work with hexagonal topology', async () => {
+      it('Work with hexagonal topology', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, topology: 'hexagonal',
           num_epochs: 20, random_state: 42,
@@ -998,7 +985,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should work with n_clusters === 1 (all points in one cluster)', async () => {
+      it('Work with n_clusters === 1 (all points in one cluster)', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -1014,7 +1001,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should work with n_clusters === total_neurons', async () => {
+      it('Work with n_clusters === total_neurons', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 10, random_state: 42,
         });
@@ -1023,7 +1010,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
         const labels = await som.cluster(4); // 2x2 = 4 neurons
         expect(labels.length).toBe(4);
-        // Each label should be in range [0, 3]
         for (const label of labels) {
           expect(label).toBeGreaterThanOrEqual(0);
           expect(label).toBeLessThan(4);
@@ -1033,7 +1019,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should accept custom linkage and metric options', async () => {
+      it('Accept custom linkage and metric options', async () => {
         const som = new SOM({
           grid_width: 3, grid_height: 3, num_epochs: 10, random_state: 42,
         });
@@ -1048,7 +1034,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return consistent results with same randomState', async () => {
+      it('Return consistent results with same randomState', async () => {
         const X = tf.tensor2d([
           [0, 0], [0, 1], [1, 0], [1, 1], [0.5, 0.5],
         ]);
@@ -1071,7 +1057,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
     describe('partial_fit() dimension validation', () => {
 
-      it('should accept first partial_fit call with any feature dimension', async () => {
+      it('Accept first partial_fit call with any feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -1083,7 +1069,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should accept second partial_fit call with same feature dimension', async () => {
+      it('Accept second partial_fit call with same feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -1099,7 +1085,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should throw on second partial_fit call with different feature dimension', async () => {
+      it('Throw on second partial_fit call with different feature dimension', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -1114,7 +1100,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should include expected and actual dimensions in error message', async () => {
+      it('Include expected and actual dimensions in error message', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true, random_state: 42,
         });
@@ -1131,7 +1117,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should validate dimension when fit() was called first', async () => {
+      it('Validate dimension when fit() was called first', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true,
           num_epochs: 5, random_state: 42,
@@ -1150,13 +1136,13 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
     describe('get_weights() contract', () => {
 
-      it('should throw if called before fit', () => {
+      it('Throw if called before fit', () => {
         const som = new SOM({ grid_width: 2, grid_height: 2 });
         expect(() => som.get_weights()).toThrow('SOM must be fitted first');
         som.dispose();
       });
 
-      it('should return correct shape [grid_height][grid_width][n_features]', async () => {
+      it('Return correct shape [grid_height][grid_width][n_features]', async () => {
         const som = new SOM({
           grid_width: 4, grid_height: 3, num_epochs: 5, random_state: 42,
         });
@@ -1172,7 +1158,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return a plain number[][][] array, not a tensor', async () => {
+      it('Return a plain number[][][] array, not a tensor', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -1192,7 +1178,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should return a snapshot not affected by further training', async () => {
+      it('Return a snapshot not affected by further training', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, online_mode: true,
           num_epochs: 5, random_state: 42,
@@ -1207,8 +1193,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
         const weights2 = som.get_weights();
 
-        // weights1 should be unchanged (snapshot)
-        // weights2 should differ due to additional training
         let has_difference = false;
         for (let i = 0; i < 2; i++) {
           for (let j = 0; j < 2; j++) {
@@ -1226,7 +1210,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         som.dispose();
       });
 
-      it('should be safe to use after dispose()', async () => {
+      it('Be safe to use after dispose()', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -1236,7 +1220,6 @@ describe('SOM (online mini-batch — production path properties)', () => {
         const weights = som.get_weights();
         som.dispose();
 
-        // Plain array should still be valid after dispose
         expect(weights.length).toBe(2);
         expect(typeof weights[0][0][0]).toBe('number');
 
@@ -1246,7 +1229,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
 
     describe('dispose() behavior', () => {
 
-      it('should release internal tensors on dispose', async () => {
+      it('Release internal tensors on dispose', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -1262,7 +1245,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         X.dispose();
       });
 
-      it('should be safe to call dispose multiple times', async () => {
+      it('Be safe to call dispose multiple times', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });
@@ -1275,7 +1258,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
         X.dispose();
       });
 
-      it('should cause getWeights to throw after dispose', async () => {
+      it('Cause getWeights to throw after dispose', async () => {
         const som = new SOM({
           grid_width: 2, grid_height: 2, num_epochs: 5, random_state: 42,
         });

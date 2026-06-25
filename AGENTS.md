@@ -27,25 +27,7 @@ Test files are **colocated** with the source they test (`foo.ts` ↔ `foo.test.t
 
 ## Comments
 
-Comments describe **WHY**, never **WHAT**. If the code is self-explanatory from names and types alone, write no comment at all.
-
-**Remove:**
-
-- Any comment that restates what a name, type, or shape already says (`/** Cluster labels. */`, `// (n, n)`, `/** Returns the centroids. */`)
-- `@param` / `@returns` tags for parameters or return values whose meaning is obvious from the signature
-- Section dividers (`/* Internals */`, `/* API */`)
-- Inline labels that describe what the next line does (`// Validate inputs`, `// Calculate metrics`, `// unit rows`)
-- Change-history notes or "now does X" framing — that belongs in commit messages, not source
-- "should" prefix in test names (write what the code *does*, not what it *should* do)
-
-**Keep:**
-
-- Non-obvious algorithm choices, invariants, or constraints not visible from the code
-- sklearn / scipy / NumPy parity notes (explaining *why* an expression is arranged as it is)
-- Sentinel-value semantics, mutation side-effects, or complexity analysis the reader would miss
-- Formulas and mathematical rationale for non-obvious computations
-
-Write in **canonical, present-tense** style. Never write "updated to…", "revised to…", or "previously did X". Documentation describes the system as it currently is.
+Comments describe **WHY**, never **WHAT**. Remove any comment that restates what a name, type, or signature already says — including `@param`/`@returns` for obvious params, field docstrings, section dividers, and step labels. Keep only non-obvious algorithm choices, parity notes (sklearn/scipy/NumPy), sentinel semantics, and mathematical formulas. Test names state what the code does (present tense, no "should" prefix).
 
 ## Testing practices
 

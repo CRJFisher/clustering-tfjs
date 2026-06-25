@@ -31,13 +31,11 @@ import {
  */
 export class SOM implements BaseClustering<SOMParams> {
   public readonly params: SOMParams;
-  
-  // Model state
+
   public weights_: tf.Tensor3D | null = null;
   public labels_: number[] | null = null;
   public bmus_: tf.Tensor2D | null = null;
-  
-  // Training state
+
   private grid_distance_matrix_: tf.Tensor2D | null = null;
   private learning_rate_scheduler_: DecayFunction | null = null;
   private radius_scheduler_: DecayFunction | null = null;
@@ -45,8 +43,7 @@ export class SOM implements BaseClustering<SOMParams> {
   private last_batch_size_: number = 0;
   private current_epoch_: number = 0;
   private quantization_errors_: number[] = [];
-  
-  // Default parameters
+
   private static readonly DEFAULT_TOPOLOGY: SOMTopology = 'rectangular';
   private static readonly DEFAULT_NEIGHBORHOOD: SOMNeighborhood = 'gaussian';
   private static readonly DEFAULT_NUM_EPOCHS = 100;
@@ -60,9 +57,6 @@ export class SOM implements BaseClustering<SOMParams> {
     this.initialize_schedulers();
   }
   
-  /**
-   * Validate and set default parameters.
-   */
   private validate_and_complete_params(params: SOMParams): SOMParams {
     if (!params.grid_width || params.grid_width < 1) {
       throw new Error('grid_width must be >= 1');
@@ -87,10 +81,6 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
-  /**
-   * Validate that an injected initial weight grid has shape
-   * [grid_height][grid_width][n_features] with a consistent feature dimension.
-   */
   private validate_initial_weights_shape(
     initial_weights: number[][][],
     grid_height: number,
@@ -122,11 +112,6 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
 
-  /**
-   * Build the initial weight tensor, using injected `initial_weights` when
-   * provided (validated against the data feature dimension) and otherwise the
-   * configured initialization strategy.
-   */
   private make_initial_weights(X: tf.Tensor2D, n_features: number): tf.Tensor3D {
     if (this.params.initial_weights) {
       const injected_features = this.params.initial_weights[0][0].length;
@@ -146,13 +131,9 @@ export class SOM implements BaseClustering<SOMParams> {
     );
   }
 
-  /**
-   * Initialize learning rate and radius schedulers.
-   */
   private initialize_schedulers(): void {
     const { grid_width, grid_height, num_epochs, learning_rate, radius } = this.params;
-    
-    // Learning rate scheduler
+
     if (typeof learning_rate === 'function') {
       this.learning_rate_scheduler_ = learning_rate;
     } else {
@@ -162,8 +143,7 @@ export class SOM implements BaseClustering<SOMParams> {
         num_epochs!
       );
     }
-    
-    // Radius scheduler
+
     if (radius !== undefined) {
       if (typeof radius === 'function') {
         this.radius_scheduler_ = radius;
@@ -175,7 +155,6 @@ export class SOM implements BaseClustering<SOMParams> {
         );
       }
     } else {
-      // Default: adaptive radius based on grid size
       const initial_radius = Math.max(grid_width, grid_height) / 2;
       this.radius_scheduler_ = create_decay_scheduler(
         initial_radius,
@@ -186,9 +165,6 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
   
-  /**
-   * Fit the SOM to the provided data.
-   */
   async fit(X: DataMatrix): Promise<void> {
     const x_tensor = is_tensor(X) ? X as tf.Tensor2D : tf.tensor2d(X);
     
@@ -201,9 +177,6 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
   
-  /**
-   * Internal fit method using tensors.
-   */
   private async fit_tensor(X: tf.Tensor2D): Promise<void> {
     const {
       grid_width,
@@ -216,12 +189,10 @@ export class SOM implements BaseClustering<SOMParams> {
     
     const [n_samples, n_features] = X.shape;
 
-    // Initialize weights if not already done
     if (!this.weights_) {
       this.weights_ = this.make_initial_weights(X, n_features);
     }
-    
-    // Pre-compute grid distance matrix
+
     if (!this.grid_distance_matrix_) {
       this.grid_distance_matrix_ = create_grid_distance_matrix(
         grid_height,
@@ -230,7 +201,6 @@ export class SOM implements BaseClustering<SOMParams> {
       );
     }
     
-    // Training loop
     let prev_quantization_error = Infinity;
     this.quantization_errors_ = [];
     const rng = make_random_stream(random_state);
@@ -238,11 +208,9 @@ export class SOM implements BaseClustering<SOMParams> {
     for (let epoch = 0; epoch < num_epochs!; epoch++) {
       this.current_epoch_ = epoch;
 
-      // Get current learning rate and radius
       const current_learning_rate = this.learning_rate_scheduler_!(epoch, num_epochs!);
       const current_radius = this.radius_scheduler_!(epoch, num_epochs!);
 
-      // Validate neighborhood parameters
       validate_neighborhood_params(current_radius, grid_height, grid_width);
 
       // Shuffle data each epoch to avoid order-dependent bias
@@ -251,7 +219,6 @@ export class SOM implements BaseClustering<SOMParams> {
       const shuffled_x = tf.gather(X, indices_tensor) as tf.Tensor2D;
       indices_tensor.dispose();
 
-      // Process batch
       const { quantization_error } = await this.train_epoch(
         shuffled_x,
         current_learning_rate,
@@ -262,26 +229,20 @@ export class SOM implements BaseClustering<SOMParams> {
 
       this.quantization_errors_.push(quantization_error);
 
-      // Check convergence
       if (Math.abs(prev_quantization_error - quantization_error) < tol!) {
         break;
       }
 
       prev_quantization_error = quantization_error;
 
-      // Update total samples learned (only for online mode)
       if (this.params.online_mode) {
         this.total_samples_learned_ += n_samples;
       }
     }
     
-    // Compute final BMUs and labels
     await this.compute_final_labels(X);
   }
-  
-  /**
-   * Train one epoch.
-   */
+
   private async train_epoch(
     X: tf.Tensor2D,
     learning_rate: number,
@@ -299,10 +260,8 @@ export class SOM implements BaseClustering<SOMParams> {
       const end_idx = Math.min(i + batch_size, n_samples);
       const batch_x = X.slice([i, 0], [end_idx - i, -1]);
       
-      // Find BMUs for batch
       const bmus = find_bmu_batch(batch_x, this.weights_!);
-      
-      // Get BMU flat indices
+
       const bmu_indices = tf.tidy(() => {
         const bmus_data = bmus.arraySync();
         const indices = bmus_data.map(([row, col]) => 
@@ -311,7 +270,6 @@ export class SOM implements BaseClustering<SOMParams> {
         return tf.tensor1d(indices, 'int32');
       });
       
-      // Compute neighborhood influence
       const influence = compute_neighborhood_influence_batch(
         bmu_indices,
         this.grid_distance_matrix_!,
@@ -319,16 +277,13 @@ export class SOM implements BaseClustering<SOMParams> {
         neighborhood!
       );
       
-      // Update weights
       this.update_weights(batch_x, influence, learning_rate);
-      
-      // Compute quantization error for this batch
+
       const distances = compute_bmu_distances(batch_x, this.weights_!, bmus);
       const batch_error = distances.mean().arraySync() as number;
       total_quantization_error += batch_error * (end_idx - i);
       samples_processed += (end_idx - i);
       
-      // Clean up
       batch_x.dispose();
       bmus.dispose();
       bmu_indices.dispose();
@@ -341,9 +296,6 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
-  /**
-   * Update weights based on samples and neighborhood influence.
-   */
   private update_weights(
     samples: tf.Tensor2D,
     influence: tf.Tensor2D,
@@ -354,25 +306,20 @@ export class SOM implements BaseClustering<SOMParams> {
       const [grid_height, grid_width, _n_features_weight] = this.weights_!.shape;
       const total_neurons = grid_height * grid_width;
       
-      // Reshape weights for update
       const weights_flat = this.weights_!.reshape([total_neurons, n_features]);
       
       // Batch SOM update for each neuron j:
       // Δw_j = lr * Σ_i(h_ij * (x_i - w_j)) / Σ_i(h_ij)
       // Normalizes by sum of influences to make updates independent of batch size
 
-      // Expand samples for broadcasting
       const samples_expanded = samples.expandDims(1); // [n_samples, 1, n_features]
       const weights_expanded = weights_flat.expandDims(0); // [1, total_neurons, n_features]
 
-      // Compute differences
       const diff = samples_expanded.sub(weights_expanded); // [n_samples, total_neurons, n_features]
 
-      // Apply influence
       const influence_expanded = influence.expandDims(2); // [n_samples, total_neurons, 1]
       const weighted_diff = diff.mul(influence_expanded);
 
-      // Sum over samples
       const total_update = weighted_diff.sum(0); // [total_neurons, n_features]
 
       // Normalize by sum of influences per neuron (sign-preserving for mexican_hat)
@@ -386,10 +333,8 @@ export class SOM implements BaseClustering<SOMParams> {
       );
       const normalized_update = total_update.div(influence_sum_safe.expandDims(1));
 
-      // Apply updates with learning rate
       const new_weights_flat = weights_flat.add(normalized_update.mul(learning_rate));
-      
-      // Reshape back to grid
+
       const new_weights = new_weights_flat.reshape([grid_height, grid_width, n_features]) as tf.Tensor3D;
       
       // Update weights in place (keep new_weights from being disposed by tidy)
@@ -398,13 +343,9 @@ export class SOM implements BaseClustering<SOMParams> {
     });
   }
   
-  /**
-   * Compute final BMUs and labels after training.
-   */
   private async compute_final_labels(X: tf.Tensor2D): Promise<void> {
     this.bmus_ = find_bmu_batch(X, this.weights_!);
-    
-    // Convert BMUs to 1D labels
+
     const bmus_data = await this.bmus_.array();
     const labels = bmus_data.map(([row, col]) => 
       row * this.params.grid_width + col
@@ -413,17 +354,11 @@ export class SOM implements BaseClustering<SOMParams> {
     this.labels_ = labels;
   }
   
-  /**
-   * Fit and return predicted labels.
-   */
   async fit_predict(X: DataMatrix): Promise<number[]> {
     await this.fit(X);
     return this.labels_!;
   }
   
-  /**
-   * Predict labels for new data using trained SOM.
-   */
   async predict(X: DataMatrix): Promise<number[]> {
     if (!this.weights_) {
       throw new Error('SOM must be fitted before prediction');
@@ -447,27 +382,11 @@ export class SOM implements BaseClustering<SOMParams> {
   }
   
   /**
-   * Perform 2-phase clustering to produce meaningful cluster labels.
-   *
    * SOM neurons outnumber the desired clusters (grid_width * grid_height >> n_clusters),
-   * so raw BMU indices are not useful as cluster assignments. This method applies
-   * agglomerative (hierarchical) clustering on the trained SOM weight vectors to
-   * group neurons into `n_clusters` macro-clusters, then maps each data point's
-   * BMU index to its corresponding macro-cluster label.
+   * so raw BMU indices are not useful as cluster assignments. Applies agglomerative
+   * clustering on the trained weight vectors to group neurons into `n_clusters`
+   * macro-clusters, then maps each data point's BMU to its macro-cluster label.
    *
-   * Phase 1: SOM training (must already be completed via fit/fit_predict).
-   * Phase 2: AgglomerativeClustering on the [grid_height * grid_width, n_features]
-   * weight matrix, producing n_clusters neuron groups.
-   *
-   * @param n_clusters - Desired number of output clusters. Must be a positive
-   *   integer >= 1 and <= grid_width * grid_height.
-   * @param options - Optional agglomerative clustering parameters.
-   * @param options.linkage - Linkage criterion for merging neuron clusters.
-   *   One of 'ward', 'complete', 'average', or 'single'. Default: 'ward'.
-   * @param options.metric - Distance metric for linkage computation.
-   *   One of 'euclidean', 'manhattan', or 'cosine'. Default: 'euclidean'.
-   * @returns Array of cluster labels (0 to n_clusters-1), one per sample from
-   *   the most recent fit/fit_predict call.
    * @throws Error if the SOM has not been fitted yet.
    * @throws Error if n_clusters is not a positive integer or exceeds grid_width * grid_height.
    *
@@ -511,8 +430,7 @@ export class SOM implements BaseClustering<SOMParams> {
       );
     }
 
-    // Flatten weight grid [grid_height, grid_width, n_features] -> [total_neurons, n_features]
-    const weights_data = this.weights_.arraySync();
+      const weights_data = this.weights_.arraySync();
     const neuron_vectors: number[][] = [];
     for (let row = 0; row < grid_height; row++) {
       for (let col = 0; col < grid_width; col++) {
@@ -520,7 +438,6 @@ export class SOM implements BaseClustering<SOMParams> {
       }
     }
 
-    // Run agglomerative clustering on neuron weight vectors
     const agglo = new AgglomerativeClustering({
       n_clusters,
       linkage: options?.linkage ?? 'ward',
@@ -530,20 +447,13 @@ export class SOM implements BaseClustering<SOMParams> {
     await agglo.fit(neuron_vectors);
     const neuron_labels = agglo.labels_!;
 
-    // Map each data point's BMU flat index to its neuron cluster label
     return this.labels_.map(bmu_index => neuron_labels[bmu_index]);
   }
 
   /**
-   * Partial fit for online/incremental learning.
-   * Continues training from current state.
-   *
    * On the first call (when no weights exist), the input dimensionality establishes
-   * the expected feature count. All subsequent calls must provide data with the
-   * same number of features; a mismatch throws an error.
+   * the expected feature count. Subsequent calls must match that dimension.
    *
-   * @param X - Data matrix of shape [n_samples, n_features]. The n_features dimension
-   *   must match the feature count from prior fit() or partial_fit() calls.
    * @throws Error if online_mode is not enabled.
    * @throws Error if n_features does not match the feature dimensionality of existing weights.
    */
@@ -558,9 +468,7 @@ export class SOM implements BaseClustering<SOMParams> {
       const [n_samples] = x_tensor.shape;
       this.last_batch_size_ = n_samples;
 
-      // Initialize if first call
       if (!this.weights_) {
-        // Initialize weights and grid
         this.weights_ = this.make_initial_weights(x_tensor, x_tensor.shape[1]);
 
         this.grid_distance_matrix_ = create_grid_distance_matrix(
@@ -568,11 +476,9 @@ export class SOM implements BaseClustering<SOMParams> {
           this.params.grid_width,
           this.params.topology!
         );
-        
-        // Initialize schedulers
+
         this.initialize_schedulers();
       } else {
-        // Validate feature dimensions match existing weights
         const expected_features = this.weights_.shape[2];
         const actual_features = x_tensor.shape[1];
         if (actual_features !== expected_features) {
@@ -582,7 +488,6 @@ export class SOM implements BaseClustering<SOMParams> {
         }
       }
 
-      // Get current learning rate and radius based on total samples learned
       const virtual_epoch = Math.floor(
         this.total_samples_learned_ / n_samples
       );
@@ -595,13 +500,10 @@ export class SOM implements BaseClustering<SOMParams> {
         this.params.num_epochs!
       );
       
-      // Train on batch
       await this.train_epoch(x_tensor, current_learning_rate, current_radius);
-      
-      // Update total samples learned
+
       this.total_samples_learned_ += n_samples;
-      
-      // Update labels
+
       await this.compute_final_labels(x_tensor);
     } finally {
       if (!is_tensor(X)) {
@@ -611,17 +513,12 @@ export class SOM implements BaseClustering<SOMParams> {
   }
   
   /**
-   * Returns the trained weight vectors of all neurons as a plain JavaScript array.
+   * The array has shape `[grid_height][grid_width][n_features]`; each element
+   * `weights[row][col]` is the codebook vector for that neuron.
    *
-   * The returned array has shape `[grid_height][grid_width][n_features]` where each
-   * element `weights[row][col]` is the weight vector (codebook entry) for the
-   * neuron at grid position `(row, col)`.
+   * Snapshot (deep copy): mutating it won't affect the SOM, and {@link dispose}
+   * won't invalidate it.
    *
-   * The returned array is a snapshot (deep copy) of the current internal state.
-   * Mutating it will not affect the SOM, and calling {@link dispose} will not
-   * invalidate it.
-   *
-   * @returns Plain 3D array of neuron weight vectors `[grid_height][grid_width][n_features]`.
    * @throws Error if the SOM has not been fitted yet.
    */
   get_weights(): number[][][] {
@@ -631,10 +528,6 @@ export class SOM implements BaseClustering<SOMParams> {
     return this.weights_.arraySync();
   }
   
-  /**
-   * Calculate the U-matrix (unified distance matrix).
-   * Shows the average distance between each neuron and its neighbors.
-   */
   get_u_matrix(): tf.Tensor2D {
     if (!this.weights_) {
       throw new Error('SOM must be fitted first');
@@ -651,7 +544,6 @@ export class SOM implements BaseClustering<SOMParams> {
           let total_distance = 0;
           let neighbor_count = 0;
           
-          // Get neighbors based on topology
           let neighbors: number[][];
           
           if (topology === 'rectangular') {
@@ -701,10 +593,6 @@ export class SOM implements BaseClustering<SOMParams> {
     });
   }
   
-  /**
-   * Calculate quantization error.
-   * Average distance between samples and their BMUs.
-   */
   quantization_error(): number {
     if (this.quantization_errors_.length === 0) {
       throw new Error('SOM must be fitted first');
@@ -712,10 +600,6 @@ export class SOM implements BaseClustering<SOMParams> {
     return this.quantization_errors_[this.quantization_errors_.length - 1];
   }
   
-  /**
-   * Calculate topographic error.
-   * Proportion of samples whose BMU and second BMU are not neighbors.
-   */
   async topographic_error(X?: DataMatrix): Promise<number> {
     if (!this.weights_) {
       throw new Error('SOM must be fitted first');
@@ -732,7 +616,6 @@ export class SOM implements BaseClustering<SOMParams> {
       const [n_samples, n_features] = x_tensor.shape;
       const total_neurons = grid_height * grid_width;
 
-      // Compute distance matrix [n_samples, total_neurons] in one batch
       const { bmu1_coords, bmu2_coords } = tf.tidy(() => {
         const weights_flat = this.weights_!.reshape([total_neurons, n_features]);
         const samples_norm = x_tensor.square().sum(1, true);
@@ -740,15 +623,13 @@ export class SOM implements BaseClustering<SOMParams> {
         const dot_product = tf.mat_mul(x_tensor, weights_flat, false, true);
         const distances = samples_norm.add(weights_norm).sub(dot_product.mul(2));
 
-        // First BMU: argmin of distances
         const bmu1_indices = distances.argMin(1);
 
-        // Second BMU: mask first BMU with large value, then argmin again
+        // Mask first BMU with a large value so the second argmin finds a different neuron.
         const one_hot = tf.one_hot(bmu1_indices, total_neurons);
         const masked_distances = distances.add(one_hot.mul(1e30));
         const bmu2_indices = masked_distances.argMin(1);
 
-        // Convert flat indices to grid coordinates
         const bmu1_rows = bmu1_indices.div(grid_width).floor();
         const bmu1_cols = bmu1_indices.mod(grid_width);
         const bmu2_rows = bmu2_indices.div(grid_width).floor();
@@ -760,7 +641,6 @@ export class SOM implements BaseClustering<SOMParams> {
         };
       });
 
-      // Read coordinates and check neighbors in plain JS
       const bmu1_data = bmu1_coords.dataSync();
       const bmu2_data = bmu2_coords.dataSync();
       bmu1_coords.dispose();
@@ -786,9 +666,6 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
   
-  /**
-   * Check if two neurons are neighbors in the grid.
-   */
   private are_neighbors(
     row1: number, col1: number,
     row2: number, col2: number,
@@ -824,16 +701,10 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
   
-  /**
-   * Get total samples learned (for online learning).
-   */
   get_total_samples_learned(): number {
     return this.total_samples_learned_;
   }
   
-  /**
-   * Save SOM state for persistence.
-   */
   save_state(): SOMState {
     if (!this.weights_) {
       throw new Error('SOM must be fitted first');
@@ -852,25 +723,17 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
-  /**
-   * Load SOM state from saved data.
-   */
   load_state(state: SOMState): void {
     this.weights_?.dispose();
     this.weights_ = tf.tensor3d(state.weights);
     this.total_samples_learned_ = state.total_samples;
     this.current_epoch_ = state.current_epoch;
     
-    // Reinitialize schedulers if params changed
     if (state.params) {
       this.initialize_schedulers();
     }
   }
   
-  /**
-   * Save model state to JSON string.
-   * Can be saved to file or transmitted over network.
-   */
   async save_to_json(): Promise<string> {
     if (!this.weights_) {
       throw new Error('SOM must be fitted before saving');
@@ -890,26 +753,16 @@ export class SOM implements BaseClustering<SOMParams> {
     return JSON.stringify(model_data, null, 2);
   }
   
-  /**
-   * Load model from JSON string.
-   * 
-   * @param json JSON string containing model data
-   */
   async load_from_json(json: string): Promise<void> {
     const model_data = JSON.parse(json);
-    
-    // Dispose existing weights
+
     this.weights_?.dispose();
-    
-    // Load weights
+
     this.weights_ = tf.tensor3d(model_data.weights);
-    
-    // Load metadata
+
     if (model_data.metadata) {
-      // Create new params object instead of modifying readonly
       const loaded_params = model_data.metadata.params;
       if (loaded_params) {
-        // Reconstruct the object with new params to maintain immutability
         Object.defineProperty(this, 'params', {
           value: loaded_params,
           writable: false,
@@ -921,7 +774,6 @@ export class SOM implements BaseClustering<SOMParams> {
       this.quantization_errors_ = model_data.metadata.quantization_errors || [];
     }
     
-    // Reinitialize schedulers and distance matrix
     this.initialize_schedulers();
     this.grid_distance_matrix_ = create_grid_distance_matrix(
       this.params.grid_height,
@@ -930,10 +782,6 @@ export class SOM implements BaseClustering<SOMParams> {
     );
   }
   
-  /**
-   * Enable streaming mode for continuous learning.
-   * Configures the SOM for online learning with optimal settings.
-   */
   enable_streaming_mode(batch_size?: number): void {
     Object.defineProperty(this, 'params', {
       value: {
@@ -945,16 +793,14 @@ export class SOM implements BaseClustering<SOMParams> {
       configurable: true,
     });
     
-    // Adjust schedulers for continuous learning
-    // Use slower decay for streaming scenarios
+    // Use slower decay for streaming: avoids catastrophic forgetting on long streams.
     const { grid_width, grid_height } = this.params;
     const initial_learning_rate = typeof this.params.learning_rate === 'number' 
       ? this.params.learning_rate 
       : SOM.DEFAULT_LEARNING_RATE;
     
     this.learning_rate_scheduler_ = (_epoch: number, _total_epochs: number) => {
-      // Slower decay for streaming
-      const virtual_epoch = this.total_samples_learned_ / 1000; // Adjust scale
+      const virtual_epoch = this.total_samples_learned_ / 1000;
       return initial_learning_rate * Math.exp(-virtual_epoch / 100);
     };
     
@@ -965,13 +811,6 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
-  /**
-   * Process a stream of data samples.
-   * Automatically manages batch accumulation and training.
-   * 
-   * @param sample Single sample or small batch
-   * @param auto_train Whether to train immediately or accumulate
-   */
   async process_stream(
     sample: DataMatrix,
     auto_train: boolean = true
@@ -998,9 +837,6 @@ export class SOM implements BaseClustering<SOMParams> {
     }
   }
   
-  /**
-   * Get streaming statistics.
-   */
   get_streaming_stats(): {
     total_samples: number;
     virtual_epoch: number;
@@ -1028,9 +864,7 @@ export class SOM implements BaseClustering<SOMParams> {
     };
   }
   
-  /**
-   * Create a shuffled array of indices [0..n-1] using Fisher-Yates.
-   */
+  // Fisher-Yates shuffle
   private shuffle_indices(n: number, rng: RandomStream): Int32Array {
     const indices = new Int32Array(n);
     for (let i = 0; i < n; i++) indices[i] = i;
