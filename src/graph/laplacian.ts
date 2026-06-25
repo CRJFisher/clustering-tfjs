@@ -14,8 +14,6 @@ export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
 }
 
 /**
- * Computes the *symmetric normalised* graph Laplacian
- *
  *     L = I  −  D^{-1/2} · A · D^{-1/2}
  *
  * where

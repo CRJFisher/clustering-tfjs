@@ -7,8 +7,8 @@ import {
 } from "./laplacian";
 import { sparse_matrix_from_row_maps } from "./sparse";
 
-describe("Graph Laplacian utilities", () => {
-  it("computes correct degree vector", () => {
+describe("degree_vector", () => {
+  it("sums rows to produce degree per vertex", () => {
     const A = tf.tensor2d(
       [
         [0, 1, 2],
@@ -21,7 +21,15 @@ describe("Graph Laplacian utilities", () => {
     expect(deg).toEqual([3, 1, 2]);
   });
 
-  it("computes symmetric normalised Laplacian with expected properties", () => {
+  it("rejects a non-square affinity matrix", () => {
+    const A = tf.tensor2d([[1, 2, 3]], [1, 3]);
+    expect(() => degree_vector(A)).toThrow("square");
+    A.dispose();
+  });
+});
+
+describe("normalised_laplacian", () => {
+  it("computes L = I - D^{-1/2} A D^{-1/2} for a 2-node line graph", () => {
     const A = tf.tensor2d(
       [
         [0, 1],
@@ -37,12 +45,6 @@ describe("Graph Laplacian utilities", () => {
     expect(Larr[0][1]).toBeCloseTo(-1);
     expect(Larr[1][0]).toBeCloseTo(-1);
     expect(Larr[1][1]).toBeCloseTo(1);
-  });
-
-  it("rejects a non-square affinity in degree_vector", () => {
-    const A = tf.tensor2d([[1, 2, 3]], [1, 3]);
-    expect(() => degree_vector(A)).toThrow("square");
-    A.dispose();
   });
 
   it("return_diag=true also yields D^{-1/2} per vertex", () => {
@@ -75,7 +77,7 @@ describe("Graph Laplacian utilities", () => {
     expect(L[1][2]).toBe(0);
   });
 
-  it("normalised_laplacian is symmetric for a symmetric affinity matrix", () => {
+  it("is symmetric for a symmetric affinity matrix", () => {
     const A = tf.tensor2d([
       [0, 2, 1],
       [2, 0, 3],
@@ -87,12 +89,6 @@ describe("Graph Laplacian utilities", () => {
         expect(L[i][j]).toBeCloseTo(L[j][i], 6);
       }
     }
-  });
-
-  it("degree_vector sums rows of a non-square-shaped input", () => {
-    const A_rect = tf.tensor2d([[1, 2, 3]], [1, 3]);
-    expect(() => degree_vector(A_rect)).toThrow("square");
-    A_rect.dispose();
   });
 });
 
@@ -174,4 +170,3 @@ describe("sparse_normalised_laplacian_operator", () => {
     expect(result[2]).toBeCloseTo(7, 10);
   });
 });
-
