@@ -128,6 +128,24 @@ describe("pairwiseDistanceMatrix", () => {
     vecs.dispose();
   });
 
+  it("cosine matrix is symmetric with zero diagonal", () => {
+    const pts = tf.tensor2d([
+      [1, 2, 3],
+      [4, 0, 1],
+      [0, 1, 0],
+      [2, 2, 2],
+    ]);
+    const dist = pairwise_distance_matrix(pts as tf.Tensor2D, "cosine").arraySync() as number[][];
+    const eps = 1e-5;
+    for (let i = 0; i < 4; i++) {
+      expect(Math.abs(dist[i][i])).toBeLessThan(eps);
+      for (let j = 0; j < 4; j++) {
+        expect(Math.abs(dist[i][j] - dist[j][i])).toBeLessThan(eps);
+      }
+    }
+    pts.dispose();
+  });
+
   it("throws on an unsupported metric", () => {
     // The library compiles to JS, so a runtime caller can bypass the union type.
     const fn = pairwise_distance_matrix as (

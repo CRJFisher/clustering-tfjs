@@ -1,16 +1,6 @@
 /**
- * Per-point core (k-distance) computation for density-based clustering.
- *
- * The k-distance of a point is the distance to its k-th nearest neighbour,
- * where the point itself counts as its own first nearest neighbour (distance
- * 0). This matches scikit-learn's HDBSCAN core-distance definition, which
- * takes `core_distance(i) = neighbors_distances[i, min_samples - 1]` from a
- * `kneighbors` query of size `min_samples` whose first column is the point
- * itself.
- */
-
-/**
- * Computes the per-point k-distance vector from a k-nearest-neighbour scan.
+ * Matches scikit-learn's HDBSCAN `core_distance(i) = neighbors_distances[i, min_samples - 1]`
+ * convention: the point itself occupies index 0 (distance 0).
  *
  * @param neighbor_distances Per-point neighbour distances in nearest-first
  *   order, where index 0 of each row is the point itself (distance 0). This is
@@ -19,9 +9,6 @@
  * @param k The neighbourhood size (`min_samples`). The point itself counts as
  *   the first neighbour, so the returned value is the distance to the
  *   `(k - 1)`-th *other* nearest neighbour.
- * @returns A `Float64Array` of length `n` holding each point's k-distance.
- * @throws If `k` is not a positive integer, or any row has fewer than `k`
- *   neighbours (the scan retained too few neighbours for the requested `k`).
  */
 export function kdistance(
   neighbor_distances: number[][],

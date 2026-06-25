@@ -27,21 +27,6 @@ export function pairwise_euclidean_matrix(points: tf.Tensor2D): tf.Tensor2D {
   });
 }
 
-/**
- * Computes the pairwise distance matrix for the given points according to the
- * requested metric.
- *
- * The result is an `(n, n)` tensor `D` where `D[i, j]` contains the distance
- * between row `i` and row `j` of the input `points`.
- *
- * Supported metrics:
- *   • "euclidean"  – ℓ2 distance (uses an optimised implementation)
- *   • "manhattan"  – ℓ1 distance
- *   • "cosine"     – 1 − cosine-similarity
- *
- * For performance and numerical stability the computation is wrapped in
- * `tf.tidy` so that all intermediate tensors are eagerly disposed.
- */
 export function pairwise_distance_matrix(
   points: tf.Tensor2D,
   metric: 'euclidean' | 'manhattan' | 'cosine' = 'euclidean',

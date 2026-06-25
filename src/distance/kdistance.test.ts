@@ -14,11 +14,8 @@ describe('kdistance', () => {
       [0, 1, 2],
       [0, 2, 3],
     ];
-    // k=1 -> self distance (0) for all points
     expect(Array.from(kdistance(neighbor_distances, 1))).toEqual([0, 0, 0]);
-    // k=2 -> distance to nearest *other* neighbour
     expect(Array.from(kdistance(neighbor_distances, 2))).toEqual([1, 1, 2]);
-    // k=3 -> distance to second-nearest other neighbour
     expect(Array.from(kdistance(neighbor_distances, 3))).toEqual([3, 2, 3]);
   });
 
