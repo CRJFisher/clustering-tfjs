@@ -22,24 +22,15 @@
 
 export type LinkageCriterion = 'single' | 'complete' | 'average' | 'ward';
 
-/**
- * Record of a single merge operation in the agglomeration process.
- */
 export interface MergeRecord {
   /** Lower active slot index of the two merged clusters. */
   cluster_a: number;
   /** Higher active slot index of the two merged clusters. */
   cluster_b: number;
-  /** Distance at which the merge occurred. */
   distance: number;
-  /** Size of the merged cluster after the merge. */
   new_size: number;
 }
 
-/**
- * Computes the Lance–Williams updated distance between the newly merged
- * cluster t = (i ∪ j) and another cluster k.
- */
 function lance_williams(
   dik: number,
   djk: number,
@@ -78,17 +69,11 @@ function lance_williams(
 }
 
 /**
- * Runs agglomerative clustering using the nearest-neighbor chain algorithm
- * with Lance–Williams distance updates.
- *
- * The emitted merges are sorted by distance before returning, matching the
+ * Emitted merges are sorted by distance before returning, matching the
  * scipy/fastcluster convention for NN-chain. The raw discovery order is not a
  * valid dendrogram order for cutting.
  *
  * @param D Flat n×n distance matrix (Float64Array). Mutated in place.
- * @param n Number of original data points.
- * @param linkage   Linkage criterion.
- * @returns Array of MergeRecord describing the full tree in distance order.
  */
 export function nn_chain_cluster(
   D: Float64Array,

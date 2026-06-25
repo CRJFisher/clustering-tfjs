@@ -1,9 +1,6 @@
 import { AgglomerativeClustering } from './agglomerative';
 import { nn_chain_cluster, LinkageCriterion } from './linkage';
 
-/**
- * Helper: build a flat Float64Array distance matrix from a 2D array.
- */
 function to_flat(D2d: number[][]): Float64Array {
   const n = D2d.length;
   const flat = new Float64Array(n * n);
@@ -45,7 +42,6 @@ describe('nn_chain_cluster', () => {
     for (const linkage of linkages) {
       const D = to_flat(base_matrix);
       const merges = nn_chain_cluster(D, 3, linkage);
-      // First merge should be clusters 0 and 1 (distance 2)
       expect(merges[0].cluster_a).toBe(0);
       expect(merges[0].cluster_b).toBe(1);
       expect(merges[0].distance).toBeCloseTo(2, 6);
@@ -97,12 +93,10 @@ describe('nn_chain_cluster', () => {
 
     expect(merges.length).toBe(3);
 
-    // First merge: A+B (distance 1) — global minimum
     expect(merges[0].cluster_a).toBe(0);
     expect(merges[0].cluster_b).toBe(1);
     expect(merges[0].distance).toBeCloseTo(1, 6);
 
-    // Second merge: C+D (distance 3) — next global minimum
     expect(merges[1].cluster_a).toBe(2);
     expect(merges[1].cluster_b).toBe(3);
     expect(merges[1].distance).toBeCloseTo(3, 6);
@@ -114,8 +108,8 @@ describe('nn_chain_cluster', () => {
   it('cluster sizes are tracked correctly', () => {
     const D = to_flat(base_matrix);
     const merges = nn_chain_cluster(D, 3, 'average');
-    expect(merges[0].new_size).toBe(2); // merge of two singletons
-    expect(merges[1].new_size).toBe(3); // merge size-2 with singleton
+    expect(merges[0].new_size).toBe(2);
+    expect(merges[1].new_size).toBe(3);
   });
 
   it('n=2 produces a single merge with correct distance and size', () => {
@@ -179,7 +173,6 @@ describe('AgglomerativeClustering – ward tie parity with scikit-learn', () => 
     return pts;
   }
 
-  /** Canonical signature: sorted list of sorted member-index groups. */
   function partition_signature(labels: number[]): number[][] {
     const groups = new Map<number, number[]>();
     labels.forEach((lab, idx) => {
