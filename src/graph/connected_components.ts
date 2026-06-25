@@ -1,20 +1,6 @@
 import * as tf from '../backend/adapter';
 import { SparseMatrix } from './sparse';
 
-/**
- * Detects the number of connected components in a graph based on its affinity matrix.
- *
- * A graph is considered fully connected if there's only 1 component.
- * Components are found by breadth-first traversal of the affinity graph,
- * treating two nodes as connected when their edge weight exceeds `tolerance`.
- *
- * @param affinity - Affinity/adjacency matrix (n x n)
- * @param tolerance - Minimum edge weight for two nodes to count as connected (default: 1e-2)
- * @returns Object containing:
- *   - num_components: Number of connected components
- *   - is_fully_connected: Whether the graph has only 1 component
- *   - component_labels: Array indicating which component each node belongs to
- */
 export function detect_connected_components(
   affinity: tf.Tensor2D,
   tolerance: number = 1e-2,
@@ -28,21 +14,17 @@ export function detect_connected_components(
 
   // Get affinity data for graph traversal
   const affinity_data = affinity.arraySync();
-
-  // BFS to find connected components
   let current_component = 0;
 
   for (let start_node = 0; start_node < n; start_node++) {
-    if (component_labels[start_node] !== -1) continue; // Already assigned
+    if (component_labels[start_node] !== -1) continue;
 
-    // BFS from this node
     const queue: number[] = [start_node];
     component_labels[start_node] = current_component;
 
     while (queue.length > 0) {
       const node = queue.shift()!;
 
-      // Check all neighbors
       for (let neighbor = 0; neighbor < n; neighbor++) {
         if (
           neighbor !== node &&
@@ -67,15 +49,7 @@ export function detect_connected_components(
   };
 }
 
-/**
- * CSR-sparse counterpart of {@link detect_connected_components}: the same
- * breadth-first component labelling, traversing only the stored non-zero edges
- * of each row instead of scanning a dense `(n, n)` matrix.
- *
- * @param affinity - Square sparse affinity matrix in CSR form.
- * @param tolerance - Minimum edge weight for two nodes to count as connected (default: 1e-2)
- * @throws If the affinity matrix is not square.
- */
+/** @throws If the affinity matrix is not square. */
 export function detect_sparse_connected_components(
   affinity: SparseMatrix,
   tolerance: number = 1e-2,
@@ -98,6 +72,7 @@ export function detect_sparse_connected_components(
     const queue: number[] = [start_node];
     component_labels[start_node] = current_component;
 
+    // Index-based iteration avoids the O(n) cost of array.shift() on each dequeue.
     for (let queue_idx = 0; queue_idx < queue.length; queue_idx++) {
       const node = queue[queue_idx];
       for (
@@ -127,13 +102,7 @@ export function detect_sparse_connected_components(
   };
 }
 
-/**
- * Issues a warning if the graph is not fully connected, similar to sklearn.
- *
- * @param affinity - Affinity matrix to check
- * @param tolerance - Minimum edge weight for two nodes to count as connected
- * @returns true if graph is fully connected, false otherwise
- */
+/** Mirrors sklearn's connectivity warning: warns when the graph has more than one component. */
 export function check_graph_connectivity(
   affinity: tf.Tensor2D,
   tolerance: number = 1e-2,

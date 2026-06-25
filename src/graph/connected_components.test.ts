@@ -7,7 +7,7 @@ import {
 } from "./connected_components";
 import { sparse_matrix_from_row_maps } from "./sparse";
 
-describe("detectConnectedComponents", () => {
+describe("detect_connected_components", () => {
   const tensors: tf.Tensor[] = [];
 
   function tracked<T extends tf.Tensor>(t: T): T {
@@ -46,7 +46,6 @@ describe("detectConnectedComponents", () => {
     const result = detect_connected_components(affinity);
     expect(result.num_components).toBe(2);
     expect(result.is_fully_connected).toBe(false);
-    // Nodes 0,1 share one label; nodes 2,3 share another
     expect(result.component_labels[0]).toBe(result.component_labels[1]);
     expect(result.component_labels[2]).toBe(result.component_labels[3]);
     expect(result.component_labels[0]).not.toBe(result.component_labels[2]);
@@ -68,7 +67,6 @@ describe("detectConnectedComponents", () => {
   });
 
   it("treats each isolated node as its own component", () => {
-    // Identity matrix: no off-diagonal edges
     const affinity = tracked(
       tf.tensor2d([
         [1, 0, 0],
@@ -79,7 +77,6 @@ describe("detectConnectedComponents", () => {
     const result = detect_connected_components(affinity);
     expect(result.num_components).toBe(3);
     expect(result.is_fully_connected).toBe(false);
-    // Each node has a unique label
     const unique = new Set(result.component_labels);
     expect(unique.size).toBe(3);
   });
@@ -93,7 +90,6 @@ describe("detectConnectedComponents", () => {
   });
 
   it("respects custom tolerance (edges below tolerance ignored)", () => {
-    // All off-diagonal values are 0.05 — below a tolerance of 0.1
     const affinity = tracked(
       tf.tensor2d([
         [1, 0.05, 0.05],
@@ -107,8 +103,6 @@ describe("detectConnectedComponents", () => {
   });
 
   it("uses default tolerance of 1e-2 (boundary: 0.01 is NOT > 0.01)", () => {
-    // Off-diagonal value exactly at 0.01 should NOT be treated as an edge
-    // because the check is strictly greater than tolerance
     const affinity = tracked(
       tf.tensor2d([
         [1, 0.01],
@@ -150,7 +144,7 @@ describe("detectConnectedComponents", () => {
   });
 });
 
-describe("checkGraphConnectivity", () => {
+describe("check_graph_connectivity", () => {
   const tensors: tf.Tensor[] = [];
 
   function tracked<T extends tf.Tensor>(t: T): T {
@@ -194,7 +188,6 @@ describe("checkGraphConnectivity", () => {
 
   it("forwards custom tolerance to detection", () => {
     const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    // Off-diagonal 0.05 — connected with default tolerance but not with 0.1
     const affinity = tracked(
       tf.tensor2d([
         [1, 0.05],
@@ -224,6 +217,14 @@ describe("detect_sparse_connected_components", () => {
     expect(result.num_components).toBe(1);
     expect(result.is_fully_connected).toBe(true);
     expect(result.component_labels).toEqual(new Int32Array([0, 0, 0]));
+  });
+
+  it("handles a single-node sparse graph", () => {
+    const A = sparse_matrix_from_row_maps([new Map()]);
+    const result = detect_sparse_connected_components(A);
+    expect(result.num_components).toBe(1);
+    expect(result.is_fully_connected).toBe(true);
+    expect(result.component_labels).toEqual(new Int32Array([0]));
   });
 
   it("finds two components in a block-diagonal sparse graph", () => {
