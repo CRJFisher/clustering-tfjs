@@ -1,15 +1,9 @@
-/* ------------------------------------------------------------------------- */
-/*                           Public Type Exports                             */
-/* ------------------------------------------------------------------------- */
-
 export * from './clustering/types';
 export * from './backend/platform_types';
 
-// Export the main Clustering namespace for initialization
 export { Clustering } from './clustering/init';
 export type { BackendConfig } from './backend/backend';
 
-// Public estimators
 export { AgglomerativeClustering } from './clustering/agglomerative';
 export {
   SpectralClustering,
@@ -22,7 +16,6 @@ export { KMeans, type KMeansJSON } from './clustering/kmeans';
 export { HDBSCAN } from './clustering/hdbscan';
 export { SOM } from './clustering/som';
 
-// Decomposition
 export {
   PCA,
   type PCAParams,
@@ -31,14 +24,12 @@ export {
   power_iteration_eig,
 } from './decomposition/pca';
 
-// Cluster representation accessors
 export type { ClusterRepresentations } from './clustering/representations';
 export {
   select_medoids,
   type MedoidResult,
 } from './clustering/medoid_selection';
 
-// Utilities
 export { pairwise_distance_matrix } from './distance/pairwise_distance';
 export { find_optimal_clusters } from './model_selection/find_optimal_clusters';
 export type {
@@ -50,7 +41,6 @@ export { compute_wss } from './model_selection/compute_wss';
 export { find_knee } from './model_selection/kneedle';
 export type { KneedleOptions, KneedleResult } from './model_selection/kneedle';
 
-// Validation metrics
 export {
   silhouette_samples,
   silhouette_score,
@@ -71,7 +61,6 @@ export {
   type NMIAverage,
 } from './validation/normalized_mutual_info';
 
-// SOM visualization utilities
 export {
   get_component_planes,
   get_hit_map,
