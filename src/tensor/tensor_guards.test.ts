@@ -33,8 +33,6 @@ describe("is_tensor", () => {
   });
 
   it("accepts a duck-typed tensor-like object", () => {
-    // The guard is structural so tensors created by a foreign tf.js build
-    // (where instanceof would fail) are still recognised.
     const fake = {
       dtype: "float32",
       shape: [2, 2],
@@ -70,5 +68,12 @@ describe("is_tensor", () => {
     };
     expect(is_tensor(bad)).toBe(false);
   });
-});
 
+  it("rejects an object with properties of wrong types", () => {
+    const base = { dtype: "float32", shape: [3], rank: 1, dataSync: data_sync, dispose };
+    expect(is_tensor({ ...base, dtype: 42 })).toBe(false);
+    expect(is_tensor({ ...base, rank: "1" })).toBe(false);
+    expect(is_tensor({ ...base, dataSync: "not-a-fn" })).toBe(false);
+    expect(is_tensor({ ...base, dispose: 0 })).toBe(false);
+  });
+});
