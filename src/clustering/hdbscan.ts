@@ -202,7 +202,7 @@ export class HDBSCAN
         .slice([0, min_samples - 1], [-1, 1])
         .reshape([-1])
         .neg();
-    }) as tf.Tensor1D;
+    }) as tf.Tensor1D; // tf.tidy widens to Tensor<Rank>; body is always rank-1
   }
 
   async fit(X: DataMatrix): Promise<void> {
@@ -210,6 +210,7 @@ export class HDBSCAN
     // before dispose() so a failed re-fit leaves prior fitted state intact. It
     // returns an (n, n) Tensor2D this method owns and disposes exactly once.
     const D_tensor = this.distance_matrix(X);
+    let core_tensor: tf.Tensor1D | null = null;
     try {
       const n = D_tensor.shape[0];
 
@@ -233,16 +234,15 @@ export class HDBSCAN
         n,
       );
 
-      // Incremental: read the distance matrix back to JS for the
-      // mutual-reachability/MST tail. Task-54.5 moves this readback to
-      // the MST input boundary.
+      // The distance matrix and core distances are computed on-tensor; both
+      // are read back to JS here because the mutual-reachability/MST tail
+      // runs in plain JS.
       const D = (await D_tensor.array()) as number[][];
 
-      // Core distances: on-tensor tf.topk (task-54.4). Incremental: read back
-      // for the JS mutual-reachability; task-54.5 eliminates this readback.
-      const core_tensor = this.core_distances(D_tensor, min_samples);
+      core_tensor = this.core_distances(D_tensor, min_samples);
       const core = await core_tensor.array();
       core_tensor.dispose();
+      core_tensor = null;
 
       // Mutual-reachability graph -> minimum spanning tree -> condensed tree.
       const mreach = mutual_reachability(D, core);
@@ -266,6 +266,7 @@ export class HDBSCAN
         ? exemplar_indices
         : null;
     } finally {
+      core_tensor?.dispose();
       D_tensor.dispose();
     }
   }
