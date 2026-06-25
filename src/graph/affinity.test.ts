@@ -70,6 +70,91 @@ describe("Affinity matrix utilities", () => {
     dense.dispose();
     X.dispose();
   });
+
+  it("RBF affinity equals exp(-gamma * squared_distance)", () => {
+    // Two points unit distance apart; squared distance is 1.
+    const X = tf.tensor2d([
+      [0, 0],
+      [1, 0],
+    ]);
+    const A = compute_rbf_affinity(X, 1).arraySync() as number[][];
+    expect(A[0][1]).toBeCloseTo(Math.exp(-1), 6);
+    X.dispose();
+  });
+
+  it("defaults gamma to 1 / n_features when unspecified", () => {
+    // n_features = 2 -> gamma = 0.5; squared distance 1 -> exp(-0.5).
+    const X = tf.tensor2d([
+      [0, 0],
+      [1, 0],
+    ]);
+    const A = compute_rbf_affinity(X).arraySync() as number[][];
+    expect(A[0][1]).toBeCloseTo(Math.exp(-0.5), 6);
+    X.dispose();
+  });
+
+  it("knn with include_self=false has a zero diagonal", () => {
+    const X = tf.tensor2d([[0], [1], [2], [3]]);
+    const A = compute_knn_affinity(X, 1, false).arraySync() as number[][];
+    for (let i = 0; i < 4; i++) {
+      expect(A[i][i]).toBe(0); // no self-loops
+      for (let j = 0; j < 4; j++) {
+        expect(A[i][j]).toBe(A[j][i]); // still symmetric
+      }
+    }
+    X.dispose();
+  });
+
+  it("dispatcher routes rbf and nearest_neighbors", () => {
+    const X = tf.tensor2d([[0], [1], [2], [3]]);
+    const rbf = compute_affinity_matrix(X, { affinity: "rbf", gamma: 1 });
+    const direct_rbf = compute_rbf_affinity(X, 1);
+    expect(rbf.arraySync()).toEqual(direct_rbf.arraySync());
+
+    const knn = compute_affinity_matrix(X, {
+      affinity: "nearest_neighbors",
+      n_neighbors: 2,
+    });
+    const direct_knn = compute_knn_affinity(X, 2, true);
+    expect(knn.arraySync()).toEqual(direct_knn.arraySync());
+
+    rbf.dispose();
+    direct_rbf.dispose();
+    knn.dispose();
+    direct_knn.dispose();
+    X.dispose();
+  });
+});
+
+describe("compute_sparse_knn_affinity – validation", () => {
+  const X = () => tf.tensor2d([[0], [1], [2], [3]]);
+
+  it("rejects a non-positive or non-integer k", () => {
+    const points = X();
+    expect(() => compute_sparse_knn_affinity(points, 0)).toThrow(
+      "positive integer",
+    );
+    expect(() => compute_sparse_knn_affinity(points, 1.5)).toThrow(
+      "positive integer",
+    );
+    points.dispose();
+  });
+
+  it("rejects k >= number of samples", () => {
+    const points = X();
+    expect(() => compute_sparse_knn_affinity(points, 4)).toThrow(
+      "smaller than the number of samples",
+    );
+    points.dispose();
+  });
+
+  it("rejects an empty point set", () => {
+    const empty = tf.tensor2d([], [0, 2]);
+    expect(() => compute_sparse_knn_affinity(empty, 1)).toThrow(
+      "at least one sample",
+    );
+    empty.dispose();
+  });
 });
 
 
@@ -113,7 +198,7 @@ describe("compute_cosine_affinity", () => {
   });
 });
 
-describe("compute_knn_affinity – tensor lifecycle (AC 49.1 #7)", () => {
+describe("compute_knn_affinity – tensor lifecycle", () => {
   const run_once = (): void => {
     const X = tf.tensor2d([
       [0, 0],
