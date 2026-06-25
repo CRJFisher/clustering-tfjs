@@ -1,8 +1,8 @@
 import * as tf from "../../test_support/tensorflow_helper";
 import { compute_knn_affinity } from "./affinity";
 
-describe("k-NN affinity connectivity", () => {
-  it("should include self-loops by default", async () => {
+describe("compute_knn_affinity – connectivity", () => {
+  it("includes self-loops by default", async () => {
     const points = tf.tensor2d([
       [0, 0],
       [1, 0],
@@ -19,7 +19,7 @@ describe("k-NN affinity connectivity", () => {
     points.dispose();
   });
 
-  it("should handle disconnected components with self-loops", async () => {
+  it("produces no cross-component edges when components are far apart", async () => {
     const points = tf.tensor2d([
       [0, 0],
       [0.1, 0],
@@ -43,7 +43,7 @@ describe("k-NN affinity connectivity", () => {
     points.dispose();
   });
 
-  it("should exclude self-loops when includeSelf=false", async () => {
+  it("excludes self-loops when include_self is false", async () => {
     const points = tf.tensor2d([
       [0, 0],
       [1, 0],
