@@ -179,7 +179,6 @@ describe('Clustering.init() idempotency and concurrency', () => {
         Clustering.init({ force_platform: 'react-native' }),
       );
 
-      // All 5 should reject
       for (const p of promises) {
         await expect(p).rejects.toThrow();
       }
