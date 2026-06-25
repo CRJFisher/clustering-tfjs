@@ -15,11 +15,10 @@ export interface MstEdge {
 /**
  * Edges are canonicalised so `source < target`.
  *
- * Accepts a nested `number[][]` or a flat row-major typed array. HDBSCAN
- * passes the `Float32Array` produced by the single tensor readback at the
- * front-half/tail boundary; element `(i, j)` is at `i * n + j`. When `n` is
- * omitted it is inferred as `round(sqrt(length))`, which is only reliable for
- * perfectly square buffers — the production caller always supplies `n`.
+ * HDBSCAN passes the `Float32Array` produced by the single tensor readback at
+ * the front-half/tail boundary. When `n` is omitted it is inferred as
+ * `round(sqrt(length))`, which is only reliable for perfectly square buffers —
+ * the production caller always supplies `n`.
  */
 export function minimum_spanning_tree(
   distance_matrix: number[][] | Float32Array | Float64Array,
@@ -44,8 +43,6 @@ export function minimum_spanning_tree(
     return [];
   }
 
-  // best_weight[v]: cheapest known edge from v to the current tree
-  // best_source[v]: tree-side endpoint of that edge
   const in_tree = new Uint8Array(size);
   const best_weight = new Float64Array(size);
   const best_source = new Int32Array(size);
