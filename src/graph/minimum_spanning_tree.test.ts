@@ -5,7 +5,6 @@ import { minimum_spanning_tree, MstEdge } from './minimum_spanning_tree';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'density');
 
-/** Dense float64 Euclidean distance matrix, computed in plain JS. */
 function euclidean_matrix(X: number[][]): number[][] {
   const n = X.length;
   const D: number[][] = Array.from({ length: n }, () => new Array<number>(n).fill(0));
@@ -74,6 +73,23 @@ describe('minimum_spanning_tree', () => {
     expect(edges.length).toBe(2);
     expect(edges[0]).toEqual({ source: 0, target: 1, weight: 1 });
     expect(edges[1]).toEqual({ source: 1, target: 2, weight: 1.5 });
+  });
+
+  it('canonicalises edges so source < target when the lower-index node is absorbed last', () => {
+    // D[0][2]=1 < D[0][1]=10, so node 2 is absorbed before node 1.
+    // Node 1 is then absorbed via node 2 (best_source[1]=2 > u=1), triggering
+    // the a > u branch of the canonicalisation.
+    const D = [
+      [0, 10, 1],
+      [10, 0, 2],
+      [1, 2, 0],
+    ];
+    const edges = sort_edges(minimum_spanning_tree(D));
+    expect(edges.length).toBe(2);
+    expect(edges[0]).toEqual({ source: 0, target: 2, weight: 1 });
+    expect(edges[1]).toEqual({ source: 1, target: 2, weight: 2 });
+    // Verify the invariant directly.
+    for (const e of edges) expect(e.source).toBeLessThan(e.target);
   });
 
   it('throws on a disconnected (infinite-weight) graph', () => {
