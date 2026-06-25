@@ -1,7 +1,7 @@
 import * as tf from "../../test_support/tensorflow_helper";
 
 import { deterministic_eigenpair_processing } from "./post";
-import { jacobi_eigen_decomposition } from "../graph/laplacian";
+import { improved_jacobi_eigen } from "./improved";
 
 describe("deterministicEigenpairProcessing", () => {
   it("sorts eigenpairs ascending and applies sign flip", () => {
@@ -17,13 +17,7 @@ describe("deterministicEigenpairProcessing", () => {
       "float32",
     );
 
-    const { eigenvalues, eigenvectors } = ((): {
-      eigenvalues: number[];
-      eigenvectors: number[][];
-    } => {
-      // tf.linalg.eig is not available; use the Jacobi solver instead.
-      return jacobi_eigen_decomposition(M as tf.Tensor2D);
-    })();
+    const { eigenvalues, eigenvectors } = improved_jacobi_eigen(M as tf.Tensor2D);
 
     const processed = deterministic_eigenpair_processing({
       eigenvalues,

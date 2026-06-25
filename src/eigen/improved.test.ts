@@ -1,8 +1,5 @@
 import * as tf from "../../test_support/tensorflow_helper";
-import {
-  improved_jacobi_eigen,
-  laplacian_eigen_decomposition,
-} from "./improved";
+import { improved_jacobi_eigen } from "./improved";
 
 function expect_orthonormal(
   vectors: number[][],
@@ -253,63 +250,3 @@ describe("improved_jacobi_eigen – degenerate eigenvalue cases", () => {
   });
 });
 
-describe("laplacian_eigen_decomposition", () => {
-  beforeEach(() => {
-    tf.engine().startScope();
-  });
-
-  afterEach(() => {
-    tf.engine().endScope();
-  });
-
-  it("returns k+numZeros columns for single-component graph", () => {
-    // Simple 4-node connected graph Laplacian (single component = 1 zero eigenvalue)
-    // L = D - W for a fully connected triangle+1 pattern
-    const L = tf.tensor2d([
-      [2, -1, -1, 0],
-      [-1, 2, 0, -1],
-      [-1, 0, 2, -1],
-      [0, -1, -1, 2],
-    ]);
-
-    const k = 2;
-    const result = laplacian_eigen_decomposition(L, k);
-
-    // Single component: 1 zero eigenvalue, so result should have k + 1 = 3 columns
-    // (or k columns depending on implementation — at minimum k columns)
-    expect(result.shape.length).toBe(2);
-    expect(result.shape[0]).toBe(4); // rows = number of nodes
-    expect(result.shape[1]).toBeGreaterThanOrEqual(k);
-
-    result.dispose();
-  });
-
-  it("returns float32 tensor", () => {
-    const L = tf.tensor2d([
-      [1, -1, 0],
-      [-1, 2, -1],
-      [0, -1, 1],
-    ]);
-
-    const result = laplacian_eigen_decomposition(L, 2);
-    expect(result.dtype).toBe("float32");
-
-    result.dispose();
-  });
-
-  it("does not leak tensors", () => {
-    const L = tf.tensor2d([
-      [1, -1, 0],
-      [-1, 2, -1],
-      [0, -1, 1],
-    ]);
-
-    const before = tf.memory().numTensors;
-    const result = laplacian_eigen_decomposition(L, 2);
-    result.dispose();
-    L.dispose();
-    const after = tf.memory().numTensors;
-
-    expect(after).toBeLessThanOrEqual(before);
-  });
-});

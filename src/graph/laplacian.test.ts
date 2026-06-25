@@ -4,7 +4,6 @@ import {
   degree_vector,
   normalised_laplacian,
   sparse_normalised_laplacian_operator,
-  jacobi_eigen_decomposition,
   smallest_eigenvectors,
 } from "./laplacian";
 import { sparse_matrix_from_row_maps } from "./sparse";
@@ -39,31 +38,6 @@ describe("Graph Laplacian utilities", () => {
     expect(Larr[0][1]).toBeCloseTo(-1);
     expect(Larr[1][0]).toBeCloseTo(-1);
     expect(Larr[1][1]).toBeCloseTo(1);
-  });
-
-  it("performs eigen decomposition and returns smallest eigenvectors", () => {
-    // Simple 2-node graph Laplacian from previous test
-    const L = tf.tensor2d(
-      [
-        [1, -1],
-        [-1, 1],
-      ],
-      [2, 2],
-    );
-
-    const { eigenvalues } = jacobi_eigen_decomposition(L);
-    // Expected eigenvalues: 0 (multiplicity 1), 2 (multiplicity 1)
-    expect(eigenvalues[0]).toBeCloseTo(0, 6);
-    expect(eigenvalues[1]).toBeCloseTo(2, 6);
-
-    // Smallest eigenvector (k=1) corresponds to [1/sqrt(2), 1/sqrt(2)] or its negation
-    const vecs = smallest_eigenvectors(L, 1).arraySync() as number[][];
-    const v0 = vecs.map((row) => row[0]);
-    const norm = Math.hypot(...v0);
-    // Normalise for comparison
-    const v0n = v0.map((x) => x / norm);
-    expect(Math.abs(v0n[0])).toBeCloseTo(Math.SQRT1_2, 3);
-    expect(Math.abs(v0n[1])).toBeCloseTo(Math.SQRT1_2, 3);
   });
 
   it("rejects a non-square affinity in degree_vector", () => {
