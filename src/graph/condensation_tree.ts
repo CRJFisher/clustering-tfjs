@@ -1,29 +1,12 @@
 import type { MstEdge } from './minimum_spanning_tree';
 
 /**
- * HDBSCAN's condensed cluster tree and stability-based (Excess-of-Mass)
- * cluster selection.
- *
- * The flat clustering is derived in four steps from the minimum spanning tree
- * of the mutual-reachability graph:
- *
- *   1. Build the single-linkage hierarchy by merging MST edges in ascending
- *      weight order (union-find).
- *   2. Condense that hierarchy into a compact tree of candidate clusters, each
- *      annotated with a birth λ, death λ, and population, collapsing groups
- *      smaller than `min_cluster_size` into "points falling out of a parent".
- *   3. Score each candidate cluster's stability.
- *   4. Select a flat set of clusters by Excess of Mass (or by leaf), then label
- *      every point and assign membership probabilities.
- *
  * λ (lambda) is the inverse of the merge distance: dense structure persists to
  * high λ. This module operates purely on graph structures and is independent of
  * any estimator wrapper.
  */
 
-/** One edge of the condensed tree. */
 export interface CondensedEdge {
-  /** Parent cluster id. */
   parent: number;
   /** Child cluster id (>= n_samples) or point index (< n_samples). */
   child: number;
@@ -33,14 +16,12 @@ export interface CondensedEdge {
   child_size: number;
 }
 
-/** Options controlling flat-cluster extraction. */
 export interface ClusterSelectionOptions {
   cluster_selection_method?: 'eom' | 'leaf';
   cluster_selection_epsilon?: number;
   allow_single_cluster?: boolean;
 }
 
-/** Result of extracting a flat clustering from the condensed tree. */
 export interface CondensedClustering {
   labels: number[];
   probabilities: number[];
@@ -48,13 +29,7 @@ export interface CondensedClustering {
   exemplar_indices: Map<number, number>;
 }
 
-/* ------------------------------------------------------------------------- */
-/*                          Single-linkage hierarchy                          */
-/* ------------------------------------------------------------------------- */
-
 /**
- * Builds the single-linkage hierarchy from MST edges.
- *
  * @returns `n_samples - 1` rows `[left, right, distance, size]`, where `left`
  *   and `right` are node ids (points `< n_samples`, merged clusters `>=
  *   n_samples`) and `size` is the merged population.
@@ -91,7 +66,6 @@ export function build_single_linkage(
   return result;
 }
 
-/** BFS node ids (top-down) from `bfs_root` over a single-linkage hierarchy. */
 function bfs_hierarchy(
   hierarchy: number[][],
   bfs_root: number,
@@ -113,21 +87,11 @@ function bfs_hierarchy(
   return result;
 }
 
-/* ------------------------------------------------------------------------- */
-/*                              Condensed tree                                */
-/* ------------------------------------------------------------------------- */
-
 /**
- * Condenses the single-linkage hierarchy into a compact candidate-cluster tree.
- *
  * Components smaller than `min_cluster_size` are treated as points falling out
  * of their parent cluster rather than as distinct clusters; a split into two
  * sufficiently large children creates two new clusters, and a one-sided split
  * lets the surviving side continue under the same cluster id.
- *
- * @param mst_edges Minimum spanning tree of the mutual-reachability graph.
- * @param n_samples Number of data points.
- * @param min_cluster_size Smallest admissible cluster size (>= 2).
  */
 export function build_condensation_tree(
   mst_edges: MstEdge[],
@@ -138,10 +102,6 @@ export function build_condensation_tree(
   return condense_hierarchy(hierarchy, n_samples, min_cluster_size);
 }
 
-/**
- * Condenses a prebuilt single-linkage hierarchy (rows `[left, right, distance,
- * size]`) into the candidate-cluster tree. See {@link build_condensation_tree}.
- */
 export function condense_hierarchy(
   hierarchy: number[][],
   n_samples: number,
@@ -246,10 +206,6 @@ export function condense_hierarchy(
   return result;
 }
 
-/* ------------------------------------------------------------------------- */
-/*                          Stability & selection                             */
-/* ------------------------------------------------------------------------- */
-
 /** Births: λ at which each cluster is born (the row where it is a child). */
 function compute_births(
   tree: CondensedEdge[],
@@ -279,7 +235,6 @@ export function compute_stability(
   return stability;
 }
 
-/** Maps each cluster to the list of its child clusters (child_size > 1). */
 function cluster_children(tree: CondensedEdge[]): Map<number, number[]> {
   const children = new Map<number, number[]>();
   for (const e of tree) {
@@ -291,7 +246,6 @@ function cluster_children(tree: CondensedEdge[]): Map<number, number[]> {
   return children;
 }
 
-/** BFS over the cluster sub-tree rooted at `node` (cluster nodes only). */
 function bfs_clusters(
   children_of: Map<number, number[]>,
   node: number,
@@ -310,7 +264,6 @@ function bfs_clusters(
   return result;
 }
 
-/** Climbs to the highest ancestor born coarser than `epsilon`. */
 function traverse_upwards(
   births: Map<number, number>,
   cluster_parent: Map<number, number>,
@@ -339,7 +292,6 @@ function traverse_upwards(
   );
 }
 
-/** Applies the `cluster_selection_epsilon` merge to a candidate leaf set. */
 function epsilon_search(
   leaves: Set<number>,
   births: Map<number, number>,
@@ -481,14 +433,7 @@ export function excess_of_mass(
   return selected;
 }
 
-/* ------------------------------------------------------------------------- */
-/*                         Labelling & probabilities                          */
-/* ------------------------------------------------------------------------- */
-
 /**
- * Labels every point from a selected cluster set, assigning membership
- * probabilities and the most-persistent exemplar per cluster.
- *
  * Points are routed to the lowest selected ancestor of the cluster they fall
  * out of; points with no selected ancestor are noise (`-1`).
  */
