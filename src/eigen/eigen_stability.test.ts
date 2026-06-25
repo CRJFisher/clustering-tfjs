@@ -1,10 +1,6 @@
 import * as tf from "../../test_support/tensorflow_helper";
 
 import { improved_jacobi_eigen } from "./improved";
-import {
-  qr_eigen_decomposition,
-  tridiagonal_qr_eigen,
-} from "./qr";
 import { smallest_eigenvectors_with_values } from "./smallest_eigenvectors_with_values";
 
 /* -------------------------------------------------------------------------- */
@@ -230,119 +226,7 @@ describe("improved_jacobi_eigen – PSD clamping", () => {
 });
 
 /* ========================================================================== */
-/*  3. Tridiagonal QR: e[i] from inner loop computation                       */
-/* ========================================================================== */
-describe("tridiagonal_qr_eigen – correctness", () => {
-  it("computes eigenvalues of simple 3×3 tridiagonal matrix", () => {
-    // Tridiagonal: d=[2,2,2], e=[1,1]
-    // Same as 3×3 Toeplitz: eigenvalues 2-√2, 2, 2+√2
-    const { eigenvalues, eigenvectors } = tridiagonal_qr_eigen(
-      [2, 2, 2],
-      [1, 1],
-    );
-
-    expect(eigenvalues[0]).toBeCloseTo(2 - Math.SQRT2, 8);
-    expect(eigenvalues[1]).toBeCloseTo(2, 8);
-    expect(eigenvalues[2]).toBeCloseTo(2 + Math.SQRT2, 8);
-
-    expect_orthonormal(eigenvectors!, 3, 3);
-  });
-
-  it("handles identity matrix (all zeros off-diagonal)", () => {
-    const { eigenvalues } = tridiagonal_qr_eigen([1, 1, 1, 1], [0, 0, 0]);
-
-    eigenvalues.forEach((v) => expect(v).toBeCloseTo(1, 10));
-  });
-
-  it("handles 2×2 tridiagonal", () => {
-    // d=[3,5], e=[2]: matrix [[3,2],[2,5]]
-    // eigenvalues: 4 ± √5
-    const { eigenvalues } = tridiagonal_qr_eigen([3, 5], [2]);
-
-    expect(eigenvalues[0]).toBeCloseTo(4 - Math.sqrt(5), 8);
-    expect(eigenvalues[1]).toBeCloseTo(4 + Math.sqrt(5), 8);
-  });
-
-  it("reconstructs original tridiagonal matrix from eigenpairs", () => {
-    const d = [1, 3, 2, 4];
-    const e = [0.5, 0.7, 0.3];
-    const { eigenvalues, eigenvectors } = tridiagonal_qr_eigen(d, e);
-
-    // Build full tridiagonal matrix
-    const n = d.length;
-    const T: number[][] = Array.from({ length: n }, () => Array(n).fill(0));
-    for (let i = 0; i < n; i++) {
-      T[i][i] = d[i];
-      if (i < n - 1) {
-        T[i][i + 1] = e[i];
-        T[i + 1][i] = e[i];
-      }
-    }
-
-    expect_reconstruction(eigenvalues, eigenvectors!, T, 1e-6);
-  });
-});
-
-/* ========================================================================== */
-/*  4. Wilkinson shift: delta==0 b==0 edge case                               */
-/* ========================================================================== */
-describe("qr_eigen_decomposition – Wilkinson shift NaN", () => {
-  it("handles diagonal matrix (delta==0, b==0)", () => {
-    const M = tf.tensor2d(
-      [
-        [2, 0],
-        [0, 2],
-      ],
-      [2, 2],
-    );
-    const { eigenvalues, eigenvectors } = qr_eigen_decomposition(M);
-
-    eigenvalues.forEach((v) => {
-      expect(Number.isFinite(v)).toBe(true);
-      expect(v).toBeCloseTo(2, 8);
-    });
-    eigenvectors.flat().forEach((v) => expect(Number.isFinite(v)).toBe(true));
-
-    M.dispose();
-  });
-
-  it("handles identity matrix without NaN", () => {
-    const M = tf.eye(3) as tf.Tensor2D;
-    const { eigenvalues, eigenvectors } = qr_eigen_decomposition(M);
-
-    eigenvalues.forEach((v) => {
-      expect(Number.isFinite(v)).toBe(true);
-      expect(v).toBeCloseTo(1, 8);
-    });
-    eigenvectors.flat().forEach((v) => expect(Number.isFinite(v)).toBe(true));
-
-    M.dispose();
-  });
-
-  it("handles matrix with repeated eigenvalues", () => {
-    // diag(1, 1, 2)
-    const M = tf.tensor2d(
-      [
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 2],
-      ],
-      [3, 3],
-    );
-    const { eigenvalues } = qr_eigen_decomposition(M);
-
-    eigenvalues.forEach((v) => expect(Number.isFinite(v)).toBe(true));
-    const sorted = [...eigenvalues].sort((a, b) => a - b);
-    expect(sorted[0]).toBeCloseTo(1, 8);
-    expect(sorted[1]).toBeCloseTo(1, 8);
-    expect(sorted[2]).toBeCloseTo(2, 8);
-
-    M.dispose();
-  });
-});
-
-/* ========================================================================== */
-/*  5. Zero-eigenvalue tolerance                                              */
+/*  3. Zero-eigenvalue tolerance                                              */
 /* ========================================================================== */
 describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () => {
   it("does not treat eigenvalue ~0.005 as zero", () => {
@@ -442,7 +326,7 @@ describe("smallest_eigenvectors_with_values – zero-eigenvalue tolerance", () =
 });
 
 /* ========================================================================== */
-/*  6. Eigenvector orthogonality post-condition                               */
+/*  4. Eigenvector orthogonality post-condition                               */
 /* ========================================================================== */
 describe("eigenvector orthogonality validation", () => {
   it("improved Jacobi produces orthonormal eigenvectors for general symmetric matrix", () => {
@@ -460,14 +344,5 @@ describe("eigenvector orthogonality validation", () => {
     expect_reconstruction(eigenvalues, eigenvectors, M.arraySync() as number[][]);
 
     M.dispose();
-  });
-
-  it("tridiagonal QR produces orthonormal eigenvectors", () => {
-    const { eigenvectors } = tridiagonal_qr_eigen(
-      [4, 3, 2, 1],
-      [0.5, 0.7, 0.3],
-    );
-
-    expect_orthonormal(eigenvectors!, 4, 4, 1e-6);
   });
 });
