@@ -669,8 +669,8 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
   });
 
-  describe('Task-37 correctness fixes', () => {
-    describe('AC#1: Weight update normalization', () => {
+  describe('Correctness properties', () => {
+    describe('Weight update normalization', () => {
       it('should produce finite weights with large batch sizes', async () => {
         const som = new SOM({
           grid_width: 2,
@@ -698,7 +698,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#2: Rectangular 8-connectivity consistency', () => {
+    describe('Rectangular 8-connectivity consistency', () => {
       it('should treat diagonal neighbors as neighbors in rectangular topology', () => {
         const som = new SOM({
           grid_width: 3,
@@ -722,7 +722,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#4: Data shuffling between epochs', () => {
+    describe('Data shuffling between epochs', () => {
       it('should produce deterministic results with same randomState', async () => {
         const X = tf.tensor2d([
           [0, 0], [0, 1], [1, 0], [1, 1],
@@ -759,7 +759,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#5: Linear initialization with PCA', () => {
+    describe('Linear initialization with PCA', () => {
       it('should span a 2D surface, not a 1D line', () => {
         // Data with clear 2-axis variance
         const X = tf.tensor2d([
@@ -796,7 +796,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#6: getDensityMap Gaussian convolution', () => {
+    describe('get_density_map Gaussian convolution', () => {
       it('should apply smoothing and preserve output shape', async () => {
         const som = new SOM({
           grid_width: 3,
@@ -848,9 +848,9 @@ describe('SOM (online mini-batch — production path properties)', () => {
     });
   });
 
-  describe('Task-46: cluster(), validation, and API contracts', () => {
+  describe('cluster(), validation, and API contracts', () => {
 
-    describe('AC#1: SOM.cluster() method', () => {
+    describe('SOM.cluster() method', () => {
 
       it('should throw if called before fit', async () => {
         const som = new SOM({ grid_width: 3, grid_height: 3 });
@@ -1082,7 +1082,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#3: partial_fit() dimension validation', () => {
+    describe('partial_fit() dimension validation', () => {
 
       it('should accept first partial_fit call with any feature dimension', async () => {
         const som = new SOM({
@@ -1161,7 +1161,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#5: getWeights() contract', () => {
+    describe('get_weights() contract', () => {
 
       it('should throw if called before fit', () => {
         const som = new SOM({ grid_width: 2, grid_height: 2 });
@@ -1257,7 +1257,7 @@ describe('SOM (online mini-batch — production path properties)', () => {
       });
     });
 
-    describe('AC#6: dispose() behavior', () => {
+    describe('dispose() behavior', () => {
 
       it('should release internal tensors on dispose', async () => {
         const som = new SOM({
