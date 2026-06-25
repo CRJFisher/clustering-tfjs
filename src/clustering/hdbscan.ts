@@ -107,14 +107,6 @@ export class HDBSCAN
   }
 
   /**
-   * Builds the dense pairwise distance matrix as an `(n, n)` `Tensor2D`.
-   *
-   * Native `euclidean`/`manhattan` metrics are delegated to
-   * `pairwise_distance_matrix`, which runs on the TensorFlow.js backend in
-   * float32. A `precomputed` matrix is validated for squareness and uploaded
-   * to a `Tensor2D` unchanged. The result is the first front-half stage; `fit`
-   * consumes it for the core-distance and mutual-reachability computation.
-   *
    * The returned tensor is always freshly owned: `fit` disposes it without
    * touching a caller-supplied tensor (the precomputed-tensor case is cloned).
    */
@@ -180,8 +172,7 @@ export class HDBSCAN
   }
 
   /**
-   * Computes per-point core distances using `tf.topk` on the negated distance
-   * matrix. The core distance of point i is the distance to its
+   * The core distance of point i is the distance to its
    * (min_samples − 1)-th nearest neighbour, counting self as neighbour 0.
    *
    * Negation trick: `tf.topk` returns the largest values first, so negating
