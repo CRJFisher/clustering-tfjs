@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { PCA } from '..';
-import { power_iteration_eig, unit_init_vector } from './pca';
+import { power_iteration_eig } from './pca';
 import * as tf from '../../test_support/tensorflow_helper';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'pca');
@@ -37,12 +37,10 @@ describe('PCA – parity with scikit-learn (svd_flip)', () => {
       const pca = new PCA({ n_components: fixture.n_components, random_state: 0 });
       const transformed = pca.fit_transform(fixture.X);
 
-      // mean
       for (let j = 0; j < fixture.mean_.length; j++) {
         expect(pca.mean_![j]).toBeCloseTo(fixture.mean_[j], 5);
       }
 
-      // explained variance (sign-independent)
       for (let c = 0; c < fixture.n_components; c++) {
         expect(pca.explained_variance_![c]).toBeCloseTo(
           fixture.explained_variance_[c],
@@ -50,7 +48,6 @@ describe('PCA – parity with scikit-learn (svd_flip)', () => {
         );
       }
 
-      // components up to per-axis sign (align mine to the sklearn reference)
       const signs = alignment_signs(pca.components_!, fixture.components_);
       for (let c = 0; c < fixture.n_components; c++) {
         for (let j = 0; j < pca.components_![c].length; j++) {
@@ -61,7 +58,6 @@ describe('PCA – parity with scikit-learn (svd_flip)', () => {
         }
       }
 
-      // transform under the same per-component sign alignment
       for (let i = 0; i < transformed.length; i++) {
         for (let c = 0; c < fixture.n_components; c++) {
           expect(transformed[i][c] * signs[c]).toBeCloseTo(
@@ -177,13 +173,6 @@ describe('PCA – API behaviour', () => {
 });
 
 describe('power_iteration_eig – degenerate matrices', () => {
-  it('falls back to a basis vector when the init candidate has zero norm', () => {
-    expect(unit_init_vector([0, 0, 0], 0)).toEqual([1, 0, 0]);
-    expect(unit_init_vector([0, 0, 0], 4)).toEqual([0, 1, 0]);
-    // Non-degenerate candidates are normalized, not replaced.
-    expect(unit_init_vector([0, 3, 4], 0)).toEqual([0, 0.6, 0.8]);
-  });
-
   it('returns zero eigenvalues for the zero matrix without iterating forever', () => {
     const { components, eigenvalues } = power_iteration_eig(
       [

@@ -43,7 +43,7 @@ function to_array(X: DataMatrix): number[][] {
  * normalized, or the `c % d` standard basis vector when the candidate has
  * zero norm (so iteration always starts from a valid direction).
  */
-export function unit_init_vector(candidate: number[], c: number): number[] {
+function unit_init_vector(candidate: number[], c: number): number[] {
   const d = candidate.length;
   const vn = Math.sqrt(candidate.reduce((s, x) => s + x * x, 0));
   if (vn === 0) {
@@ -57,9 +57,6 @@ export function unit_init_vector(candidate: number[], c: number): number[] {
  * with deflation. Deterministic for a fixed `random_state`. Shared by
  * {@link PCA} and SOM principal-component initialization.
  *
- * @param matrix Symmetric `(d, d)` matrix (e.g. a covariance matrix).
- * @param k Number of components to extract (clamped to `d`).
- * @param random_state Seed for the deterministic power-iteration init.
  */
 export function power_iteration_eig(
   matrix: number[][],
@@ -187,7 +184,6 @@ export class PCA {
     return this;
   }
 
-  /** Projects `X` into the fitted component space (`n × n_components`). */
   transform(X: DataMatrix): number[][] {
     if (this.components_ == null || this.mean_ == null) {
       throw new Error('PCA.transform called before fit().');
