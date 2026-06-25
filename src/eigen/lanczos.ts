@@ -78,7 +78,6 @@ export function lanczos_smallest_eigenpairs(
     is_operator ? matrix.matvec(v) : dense_matvec(A!, v, n);
 
   // Lanczos converges to extreme eigenvalues (both largest and smallest).
-  // We extract the k smallest Ritz values from the tridiagonal eigenproblem.
 
   const rng = make_random_stream(random_seed);
 
@@ -104,7 +103,6 @@ export function lanczos_smallest_eigenpairs(
     for (let j = start_j; j < m_max; j++) {
       const v_j = basis_vectors[j];
 
-      // w = A * v_j
       const w = apply_matvec(v_j);
 
       // w = w - beta_{j-1} * v_{j-1}
@@ -136,7 +134,6 @@ export function lanczos_smallest_eigenpairs(
 
       // Check for lucky breakdown (invariant subspace found)
       if (beta_j < BREAKDOWN_TOL) {
-        // We've found an invariant subspace. Solve for what we have.
         const { values, vectors } = tridiagonal_ql(
           alpha.slice(),
           beta.slice(0, alpha.length - 1),
@@ -164,12 +161,10 @@ export function lanczos_smallest_eigenpairs(
 
       beta.push(beta_j);
 
-      // Normalize and append new basis vector
       const q_new = new Float64Array(n);
       for (let i = 0; i < n; i++) q_new[i] = w[i] / beta_j;
       basis_vectors.push(q_new);
 
-      // Check convergence periodically (every 5 iterations after minimum)
       if (j >= 2 * k && (j - start_j) % 5 === 4) {
         const { values, vectors } = tridiagonal_ql(
           alpha.slice(),
@@ -454,7 +449,6 @@ function tridiagonal_ql(
   for (let i = 0; i < off_diagonal.length; i++) e[i] = off_diagonal[i];
   e[m - 1] = 0;
 
-  // Eigenvector accumulator (identity)
   const V: number[][] = Array.from({ length: m }, (_, i) =>
     Array.from({ length: m }, (_, j) => (i === j ? 1 : 0)),
   );
@@ -463,7 +457,6 @@ function tridiagonal_ql(
     let iter = 0;
 
     while (true) {
-      // Find smallest mm >= l such that e[mm] is negligible
       let mm: number;
       for (mm = l; mm < m - 1; mm++) {
         const dd = Math.abs(d[mm]) + Math.abs(d[mm + 1]);
@@ -513,7 +506,6 @@ function tridiagonal_ql(
         d[i + 1] = g + p;
         g = c * r - b; // Critical: update g for next rotation / final e[l]
 
-        // Accumulate eigenvector rotations
         for (let k = 0; k < m; k++) {
           const temp = V[k][i + 1];
           V[k][i + 1] = s * V[k][i] + c * temp;

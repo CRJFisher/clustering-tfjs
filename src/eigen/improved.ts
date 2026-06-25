@@ -153,7 +153,6 @@ export function improved_jacobi_eigen(
 
   let eigenvalues: number[] = D.map((row, i) => row[i]);
 
-  // Post-processing for PSD matrices: clamp only negative eigenvalues to zero.
   // Small positive eigenvalues (e.g. 1e-9) are legitimate and represent
   // weakly connected components or near-separability in the graph.
   if (is_psd) {

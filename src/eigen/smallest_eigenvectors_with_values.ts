@@ -71,10 +71,7 @@ function count_near_zeros(eigenvalues: number[]): number {
   return c;
 }
 
-/**
- * Lanczos path: iterative eigensolver for large matrices.
- * Falls back to Jacobi if Lanczos fails.
- */
+/** Falls back to Jacobi if Lanczos fails. */
 function lanczos_path(
   matrix: tf.Tensor2D | LanczosOperator,
   k: number,
@@ -132,9 +129,6 @@ function lanczos_path(
   }
 }
 
-/**
- * Jacobi path: full eigendecomposition for small matrices or as fallback.
- */
 function jacobi_path(
   matrix: tf.Tensor2D,
   k: number,
