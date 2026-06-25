@@ -2,7 +2,6 @@ import type { BaseClustering, DataMatrix, HDBSCANParams } from './types';
 import type { ClusterRepresentations } from './representations';
 import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
-import { kdistance } from '../distance/kdistance';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
 import { mutual_reachability } from '../graph/mutual_reachability';
 import { minimum_spanning_tree } from '../graph/minimum_spanning_tree';
@@ -23,9 +22,9 @@ import {
  * AgglomerativeClustering there is no principled `predict` for unseen points.
  *
  * Density and tree primitives are consumed from their domain modules rather
- * than reimplemented: k-distance from `distance/kdistance`, mutual reachability
- * and the minimum spanning tree from `graph/`, and the condensed tree from
- * `graph/condensation_tree`.
+ * than reimplemented: core distances from an on-tensor `tf.topk` scan, mutual
+ * reachability and the minimum spanning tree from `graph/`, and the condensed
+ * tree from `graph/condensation_tree`.
  *
  * Parity: labels and probabilities match scikit-learn closely but not
  * bit-for-bit. Mutual-reachability weight ties are ordered differently across
@@ -178,6 +177,34 @@ export class HDBSCAN
     }
   }
 
+  /**
+   * Computes per-point core distances using `tf.topk` on the negated distance
+   * matrix. The core distance of point i is the distance to its
+   * (min_samples − 1)-th nearest neighbour, counting self as neighbour 0.
+   *
+   * Negation trick: `tf.topk` returns the largest values first, so negating
+   * `D_tensor` makes the min_samples smallest distances rank first. Column
+   * (min_samples − 1) of the negated result is the negated k-th order
+   * statistic; negating again recovers the core distance. The diagonal (self,
+   * distance 0) is always the least-negative value and occupies index 0.
+   *
+   * The returned tensor is owned by the caller and must be disposed after use.
+   */
+  private core_distances(
+    D_tensor: tf.Tensor2D,
+    min_samples: number,
+  ): tf.Tensor1D {
+    return tf.tidy(() => {
+      // Negate so topk (largest-first) selects the min_samples smallest distances.
+      const { values } = tf.topk(D_tensor.neg(), min_samples);
+      // Column min_samples-1 holds the negated k-th order statistic; un-negate.
+      return values
+        .slice([0, min_samples - 1], [-1, 1])
+        .reshape([-1])
+        .neg();
+    }) as tf.Tensor1D;
+  }
+
   async fit(X: DataMatrix): Promise<void> {
     // distance_matrix validates input shape and rejects empty input, all
     // before dispose() so a failed re-fit leaves prior fitted state intact. It
@@ -206,15 +233,16 @@ export class HDBSCAN
         n,
       );
 
-      // Incremental: read the distance tensor back to JS so the existing
-      // float64 MST/condensation tail runs unchanged. Task-54.5 moves this
-      // readback to the MST input boundary, where the front-half speedup is
-      // realized.
+      // Incremental: read the distance matrix back to JS for the
+      // mutual-reachability/MST tail. Task-54.5 moves this readback to
+      // the MST input boundary.
       const D = (await D_tensor.array()) as number[][];
 
-      // Core distances: k-th nearest neighbour distance (self counts first).
-      const neighbor_distances = D.map((row) => [...row].sort((a, b) => a - b));
-      const core = kdistance(neighbor_distances, min_samples);
+      // Core distances: on-tensor tf.topk (task-54.4). Incremental: read back
+      // for the JS mutual-reachability; task-54.5 eliminates this readback.
+      const core_tensor = this.core_distances(D_tensor, min_samples);
+      const core = await core_tensor.array();
+      core_tensor.dispose();
 
       // Mutual-reachability graph -> minimum spanning tree -> condensed tree.
       const mreach = mutual_reachability(D, core);
