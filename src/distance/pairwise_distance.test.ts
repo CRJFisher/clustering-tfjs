@@ -85,6 +85,57 @@ describe("pairwiseDistanceMatrix", () => {
       }
     }
   });
+
+  it("manhattan matrix is symmetric with zero diagonal", () => {
+    const pts = tf.randomUniform([5, 4]);
+    const dist = pairwise_distance_matrix(pts as tf.Tensor2D, "manhattan").arraySync() as number[][];
+    const eps = 1e-3;
+    for (let i = 0; i < 5; i++) {
+      expect(Math.abs(dist[i][i])).toBeLessThan(eps);
+      for (let j = 0; j < 5; j++) {
+        expect(Math.abs(dist[i][j] - dist[j][i])).toBeLessThan(eps);
+      }
+    }
+  });
+
+  it("euclidean clamps coincident points to exactly 0 (no NaN from the sqrt)", () => {
+    // Duplicate rows drive ‖x‖²+‖y‖²−2xᵀy slightly negative in float32; the
+    // tf.maximum(.,0) guard must keep the distance real and zero.
+    const dups = tf.tensor2d([
+      [1, 2],
+      [1, 2],
+      [4, 6],
+    ]);
+    const dist = pairwise_distance_matrix(dups, "euclidean").arraySync() as number[][];
+    expect(dist[0][1]).toBe(0);
+    expect(dist[1][0]).toBe(0);
+    expect(Number.isNaN(dist[0][2])).toBe(false);
+    dups.dispose();
+  });
+
+  it("cosine metric encodes angle: orthogonal→1, opposite→2, scaled→0", () => {
+    const vecs = tf.tensor2d([
+      [1, 0],
+      [0, 1],
+      [-1, 0],
+      [5, 0],
+    ]);
+    const d = pairwise_distance_matrix(vecs, "cosine").arraySync() as number[][];
+    expect(d[0][1]).toBeCloseTo(1, 4); // orthogonal
+    expect(d[0][2]).toBeCloseTo(2, 4); // opposite direction
+    expect(d[1][2]).toBeCloseTo(1, 4); // orthogonal
+    expect(d[0][3]).toBeCloseTo(0, 4); // same direction, different magnitude
+    vecs.dispose();
+  });
+
+  it("throws on an unsupported metric", () => {
+    // The library compiles to JS, so a runtime caller can bypass the union type.
+    const fn = pairwise_distance_matrix as (
+      p: tf.Tensor2D,
+      m: string,
+    ) => tf.Tensor2D;
+    expect(() => fn(points, "hamming")).toThrow(/Unsupported metric/);
+  });
 });
 
 describe("pairwise_distance_matrix – cosine parity with sklearn", () => {
