@@ -1,14 +1,16 @@
 /**
- * Minimal TypeScript implementation of the original MT19937 32-bit variant
- * used by NumPy's legacy `RandomState` (and therefore by scikit-learn).
+ * Minimal TypeScript implementation of the MT19937 32-bit generator described
+ * in Matsumoto & Nishimura (1998) and the public domain C reference.
  *
- * This port only exposes the functionality required by the k-means++ seeding
- * routine:
+ * Exposes only what the k-means++ seeding routine needs:
  *   • Generation of 32-bit unsigned integers (\[0, 2**32))
  *   • High-precision uniform floats in the half-open interval \[0, 1)
  *
- * The algorithm closely follows the reference implementation described in
- * Matsumoto & Nishimura (1998) and the public domain C code.
+ * Seeding uses the classic `init_genrand` recurrence. NumPy's legacy
+ * `RandomState` instead expands an integer seed through `init_by_array`, so an
+ * identical seed does not reproduce NumPy's stream here — only a deterministic
+ * MT19937 stream of our own. k-means++ requires reproducible randomness, not
+ * NumPy-identical randomness, so this is sufficient.
  */
 
 export class MT19937 {
@@ -50,8 +52,9 @@ export class MT19937 {
   }
 
   /**
-   * Returns a 53-bit precision float in the interval \[0, 1) identical to
-   * NumPy's `random_sample` implementation.
+   * Returns a 53-bit precision float in the interval \[0, 1). The two-word
+   * construction (27 high bits + 26 high bits scaled by 1/2**53) is the same
+   * conversion formula NumPy's `random_sample` uses.
    */
   public next_float(): number {
     const a = this.next_uint32() >>> 5; // Upper 27 bits
@@ -59,8 +62,9 @@ export class MT19937 {
     return (a * 67108864 + b) * 1.1102230246251565e-16; // 1 / 2**53
   }
 
-  /** Uniform integer in \[0, max). Mirrors NumPy's rejection sampling to
-   *  eliminate modulo bias so that sequences match exactly.
+  /** Uniform integer in \[0, max). Uses rejection sampling to discard the
+   *  values that would otherwise fold unevenly under the modulo, eliminating
+   *  modulo bias.
    */
   public next_int(max: number): number {
     if (!Number.isInteger(max) || max <= 0 || max > 0xffffffff) {
