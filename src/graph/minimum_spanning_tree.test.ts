@@ -113,7 +113,6 @@ describe('minimum_spanning_tree', () => {
     expect(edges.length).toBe(2);
     expect(edges[0]).toEqual({ source: 0, target: 2, weight: 1 });
     expect(edges[1]).toEqual({ source: 1, target: 2, weight: 2 });
-    // Verify the invariant directly.
     for (const e of edges) expect(e.source).toBeLessThan(e.target);
   });
 
