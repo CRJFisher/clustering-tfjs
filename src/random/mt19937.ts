@@ -20,17 +20,13 @@ export class MT19937 {
   private static readonly UPPER_MASK = 0x80000000;
   private static readonly LOWER_MASK = 0x7fffffff;
 
-  /** State vector – 624 32-bit unsigned ints. */
   private mt: Uint32Array = new Uint32Array(MT19937.N);
-
-  /** Current index within the state vector. */
   private index = MT19937.N;
 
   constructor(seed: number) {
     this.init(seed >>> 0); // ensure unsigned 32-bit
   }
 
-  /** Returns next 32-bit unsigned int in \[0, 2**32). */
   public next_uint32(): number {
     if (this.index >= MT19937.N) {
       this.twist();
