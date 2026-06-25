@@ -8,10 +8,10 @@ import {
 } from "./affinity";
 import { sparse_to_dense_array } from "./sparse";
 
-describe("Affinity matrix utilities", () => {
+describe("compute_rbf_affinity", () => {
   afterEach(() => tf.engine().disposeVariables());
 
-  it("computes symmetric RBF affinity with ones on diagonal", () => {
+  it("produces a symmetric matrix with ones on the diagonal", () => {
     const X = tf.tensor2d([
       [0, 0],
       [1, 0],
@@ -31,36 +31,7 @@ describe("Affinity matrix utilities", () => {
     }
   });
 
-  it("computes k-NN affinity with correct number of edges and symmetrisation", () => {
-    const X = tf.tensor2d([[0], [1], [2], [3]]);
-    const A = compute_knn_affinity(X, 1);
-    const arr = A.arraySync() as number[][];
-    let edge_count = 0;
-    for (let i = 0; i < 4; i++) {
-      expect(arr[i][i]).toBe(1);
-      for (let j = 0; j < 4; j++) {
-        expect(arr[i][j]).toBe(arr[j][i]);
-        if (arr[i][j] > 0) edge_count++;
-      }
-    }
-    expect(edge_count).toBe(4);
-  });
-
-  it("computes sparse k-NN affinity matching the dense helper", () => {
-    const X = tf.tensor2d([[0], [1], [2], [4]]);
-
-    const dense = compute_knn_affinity(X, 2);
-    const sparse = compute_sparse_knn_affinity(X, 2);
-
-    expect(sparse.rows).toBe(4);
-    expect(sparse.cols).toBe(4);
-    expect(sparse_to_dense_array(sparse)).toEqual(dense.arraySync());
-
-    dense.dispose();
-    X.dispose();
-  });
-
-  it("RBF affinity equals exp(-gamma * squared_distance)", () => {
+  it("off-diagonal value equals exp(-gamma * squared_distance)", () => {
     // Two points unit distance apart; squared distance is 1.
     const X = tf.tensor2d([
       [0, 0],
@@ -81,8 +52,27 @@ describe("Affinity matrix utilities", () => {
     expect(A[0][1]).toBeCloseTo(Math.exp(-0.5), 6);
     X.dispose();
   });
+});
 
-  it("knn with include_self=false has a zero diagonal", () => {
+describe("compute_knn_affinity", () => {
+  afterEach(() => tf.engine().disposeVariables());
+
+  it("produces correct edge count and symmetric weights", () => {
+    const X = tf.tensor2d([[0], [1], [2], [3]]);
+    const A = compute_knn_affinity(X, 1);
+    const arr = A.arraySync() as number[][];
+    let edge_count = 0;
+    for (let i = 0; i < 4; i++) {
+      expect(arr[i][i]).toBe(1);
+      for (let j = 0; j < 4; j++) {
+        expect(arr[i][j]).toBe(arr[j][i]);
+        if (arr[i][j] > 0) edge_count++;
+      }
+    }
+    expect(edge_count).toBe(4);
+  });
+
+  it("include_self=false yields zero diagonal and preserves symmetry", () => {
     const X = tf.tensor2d([[0], [1], [2], [3]]);
     const A = compute_knn_affinity(X, 1, false).arraySync() as number[][];
     for (let i = 0; i < 4; i++) {
@@ -93,11 +83,24 @@ describe("Affinity matrix utilities", () => {
     }
     X.dispose();
   });
-
 });
 
-describe("compute_sparse_knn_affinity – validation", () => {
+describe("compute_sparse_knn_affinity", () => {
   const X = () => tf.tensor2d([[0], [1], [2], [3]]);
+
+  it("matches the dense compute_knn_affinity output", () => {
+    const points = tf.tensor2d([[0], [1], [2], [4]]);
+
+    const dense = compute_knn_affinity(points, 2);
+    const sparse = compute_sparse_knn_affinity(points, 2);
+
+    expect(sparse.rows).toBe(4);
+    expect(sparse.cols).toBe(4);
+    expect(sparse_to_dense_array(sparse)).toEqual(dense.arraySync());
+
+    dense.dispose();
+    points.dispose();
+  });
 
   it("rejects a non-positive or non-integer k", () => {
     const points = X();
@@ -127,7 +130,6 @@ describe("compute_sparse_knn_affinity – validation", () => {
   });
 });
 
-
 describe("compute_cosine_affinity", () => {
   afterEach(() => tf.engine().disposeVariables());
 
@@ -151,7 +153,6 @@ describe("compute_cosine_affinity", () => {
     A.dispose();
     X.dispose();
   });
-
 });
 
 describe("compute_knn_affinity – tensor lifecycle", () => {
