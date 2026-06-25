@@ -60,4 +60,10 @@ describe('tf-adapter lazy wrappers', () => {
     expect(result.dataSync()[0]).toBe(42);
     result.dispose();
   });
+
+  it('named exports have stable identity through the default export proxy', () => {
+    expect(tf.default.tensor2d).toBe(tf.tensor2d);
+    expect(tf.default.tidy).toBe(tf.tidy);
+    expect(tf.default.concat).toBe(tf.concat);
+  });
 });
