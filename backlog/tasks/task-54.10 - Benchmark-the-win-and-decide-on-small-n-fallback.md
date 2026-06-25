@@ -94,10 +94,4 @@ this task removes.
 `src/graph/mutual_reachability.ts` is retained — it is the JS reference oracle for the
 `mutual_reachability.test.ts` fixture suite and the condensation_tree end-to-end tests.
 
-### Added
-
-- `scripts/benchmark-hdbscan-postmigration.ts` — benchmark runner producing results on both
-  `cpu` and `tensorflow` backends with in-session comparison and vs-baseline diff.
-- `benchmarks/hdbscan-postmigration.{yaml,md}` — committed benchmark results.
-- `package.json`: `"benchmark:hdbscan:postmigration"` script.
 <!-- SECTION:NOTES:END -->
