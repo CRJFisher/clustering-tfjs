@@ -3,7 +3,6 @@ import type { ClusterRepresentations } from './representations';
 import * as tf from '../backend/adapter';
 import { is_tensor } from '../tensor/tensor_guards';
 import { pairwise_distance_matrix } from '../distance/pairwise_distance';
-import { mutual_reachability } from '../graph/mutual_reachability';
 import { minimum_spanning_tree } from '../graph/minimum_spanning_tree';
 import {
   build_condensation_tree,
@@ -210,7 +209,7 @@ export class HDBSCAN
     // before dispose() so a failed re-fit leaves prior fitted state intact. It
     // returns an (n, n) Tensor2D this method owns and disposes exactly once.
     const D_tensor = this.distance_matrix(X);
-    let core_tensor: tf.Tensor1D | null = null;
+    let M_tensor: tf.Tensor2D | null = null;
     try {
       const n = D_tensor.shape[0];
 
@@ -234,19 +233,24 @@ export class HDBSCAN
         n,
       );
 
-      // The distance matrix and core distances are computed on-tensor; both
-      // are read back to JS here because the mutual-reachability/MST tail
-      // runs in plain JS.
-      const D = (await D_tensor.array()) as number[][];
+      // Fuse core distances and mutual-reachability on-tensor in a single
+      // tf.tidy block. All intermediates (negated D, topk outputs, reshaped
+      // core vectors) are disposed by the tidy; M_tensor is the sole output.
+      // M[i,j] = max(core[i], core[j], D[i,j]) via broadcast tf.maximum.
+      M_tensor = tf.tidy(() => {
+        const core = this.core_distances(D_tensor, min_samples);
+        return tf.maximum(
+          tf.maximum(core.reshape([n, 1]), core.reshape([1, n])),
+          D_tensor,
+        );
+      }) as tf.Tensor2D;
 
-      core_tensor = this.core_distances(D_tensor, min_samples);
-      const core = await core_tensor.array();
-      core_tensor.dispose();
-      core_tensor = null;
+      // Single GPU→CPU readback: flat row-major Float32Array of length n*n.
+      const mreach_flat = (await M_tensor.data()) as Float32Array;
+      M_tensor.dispose();
+      M_tensor = null;
 
-      // Mutual-reachability graph -> minimum spanning tree -> condensed tree.
-      const mreach = mutual_reachability(D, core);
-      const mst = minimum_spanning_tree(mreach);
+      const mst = minimum_spanning_tree(mreach_flat, n);
       const tree = build_condensation_tree(mst, n, min_cluster_size);
 
       const selected = excess_of_mass(tree, n, {
@@ -266,7 +270,7 @@ export class HDBSCAN
         ? exemplar_indices
         : null;
     } finally {
-      core_tensor?.dispose();
+      M_tensor?.dispose();
       D_tensor.dispose();
     }
   }

@@ -14,14 +14,14 @@ export interface MstEdge {
 
 /**
  * Edges are canonicalised so `source < target`.
- * When a flat `Float64Array` is passed without an explicit `n`, the node
- * count is inferred as `round(sqrt(length))`.
+ * When a flat typed array is passed without an explicit `n`, the node count
+ * is inferred as `round(sqrt(length))`.
  */
 export function minimum_spanning_tree(
-  distance_matrix: number[][] | Float64Array,
+  distance_matrix: number[][] | Float32Array | Float64Array,
   n?: number,
 ): MstEdge[] {
-  const is_flat = distance_matrix instanceof Float64Array;
+  const is_flat = !(distance_matrix instanceof Array);
   const size = is_flat
     ? (n ?? Math.round(Math.sqrt(distance_matrix.length)))
     : distance_matrix.length;
@@ -32,7 +32,7 @@ export function minimum_spanning_tree(
 
   const at = is_flat
     ? (i: number, j: number): number =>
-        (distance_matrix as Float64Array)[i * size + j]
+        (distance_matrix as Float32Array | Float64Array)[i * size + j]
     : (i: number, j: number): number =>
         (distance_matrix as number[][])[i][j];
 

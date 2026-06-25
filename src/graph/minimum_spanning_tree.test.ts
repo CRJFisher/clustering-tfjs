@@ -63,6 +63,19 @@ describe('minimum_spanning_tree', () => {
     expect(edges[0]).toEqual({ source: 0, target: 1, weight: 1 });
   });
 
+  it('accepts a flat Float32Array with explicit n', () => {
+    const D = euclidean_matrix([[0], [1], [2.5]]);
+    const flat = new Float32Array(9);
+    for (let i = 0; i < 3; i++)
+      for (let j = 0; j < 3; j++) flat[i * 3 + j] = D[i][j];
+    const edges = sort_edges(minimum_spanning_tree(flat, 3));
+    expect(edges.length).toBe(2);
+    expect(edges[0]).toEqual({ source: 0, target: 1, weight: 1 });
+    expect(edges[1].source).toBe(1);
+    expect(edges[1].target).toBe(2);
+    expect(edges[1].weight).toBeCloseTo(1.5, 5);
+  });
+
   it('infers n from a flat Float64Array length when n is omitted', () => {
     const D = euclidean_matrix([[0], [1], [2.5]]);
     const flat = new Float64Array(9);
