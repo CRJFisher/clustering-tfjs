@@ -1,67 +1,57 @@
-import { is_react_native, is_node, is_browser, get_platform } from './platform';
+import { is_react_native, is_node, get_platform } from './platform';
 
-describe('platform detection', () => {
-  // Store original globals for cleanup
-  const original_global_this = { ...globalThis };
+const original_global_this = { ...globalThis };
 
-  function set_global(key: string, value: unknown): void {
-    (globalThis as Record<string, unknown>)[key] = value;
-  }
+function set_global(key: string, value: unknown): void {
+  (globalThis as Record<string, unknown>)[key] = value;
+}
 
-  function delete_global(key: string): void {
-    delete (globalThis as Record<string, unknown>)[key];
-  }
+function delete_global(key: string): void {
+  delete (globalThis as Record<string, unknown>)[key];
+}
 
-  afterEach(() => {
-    // Clean up any RN globals we set
-    for (const key of ['HermesInternal', '__fbBatchedBridge', 'nativeCallSyncHook']) {
-      if (!(key in original_global_this)) {
-        delete_global(key);
-      }
+afterEach(() => {
+  for (const key of ['HermesInternal', '__fbBatchedBridge', 'nativeCallSyncHook']) {
+    if (!(key in original_global_this)) {
+      delete_global(key);
     }
+  }
+});
+
+describe('is_react_native', () => {
+  it('returns false in standard Node.js environment', () => {
+    expect(is_react_native()).toBe(false);
   });
 
-  describe('isReactNative', () => {
-    it('returns false in standard Node.js environment', () => {
-      expect(is_react_native()).toBe(false);
-    });
-
-    it('returns true when HermesInternal is defined', () => {
-      set_global('HermesInternal', {});
-      expect(is_react_native()).toBe(true);
-    });
-
-    it('returns true when __fbBatchedBridge is defined', () => {
-      set_global('__fbBatchedBridge', {});
-      expect(is_react_native()).toBe(true);
-    });
-
-    it('returns true when nativeCallSyncHook is defined', () => {
-      set_global('nativeCallSyncHook', () => {});
-      expect(is_react_native()).toBe(true);
-    });
+  it('returns true when HermesInternal is defined', () => {
+    set_global('HermesInternal', {});
+    expect(is_react_native()).toBe(true);
   });
 
-  describe('isNode', () => {
-    it('returns true in Node.js environment', () => {
-      expect(is_node()).toBe(true);
-    });
+  it('returns true when __fbBatchedBridge is defined', () => {
+    set_global('__fbBatchedBridge', {});
+    expect(is_react_native()).toBe(true);
   });
 
-  describe('isBrowser', () => {
-    it('returns false in Node.js environment', () => {
-      expect(is_browser()).toBe(false);
-    });
+  it('returns true when nativeCallSyncHook is defined', () => {
+    set_global('nativeCallSyncHook', () => {});
+    expect(is_react_native()).toBe(true);
+  });
+});
+
+describe('is_node', () => {
+  it('returns true in Node.js environment', () => {
+    expect(is_node()).toBe(true);
+  });
+});
+
+describe('get_platform', () => {
+  it('returns "node" in Node.js environment', () => {
+    expect(get_platform()).toBe('node');
   });
 
-  describe('getPlatform', () => {
-    it('returns "node" in Node.js environment', () => {
-      expect(get_platform()).toBe('node');
-    });
-
-    it('returns "react-native" when RN globals are present', () => {
-      set_global('HermesInternal', {});
-      expect(get_platform()).toBe('react-native');
-    });
+  it('returns "react-native" when RN globals are present', () => {
+    set_global('HermesInternal', {});
+    expect(get_platform()).toBe('react-native');
   });
 });
