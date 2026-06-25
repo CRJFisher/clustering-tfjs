@@ -123,7 +123,6 @@ export class PCA {
 
   /** Principal axes as rows (`n_components × n_features`). Null until `fit`. */
   public components_: number[][] | null = null;
-  /** Variance explained by each component. Null until `fit`. */
   public explained_variance_: number[] | null = null;
   /** Per-feature empirical mean used for centering. Null until `fit`. */
   public mean_: number[] | null = null;
