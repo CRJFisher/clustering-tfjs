@@ -25,7 +25,6 @@ export interface BaseClusteringParams extends CoreClusteringParams {
 }
 
 export interface KMeansParams extends BaseClusteringParams {
-  /** Maximum number of iterations for the Lloyd update phase. */
   max_iter?: number;
 
   /** Relative tolerance on inertia change to declare convergence. */
@@ -167,7 +166,6 @@ export interface BaseClustering<
   /** Async because underlying operations (GPU kernels, web workers) may not complete synchronously. */
   fit(X: DataMatrix): Promise<void>;
 
-  /** Convenience wrapper: fits the model and returns labels in a single call. */
   fit_predict(X: DataMatrix): Promise<number[]>;
 }
 
@@ -241,7 +239,6 @@ export interface SOMParams extends CoreClusteringParams {
 }
 
 export interface SOMState {
-  /** Shape: [height, width, features]. */
   weights: number[][][];
   total_samples: number;
   current_epoch: number;
