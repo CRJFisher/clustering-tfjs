@@ -56,7 +56,6 @@ describe("AgglomerativeClustering class structure & validation", () => {
   it("instantiates with minimal valid params", () => {
     const model = new AgglomerativeClustering({ n_clusters: 3 });
     expect(model.params.n_clusters).toBe(3);
-    // defaults
     expect(model.params.linkage ?? "ward").toBe("ward");
   });
 
@@ -91,7 +90,6 @@ describe("AgglomerativeClustering class structure & validation", () => {
     const model = new AgglomerativeClustering({ n_clusters: 2, linkage: "single" });
     const labels = await model.fit_predict(X);
     expect(labels.length).toBe(4);
-    // Expect exactly two unique labels 0 and 1
     const uniq = Array.from(new Set(labels));
     expect(uniq.length).toBe(2);
   });
@@ -114,7 +112,6 @@ describe("AgglomerativeClustering – edge cases", () => {
     ];
     const model = new AgglomerativeClustering({ n_clusters: 3, linkage: "ward" });
     const labels = await model.fit_predict(X);
-    // Every sample is its own cluster — three distinct labels, no merges.
     expect(new Set(labels).size).toBe(3);
     expect(model.children_).toEqual([]);
   });
@@ -168,7 +165,6 @@ describe("AgglomerativeClustering – distances_", () => {
     const d = model.distances_!;
     expect(d[0]).toBeCloseTo(0.1, 3);
     expect(d[1]).toBeCloseTo(0.1, 3);
-    // Final merge joins the two far-apart pairs (min cross distance ~7.0).
     expect(d[2]).toBeGreaterThan(6.9);
     expect(d[1]).toBeLessThanOrEqual(d[2]);
   });
@@ -251,16 +247,13 @@ describe("AgglomerativeClustering – distance_threshold", () => {
   });
 
   it("excludes a merge whose distance equals the threshold (strict <)", async () => {
-    // Collinear points with exact integer single-linkage merge distances:
-    // merge (0,1) at distance 1, then merge with point 2 at distance 2.
+    // Collinear points: merge (0,1) at distance 1, then merge with point 2 at distance 2.
     const LINE = [
       [0, 0],
       [0, 1],
       [0, 3],
     ];
 
-    // threshold exactly 1.0 → the distance-1 merge is at the threshold and must
-    // be excluded, leaving all 3 points as singletons.
     const at_boundary = new AgglomerativeClustering({
       distance_threshold: 1.0,
       linkage: "single",
@@ -269,7 +262,6 @@ describe("AgglomerativeClustering – distance_threshold", () => {
     expect(new Set(at_labels).size).toBe(3);
     expect(at_boundary.distances_).toEqual([]);
 
-    // threshold just above 1.0 → the distance-1 merge is now included → 2 clusters.
     const above = new AgglomerativeClustering({
       distance_threshold: 1.5,
       linkage: "single",
@@ -434,6 +426,52 @@ describe("AgglomerativeClustering – compute_distance_matrix algebraic properti
       expect(max_asymmetry).toBeLessThan(1e-10);
     });
   }
+});
+
+describe("AgglomerativeClustering – n_clusters > n_samples", () => {
+  it("throws when n_clusters exceeds the number of samples", async () => {
+    const model = new AgglomerativeClustering({ n_clusters: 5, linkage: "ward" });
+    await expect(model.fit([[0, 0], [1, 1], [2, 2]])).rejects.toThrow(
+      /n_clusters cannot exceed/,
+    );
+  });
+});
+
+describe("AgglomerativeClustering – manhattan metric", () => {
+  it("produces 2 correct clusters for well-separated pairs", async () => {
+    const X = [
+      [0, 0],
+      [0, 1],
+      [10, 10],
+      [10, 11],
+    ];
+    const model = new AgglomerativeClustering({ n_clusters: 2, linkage: "single", metric: "manhattan" });
+    const labels = await model.fit_predict(X);
+    expect(new Set(labels).size).toBe(2);
+    expect(labels[0]).toBe(labels[1]);
+    expect(labels[2]).toBe(labels[3]);
+    expect(labels[0]).not.toBe(labels[2]);
+  });
+});
+
+describe("AgglomerativeClustering – compute_medoids errors", () => {
+  it("throws when called before fit()", async () => {
+    const model = new AgglomerativeClustering({ n_clusters: 2 });
+    await expect(model.compute_medoids([[0, 0], [1, 1]])).rejects.toThrow(
+      /called before fit/,
+    );
+  });
+
+  it("throws for precomputed metric", async () => {
+    const D = [[0, 1], [1, 0]];
+    const model = new AgglomerativeClustering({
+      n_clusters: 1,
+      linkage: "average",
+      metric: "precomputed",
+    });
+    await model.fit(D);
+    await expect(model.compute_medoids(D)).rejects.toThrow(/precomputed/);
+  });
 });
 
 describe("AgglomerativeClustering – compute_medoids large-n smoke test", () => {

@@ -44,11 +44,6 @@ export class AgglomerativeClustering
    */
   public medoid_indices_: Int32Array | null = null;
 
-  /**
-   * Cluster labels produced by `fit` / `fit_predict`.
-   *
-   * Populated after calling `fit`.
-   */
   public labels_: number[] | null = null;
 
   /**
@@ -69,10 +64,6 @@ export class AgglomerativeClustering
    */
   public distances_: number[] | null = null;
 
-  /**
-   * Number of leaves in the hierarchical clustering tree, equal to the number
-   * of input samples. Populated by `fit`.
-   */
   public n_leaves_: number | null = null;
 
   private static readonly VALID_LINKAGES = [
@@ -89,35 +80,15 @@ export class AgglomerativeClustering
     'precomputed',
   ] as const;
 
-  /**
-   * @param params - Configuration for agglomerative clustering.
-   */
   constructor(params: AgglomerativeClusteringParams) {
     this.params = { ...params };
     AgglomerativeClustering.validate_params(this.params);
   }
 
-  /**
-   * Fits the agglomerative clustering model to the input data.
-   *
-   * @param _X - Input data matrix of shape [n_samples, n_features].
-   * @returns A promise that resolves when fitting is complete.
-   * @throws {Error} If input is empty or n_clusters exceeds n_samples.
-   *
-   * @example
-   * ```typescript
-   * const agg = new AgglomerativeClustering({ n_clusters: 3 });
-   * await agg.fit([[1, 2], [3, 4], [5, 6]]);
-   * console.log(agg.labels_);
-   * ```
-   */
   async fit(_X: DataMatrix): Promise<void> {
     const { metric = 'euclidean', linkage = 'ward' } = this.params;
     const use_threshold = this.params.distance_threshold != null;
 
-    // Resolve a flat row-major (i*n+j) Float64 distance matrix `D` and
-    // `n_samples`, either from a precomputed matrix or by computing pairwise
-    // distances from the data points.
     let D: Float64Array;
     let n_samples: number;
 
@@ -155,7 +126,6 @@ export class AgglomerativeClustering
       throw new Error('n_clusters cannot exceed number of samples.');
     }
 
-    // Handle trivial case of single sample separately
     if (n_samples === 1) {
       this.labels_ = [0];
       this.children_ = [];
@@ -176,7 +146,6 @@ export class AgglomerativeClustering
       n_samples,
     );
 
-    // Derive flat cluster labels using Union-Find over the merge history
     const parent = new Int32Array(n_samples);
     for (let i = 0; i < n_samples; i++) parent[i] = i;
 
@@ -188,14 +157,12 @@ export class AgglomerativeClustering
       return x;
     }
 
-    // Replay all merges — the survivor absorbs the removed cluster
     for (const m of merges) {
       const ra = find(m.cluster_a);
       const rb = find(m.cluster_b);
       parent[rb] = ra;
     }
 
-    // Assign contiguous labels 0..n_clusters-1
     const labels = new Array<number>(n_samples);
     const root_to_label = new Map<number, number>();
     let next_label = 0;
@@ -213,28 +180,13 @@ export class AgglomerativeClustering
     this.n_leaves_ = n_samples;
   }
 
-  /**
-   * Fits the model and returns cluster labels.
-   *
-   * @param _X - Input data matrix of shape [n_samples, n_features].
-   * @returns Array of cluster labels for each sample.
-   * @throws {Error} If input is empty or n_clusters exceeds n_samples.
-   */
   async fit_predict(_X: DataMatrix): Promise<number[]> {
     await this.fit(_X);
-    if (this.labels_ == null) {
-      throw new Error('AgglomerativeClustering failed to compute labels.');
-    }
-    return this.labels_;
+    return this.labels_!;
   }
 
   /**
-   * Computes the representative sample (medoid) of every cluster — the sample
-   * closest to its cluster mean under the estimator's metric — and stores them
-   * in {@link medoid_indices_}.
-   *
-   * @param X The data the model was fitted on (same row order as `labels_`).
-   * @returns The populated `medoid_indices_`.
+   * @param X Must be the data the model was fitted on (same row order as `labels_`).
    * @throws {Error} If called before `fit()`.
    */
   async compute_medoids(X: DataMatrix): Promise<Int32Array> {
@@ -430,10 +382,6 @@ export class AgglomerativeClustering
     return children;
   }
 
-  /**
-   * Validates that a precomputed distance matrix is square, symmetric, and has
-   * a zero diagonal.
-   */
   private static validate_precomputed(D: number[][]): void {
     const n = D.length;
     if (n === 0) {
