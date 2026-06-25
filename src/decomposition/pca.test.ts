@@ -207,3 +207,42 @@ describe('power-iteration eigensolver – degenerate matrices', () => {
     expect(eigenvalues[0]).toBeCloseTo(4, 12);
   });
 });
+
+describe('power-iteration eigensolver – known eigenstructure', () => {
+  it('recovers eigenvalues (descending) and orthonormal eigenvectors', () => {
+    // [[2,1],[1,2]] has eigenvalues 3 (along [1,1]) and 1 (along [1,-1]).
+    const { components, eigenvalues } = power_iteration_eig(
+      [
+        [2, 1],
+        [1, 2],
+      ],
+      2,
+      0,
+    );
+    expect(eigenvalues[0]).toBeCloseTo(3, 6);
+    expect(eigenvalues[1]).toBeCloseTo(1, 6);
+
+    // Each eigenvector is unit-norm and the two are mutually orthogonal.
+    for (const v of components) {
+      expect(Math.hypot(v[0], v[1])).toBeCloseTo(1, 6);
+    }
+    const dot = components[0][0] * components[1][0] + components[0][1] * components[1][1];
+    expect(dot).toBeCloseTo(0, 6);
+
+    // Leading eigenvector points along ±[1,1]/√2.
+    expect(Math.abs(components[0][0])).toBeCloseTo(Math.SQRT1_2, 6);
+    expect(Math.abs(components[0][1])).toBeCloseTo(Math.SQRT1_2, 6);
+  });
+
+  it('is deterministic for a fixed random_state', () => {
+    const matrix = [
+      [5, 2, 0],
+      [2, 5, 0],
+      [0, 0, 1],
+    ];
+    const a = power_iteration_eig(matrix, 3, 7);
+    const b = power_iteration_eig(matrix, 3, 7);
+    expect(b.eigenvalues).toEqual(a.eigenvalues);
+    expect(b.components).toEqual(a.components);
+  });
+});
