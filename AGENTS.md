@@ -25,6 +25,28 @@ The library is organized by **what the code does** (action/domain folders), not 
 
 Test files are **colocated** with the source they test (`foo.ts` ↔ `foo.test.ts`); there is no separate `test/` tree. Shared reference fixtures live under `__fixtures__/`.
 
+## Comments
+
+Comments describe **WHY**, never **WHAT**. If the code is self-explanatory from names and types alone, write no comment at all.
+
+**Remove:**
+
+- Any comment that restates what a name, type, or shape already says (`/** Cluster labels. */`, `// (n, n)`, `/** Returns the centroids. */`)
+- `@param` / `@returns` tags for parameters or return values whose meaning is obvious from the signature
+- Section dividers (`/* Internals */`, `/* API */`)
+- Inline labels that describe what the next line does (`// Validate inputs`, `// Calculate metrics`, `// unit rows`)
+- Change-history notes or "now does X" framing — that belongs in commit messages, not source
+- "should" prefix in test names (write what the code *does*, not what it *should* do)
+
+**Keep:**
+
+- Non-obvious algorithm choices, invariants, or constraints not visible from the code
+- sklearn / scipy / NumPy parity notes (explaining *why* an expression is arranged as it is)
+- Sentinel-value semantics, mutation side-effects, or complexity analysis the reader would miss
+- Formulas and mathematical rationale for non-obvious computations
+
+Write in **canonical, present-tense** style. Never write "updated to…", "revised to…", or "previously did X". Documentation describes the system as it currently is.
+
 ## Testing practices
 
 - **Test at scale.** Any method operating on per-sample arrays must have at least one test at n ≥ 300k. JS argument-spread (`Math.max(...array)`) silently crashes above ~200k.
