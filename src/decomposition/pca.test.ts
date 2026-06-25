@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { PCA } from '..';
-import { power_iteration_eig } from './pca';
+import { power_iteration_eig, unit_init_vector } from './pca';
 import * as tf from '../../test_support/tensorflow_helper';
 
 const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'pca');
@@ -173,6 +173,12 @@ describe('PCA – API behaviour', () => {
 });
 
 describe('power_iteration_eig – degenerate matrices', () => {
+  it('falls back to a basis vector when the init candidate has zero norm', () => {
+    expect(unit_init_vector([0, 0, 0], 0)).toEqual([1, 0, 0]);
+    expect(unit_init_vector([0, 0, 0], 4)).toEqual([0, 1, 0]);
+    expect(unit_init_vector([0, 3, 4], 0)).toEqual([0, 0.6, 0.8]);
+  });
+
   it('returns zero eigenvalues for the zero matrix without iterating forever', () => {
     const { components, eigenvalues } = power_iteration_eig(
       [

@@ -20,7 +20,6 @@ const GATED_MODULES = [
   'src/clustering/hdbscan.ts',
   'src/clustering/medoid_selection.ts',
   'src/decomposition/pca.ts',
-  'src/distance/kdistance.ts',
   'src/graph/condensation_tree.ts',
   'src/graph/minimum_spanning_tree.ts',
   'src/graph/mutual_reachability.ts',
