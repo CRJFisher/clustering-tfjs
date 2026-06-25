@@ -60,7 +60,6 @@ export const env: typeof tf_types.env = () => ensure_backend().env();
 export const engine: typeof tf_types.engine = () => ensure_backend().engine();
 export const dispose_variables: typeof tf_types.disposeVariables = () => ensure_backend().disposeVariables();
 
-// Namespace — linalg.qr() is used by eigen_qr.ts
 export const linalg: typeof tf_types.linalg = new Proxy({} as typeof tf_types.linalg, {
   get(_target, prop: string | symbol) {
     const linalg_ns = ensure_backend().linalg;
