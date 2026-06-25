@@ -101,11 +101,11 @@ describe("findOptimalClusters", () => {
       // One evaluation per k in [2, 5].
       expect(result.evaluations.map((e) => e.k).sort()).toEqual([2, 3, 4, 5]);
 
-      // The core fix: the output cluster count is driven by k (via two-phase
-      // grouping of neuron weights), NOT by the SOM grid size. Each evaluation
-      // yields at most k labels — never the grid's neuron count. (A macro-
-      // cluster of neurons with no assigned samples can leave fewer than k
-      // distinct labels, which is expected.)
+      // The output cluster count is driven by k (via two-phase grouping of
+      // neuron weights), NOT by the SOM grid size. Each evaluation yields at
+      // most k labels — never the grid's neuron count. (A macro-cluster of
+      // neurons with no assigned samples can leave fewer than k distinct
+      // labels, which is expected.)
       for (const evaluation of result.evaluations) {
         const unique = new Set(evaluation.labels);
         expect(unique.size).toBeGreaterThanOrEqual(2);
@@ -228,6 +228,14 @@ describe("findOptimalClusters", () => {
     ).rejects.toThrow('Unknown algorithm: invalid');
   });
 
+  it("throws when sample count cannot support min_clusters", async () => {
+    // effective_max_clusters is capped at n_samples - 1, so 2 samples cannot
+    // support 2 clusters.
+    await expect(
+      find_optimal_clusters([[1, 2], [2, 3]], { min_clusters: 2 }),
+    ).rejects.toThrow('Not enough samples (2) for minimum clusters (2)');
+  });
+
   it("should pass algorithm parameters", async () => {
     const data = [
       [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]
@@ -280,7 +288,7 @@ describe("findOptimalClusters", () => {
     }
   });
 
-  describe("Normalized scoring (AC#1)", () => {
+  describe("Normalized scoring", () => {
     it("should produce combined scores in [0, 1] range", async () => {
       const data = [
         [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11],
@@ -337,7 +345,7 @@ describe("findOptimalClusters", () => {
     });
   });
 
-  describe("Silhouette-only method (AC#3)", () => {
+  describe("Silhouette-only method", () => {
     it("should select k with highest silhouette", async () => {
       const data = [
         [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11],
@@ -376,7 +384,7 @@ describe("findOptimalClusters", () => {
     });
   });
 
-  describe("Elbow method (AC#2)", () => {
+  describe("Elbow method", () => {
     it("should populate wss field", async () => {
       const data = [
         [1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]
