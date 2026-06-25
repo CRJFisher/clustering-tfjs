@@ -82,7 +82,6 @@ export class SpectralClustering
     BaseClustering<SpectralClusteringParams>,
     ClusterRepresentations
 {
-  /** Hyper-parameters (deep-copied from user input). */
   public readonly params: SpectralClusteringParams;
 
   public labels_: number[] | null = null;
@@ -236,18 +235,19 @@ export class SpectralClustering
         '../graph/component_indicators'
       );
 
-      // Use all component indicators, not just n_clusters
-      // This allows k-means to properly group components into clusters
       U = create_component_indicators(
         component_labels,
         num_components,
-        num_components, // Use all components, not this.params.n_clusters
+        // All components, not n_clusters: k-means then groups them into clusters.
+        num_components,
       );
 
-      // Component indicators are already normalized, no scaling needed
+      // Indicator columns are already unit-norm, so the D^{1/2} scaling the
+      // eigenvector path applies is intentionally skipped here.
 
       if (this.capture_debug_info) {
-        this.debug_info_!.laplacian_spectrum = Array(num_components).fill(0); // Components have eigenvalue 0
+        // Constant per-component indicators are eigenvectors with eigenvalue 0.
+        this.debug_info_!.laplacian_spectrum = Array(num_components).fill(0);
 
         const emb_data = await U.data();
         const [n, k] = U.shape;
@@ -767,13 +767,11 @@ export class SpectralClustering
       return params.n_neighbors;
     }
 
-    // Match sklearn's default: round(log2(n_samples))
-    // Handle edge case: ensure at least 1 neighbor
+    // sklearn default: round(log2(n_samples)), floored at 1 neighbour.
     const default_k = Math.round(Math.log2(n_samples));
     return Math.max(1, default_k);
   }
 
-  /** Extracted to support parameter sweep. */
   private async compute_embedding_from_affinity(
     affinity_matrix: tf.Tensor2D,
   ): Promise<tf.Tensor2D> {
