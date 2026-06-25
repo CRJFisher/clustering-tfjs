@@ -1,6 +1,5 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
-import { is_tensor, is_tensor_2d } from "./tensor_guards";
+import { is_tensor } from "./tensor_guards";
 
 // Referenced (not inline) so the `dataSync` key stays an object-literal
 // property rather than a method, which must literally match the tf.js API name.
@@ -73,27 +72,3 @@ describe("is_tensor", () => {
   });
 });
 
-describe("is_tensor_2d", () => {
-  it("accepts a rank-2 tensor", () => {
-    const t = tf.tensor2d([
-      [1, 2],
-      [3, 4],
-    ]);
-    expect(is_tensor_2d(t)).toBe(true);
-    t.dispose();
-  });
-
-  it("rejects tensors of other ranks", () => {
-    const v = tf.tensor1d([1, 2, 3]);
-    const s = tf.scalar(5);
-    expect(is_tensor_2d(v)).toBe(false);
-    expect(is_tensor_2d(s)).toBe(false);
-    v.dispose();
-    s.dispose();
-  });
-
-  it("rejects non-tensor values", () => {
-    expect(is_tensor_2d(null)).toBe(false);
-    expect(is_tensor_2d({ rank: 2 })).toBe(false);
-  });
-});

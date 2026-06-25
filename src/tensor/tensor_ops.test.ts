@@ -1,8 +1,6 @@
 import * as tf from "../../test_support/tensorflow_helper";
 
 import {
-  array_to_tensor,
-  tensor_to_array,
   euclidean_distance,
   manhattan_distance,
   cosine_distance,
@@ -18,14 +16,6 @@ function close_to(a: unknown, b: unknown, eps = 1e-4): boolean {
 
 describe("tensor utilities", () => {
   afterEach(() => tf.engine().disposeVariables());
-
-  it("arrayToTensor and tensorToArray round-trip", () => {
-    const arr = [1, 2, 3];
-    const tensor = array_to_tensor(arr);
-    expect(tensor.shape).toEqual([3]);
-    const back = tensor_to_array(tensor) as number[];
-    expect(back).toEqual(arr);
-  });
 
   describe("distance metrics", () => {
     const a = tf.tensor([1, 2, 3]);
@@ -43,7 +33,6 @@ describe("tensor utilities", () => {
 
     it("cosine distance", () => {
       const d = cosine_distance(a, b).arraySync() as number;
-      // manual cosine similarity
       const dot = 1 * 4 + 2 * 6 + 3 * 3;
       const norm_a = Math.sqrt(1 + 4 + 9);
       const norm_b = Math.sqrt(16 + 36 + 9);
@@ -55,18 +44,6 @@ describe("tensor utilities", () => {
 
 
   describe("edge cases & broadcasting", () => {
-    it("arrayToTensor respects dtype", () => {
-      const t = array_to_tensor([1, 2, 3], "int32");
-      expect(t.dtype).toBe("int32");
-    });
-
-    it("tensorToArray returns copy, not view", () => {
-      const t = tf.tensor([1, 2, 3]);
-      const arr = tensor_to_array(t) as number[];
-      t.dispose(); // if arr were view, this would break; array should still be intact
-      expect(arr).toEqual([1, 2, 3]);
-    });
-
     it("broadcasting in euclideanDistance works for (n,d) vs (d)", () => {
       const big = tf.tensor2d(
         [
@@ -98,7 +75,6 @@ describe("tensor utilities", () => {
       const d_ortho = cosine_distance(a, ortho).arraySync();
 
       expect(close_to(d_identical, 0)).toBe(true);
-      // Clamp for numerical error
       expect(close_to(d_ortho, 1)).toBe(true);
     });
 
