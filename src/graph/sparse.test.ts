@@ -7,8 +7,8 @@ import {
   sparse_row_sums,
 } from './sparse';
 
-describe('SparseMatrix CSR helpers', () => {
-  it('stores sorted CSR rows and applies matvec', () => {
+describe('sparse_matrix_from_row_maps', () => {
+  it('builds a CSR matrix with column indices sorted ascending', () => {
     const rows = [
       new Map([
         [2, 3],
@@ -22,27 +22,6 @@ describe('SparseMatrix CSR helpers', () => {
     expect(Array.from(matrix.indptr)).toEqual([0, 2, 3]);
     expect(Array.from(matrix.indices)).toEqual([0, 2, 1]);
     expect(Array.from(matrix.data)).toEqual([1, 3, 2]);
-
-    const result = sparse_matvec(matrix, new Float64Array([10, 20, 30]));
-    expect(Array.from(result)).toEqual([100, 40]);
-  });
-
-  it('reports dense-aware matrix statistics', () => {
-    const matrix = sparse_matrix_from_row_maps(
-      [
-        new Map([[0, 1]]),
-        new Map([[1, 2]]),
-      ],
-      2,
-    );
-
-    expect(sparse_stats(matrix)).toEqual({
-      shape: [2, 2],
-      nnz: 2,
-      min: 0,
-      max: 2,
-      mean: 0.75,
-    });
   });
 
   it('throws for a column index outside the declared width', () => {
@@ -78,8 +57,31 @@ describe('SparseMatrix CSR helpers', () => {
     expect(m.cols).toBe(5);
     expect(m.data.length).toBe(0);
   });
+});
 
-  it('sparse_to_dense_array fills implicit zeros', () => {
+describe('sparse_matvec', () => {
+  it('computes the correct matrix-vector product', () => {
+    const matrix = sparse_matrix_from_row_maps(
+      [
+        new Map([[0, 1], [2, 3]]),
+        new Map([[1, 2]]),
+      ],
+      3,
+    );
+    const result = sparse_matvec(matrix, new Float64Array([10, 20, 30]));
+    expect(Array.from(result)).toEqual([100, 40]);
+  });
+
+  it('throws when vector length mismatches cols', () => {
+    const m = sparse_matrix_from_row_maps([new Map([[0, 1]])], 3);
+    expect(() => sparse_matvec(m, new Float64Array([1, 2]))).toThrow(
+      'does not match',
+    );
+  });
+});
+
+describe('sparse_to_dense_array', () => {
+  it('fills implicit zeros in the output grid', () => {
     const m = sparse_matrix_from_row_maps(
       [
         new Map([[0, 1], [2, 3]]),
@@ -92,8 +94,10 @@ describe('SparseMatrix CSR helpers', () => {
       [0, 2, 0],
     ]);
   });
+});
 
-  it('sparse_to_dense_tensor returns float32 with correct shape and values', () => {
+describe('sparse_to_dense_tensor', () => {
+  it('returns a float32 tensor with correct shape and values', () => {
     const m = sparse_matrix_from_row_maps(
       [new Map([[0, 1]]), new Map([[1, 2]])],
       2,
@@ -104,8 +108,10 @@ describe('SparseMatrix CSR helpers', () => {
     expect(t.arraySync()).toEqual([[1, 0], [0, 2]]);
     t.dispose();
   });
+});
 
-  it('sparse_row_sums computes per-row totals', () => {
+describe('sparse_row_sums', () => {
+  it('computes per-row totals including diagonal', () => {
     const m = sparse_matrix_from_row_maps(
       [
         new Map([[0, 1], [1, 2], [2, 3]]),
@@ -116,7 +122,7 @@ describe('SparseMatrix CSR helpers', () => {
     expect(Array.from(sparse_row_sums(m))).toEqual([6, 4]);
   });
 
-  it('sparse_row_sums with ignore_diagonal excludes the diagonal entry', () => {
+  it('excludes the diagonal entry when ignore_diagonal is true', () => {
     const m = sparse_matrix_from_row_maps(
       [
         new Map([[0, 10], [1, 2]]),
@@ -127,15 +133,28 @@ describe('SparseMatrix CSR helpers', () => {
     );
     expect(Array.from(sparse_row_sums(m, true))).toEqual([2, 3, 0]);
   });
+});
 
-  it('sparse_matvec throws when vector length mismatches cols', () => {
-    const m = sparse_matrix_from_row_maps([new Map([[0, 1]])], 3);
-    expect(() => sparse_matvec(m, new Float64Array([1, 2]))).toThrow(
-      'does not match',
+describe('sparse_stats', () => {
+  it('reports shape, nnz, min, max, and mean — accounting for implicit zeros', () => {
+    const matrix = sparse_matrix_from_row_maps(
+      [
+        new Map([[0, 1]]),
+        new Map([[1, 2]]),
+      ],
+      2,
     );
+
+    expect(sparse_stats(matrix)).toEqual({
+      shape: [2, 2],
+      nnz: 2,
+      min: 0,
+      max: 2,
+      mean: 0.75,
+    });
   });
 
-  it('sparse_stats uses stored min when matrix is fully dense (no implicit zeros)', () => {
+  it('uses the stored minimum when the matrix is fully dense (no implicit zeros)', () => {
     const m = sparse_matrix_from_row_maps(
       [
         new Map([[0, 1], [1, 2]]),
@@ -150,7 +169,7 @@ describe('SparseMatrix CSR helpers', () => {
     expect(stats.mean).toBe(2.5);
   });
 
-  it('sparse_stats handles zero stored entries', () => {
+  it('reports all-zero stats for an empty matrix', () => {
     const m = sparse_matrix_from_row_maps([new Map(), new Map()], 2);
     const stats = sparse_stats(m);
     expect(stats.nnz).toBe(0);
@@ -158,5 +177,4 @@ describe('SparseMatrix CSR helpers', () => {
     expect(stats.max).toBe(0);
     expect(stats.mean).toBe(0);
   });
-
 });
