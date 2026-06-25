@@ -111,6 +111,16 @@ describe("validationBasedOptimization", () => {
     }
   });
 
+  it("result.score is a finite number", async () => {
+    const embedding = make_embedding();
+    try {
+      const result = await validation_based_optimization(embedding, 2, "calinski-harabasz", 3, 42);
+      expect(Number.isFinite(result.score)).toBe(true);
+    } finally {
+      embedding.dispose();
+    }
+  });
+
   it("works with single attempt", async () => {
     const embedding = make_embedding();
     try {
@@ -127,6 +137,40 @@ describe("validationBasedOptimization", () => {
 });
 
 describe("intensive_parameter_sweep", () => {
+  const separated_data = [
+    [0, 0], [0.1, 0.1], [0.2, 0], [-0.1, 0.1], [0, -0.1],
+    [5, 5], [5.1, 5.1], [5.2, 5], [4.9, 5.1], [5, 4.9],
+  ];
+  const n = separated_data.length;
+
+  it("returns valid clustering for well-separated data", async () => {
+    const X = tf.zeros([n, 2]) as tf.Tensor2D;
+    const params: SpectralClusteringParams = {
+      n_clusters: 2,
+      affinity: 'rbf',
+      gamma_range: [1.0],
+    };
+
+    const fixed_embedding = async (a: tf.Tensor2D): Promise<tf.Tensor2D> => {
+      a.dispose();
+      return tf.tensor2d(separated_data) as tf.Tensor2D;
+    };
+    const trivial_affinity = (_x: tf.Tensor2D, _p: SpectralClusteringParams): tf.Tensor2D =>
+      tf.eye(n) as tf.Tensor2D;
+
+    try {
+      const result = await intensive_parameter_sweep(X, params, fixed_embedding, trivial_affinity);
+      expect(result.labels.length).toBe(n);
+      expect(new Set(result.labels).size).toBe(2);
+      // First and second half should each be in a single cluster.
+      expect(new Set(result.labels.slice(0, 5)).size).toBe(1);
+      expect(new Set(result.labels.slice(5)).size).toBe(1);
+      expect(result.labels[0]).not.toBe(result.labels[5]);
+    } finally {
+      X.dispose();
+    }
+  });
+
   it("throws when all gamma attempts produce degenerate embeddings", async () => {
     const n = 6;
     const X = tf.zeros([n, 2]) as tf.Tensor2D;

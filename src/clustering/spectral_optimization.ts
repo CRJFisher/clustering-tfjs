@@ -5,9 +5,6 @@ import type {
 } from './types';
 import { KMeans } from './kmeans';
 
-/**
- * Configuration for parameter optimization
- */
 interface OptimizationConfig {
   gamma: number;
   metric: 'calinski-harabasz' | 'davies-bouldin' | 'silhouette';
@@ -15,19 +12,12 @@ interface OptimizationConfig {
   use_validation: boolean;
 }
 
-/**
- * Result of optimization
- */
 interface OptimizationResult {
   labels: number[];
   config: OptimizationConfig;
   score?: number;
 }
 
-/**
- * Performs validation-based optimization for spectral clustering.
- * Tries multiple k-means initializations and selects the best based on validation score.
- */
 export async function validation_based_optimization(
   embedding: tf.Tensor2D,
   n_clusters: number,
@@ -40,7 +30,6 @@ export async function validation_based_optimization(
   let best_labels: number[] | null = null;
   let best_score = metric === 'davies-bouldin' ? Infinity : -Infinity;
 
-  // Try multiple random seeds
   for (let attempt = 0; attempt < attempts; attempt++) {
     const km_params = {
       n_clusters,
@@ -54,7 +43,6 @@ export async function validation_based_optimization(
     const labels = km.labels_!;
     km.dispose();
 
-    // Compute validation score based on selected metric
     let score: number;
     switch (metric) {
       case 'calinski-harabasz':
@@ -81,7 +69,7 @@ export async function validation_based_optimization(
   return {
     labels: best_labels!,
     config: {
-      gamma: 0, // Will be set by caller
+      gamma: 0,
       metric,
       attempts,
       use_validation: true,
@@ -91,12 +79,9 @@ export async function validation_based_optimization(
 }
 
 /**
- * Performs intensive parameter sweep for difficult clustering problems.
- * Tests multiple gamma values and validation configurations.
- *
- * Optimized: computes the eigendecomposition (via embedding) only ONCE per
- * gamma value, then reuses it across all metric/attempt combinations.
- * This reduces eigendecompositions from 9×(1+3×3)=90 to just 9.
+ * Tries multiple gamma values and validation configurations. The embedding is
+ * computed once per gamma and reused across all metric/attempt combinations to
+ * avoid redundant eigendecompositions.
  *
  * @throws {Error} If every gamma value produces a degenerate embedding so that
  *   no valid clustering is found.
@@ -131,8 +116,6 @@ export async function intensive_parameter_sweep(
   };
   let best_score = -Infinity;
 
-  // Process each gamma value: compute affinity + embedding ONCE,
-  // then run all k-means variations against the cached embedding.
   for (const gamma of gamma_range) {
     let embedding: tf.Tensor2D | null = null;
     try {
@@ -142,7 +125,6 @@ export async function intensive_parameter_sweep(
       } finally {
         affinity_matrix.dispose(); // Dispose regardless of embedding success
       }
-      // Phase A: non-validation k-means with n_init=10
       const km = new KMeans({
         n_clusters: params.n_clusters,
         random_state: params.random_state,
@@ -153,7 +135,6 @@ export async function intensive_parameter_sweep(
       const labels = km.labels_!;
       km.dispose();
 
-      // Evaluate with all metrics
       let avg_score = 0;
       for (const metric of metrics) {
         let score: number;
@@ -185,7 +166,6 @@ export async function intensive_parameter_sweep(
         };
       }
 
-      // Phase B: validation-based optimization (reusing the same embedding)
       for (const attempts of attempts_range) {
         for (const metric of metrics) {
           try {
@@ -220,7 +200,7 @@ export async function intensive_parameter_sweep(
         }
       }
     } catch {
-      // This gamma produced a degenerate embedding or threw during scoring — skip it
+      // skip degenerate gamma
     } finally {
       embedding?.dispose(); // Guaranteed cleanup
     }
