@@ -41,17 +41,17 @@ export function normalised_laplacian(
     const diag_mask = tf.sub(1, tf.eye(n));
     const A_no_diag = A.mul(diag_mask) as tf.Tensor2D;
 
-    const deg = degree_vector(A_no_diag); // (n)
+    const deg = degree_vector(A_no_diag);
 
     const inv_sqrt = tf.where(
       deg.equal(0),
       tf.ones_like(deg),
       deg.pow(-0.5),
-    ) as tf.Tensor1D; // (n)
+    ) as tf.Tensor1D;
 
     const diag_col = inv_sqrt.reshape([n, 1]);
     const diag_row = inv_sqrt.reshape([1, n]);
-    const scaling = diag_col.matMul(diag_row) as tf.Tensor2D; // (n,n)
+    const scaling = diag_col.matMul(diag_row) as tf.Tensor2D;
 
     const scaled_affinity = A_no_diag.mul(scaling) as tf.Tensor2D;
 
