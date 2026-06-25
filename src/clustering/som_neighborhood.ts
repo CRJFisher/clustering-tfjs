@@ -23,7 +23,6 @@ export function grid_distance(
   if (topology === 'rectangular') {
     return Math.sqrt((r1 - r2) ** 2 + (c1 - c2) ** 2);
   } else {
-    // Hexagonal grid distance calculation
     // In hexagonal topology, even rows are offset by 0.5
     const x1 = c1 + (r1 % 2) * 0.5;
     const y1 = r1 * Math.sqrt(3) / 2;
@@ -243,14 +242,11 @@ export function initialize_weights(
 }
 
 /**
- * Compute principal components of a covariance matrix.
- *
  * Sources the leading components from the shared power-iteration eigensolver in
  * `src/decomposition/pca.ts`, so SOM `'linear'`/`'pca'` initialization and the
  * public `PCA` estimator use one numerically identical computation.
  *
  * @param cov_matrix Covariance matrix [n_features, n_features]
- * @param n_components Number of components to extract
  * @param random_state Seed for deterministic power-iteration initialization
  * @returns Principal components [n_components, n_features]
  */
