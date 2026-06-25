@@ -1,4 +1,3 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import {
   validate_labels_length,
@@ -37,6 +36,13 @@ describe("validate_labels_length", () => {
     X.dispose();
     labels.dispose();
     bad.dispose();
+  });
+
+  it("accepts mixed tensor X with array labels", () => {
+    const X = tf.tensor2d([[1, 2], [3, 4], [5, 6]]);
+    expect(() => validate_labels_length(X, [0, 1, 2])).not.toThrow();
+    expect(() => validate_labels_length(X, [0, 1])).toThrow();
+    X.dispose();
   });
 });
 
