@@ -111,9 +111,8 @@ export class HDBSCAN
    * Native `euclidean`/`manhattan` metrics are delegated to
    * `pairwise_distance_matrix`, which runs on the TensorFlow.js backend in
    * float32. A `precomputed` matrix is validated for squareness and uploaded
-   * to a `Tensor2D` unchanged. The result is the first front-half stage and
-   * stays on the backend for the downstream core-distance and
-   * mutual-reachability stages.
+   * to a `Tensor2D` unchanged. The result is the first front-half stage; `fit`
+   * consumes it for the core-distance and mutual-reachability computation.
    *
    * The returned tensor is always freshly owned: `fit` disposes it without
    * touching a caller-supplied tensor (the precomputed-tensor case is cloned).
@@ -165,8 +164,8 @@ export class HDBSCAN
         );
       }
     }
-    // Euclidean distances come from pairwise_euclidean_matrix, which uses the
-    // gram identity ‖x‖²+‖y‖²−2·xᵀy. Cancellation in that subtraction can yield
+    // For the euclidean metric, distances come from pairwise_euclidean_matrix,
+    // which uses the gram identity ‖x‖²+‖y‖²−2·xᵀy. Cancellation can yield
     // tiny negative squared distances; the float32 `maximum(·, 0)` clamp inside
     // the helper pins them to zero. Labels are verified robust to the resulting
     // float32 drift — hdbscan.test.ts matches the scikit-learn oracle exactly
