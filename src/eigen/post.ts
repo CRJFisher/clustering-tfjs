@@ -1,6 +1,4 @@
 /**
- * Deterministic eigen-pair post–processing.
- *
  * Many numerical eigensolvers return eigenvectors in arbitrary order and with
  * an arbitrary global ± sign per vector.  For downstream algorithms (e.g.
  * Spectral Clustering) we require a stable ordering and sign convention so
