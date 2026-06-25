@@ -1,9 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { davies_bouldin, davies_bouldin_efficient } from "./davies_bouldin";
 import { make_random_stream } from "../random";
 
-describe("Davies-Bouldin Score", () => {
+describe("davies_bouldin", () => {
   beforeEach(() => {
     tf.engine().startScope();
   });
@@ -305,7 +304,7 @@ describe("Davies-Bouldin Score", () => {
     });
   });
 });
-describe("Davies-Bouldin – noise (-1) awareness", () => {
+describe("davies_bouldin – noise (-1) awareness", () => {
   const two_clusters = [
     [0, 0],
     [0.1, 0],
@@ -338,7 +337,7 @@ describe("Davies-Bouldin – noise (-1) awareness", () => {
   });
 });
 
-describe("Davies-Bouldin – cosine metric centroid (spherical centroid)", () => {
+describe("davies_bouldin – cosine metric centroid", () => {
   beforeEach(() => {
     tf.engine().startScope();
   });
