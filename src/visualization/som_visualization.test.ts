@@ -11,7 +11,7 @@ import {
   get_density_map,
 } from './som_visualization';
 
-describe('SOM Visualization Utilities', () => {
+describe('som_visualization', () => {
   let som: SOM;
   let X: tf.Tensor2D;
   const grid_width = 3, grid_height = 3;
@@ -35,8 +35,8 @@ describe('SOM Visualization Utilities', () => {
     som.dispose();
   });
 
-  describe('getComponentPlanes', () => {
-    it('should return shape [2, 3, 3] for 2 features', () => {
+  describe('get_component_planes', () => {
+    it('returns shape [2, 3, 3] for 2 features', () => {
       const result = get_component_planes(som);
       try {
         expect(result.shape).toEqual([2, grid_height, grid_width]);
@@ -45,7 +45,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should contain all finite values', () => {
+    it('contains all finite values', () => {
       const result = get_component_planes(som);
       try {
         const values = result.dataSync();
@@ -58,8 +58,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('getHitMap', () => {
-    it('should return shape [3, 3]', async () => {
+  describe('get_hit_map', () => {
+    it('returns shape [3, 3]', async () => {
       const result = await get_hit_map(som, X);
       try {
         expect(result.shape).toEqual([grid_height, grid_width]);
@@ -68,7 +68,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have total hits equal to number of samples', async () => {
+    it('has total hits equal to the number of samples', async () => {
       const result = await get_hit_map(som, X);
       try {
         const values = result.dataSync();
@@ -79,7 +79,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have all non-negative values', async () => {
+    it('has all non-negative values', async () => {
       const result = await get_hit_map(som, X);
       try {
         const values = result.dataSync();
@@ -92,8 +92,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('getActivationMap', () => {
-    it('should return shape [3, 3]', () => {
+  describe('get_activation_map', () => {
+    it('returns shape [3, 3]', () => {
       const sample = tf.tensor1d([0.5, 0.5]);
       try {
         const result = get_activation_map(som, sample);
@@ -107,7 +107,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have BMU with highest activation', () => {
+    it('gives the BMU the highest activation', () => {
       const sample = tf.tensor1d([0.5, 0.5]);
       try {
         const result = get_activation_map(som, sample);
@@ -116,7 +116,6 @@ describe('SOM Visualization Utilities', () => {
           const max_val = Math.max(...values);
           // Activation is (max_dist - dist) / max_dist, so BMU gets the highest value
           expect(max_val).toBeGreaterThan(0.5);
-          // There should be exactly one maximum
           const max_count = values.filter(v => Math.abs(v - max_val) < 1e-6).length;
           expect(max_count).toBeGreaterThanOrEqual(1);
         } finally {
@@ -127,7 +126,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have all values finite and in [0, 1]', () => {
+    it('has all values finite and in [0, 1]', () => {
       const sample = tf.tensor1d([0.5, 0.5]);
       try {
         const result = get_activation_map(som, sample);
@@ -147,8 +146,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('trackBMUTrajectory', () => {
-    it('should return output length matching input length', async () => {
+  describe('track_bmu_trajectory', () => {
+    it('returns output length matching input length', async () => {
       const sequence = tf.tensor2d([[0, 0], [0.5, 0.5], [1, 1]]);
       try {
         const trajectory = await track_bmu_trajectory(som, sequence);
@@ -158,7 +157,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should return [row, col] entries within grid bounds', async () => {
+    it('returns [row, col] entries within grid bounds', async () => {
       const sequence = tf.tensor2d([[0, 0], [0.5, 0.5], [1, 1]]);
       try {
         const trajectory = await track_bmu_trajectory(som, sequence);
@@ -176,8 +175,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('getQuantizationQualityMap', () => {
-    it('should return shape [3, 3]', async () => {
+  describe('get_quantization_quality_map', () => {
+    it('returns shape [3, 3]', async () => {
       const result = await get_quantization_quality_map(som, X);
       try {
         expect(result.shape).toEqual([grid_height, grid_width]);
@@ -186,7 +185,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have all non-negative values', async () => {
+    it('has all non-negative values', async () => {
       const result = await get_quantization_quality_map(som, X);
       try {
         const values = result.dataSync();
@@ -199,8 +198,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('getNeighborDistanceMatrix', () => {
-    it('should return shape [3, 3]', () => {
+  describe('get_neighbor_distance_matrix', () => {
+    it('returns shape [3, 3]', () => {
       const result = get_neighbor_distance_matrix(som);
       try {
         expect(result.shape).toEqual([grid_height, grid_width]);
@@ -209,7 +208,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have all non-negative and finite values', () => {
+    it('has all non-negative and finite values', () => {
       const result = get_neighbor_distance_matrix(som);
       try {
         const values = result.dataSync();
@@ -223,8 +222,8 @@ describe('SOM Visualization Utilities', () => {
     });
   });
 
-  describe('exportForVisualization', () => {
-    it('should produce JSON with expected keys', async () => {
+  describe('export_for_visualization', () => {
+    it('produces JSON with expected keys', async () => {
       const json_str = await export_for_visualization(som, 'json');
       const parsed = JSON.parse(json_str);
       expect(parsed).toHaveProperty('grid_height');
@@ -234,20 +233,18 @@ describe('SOM Visualization Utilities', () => {
       expect(parsed).toHaveProperty('params');
     });
 
-    it('should produce CSV with correct header and data rows', async () => {
+    it('produces CSV with correct header and data rows', async () => {
       const csv_str = await export_for_visualization(som, 'csv');
       const lines = csv_str.trim().split('\n');
-      // First line is the header
       const header = lines[0];
       expect(header.length).toBeGreaterThan(0);
-      // Remaining lines are data rows, one per grid cell
       const data_rows = lines.slice(1);
       expect(data_rows.length).toBe(grid_height * grid_width);
     });
   });
 
-  describe('getDensityMap', () => {
-    it('should return shape [3, 3]', async () => {
+  describe('get_density_map', () => {
+    it('returns shape [3, 3]', async () => {
       const result = await get_density_map(som, X);
       try {
         expect(result.shape).toEqual([grid_height, grid_width]);
@@ -256,7 +253,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should have all non-negative values', async () => {
+    it('has all non-negative values', async () => {
       const result = await get_density_map(som, X);
       try {
         const values = result.dataSync();
@@ -268,7 +265,7 @@ describe('SOM Visualization Utilities', () => {
       }
     });
 
-    it('should return raw hit map values when sigma <= 0', async () => {
+    it('returns raw hit map values when sigma <= 0', async () => {
       const density_result = await get_density_map(som, X, 0);
       const hit_result = await get_hit_map(som, X);
       try {
