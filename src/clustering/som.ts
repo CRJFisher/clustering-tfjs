@@ -547,7 +547,6 @@ export class SOM implements BaseClustering<SOMParams> {
           let neighbors: number[][];
           
           if (topology === 'rectangular') {
-            // 8-connected rectangular grid
             neighbors = [
               [i - 1, j], [i + 1, j],
               [i, j - 1], [i, j + 1],
@@ -555,7 +554,6 @@ export class SOM implements BaseClustering<SOMParams> {
               [i + 1, j - 1], [i + 1, j + 1]
             ];
           } else {
-            // Hexagonal grid (6-connected)
             const even_row = i % 2 === 0;
             neighbors = even_row ? [
               [i - 1, j - 1], [i - 1, j],  // Top-left, top-right
@@ -673,20 +671,18 @@ export class SOM implements BaseClustering<SOMParams> {
     topology: SOMTopology
   ): boolean {
     if (topology === 'rectangular') {
-      // 8-connected rectangular grid (consistent with get_u_matrix and get_neighbors)
+      // Neighbour definition must stay consistent with get_u_matrix and get_neighbors.
       const row_diff = Math.abs(row1 - row2);
       const col_diff = Math.abs(col1 - col2);
 
       return row_diff <= 1 && col_diff <= 1 && (row_diff + col_diff > 0);
     } else {
-      // Hexagonal topology (6-connected)
       const row_diff = row2 - row1;
       const col_diff = col2 - col1;
-      
-      // Even rows have different neighbor offsets than odd rows
+
+      // Hex neighbour offsets differ between even and odd rows.
       const even_row = row1 % 2 === 0;
-      
-      // Check all 6 possible hexagonal neighbors
+
       const hex_neighbors = even_row ? [
         [-1, -1], [-1, 0],  // Top-left, top-right
         [0, -1], [0, 1],    // Left, right
