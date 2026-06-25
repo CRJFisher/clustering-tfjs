@@ -11,11 +11,7 @@ import { compute_wss } from './compute_wss';
 import { find_knee } from './kneedle';
 import type { DataMatrix } from '../clustering/types';
 
-/**
- * Result for a single k value evaluation
- */
 export interface ClusterEvaluation {
-  /** Number of clusters */
   k: number;
   /** Silhouette score (range: [-1, 1], higher is better) */
   silhouette: number;
@@ -30,7 +26,6 @@ export interface ClusterEvaluation {
    * When using 'elbow', the knee point gets score 1.0.
    */
   combined_score: number;
-  /** Cluster labels for this k */
   labels: number[];
   /** Within-cluster sum of squares (inertia). Present when method is 'elbow'. */
   wss?: number;
@@ -44,9 +39,6 @@ export interface ClusterEvaluation {
  */
 export type OptimalClustersMethod = 'combined' | 'elbow' | 'silhouette';
 
-/**
- * Options for finding optimal clusters
- */
 export interface FindOptimalClustersOptions {
   /** Minimum number of clusters to test (default: 2) */
   min_clusters?: number;
@@ -72,17 +64,12 @@ export interface FindOptimalClustersOptions {
   method?: OptimalClustersMethod;
 }
 
-/**
- * Normalizes metrics across all evaluations and computes combined scores.
- * Each metric is normalized to [0, 1] and averaged for equal contribution.
- */
 function normalize_and_score_evaluations(
   evaluations: ClusterEvaluation[],
   metrics: Array<'silhouette' | 'davies_bouldin' | 'calinski_harabasz'>,
 ): void {
   if (evaluations.length === 0) return;
 
-  // Pre-compute min-max for Calinski-Harabasz (higher is better)
   let ch_min = Infinity;
   let ch_max = -Infinity;
   if (metrics.includes('calinski_harabasz')) {
@@ -95,7 +82,6 @@ function normalize_and_score_evaluations(
   }
   const ch_range = ch_max - ch_min;
 
-  // Pre-compute min-max for Davies-Bouldin (lower is better)
   let db_min = Infinity;
   let db_max = -Infinity;
   if (metrics.includes('davies_bouldin')) {
@@ -108,7 +94,6 @@ function normalize_and_score_evaluations(
   }
   const db_range = db_max - db_min;
 
-  // Score each evaluation with normalized metrics
   for (const evaluation of evaluations) {
     let score = 0;
     let num_metrics = 0;
@@ -152,13 +137,6 @@ function normalize_and_score_evaluations(
 }
 
 /**
- * Automatically finds the optimal number of clusters for a dataset by evaluating
- * multiple k values using validation metrics.
- *
- * @param X - Input data matrix (samples × features)
- * @param options - Configuration options
- * @returns Object containing optimal k and detailed results for all tested k values
- *
  * @example
  * ```typescript
  * import { find_optimal_clusters } from 'clustering-tfjs';
@@ -174,9 +152,7 @@ export async function find_optimal_clusters(
   X: DataMatrix,
   options: FindOptimalClustersOptions = {},
 ): Promise<{
-  /** The optimal cluster evaluation */
   optimal: ClusterEvaluation;
-  /** All evaluations sorted by combined score (descending) */
   evaluations: ClusterEvaluation[];
 }> {
   const {
@@ -189,7 +165,6 @@ export async function find_optimal_clusters(
     method = 'combined',
   } = options;
 
-  // Validate inputs
   if (min_clusters < 2) {
     throw new Error('min_clusters must be at least 2');
   }
@@ -202,16 +177,13 @@ export async function find_optimal_clusters(
     );
   }
 
-  // Convert data to tensor if needed
   const is_input_tensor = is_tensor(X);
   const data_tensor = is_input_tensor ? X : tf.tensor2d(X as number[][]);
   const n_samples = data_tensor.shape[0];
 
-  // Adjust max_clusters if it exceeds number of samples
   const effective_max_clusters = Math.min(max_clusters, n_samples - 1);
 
   if (effective_max_clusters < min_clusters) {
-    // Clean up tensor if we created it
     if (!is_input_tensor) {
       data_tensor.dispose();
     }
@@ -220,7 +192,6 @@ export async function find_optimal_clusters(
     );
   }
 
-  // Determine which metrics to compute based on method
   const compute_silhouette =
     method === 'silhouette' ||
     (method === 'combined' && metrics.includes('silhouette')) ||
@@ -255,7 +226,6 @@ export async function find_optimal_clusters(
     await shared_som.fit(data_tensor);
   }
 
-  // Test each k value
   for (let k = min_clusters; k <= effective_max_clusters; k++) {
     let labels: number[];
     let kmeans_instance: KMeans | null = null;
@@ -292,12 +262,10 @@ export async function find_optimal_clusters(
           throw new Error(`Unknown algorithm: ${algorithm}`);
       }
 
-      // Fit and predict
       labels = await clusterer.fit_predict(data_tensor);
       disposable = clusterer;
     }
 
-    // Calculate metrics
     let silhouette = 0;
     let davies_bouldin = Infinity;
     let calinski_harabasz = 0;
@@ -333,7 +301,6 @@ export async function find_optimal_clusters(
       }
     }
 
-    // Build evaluation
     const evaluation: ClusterEvaluation = {
       k,
       silhouette,
@@ -364,10 +331,8 @@ export async function find_optimal_clusters(
     }
   }
 
-  // Dispose the shared SOM once the k-sweep is complete.
   shared_som?.dispose();
 
-  // Post-loop scoring based on method (only when no custom scorer)
   if (!scoring_function) {
     if (method === 'combined') {
       normalize_and_score_evaluations(evaluations, metrics);
@@ -395,16 +360,13 @@ export async function find_optimal_clusters(
     }
   }
 
-  // Sort by combined score (descending)
   evaluations.sort((a, b) => b.combined_score - a.combined_score);
 
-  // Store result before cleanup
   const final_result = {
     optimal: evaluations[0],
     evaluations,
   };
 
-  // Clean up tensor if we created it
   if (!is_input_tensor) {
     data_tensor.dispose();
   }
