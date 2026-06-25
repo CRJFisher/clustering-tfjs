@@ -3,10 +3,8 @@ import * as tf from "../../test_support/tensorflow_helper";
 import { deterministic_eigenpair_processing } from "./post";
 import { improved_jacobi_eigen } from "./improved";
 
-describe("deterministicEigenpairProcessing", () => {
+describe("deterministic_eigenpair_processing – integration", () => {
   it("sorts eigenpairs ascending and applies sign flip", () => {
-    // Simple 3×3 symmetric matrix with repeated eigen-values
-    // Matrix [[2,1,0],[1,2,0],[0,0,3]] has eigenvalues 1,3,3
     const M = tf.tensor2d(
       [
         [2, 1, 0],
@@ -26,12 +24,10 @@ describe("deterministicEigenpairProcessing", () => {
 
     const vals = processed.eigenvalues;
     expect(vals.length).toBe(3);
-    // Ascending order – first element should be the smallest eigenvalue (≈1)
     expect(vals[0]).toBeCloseTo(1, 5);
     expect(vals[1]).toBeCloseTo(3, 5);
     expect(vals[2]).toBeCloseTo(3, 5);
 
-    // Check sign convention – max-abs component positive for each vector
     const vecs = processed.eigenvectors;
     for (let col = 0; col < 3; col++) {
       let max_abs = 0;
@@ -72,6 +68,21 @@ describe("deterministic_eigenpair_processing – direct contract", () => {
     expect(eigenvectors[1][2]).toBeCloseTo(0.8, 10);
   });
 
+  it("is a no-op when eigenvalues are already in ascending order", () => {
+    const input = {
+      eigenvalues: [1, 2, 3],
+      eigenvectors: [
+        [0.5, 0.3, 0.1],
+        [0.5, 0.3, 0.1],
+      ],
+    };
+    const { eigenvalues, eigenvectors } = deterministic_eigenpair_processing(input);
+    expect(eigenvalues).toEqual([1, 2, 3]);
+    expect(eigenvectors[0][0]).toBeCloseTo(0.5, 10);
+    expect(eigenvectors[0][1]).toBeCloseTo(0.3, 10);
+    expect(eigenvectors[0][2]).toBeCloseTo(0.1, 10);
+  });
+
   it("supports fewer eigenpairs than rows (m < n)", () => {
     // 3 rows, 2 columns: eigenvalues 5 -> [0.1,0.2,-0.95], 1 -> [0.7,0.1,0.2].
     const { eigenvalues, eigenvectors } = deterministic_eigenpair_processing({
@@ -89,6 +100,20 @@ describe("deterministic_eigenpair_processing – direct contract", () => {
     // col for eigenvalue 1 stays (max-abs 0.7 positive); col for 5 flips.
     expect(eigenvectors[2][0]).toBeCloseTo(0.2, 10);
     expect(eigenvectors[2][1]).toBeCloseTo(0.95, 10);
+  });
+
+  it("handles an all-zero column without crashing", () => {
+    // max_abs stays 0, sign defaults to +1 (0 is not < 0), output is all-zero.
+    const { eigenvalues, eigenvectors } = deterministic_eigenpair_processing({
+      eigenvalues: [1, 2],
+      eigenvectors: [
+        [0, 0.5],
+        [0, -0.5],
+      ],
+    });
+    expect(eigenvalues).toEqual([1, 2]);
+    expect(eigenvectors[0][0]).toBe(0);
+    expect(eigenvectors[1][0]).toBe(0);
   });
 
   it("returns empty structures for empty input", () => {
@@ -112,4 +137,3 @@ describe("deterministic_eigenpair_processing – direct contract", () => {
     ).toThrow("column count");
   });
 });
-

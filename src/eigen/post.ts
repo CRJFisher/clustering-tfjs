@@ -21,15 +21,10 @@ export interface EigenPairInput {
 }
 
 export interface EigenPairOutput {
-  /** Eigen-values sorted in ascending order. */
   eigenvalues: number[];
-  /** Column-wise eigen-vectors after sign correction. */
-  eigenvectors: number[][]; // shape (n, m)
+  eigenvectors: number[][];
 }
 
-/**
- * Applies deterministic ordering and sign convention to raw eigen-pairs.
- */
 export function deterministic_eigenpair_processing(
   input: EigenPairInput,
 ): EigenPairOutput {
@@ -42,17 +37,15 @@ export function deterministic_eigenpair_processing(
     };
   }
 
-  const n = eigenvectors.length;       // number of rows (samples)
-  const m = eigenvalues.length;        // number of eigenpairs (may be < n)
+  const n = eigenvectors.length;
+  const m = eigenvalues.length;
 
-  // Validate shape: each row must have m columns, matching eigenvalues count
   if (eigenvectors.some((row) => row.length !== m)) {
     throw new Error(
       `eigenvectors column count must match eigenvalues length (${m}).`,
     );
   }
 
-  // Step 1: sort indices by ascending eigenvalue
   const indexed = eigenvalues.map((val, idx) => ({ val, idx }));
   indexed.sort((a, b) => a.val - b.val);
 
@@ -62,11 +55,9 @@ export function deterministic_eigenpair_processing(
     () => new Array(m),
   );
 
-  // Step 2: for each eigenvector apply sign fix while copying into new matrix
   for (let new_col = 0; new_col < m; new_col++) {
     const src_col = indexed[new_col].idx;
 
-    // Find entry with maximum absolute magnitude
     let max_abs = 0;
     let max_row = 0;
     for (let row = 0; row < n; row++) {
