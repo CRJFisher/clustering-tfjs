@@ -1,7 +1,7 @@
 ---
 id: TASK-54.7
 title: Path-compress the condensation union-find
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-06-24'
 updated_date: '2026-06-24'
@@ -36,5 +36,19 @@ This is the one pure-JS performance win that survives the front-half migration �
 <!-- AC:END -->
 
 ## Implementation Notes
+
+## High-level summary
+
+`find()` in `build_single_linkage` now uses two-pass path compression: the existing first loop finds the root unchanged; a new second loop re-walks from `x` and points each traversed node's parent directly at the root index, reducing future lookups from O(n) worst-case to O(α(n)) amortized.
+
+The implementation is behavior-preserving by construction: `find()` returns the same root in both cases (path compression only changes the path, not the destination), so all three result columns — `[a, b, e.weight, merged]` — are byte-identical to the baseline. No floating-point arithmetic is touched. All 142 tests (84 condensation-tree, 58 HDBSCAN end-to-end) pass with bit-identical labels and probabilities.
+
+**Acceptance criteria addressed:**
+
+- **AC#1** — `find()` at `src/graph/condensation_tree.ts:48`; the second while-loop compresses the path by setting `parent[node] = root` for each visited node, saving the link (`const next = parent[node]`) before overwriting to preserve traversal.
+- **AC#2** — Edge sort order, label assignment, and `result.push` are untouched; `find()` returns identical roots; hierarchy rows are byte-identical.
+- **AC#3** — 142 tests pass; no float32 introduced; no value shifts.
+
+A 10-lens review produced zero actionable findings. The one noted (cold-read: second while-loop purpose not self-evident to non-specialists, minor, confidence 70) fell below the 80-confidence gate and was not corroborated by any other lens — including the naming reviewer who found the two-pass idiom self-documenting.
 
 Behavior-preserving and float64-only, so it is held to the _bit-identical_ bar (not the relaxed float32 tolerances). The optional broader condensation-tree dedup (unifying the two BFS helpers, sharing the births map) is explicitly out of scope per YAGNI — it carries load-bearing tie-ordering risk for no measured perf gain; revisit only if it falls out cleanly here.
