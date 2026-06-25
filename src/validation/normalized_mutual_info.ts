@@ -2,7 +2,6 @@ import { LabelVector } from '../clustering/types';
 import { build_contingency_table, to_label_array } from './contingency';
 
 /**
- * Averaging method for NMI normalization.
  * - 'arithmetic': (H(U) + H(V)) / 2
  * - 'geometric': sqrt(H(U) * H(V))
  * - 'min': min(H(U), H(V))
@@ -10,20 +9,7 @@ import { build_contingency_table, to_label_array } from './contingency';
  */
 export type NMIAverage = 'arithmetic' | 'geometric' | 'min' | 'max';
 
-/**
- * Computes the Normalized Mutual Information (NMI) between two clusterings.
- *
- * NMI is a normalization of the mutual information score to scale the
- * result to [0, 1]. It measures the agreement between two label assignments:
- * - 1: Perfect agreement
- * - 0: No mutual information (independent labelings)
- *
- * @param labels_true - Ground truth class labels
- * @param labels_pred - Predicted cluster labels
- * @param average - Averaging method for normalization (default: 'arithmetic')
- * @returns The Normalized Mutual Information (range: [0, 1])
- * @throws Error if label vectors have different lengths or are empty
- */
+/** @throws Error if label vectors have different lengths or are empty */
 export function normalized_mutual_info(
   labels_true: LabelVector,
   labels_pred: LabelVector,

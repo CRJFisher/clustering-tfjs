@@ -1,7 +1,7 @@
 import * as tf from "../../test_support/tensorflow_helper";
 import { normalized_mutual_info } from "./normalized_mutual_info";
 
-describe("Normalized Mutual Information", () => {
+describe("normalized_mutual_info", () => {
   describe("Basic functionality", () => {
     it("returns 1.0 for perfect agreement", () => {
       expect(normalized_mutual_info([0, 0, 1, 1, 2, 2], [0, 0, 1, 1, 2, 2])).toBeCloseTo(1.0, 10);
