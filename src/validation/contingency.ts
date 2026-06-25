@@ -1,25 +1,16 @@
 import { LabelVector } from '../clustering/types';
 import { is_tensor } from '../tensor/tensor_guards';
 
-/**
- * Result of building a contingency table from two label vectors.
- */
 export interface ContingencyResult {
-  /** Contingency table: table[i][j] = count of (trueClass_i, predClass_j) */
   table: number[][];
-  /** Sum across columns for each row */
   row_sums: number[];
-  /** Sum across rows for each column */
   col_sums: number[];
-  /** Total number of samples */
   n: number;
 }
 
-/**
- * Converts a LabelVector (tensor or array) to a plain number[].
- */
 export function to_label_array(labels: LabelVector): number[] {
   if (is_tensor(labels)) {
+    // float32 storage can shift integer labels by a tiny epsilon; round to recover them.
     return Array.from(labels.dataSync() as Float32Array).map((l) =>
       Math.round(l),
     );
@@ -27,23 +18,13 @@ export function to_label_array(labels: LabelVector): number[] {
   return labels;
 }
 
-/**
- * Builds a contingency table from two label vectors.
- *
- * Maps arbitrary integer labels to dense 0-based indices and counts
- * co-occurrences in a 2D matrix.
- *
- * @param labels_true - Ground truth label array
- * @param labels_pred - Predicted label array
- * @returns ContingencyResult with table, row/column sums, and sample count
- */
+/** Maps arbitrary integer labels to dense 0-based indices before counting co-occurrences. */
 export function build_contingency_table(
   labels_true: number[],
   labels_pred: number[],
 ): ContingencyResult {
   const n = labels_true.length;
 
-  // Map unique labels to dense indices
   const true_unique = Array.from(new Set(labels_true));
   const pred_unique = Array.from(new Set(labels_pred));
 
@@ -60,7 +41,6 @@ export function build_contingency_table(
   const n_true = true_unique.length;
   const n_pred = pred_unique.length;
 
-  // Build table
   const table: number[][] = Array.from({ length: n_true }, () =>
     new Array(n_pred).fill(0),
   );
@@ -71,7 +51,6 @@ export function build_contingency_table(
     table[ti][pi]++;
   }
 
-  // Compute row sums and column sums
   const row_sums = new Array(n_true).fill(0);
   const col_sums = new Array(n_pred).fill(0);
 

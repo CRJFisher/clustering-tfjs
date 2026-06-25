@@ -1,4 +1,3 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { build_contingency_table, to_label_array } from "./contingency";
 
@@ -63,7 +62,6 @@ describe("build_contingency_table", () => {
   });
 
   it("handles differing numbers of true and predicted classes", () => {
-    // 1 true class, 3 predicted classes -> single row of width 3.
     const result = build_contingency_table([0, 0, 0], [0, 1, 2]);
     expect(result.table).toEqual([[1, 1, 1]]);
     expect(result.row_sums).toEqual([3]);
