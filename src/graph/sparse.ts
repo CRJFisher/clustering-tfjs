@@ -96,28 +96,6 @@ export function sparse_row_sums(
   return sums;
 }
 
-export function sparse_matvec(
-  matrix: SparseMatrix,
-  vector: Float64Array,
-): Float64Array {
-  if (vector.length !== matrix.cols) {
-    throw new Error(
-      `Vector length ${vector.length} does not match sparse matrix width ${matrix.cols}.`,
-    );
-  }
-
-  const result = new Float64Array(matrix.rows);
-  for (let row = 0; row < matrix.rows; row++) {
-    let sum = 0;
-    for (let ptr = matrix.indptr[row]; ptr < matrix.indptr[row + 1]; ptr++) {
-      sum += matrix.data[ptr] * vector[matrix.indices[ptr]];
-    }
-    result[row] = sum;
-  }
-
-  return result;
-}
-
 export function sparse_stats(matrix: SparseMatrix): SparseMatrixStats {
   const total_entries = matrix.rows * matrix.cols;
   let nonzero_sum = 0;

@@ -1,6 +1,5 @@
 import {
   sparse_matrix_from_row_maps,
-  sparse_matvec,
   sparse_stats,
   sparse_to_dense_array,
   sparse_to_dense_tensor,
@@ -56,27 +55,6 @@ describe('sparse_matrix_from_row_maps', () => {
     expect(m.rows).toBe(0);
     expect(m.cols).toBe(5);
     expect(m.data.length).toBe(0);
-  });
-});
-
-describe('sparse_matvec', () => {
-  it('computes the correct matrix-vector product', () => {
-    const matrix = sparse_matrix_from_row_maps(
-      [
-        new Map([[0, 1], [2, 3]]),
-        new Map([[1, 2]]),
-      ],
-      3,
-    );
-    const result = sparse_matvec(matrix, new Float64Array([10, 20, 30]));
-    expect(Array.from(result)).toEqual([100, 40]);
-  });
-
-  it('throws when vector length mismatches cols', () => {
-    const m = sparse_matrix_from_row_maps([new Map([[0, 1]])], 3);
-    expect(() => sparse_matvec(m, new Float64Array([1, 2]))).toThrow(
-      'does not match',
-    );
   });
 });
 
