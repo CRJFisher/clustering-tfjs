@@ -255,5 +255,60 @@ describe('Lanczos eigensolver', () => {
       // Verify result is valid
       expect(result.eigenvalues).toHaveLength(2);
     });
+
+    it('throws for non-square matrix', () => {
+      const rect = tf.tensor2d([[1, 2, 3], [4, 5, 6]]);
+      expect(() => lanczos_smallest_eigenpairs(rect, 1)).toThrow('square');
+      rect.dispose();
+    });
+
+    it('clamps negative eigenvalues to 0 when is_psd=true', () => {
+      // [[0,1],[1,0]] is symmetric but indefinite: eigenvalues -1 and +1
+      const matrix = tf.tensor2d([[0, 1], [1, 0]]);
+      const result = lanczos_smallest_eigenpairs(matrix, 1, {
+        random_seed: 42,
+        is_psd: true,
+      });
+      matrix.dispose();
+      expect(result.eigenvalues[0]).toBe(0);
+    });
+
+    it('preserves negative eigenvalues when is_psd=false', () => {
+      // [[0,1],[1,0]] has eigenvalue -1 which must not be clamped
+      const matrix = tf.tensor2d([[0, 1], [1, 0]]);
+      const result = lanczos_smallest_eigenpairs(matrix, 1, {
+        random_seed: 42,
+        is_psd: false,
+      });
+      matrix.dispose();
+      expect(result.eigenvalues[0]).toBeCloseTo(-1, 4);
+    });
+
+    it('returns orthonormal eigenvectors', () => {
+      const n = 4;
+      const k = 3;
+      const matrix = tf.tensor2d([
+        [4, 1, 0, 0],
+        [1, 3, 1, 0],
+        [0, 1, 2, 1],
+        [0, 0, 1, 1],
+      ]);
+      const { eigenvectors } = lanczos_smallest_eigenpairs(matrix, k, {
+        random_seed: 42,
+        is_psd: false,
+      });
+      matrix.dispose();
+
+      for (let a = 0; a < k; a++) {
+        let self_dot = 0;
+        for (let row = 0; row < n; row++) self_dot += eigenvectors[row][a] ** 2;
+        expect(self_dot).toBeCloseTo(1, 4);
+        for (let b = a + 1; b < k; b++) {
+          let cross = 0;
+          for (let row = 0; row < n; row++) cross += eigenvectors[row][a] * eigenvectors[row][b];
+          expect(Math.abs(cross)).toBeLessThan(1e-4);
+        }
+      }
+    });
   });
 });

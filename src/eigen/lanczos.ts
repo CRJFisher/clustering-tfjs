@@ -95,7 +95,6 @@ export function lanczos_smallest_eigenpairs(
   const apply_matvec = (v: Float64Array): Float64Array =>
     is_operator ? matrix.matvec(v) : dense_matvec(A!, v, n);
 
-  // Standard Lanczos: apply A*v directly.
   // Lanczos converges to extreme eigenvalues (both largest and smallest).
   // We extract the k smallest Ritz values from the tridiagonal eigenproblem.
 
@@ -284,9 +283,6 @@ export function lanczos_smallest_eigenpairs(
 /*                             Internal Helpers                               */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Computes A*v (standard matrix-vector product).
- */
 function is_lanczos_operator(
   matrix: tf.Tensor2D | LanczosOperator,
 ): matrix is LanczosOperator {
@@ -313,17 +309,12 @@ function dense_matvec(
   return result;
 }
 
-/** Euclidean norm of a vector. */
 function vec_norm(v: Float64Array, n: number): number {
   let sum = 0;
   for (let i = 0; i < n; i++) sum += v[i] * v[i];
   return Math.sqrt(sum);
 }
 
-/**
- * Full reorthogonalization: projects out components along all basis vectors.
- * Modifies w in place. Delegates to the shared utility.
- */
 const reorthogonalize = reorthogonalize_vector<Float64Array>;
 
 /**
@@ -352,8 +343,6 @@ function random_orthogonal_vector(
   }
   return null;
 }
-
-
 
 /**
  * Check if the k smallest eigenvalues have converged.
@@ -387,10 +376,6 @@ function check_convergence(
   return true;
 }
 
-/**
- * Extract the k smallest eigenpairs from the Lanczos decomposition.
- * Reconstructs Ritz vectors from the Lanczos basis and tridiagonal eigenvectors.
- */
 function extract_smallest(
   ritz_values: number[],
   ritz_vectors: number[][],
