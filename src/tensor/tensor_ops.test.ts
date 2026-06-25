@@ -92,7 +92,7 @@ describe("tensor utilities", () => {
     it("cosine distance: identical vectors -> 0, orthogonal -> 1", () => {
       const a = tf.tensor([1, 2, 3]);
       const same = tf.tensor([1, 2, 3]);
-      const ortho = tf.tensor([3, -6, 3]); // dot 0 with a? Actually dot= 1*3+2*-6+3*3=3-12+9=0
+      const ortho = tf.tensor([3, -6, 3]); // dot with a is 1*3 + 2*-6 + 3*3 = 0
 
       const d_identical = cosine_distance(a, same).arraySync();
       const d_ortho = cosine_distance(a, ortho).arraySync();
@@ -102,6 +102,36 @@ describe("tensor utilities", () => {
       expect(close_to(d_ortho, 1)).toBe(true);
     });
 
-    // pairwise Euclidean matrix tests moved to pairwise.test.ts
+    it("cosine distance: opposite vectors -> 2", () => {
+      const a = tf.tensor([1, 2, 3]);
+      const opp = tf.tensor([-1, -2, -3]);
+      const d = cosine_distance(a, opp).arraySync();
+      expect(close_to(d, 2)).toBe(true);
+    });
+
+    it("cosine distance stays finite for a zero vector (eps guard)", () => {
+      const zero = tf.tensor([0, 0, 0]);
+      const v = tf.tensor([1, 1, 1]);
+      const d = cosine_distance(zero, v).arraySync() as number;
+      expect(Number.isFinite(d)).toBe(true);
+      expect(close_to(d, 1)).toBe(true); // similarity 0/eps = 0 -> distance 1
+    });
+
+    it("cosine and manhattan broadcast (n,d) against (d)", () => {
+      const big = tf.tensor2d(
+        [
+          [1, 0],
+          [0, 1],
+        ],
+        [2, 2],
+      );
+      const small = tf.tensor([1, 0]);
+
+      const cos = cosine_distance(big, small).arraySync() as number[];
+      expect(close_to(cos, [0, 1])).toBe(true); // aligned -> 0, orthogonal -> 1
+
+      const man = manhattan_distance(big, small).arraySync() as number[];
+      expect(man).toEqual([0, 2]); // |1-1|+0 ; |0-1|+|1-0|
+    });
   });
 });
