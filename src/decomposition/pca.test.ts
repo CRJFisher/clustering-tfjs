@@ -176,7 +176,7 @@ describe('PCA – API behaviour', () => {
   });
 });
 
-describe('power-iteration eigensolver – degenerate matrices', () => {
+describe('power_iteration_eig – degenerate matrices', () => {
   it('falls back to a basis vector when the init candidate has zero norm', () => {
     expect(unit_init_vector([0, 0, 0], 0)).toEqual([1, 0, 0]);
     expect(unit_init_vector([0, 0, 0], 4)).toEqual([0, 1, 0]);
@@ -208,7 +208,7 @@ describe('power-iteration eigensolver – degenerate matrices', () => {
   });
 });
 
-describe('power-iteration eigensolver – known eigenstructure', () => {
+describe('power_iteration_eig – known eigenstructure', () => {
   it('recovers eigenvalues (descending) and orthonormal eigenvectors', () => {
     // [[2,1],[1,2]] has eigenvalues 3 (along [1,1]) and 1 (along [1,-1]).
     const { components, eigenvalues } = power_iteration_eig(

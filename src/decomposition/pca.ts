@@ -14,11 +14,10 @@ import { make_random_stream } from '../random';
  */
 
 export interface PCAParams extends CoreClusteringParams {
-  /** Number of principal components to keep. Must be <= n_features. */
+  /** Must be ≤ n_features. */
   n_components: number;
 }
 
-/** A serialized fitted PCA. */
 export interface PCAJSON {
   params: PCAParams;
   components_: number[][];
@@ -26,7 +25,6 @@ export interface PCAJSON {
   mean_: number[];
 }
 
-/** Result of the shared symmetric power-iteration eigensolver. */
 export interface EigResult {
   /** Eigenvectors as rows, most-significant first. */
   components: number[][];
@@ -72,7 +70,6 @@ export function power_iteration_eig(
   const count = Math.min(k, d);
   const rng = make_random_stream(random_state);
 
-  // Working (deflated) copy.
   const m: number[][] = matrix.map((row) => [...row]);
   const components: number[][] = [];
   const eigenvalues: number[] = [];
@@ -102,7 +99,6 @@ export function power_iteration_eig(
       const nw = norm(w);
       if (nw < 1e-12) break;
       const next = w.map((x) => x / nw);
-      // Converged when the direction stops changing.
       if (Math.abs(Math.abs(dot(next, v)) - 1) < 1e-12) {
         v = next;
         break;
@@ -153,7 +149,6 @@ export class PCA {
       );
     }
 
-    // Mean-center.
     const mean = new Array<number>(d).fill(0);
     for (const row of data) for (let j = 0; j < d; j++) mean[j] += row[j];
     for (let j = 0; j < d; j++) mean[j] /= n;
@@ -215,7 +210,6 @@ export class PCA {
     return this.transform(X);
   }
 
-  /** Reconstructs data from component space back to feature space. */
   inverse_transform(Z: DataMatrix): number[][] {
     if (this.components_ == null || this.mean_ == null) {
       throw new Error('PCA.inverse_transform called before fit().');
