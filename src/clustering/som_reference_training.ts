@@ -40,7 +40,6 @@ export interface MiniSomReferenceParams {
   grid_height: number;
   topology: SOMTopology;
   neighborhood: SOMNeighborhood;
-  /** Initial learning rate `lr0`. */
   learning_rate: number;
   /** Initial neighborhood radius `sigma0` (MiniSom `sigma`, the fixture `radius`). */
   sigma: number;
@@ -49,17 +48,13 @@ export interface MiniSomReferenceParams {
 }
 
 export interface MiniSomReferenceResult {
-  /** Final weight grid `[grid_height][grid_width][n_features]`. */
   weights: number[][][];
   /** BMU grid coordinates per sample as `[row, col]`. */
   bmus: number[][];
   /** Flat cluster labels per sample (`row * grid_width + col`). */
   labels: number[];
-  /** Mean Euclidean distance from each sample to its BMU weight. */
   quantization_error: number;
-  /** Fraction of samples whose two nearest neurons are not grid-adjacent. */
   topographic_error: number;
-  /** Normalized inter-neuron distance map `[grid_height][grid_width]`. */
   u_matrix: number[][];
 }
 
@@ -96,7 +91,6 @@ function build_coordinate_grids(
   return { xx, yy };
 }
 
-/** Squared Euclidean distance between a sample and a neuron weight vector. */
 function squared_distance(sample: number[], weight: number[]): number {
   let sum = 0;
   for (let f = 0; f < sample.length; f++) {
@@ -193,7 +187,6 @@ function neighborhood_influence(
 }
 
 function transpose_to_native(weights: number[][][]): number[][][] {
-  // [height][width][features] -> [width][height][features]
   const grid_height = weights.length;
   const grid_width = weights[0].length;
   const native: number[][][] = [];
@@ -208,7 +201,6 @@ function transpose_to_native(weights: number[][][]): number[][][] {
 }
 
 function transpose_from_native(weights_native: number[][][]): number[][][] {
-  // [width][height][features] -> [height][width][features]
   const grid_width = weights_native.length;
   const grid_height = weights_native[0].length;
   const weights: number[][][] = [];
@@ -222,7 +214,6 @@ function transpose_from_native(weights_native: number[][][]): number[][][] {
   return weights;
 }
 
-/** Mean Euclidean distance between each sample and its BMU weight. */
 function quantization_error(
   data: number[][],
   weights_native: number[][][],
@@ -350,7 +341,6 @@ function distance_map(
     summed.push(row);
   }
 
-  // Normalize by the grid maximum and transpose to [height][width].
   const u_matrix: number[][] = [];
   for (let b = 0; b < grid_height; b++) {
     const row: number[] = [];
@@ -362,14 +352,6 @@ function distance_map(
   return u_matrix;
 }
 
-/**
- * Train a SOM by replicating MiniSom's deterministic `train_batch`, starting
- * from injected initial weights.
- *
- * @param data Input samples `[n_samples][n_features]`.
- * @param initial_weights Initial weight grid `[grid_height][grid_width][n_features]`.
- * @param params Grid, topology, neighborhood, learning rate, sigma, and iteration count.
- */
 export function train_minisom_reference(
   data: number[][],
   initial_weights: number[][][],
