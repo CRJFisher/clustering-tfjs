@@ -34,7 +34,6 @@ interface HdbscanBaselineRow {
   min_time_ms: number;
   max_time_ms: number;
   memory_used_mb: number;
-  repeats: number;
 }
 
 function median(values: number[]): number {
@@ -90,7 +89,6 @@ async function main(): Promise<void> {
       min_time_ms: Math.min(...times),
       max_time_ms: Math.max(...times),
       memory_used_mb: last!.memory_used / 1024 / 1024,
-      repeats: REPEATS,
     };
     rows.push(row);
 

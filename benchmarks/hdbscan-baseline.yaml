@@ -7,64 +7,56 @@ results:
   - label: small
     dataset_size: 100
     features: 10
-    median_time_ms: 3.1756359999999404
-    min_time_ms: 1.816092000000026
-    max_time_ms: 7.548793999999816
+    median_time_ms: 4.870398999999907
+    min_time_ms: 1.8291770000000724
+    max_time_ms: 7.657146999999895
     memory_used_mb: 0
-    repeats: 3
   - label: medium
     dataset_size: 1000
     features: 50
-    median_time_ms: 234.43105400000013
-    min_time_ms: 227.61707799999976
-    max_time_ms: 243.63754299999982
+    median_time_ms: 226.95186599999988
+    min_time_ms: 225.9607479999995
+    max_time_ms: 244.93834500000003
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n2000_d2
     dataset_size: 2000
     features: 2
-    median_time_ms: 924.7289390000005
-    min_time_ms: 895.7279399999998
-    max_time_ms: 951.8516879999997
+    median_time_ms: 937.5094730000001
+    min_time_ms: 891.595456
+    max_time_ms: 1038.094669
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n2000_d16
     dataset_size: 2000
     features: 16
-    median_time_ms: 932.6173339999996
-    min_time_ms: 899.5567170000004
-    max_time_ms: 933.2383730000001
+    median_time_ms: 932.2992719999993
+    min_time_ms: 901.8314829999999
+    max_time_ms: 942.2648609999997
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n2000_d64
     dataset_size: 2000
     features: 64
-    median_time_ms: 1060.1789370000006
-    min_time_ms: 1051.9068029999999
-    max_time_ms: 1070.8125009999985
+    median_time_ms: 1082.1098870000005
+    min_time_ms: 1067.7169910000011
+    max_time_ms: 1117.0954490000004
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n2000_d128
     dataset_size: 2000
     features: 128
-    median_time_ms: 1238.207394000001
-    min_time_ms: 1224.3638380000011
-    max_time_ms: 1249.1435330000004
+    median_time_ms: 1182.5488370000003
+    min_time_ms: 1143.3480560000007
+    max_time_ms: 1276.972244999999
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n5000_d16
     dataset_size: 5000
     features: 16
-    median_time_ms: 6715.098868000001
-    min_time_ms: 6196.2994
-    max_time_ms: 6744.971022999998
+    median_time_ms: 6284.345703999999
+    min_time_ms: 6276.7715800000005
+    max_time_ms: 6893.997224999999
     memory_used_mb: 0
-    repeats: 3
   - label: hdbscan_n5000_d128
     dataset_size: 5000
     features: 128
-    median_time_ms: 8364.986684999996
-    min_time_ms: 8274.513213999999
-    max_time_ms: 8551.763142999996
+    median_time_ms: 8887.474283999996
+    min_time_ms: 8297.861254000003
+    max_time_ms: 8943.507481
     memory_used_mb: 0
-    repeats: 3
