@@ -2,7 +2,6 @@ import * as tf from '../backend/adapter';
 
 /** Lets downstream code work identically across estimators regardless of how each exposes cluster representatives. */
 export interface ClusterRepresentations {
-  /** Shape `n_clusters × n_features`. */
   centroids_?: tf.Tensor2D | null;
   /**
    * Library-defined: scikit-learn exposes no equivalent attribute.
