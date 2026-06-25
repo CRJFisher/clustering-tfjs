@@ -103,7 +103,6 @@ function lanczos_path(
 
     const slice_cols = Math.min(k + c, result.eigenvalues.length);
 
-    // Extract selected eigenpairs
     const selected_vecs: number[][] = Array.from(
       { length: n },
       () => new Array(slice_cols),
@@ -142,14 +141,12 @@ function jacobi_path(
 ): { eigenvectors: tf.Tensor2D; eigenvalues: tf.Tensor1D } {
   return tf.tidy(() => {
 
-    // Full eigendecomposition
     const { eigenvalues, eigenvectors } = improved_jacobi_eigen(matrix, {
       is_psd: true,
       max_iterations: 3000,
       tolerance: 1e-14,
     });
 
-    // Deterministic ordering & sign fixing
     const processed = deterministic_eigenpair_processing({
       eigenvalues,
       eigenvectors,
@@ -159,7 +156,6 @@ function jacobi_path(
     const n = processed.eigenvectors.length;
     const slice_cols = Math.min(k + c, n);
 
-    // Extract selected eigenvectors
     const selected_vecs: number[][] = Array.from(
       { length: n },
       () => new Array(slice_cols),
