@@ -4,7 +4,6 @@ import {
   degree_vector,
   normalised_laplacian,
   sparse_normalised_laplacian_operator,
-  smallest_eigenvectors,
 } from "./laplacian";
 import { sparse_matrix_from_row_maps } from "./sparse";
 
@@ -46,18 +45,7 @@ describe("Graph Laplacian utilities", () => {
     A.dispose();
   });
 
-  it("rejects a non-positive or non-integer k in smallest_eigenvectors", () => {
-    const L = tf.tensor2d([
-      [1, -1],
-      [-1, 1],
-    ]);
-    expect(() => smallest_eigenvectors(L, 0)).toThrow("positive integer");
-    expect(() => smallest_eigenvectors(L, 1.5)).toThrow("positive integer");
-    L.dispose();
-  });
-
   it("return_diag=true also yields D^{-1/2} per vertex", () => {
-    // Degrees are 1 and 4, so D^{-1/2} = [1, 1/2].
     const A = tf.tensor2d([
       [0, 4],
       [4, 0],
@@ -86,10 +74,29 @@ describe("Graph Laplacian utilities", () => {
     expect(L[0][2]).toBe(0);
     expect(L[1][2]).toBe(0);
   });
+
+  it("normalised_laplacian is symmetric for a symmetric affinity matrix", () => {
+    const A = tf.tensor2d([
+      [0, 2, 1],
+      [2, 0, 3],
+      [1, 3, 0],
+    ]);
+    const L = normalised_laplacian(A).arraySync() as number[][];
+    for (let i = 0; i < 3; i++) {
+      for (let j = 0; j < 3; j++) {
+        expect(L[i][j]).toBeCloseTo(L[j][i], 6);
+      }
+    }
+  });
+
+  it("degree_vector sums rows of a non-square-shaped input", () => {
+    const A_rect = tf.tensor2d([[1, 2, 3]], [1, 3]);
+    expect(() => degree_vector(A_rect)).toThrow("square");
+    A_rect.dispose();
+  });
 });
 
 describe("sparse_normalised_laplacian_operator", () => {
-  // Symmetric 3-node affinity with zero diagonal.
   const build_affinity = () =>
     sparse_matrix_from_row_maps([
       new Map([
@@ -113,7 +120,6 @@ describe("sparse_normalised_laplacian_operator", () => {
     const v = new Float64Array([1, 2, 3]);
     const got = operator.matvec(v);
 
-    // Reference: dense L · v.
     const dense_affinity = tf.tensor2d([
       [0, 1, 2],
       [1, 0, 3],
@@ -151,6 +157,21 @@ describe("sparse_normalised_laplacian_operator", () => {
     expect(() => operator.matvec(new Float64Array([1, 2]))).toThrow(
       "does not match Laplacian size",
     );
+  });
+
+  it("isolated vertex (degree 0) gets inv_sqrt_degree = 1 and matvec row = v[i]", () => {
+    // Node 2 is isolated: matvec must return v[2] unchanged (identity row).
+    const sparse = sparse_matrix_from_row_maps([
+      new Map([[1, 1]]),
+      new Map([[0, 1]]),
+      new Map(),
+    ]);
+    const { operator, degrees, sqrt_degrees } = sparse_normalised_laplacian_operator(sparse);
+    expect(degrees[2]).toBe(0);
+    expect(sqrt_degrees[2]).toBe(1);
+    const v = new Float64Array([0, 0, 7]);
+    const result = operator.matvec(v);
+    expect(result[2]).toBeCloseTo(7, 10);
   });
 });
 

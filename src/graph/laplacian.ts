@@ -1,27 +1,15 @@
 import * as tf from '../backend/adapter';
-import { smallest_eigenvectors_with_values } from '../eigen/smallest_eigenvectors_with_values';
 import { SparseMatrix, sparse_row_sums } from './sparse';
 
-/* -------------------------------------------------------------------------- */
-/*                        Graph Laplacian – core utilities                    */
-/* -------------------------------------------------------------------------- */
-
 /**
- * Computes the (row) degree vector for the provided *affinity / similarity*
- * matrix.
- *
- * The input must be a **square** `tf.Tensor2D` whose entries represent edge
- * weights `A[i,j]` of an undirected graph.  For *k*-NN graphs the matrix is
- * expected to be symmetrised (`A = 0.5 * (A + Aᵀ)`).
- *
- * The returned tensor is a 1-D vector where `deg[i] = Σ_j A[i,j]`.
+ * For *k*-NN graphs the affinity matrix must be symmetrised
+ * (`A = 0.5 * (A + Aᵀ)`) before calling this function.
  */
 export function degree_vector(A: tf.Tensor2D): tf.Tensor1D {
   if (A.shape.length !== 2 || A.shape[0] !== A.shape[1]) {
     throw new Error('Affinity matrix must be square (n × n).');
   }
 
-  // Sum along axis 1 (rows) – (n)
   return tf.tidy(() => A.sum(1) as tf.Tensor1D);
 }
 
@@ -50,37 +38,30 @@ export function normalised_laplacian(
   return tf.tidy(() => {
     const n = A.shape[0];
 
-    // First, zero out the diagonal of A to match scipy behavior
     // "Diagonal entries of the input adjacency matrix are ignored and
-    // replaced with zeros for the purpose of normalization"
+    // replaced with zeros for the purpose of normalization" (scipy parity)
     const diag_mask = tf.sub(1, tf.eye(n));
     const A_no_diag = A.mul(diag_mask) as tf.Tensor2D;
 
     const deg = degree_vector(A_no_diag); // (n)
 
-    // d^{-1/2} – set entries with deg == 0 to 1 (for isolated nodes)
     const inv_sqrt = tf.where(
       deg.equal(0),
       tf.ones_like(deg),
       deg.pow(-0.5),
     ) as tf.Tensor1D; // (n)
 
-    // Build outer product inv_sqrt[:,None] * inv_sqrt[None,:]  (n,n)
     const diag_col = inv_sqrt.reshape([n, 1]);
     const diag_row = inv_sqrt.reshape([1, n]);
     const scaling = diag_col.matMul(diag_row) as tf.Tensor2D; // (n,n)
 
-    // Scale the affinity matrix (with diagonal already zeroed)
     const scaled_affinity = A_no_diag.mul(scaling) as tf.Tensor2D;
 
-    // L = I - scaled_affinity
-    // This ensures diagonal entries are exactly 1 for non-isolated nodes
     const I = tf.eye(n);
     const laplacian = I.sub(scaled_affinity) as tf.Tensor2D;
 
     if (return_diag) {
-      // Return both Laplacian and sqrt(degrees) for eigenvector recovery
-      // Note: we return inv_sqrt which is D^(-1/2), so for recovery we need to divide by it
+      // sqrt_degrees holds D^{-1/2}, not D^{1/2} — callers must divide by it, not multiply
       return {
         laplacian: laplacian,
         sqrt_degrees: inv_sqrt,
@@ -156,22 +137,3 @@ export function sparse_normalised_laplacian_operator(
   };
 }
 
-/**
- * Convenience helper that returns the `k` smallest eigenvectors of the
- * provided symmetric matrix *as a TensorFlow.js tensor* (n × k).
- *
- * Delegates to `smallest_eigenvectors_with_values` for consistent
- * solver selection (Lanczos for large matrices, Jacobi for small).
- */
-export function smallest_eigenvectors(
-  matrix: tf.Tensor2D,
-  k: number,
-): tf.Tensor2D {
-  if (!Number.isInteger(k) || k < 1) {
-    throw new Error('k must be a positive integer.');
-  }
-
-  const { eigenvectors, eigenvalues } = smallest_eigenvectors_with_values(matrix, k);
-  eigenvalues.dispose();
-  return eigenvectors;
-}
