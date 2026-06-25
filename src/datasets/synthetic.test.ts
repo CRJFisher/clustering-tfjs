@@ -1,4 +1,3 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { make_blobs } from "./synthetic";
 
