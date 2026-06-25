@@ -360,9 +360,7 @@ export function jacobi_eigen_decomposition(
 
   /* istanbul ignore next */
   function warn(msg: string): void {
-    // Centralised helper – could be swapped for a proper logger later.
-    // Users may suppress by overriding console.warn if desired.
-    // We add a prefix to make it searchable in logs.
+    // Prefixes warnings with [spectral] so they are searchable in logs.
     console.warn(`[spectral] ${msg}`);
   }
 }
