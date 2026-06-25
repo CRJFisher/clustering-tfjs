@@ -1,7 +1,7 @@
 import { LabelVector } from '../clustering/types';
 import { is_tensor } from '../tensor/tensor_guards';
 
-export interface ContingencyResult {
+interface ContingencyResult {
   table: number[][];
   row_sums: number[];
   col_sums: number[];

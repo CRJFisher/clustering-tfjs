@@ -8,8 +8,6 @@ describe("to_label_array", () => {
   });
 
   it("converts a 1D tensor to a rounded integer array", () => {
-    // Float32 storage can land just off an integer, so dataSync values are
-    // rounded back to the intended label.
     const labels = tf.tensor1d([0, 1, 2, 0.9999999, 1.0000001]);
     expect(to_label_array(labels)).toEqual([0, 1, 2, 1, 1]);
     labels.dispose();
