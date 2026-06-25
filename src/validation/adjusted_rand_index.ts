@@ -40,7 +40,6 @@ export function adjusted_rand_index(
 
   const { table, row_sums, col_sums, n } = build_contingency_table(true_arr, pred_arr);
 
-  // C(x, 2) = x * (x - 1) / 2
   const comb2 = (x: number): number => (x * (x - 1)) / 2;
 
   const n_c2 = comb2(n);
@@ -50,7 +49,6 @@ export function adjusted_rand_index(
     return 1.0;
   }
 
-  // sum_ij C(n_ij, 2)
   let index = 0;
   for (let i = 0; i < table.length; i++) {
     for (let j = 0; j < table[i].length; j++) {
@@ -58,7 +56,6 @@ export function adjusted_rand_index(
     }
   }
 
-  // sum_i C(a_i, 2) and sum_j C(b_j, 2)
   let sum_a = 0;
   for (const a of row_sums) {
     sum_a += comb2(a);

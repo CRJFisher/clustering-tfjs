@@ -1,86 +1,73 @@
-import { describe, it, expect } from "@jest/globals";
 import * as tf from "../../test_support/tensorflow_helper";
 import { adjusted_rand_index } from "./adjusted_rand_index";
 
 describe("Adjusted Rand Index", () => {
   describe("Basic functionality", () => {
-    it("should return 1.0 for perfect agreement", () => {
-      const labels_true = [0, 0, 1, 1, 2, 2];
-      const labels_pred = [0, 0, 1, 1, 2, 2];
-
-      expect(adjusted_rand_index(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("returns 1.0 for perfect agreement", () => {
+      expect(adjusted_rand_index([0, 0, 1, 1, 2, 2], [0, 0, 1, 1, 2, 2])).toBeCloseTo(1.0, 10);
     });
 
-    it("should be permutation invariant", () => {
-      const labels_true = [0, 0, 1, 1];
-      const labels_pred = [1, 1, 0, 0];
-
-      expect(adjusted_rand_index(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("is permutation invariant", () => {
+      expect(adjusted_rand_index([0, 0, 1, 1], [1, 1, 0, 0])).toBeCloseTo(1.0, 10);
     });
 
-    it("should return near 0 for random labeling", () => {
-      // Large enough to be stable
+    it("is symmetric: ARI(a,b) == ARI(b,a)", () => {
+      const a = [0, 0, 1, 1, 2, 2];
+      const b = [0, 0, 0, 1, 1, 1];
+      expect(adjusted_rand_index(a, b)).toBeCloseTo(adjusted_rand_index(b, a), 10);
+    });
+
+    it("returns negative for worse-than-random (sklearn: -0.5)", () => {
+      // sklearn: adjusted_rand_score([0,0,1,1], [0,1,0,1]) = -0.5
+      expect(adjusted_rand_index([0, 0, 1, 1], [0, 1, 0, 1])).toBeCloseTo(-0.5, 5);
+    });
+
+    it("returns -0.08 for balanced alternating labels (sklearn reference)", () => {
+      // Two balanced clusters of 5, predictions alternate every sample.
+      // Derived: index=8, expected=80/9, max=20 → ARI = -8/100 = -0.08
       const labels_true = [0, 0, 0, 0, 0, 1, 1, 1, 1, 1];
       const labels_pred = [0, 1, 0, 1, 0, 1, 0, 1, 0, 1];
-
-      const ari = adjusted_rand_index(labels_true, labels_pred);
-      expect(Math.abs(ari)).toBeLessThan(0.5);
-    });
-
-    it("should return negative for worse-than-random", () => {
-      // sklearn: adjusted_rand_score([0,0,1,1], [0,1,0,1]) = -0.5
-      const labels_true = [0, 0, 1, 1];
-      const labels_pred = [0, 1, 0, 1];
-
-      const ari = adjusted_rand_index(labels_true, labels_pred);
-      expect(ari).toBeCloseTo(-0.5, 5);
+      expect(adjusted_rand_index(labels_true, labels_pred)).toBeCloseTo(-0.08, 5);
     });
   });
 
   describe("sklearn reference values", () => {
-    it("should match sklearn for partial agreement", () => {
+    it("matches sklearn for partial agreement (≈0.5714)", () => {
       // sklearn: adjusted_rand_score([0,0,1,2], [0,0,1,1]) ≈ 0.5714
-      const labels_true = [0, 0, 1, 2];
-      const labels_pred = [0, 0, 1, 1];
+      expect(adjusted_rand_index([0, 0, 1, 2], [0, 0, 1, 1])).toBeCloseTo(0.5714, 3);
+    });
 
-      const ari = adjusted_rand_index(labels_true, labels_pred);
-      expect(ari).toBeCloseTo(0.5714, 3);
+    it("returns 0.0 when all true labels are identical and pred assigns each point its own cluster", () => {
+      // Contingency: one row of all singletons. index=0, sum_b=0, expected=0, max=C(n,2)/2 → ARI=0
+      expect(adjusted_rand_index([0, 0, 0, 0], [0, 1, 2, 3])).toBeCloseTo(0.0, 10);
     });
   });
 
   describe("Edge cases", () => {
-    it("should return 1.0 for all-same labels in both (identical partitions)", () => {
-      const labels_true = [0, 0, 0];
-      const labels_pred = [0, 0, 0];
-
-      expect(adjusted_rand_index(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("returns 1.0 when all samples share one cluster label in both", () => {
+      expect(adjusted_rand_index([0, 0, 0], [0, 0, 0])).toBeCloseTo(1.0, 10);
     });
 
-    it("should return 1.0 for each-point-own-cluster in both (identical partitions)", () => {
-      // When every point is a singleton in both, the partitions are identical
-      const labels_true = [0, 1, 2, 3];
-      const labels_pred = [4, 5, 6, 7];
-
-      expect(adjusted_rand_index(labels_true, labels_pred)).toBeCloseTo(1.0, 10);
+    it("returns 1.0 when every sample is its own singleton in both", () => {
+      // Hits the denominator===0 branch: sum_a=sum_b=0, index=expected=0
+      expect(adjusted_rand_index([0, 1, 2, 3], [4, 5, 6, 7])).toBeCloseTo(1.0, 10);
     });
 
-    it("should throw for empty arrays", () => {
+    it("throws for empty arrays", () => {
       expect(() => adjusted_rand_index([], [])).toThrow("must not be empty");
     });
 
-    it("should throw for mismatched lengths", () => {
-      expect(() => adjusted_rand_index([0, 1], [0, 1, 2])).toThrow(
-        "same length"
-      );
+    it("throws for mismatched lengths", () => {
+      expect(() => adjusted_rand_index([0, 1], [0, 1, 2])).toThrow("same length");
     });
 
-    it("should return 1.0 for single sample (trivially identical)", () => {
+    it("returns 1.0 for a single sample (trivially identical partitions)", () => {
       expect(adjusted_rand_index([0], [0])).toBeCloseTo(1.0, 10);
     });
   });
 
   describe("Tensor inputs", () => {
-    it("should produce same result with tensor inputs", () => {
+    it("produces same result with tensor inputs", () => {
       const labels_true = [0, 0, 1, 1, 2, 2];
       const labels_pred = [0, 0, 1, 1, 2, 2];
 
