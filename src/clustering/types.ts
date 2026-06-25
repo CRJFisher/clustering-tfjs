@@ -1,12 +1,6 @@
 import * as tf from '../backend/adapter';
 
 /**
- * ----------------------------------------------------------------------------
- * Generic type aliases used across clustering algorithms
- * ----------------------------------------------------------------------------
- */
-
-/**
  * Two-dimensional data matrix accepted by `fit`/`fit_predict` methods.
  *
  * Either a `tf.Tensor2D` **or** a plain nested JavaScript array. Allowing both
@@ -18,13 +12,10 @@ export type DataMatrix = tf.Tensor2D | number[][];
 /**
  * One-dimensional vector of cluster assignments returned by `fit_predict`.
  *
- * The choice of `tf.Tensor1D` or plain `number[]` again mirrors `DataMatrix`.
+ * Accepts either `tf.Tensor1D` or plain `number[]`, mirroring `DataMatrix`.
  */
 export type LabelVector = tf.Tensor1D | number[];
 
-/**
- * Distance metric shared across estimators and representation accessors.
- */
 export type ClusteringMetric = 'euclidean' | 'manhattan' | 'cosine';
 
 /**
@@ -39,25 +30,12 @@ export interface CoreClusteringParams {
   random_state?: number;
 }
 
-/**
- * Common options for clustering algorithms that require an explicit cluster count.
- */
 export interface BaseClusteringParams extends CoreClusteringParams {
   /**
    * Desired number of clusters. Must be ≥ 1.
    */
   n_clusters: number;
 }
-
-/**
- * ----------------------------------------------------------------------------
- * Algorithm specific parameter objects
- * ----------------------------------------------------------------------------
- *
- * Only parameters required during *construction* or the first call to `fit`
- * should be included here. Runtime options specific to a single method call
- * can be expressed via regular function parameters (future tasks).
- */
 
 export interface KMeansParams extends BaseClusteringParams {
   /**
@@ -131,13 +109,6 @@ export interface SpectralClusteringParams extends BaseClusteringParams {
    * Default: 20
    */
   validation_attempts?: number;
-
-  /**
-   * Whether to also optimize affinity parameters (gamma for RBF, n_neighbors for kNN)
-   * when use_validation is enabled. This performs a grid search over parameter values.
-   * Default: false
-   */
-  optimize_affinity_params?: boolean;
 
   /**
    * Which validation metric to use for optimization when use_validation is enabled.
@@ -248,12 +219,6 @@ export interface AgglomerativeClusteringParams extends CoreClusteringParams {
   metric?: 'euclidean' | 'manhattan' | 'cosine' | 'precomputed';
 }
 
-/**
- * ----------------------------------------------------------------------------
- * Base interface to be implemented by *all* clustering estimators
- * ----------------------------------------------------------------------------
- */
-
 export interface BaseClustering<
   Params extends CoreClusteringParams = BaseClusteringParams,
 > {
@@ -276,30 +241,12 @@ export interface BaseClustering<
   fit_predict(X: DataMatrix): Promise<number[]>;
 }
 
-/**
- * ----------------------------------------------------------------------------
- * Self-Organizing Maps (SOM) specific types and interfaces
- * ----------------------------------------------------------------------------
- */
-
-/**
- * Grid topology for the SOM neurons arrangement.
- */
 export type SOMTopology = 'rectangular' | 'hexagonal';
 
-/**
- * Neighborhood function for determining influence of BMU on surrounding neurons.
- */
 export type SOMNeighborhood = 'gaussian' | 'bubble' | 'mexican_hat';
 
-/**
- * Weight initialization strategy for the SOM grid.
- */
 export type SOMInitialization = 'random' | 'linear' | 'pca';
 
-/**
- * Decay function type for learning rate and radius scheduling.
- */
 export type DecayFunction = (epoch: number, total_epochs: number) => number;
 
 /**
@@ -399,40 +346,17 @@ export interface SOMParams extends CoreClusteringParams {
   initial_weights?: number[][][];
 }
 
-/**
- * State object for SOM persistence and online learning.
- */
 export interface SOMState {
-  /**
-   * Current weight matrix [height, width, features].
-   */
+  /** Current weight matrix [height, width, features]. */
   weights: number[][][];
-
-  /**
-   * Total number of samples learned.
-   */
   total_samples: number;
-
-  /**
-   * Current epoch number (for online learning).
-   */
+  /** Current epoch (for online learning). */
   current_epoch: number;
-
-  /**
-   * Grid dimensions.
-   */
   grid_width: number;
   grid_height: number;
-
-  /**
-   * Configuration parameters.
-   */
   params: SOMParams;
 }
 
-/**
- * Options for the SOM 2-phase cluster() method.
- */
 export interface SOMClusterOptions {
   /**
    * Linkage criterion for agglomerative clustering on SOM neurons.
@@ -447,9 +371,6 @@ export interface SOMClusterOptions {
   metric?: 'euclidean' | 'manhattan' | 'cosine';
 }
 
-/**
- * Metrics for evaluating SOM quality.
- */
 export interface SOMMetrics {
   /**
    * Average distance between samples and their BMUs.
