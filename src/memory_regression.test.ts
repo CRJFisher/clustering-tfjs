@@ -2,6 +2,7 @@ import * as tf from '../test_support/tensorflow_helper';
 import { KMeans } from './clustering/kmeans';
 import { SpectralClustering } from './clustering/spectral';
 import { SOM } from './clustering/som';
+import { HDBSCAN } from './clustering/hdbscan';
 import { find_optimal_clusters } from './model_selection/find_optimal_clusters';
 import { export_for_visualization } from './visualization/som_visualization';
 import { silhouette_score } from './validation/silhouette';
@@ -220,6 +221,98 @@ describe('Memory regression tests', () => {
       // (same tolerance as the standalone SOM memory tests above).
       expect(after).toBeLessThanOrEqual(before + 4);
     });
+  });
+
+  describe('HDBSCAN', () => {
+    const hdbscan_params = { min_cluster_size: 2, min_samples: 2 };
+
+    it('fit() + dispose() with array input should not leak tensors', async () => {
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN(hdbscan_params);
+      await hdb.fit(data);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it('fit() + dispose() with tensor input should not leak tensors', async () => {
+      const X = tf.tensor2d(data);
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN(hdbscan_params);
+      await hdb.fit(X);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+
+      X.dispose();
+    });
+
+    it('re-fitting should not leak tensors', async () => {
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN(hdbscan_params);
+      await hdb.fit(data);
+      await hdb.fit(data);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it('n === 1 graceful noise path should not leak tensors', async () => {
+      const single_point = [[1, 2]];
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN(hdbscan_params);
+      await hdb.fit(single_point);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it('precomputed metric should not leak tensors', async () => {
+      const precomputed = [
+        [0, 1, Math.sqrt(2)],
+        [1, 0, 1],
+        [Math.sqrt(2), 1, 0],
+      ];
+      const before = tf.memory().numTensors;
+
+      const hdb = new HDBSCAN({ ...hdbscan_params, metric: 'precomputed' });
+      await hdb.fit(precomputed);
+      hdb.dispose();
+
+      const after = tf.memory().numTensors;
+      expect(after).toBe(before);
+    });
+
+    it(
+      'large-n fit should not leak tensors',
+      async () => {
+        // n=500 is within the O(n²) memory ceiling; validates no argument-spread
+        // RangeError arises from the JS tail at this scale.
+        const n = 500;
+        const large_data = Array.from({ length: n }, (_, i) => [
+          Math.sin(i * 0.1),
+          Math.cos(i * 0.1),
+        ]);
+
+        const before = tf.memory().numTensors;
+
+        const hdb = new HDBSCAN({ min_cluster_size: 5 });
+        await hdb.fit(large_data);
+        hdb.dispose();
+
+        const after = tf.memory().numTensors;
+        expect(after).toBe(before);
+      },
+      30_000,
+    );
   });
 
   describe('Validation functions', () => {
