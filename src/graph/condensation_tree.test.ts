@@ -3,6 +3,7 @@ import path from 'path';
 
 import {
   build_condensation_tree,
+  build_single_linkage,
   condense_hierarchy,
   excess_of_mass,
   extract_labels,
@@ -57,6 +58,33 @@ interface HdbscanFixture {
   X?: number[][];
   distance_matrix?: number[][];
 }
+
+describe('build_single_linkage', () => {
+  it('returns n-1 rows with correct distances and accumulated sizes', () => {
+    const rows = build_single_linkage(
+      [{ source: 0, target: 1, weight: 1 }, { source: 1, target: 2, weight: 2 }],
+      3,
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0][2]).toBe(1); // first merge distance
+    expect(rows[0][3]).toBe(2); // merged size: 1+1
+    expect(rows[1][2]).toBe(2); // second merge distance
+    expect(rows[1][3]).toBe(3); // merged size: 2+1
+  });
+
+  it('sorts edges by weight before merging regardless of input order', () => {
+    const rows = build_single_linkage(
+      [{ source: 1, target: 2, weight: 5 }, { source: 0, target: 1, weight: 1 }],
+      3,
+    );
+    expect(rows[0][2]).toBe(1);
+    expect(rows[1][2]).toBe(5);
+  });
+
+  it('handles n=1 (zero edges) returning an empty hierarchy', () => {
+    expect(build_single_linkage([], 1)).toEqual([]);
+  });
+});
 
 const files = fs.readdirSync(FIXTURE_DIR).filter((f) => f.endsWith('.json'));
 

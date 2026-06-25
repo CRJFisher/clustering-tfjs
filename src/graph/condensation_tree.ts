@@ -257,7 +257,7 @@ function compute_births(
 ): Map<number, number> {
   const births = new Map<number, number>();
   for (const e of tree) births.set(e.child, e.lambda_val);
-  births.set(n_samples, 0); // root cluster is born at λ = 0
+  births.set(n_samples, 0);
   return births;
 }
 
@@ -409,7 +409,6 @@ export function excess_of_mass(
     if (e.child_size > 1) cluster_parent.set(e.child, e.parent);
   }
 
-  // All candidate cluster ids (children that are themselves clusters).
   const all_clusters = new Set<number>();
   for (const e of tree) if (e.child_size > 1) all_clusters.add(e.child);
   if (allow_single_cluster) all_clusters.add(root);
@@ -440,7 +439,6 @@ export function excess_of_mass(
           )
         : leaves;
   } else {
-    // Excess of Mass — process clusters bottom-up (descending id).
     const stability = compute_stability(tree, n_samples);
     const stab = new Map(stability);
     let nodes = [...stability.keys()].sort((a, b) => b - a);
@@ -526,7 +524,6 @@ export function extract_labels(
   for (let p = 0; p < n_samples; p++) {
     let c = point_parent[p];
     if (c === -1) continue;
-    // Climb to the lowest selected ancestor.
     while (!selected.has(c) && c !== root) {
       const next = cluster_parent.get(c);
       if (next === undefined) break;
@@ -540,7 +537,6 @@ export function extract_labels(
     }
   }
 
-  // Membership probabilities and exemplars.
   const probabilities = new Array<number>(n_samples).fill(0);
   const exemplar_indices = new Map<number, number>();
   const best_lambda = new Map<number, number>();
