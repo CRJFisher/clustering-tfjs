@@ -34,6 +34,7 @@ export function sparse_matrix_from_row_maps(
   let offset = 0;
 
   for (let row = 0; row < n_rows; row++) {
+    // CSR requires column indices to be in ascending order within each row.
     const entries = Array.from(rows[row].entries()).sort((a, b) => a[0] - b[0]);
     for (const [col, value] of entries) {
       if (col < 0 || col >= cols) {
@@ -120,7 +121,10 @@ export function sparse_matvec(
 export function sparse_stats(matrix: SparseMatrix): SparseMatrixStats {
   const total_entries = matrix.rows * matrix.cols;
   let nonzero_sum = 0;
+  // When fully dense every entry is stored so Infinity lets the loop find the real min.
+  // When sparse, implicit zeros exist and 0 is already the floor.
   let min = matrix.data.length === total_entries ? Infinity : 0;
+  // When no entries are stored, the matrix is all implicit zeros so max is 0.
   let max = matrix.data.length === 0 ? 0 : -Infinity;
 
   for (const value of matrix.data) {

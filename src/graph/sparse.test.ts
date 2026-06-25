@@ -51,6 +51,27 @@ describe('SparseMatrix CSR helpers', () => {
     ).toThrow('outside matrix width');
   });
 
+  it('throws for a negative column index', () => {
+    expect(() =>
+      sparse_matrix_from_row_maps([new Map([[-1, 1]])], 3),
+    ).toThrow('outside matrix width');
+  });
+
+  it('defaults cols to rows.length for a square matrix', () => {
+    const m = sparse_matrix_from_row_maps([
+      new Map([[0, 1]]),
+      new Map([[1, 2]]),
+      new Map([[2, 3]]),
+    ]);
+    expect(m.rows).toBe(3);
+    expect(m.cols).toBe(3);
+    expect(Array.from(sparse_to_dense_array(m))).toEqual([
+      [1, 0, 0],
+      [0, 2, 0],
+      [0, 0, 3],
+    ]);
+  });
+
   it('handles an empty row list', () => {
     const m = sparse_matrix_from_row_maps([], 5);
     expect(m.rows).toBe(0);
