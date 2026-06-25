@@ -5,7 +5,6 @@ import {
   compute_knn_affinity,
   compute_sparse_knn_affinity,
   compute_cosine_affinity,
-  compute_affinity_matrix,
 } from "./affinity";
 import { sparse_to_dense_array } from "./sparse";
 
@@ -33,27 +32,17 @@ describe("Affinity matrix utilities", () => {
   });
 
   it("computes k-NN affinity with correct number of edges and symmetrisation", () => {
-    // Four points on a line at positions 0,1,2,3
     const X = tf.tensor2d([[0], [1], [2], [3]]);
-
-    const A = compute_knn_affinity(X, 1); // connect each point to its nearest neighbour
-
+    const A = compute_knn_affinity(X, 1);
     const arr = A.arraySync() as number[][];
-
-    // Expect symmetric matrix with values 0, 0.5, or 1
-    // When include_self=true (default), diagonal has 1s
-    // When symmetrized, edges that appear in only one direction get 0.5
     let edge_count = 0;
     for (let i = 0; i < 4; i++) {
-      expect(arr[i][i]).toBe(1); // Self-loops included by default
+      expect(arr[i][i]).toBe(1);
       for (let j = 0; j < 4; j++) {
         expect(arr[i][j]).toBe(arr[j][i]);
         if (arr[i][j] > 0) edge_count++;
       }
     }
-    // With k=1 and include_self=true (default), sklearn behavior means k=1 includes self
-    // So each node only connects to its 1 nearest neighbor (which is itself)
-    // Result: diagonal matrix with 4 edges
     expect(edge_count).toBe(4);
   });
 
@@ -105,25 +94,6 @@ describe("Affinity matrix utilities", () => {
     X.dispose();
   });
 
-  it("dispatcher routes rbf and nearest_neighbors", () => {
-    const X = tf.tensor2d([[0], [1], [2], [3]]);
-    const rbf = compute_affinity_matrix(X, { affinity: "rbf", gamma: 1 });
-    const direct_rbf = compute_rbf_affinity(X, 1);
-    expect(rbf.arraySync()).toEqual(direct_rbf.arraySync());
-
-    const knn = compute_affinity_matrix(X, {
-      affinity: "nearest_neighbors",
-      n_neighbors: 2,
-    });
-    const direct_knn = compute_knn_affinity(X, 2, true);
-    expect(knn.arraySync()).toEqual(direct_knn.arraySync());
-
-    rbf.dispose();
-    direct_rbf.dispose();
-    knn.dispose();
-    direct_knn.dispose();
-    X.dispose();
-  });
 });
 
 describe("compute_sparse_knn_affinity – validation", () => {
@@ -170,32 +140,18 @@ describe("compute_cosine_affinity", () => {
     const A = compute_cosine_affinity(X);
     const arr = A.arraySync() as number[][];
 
-    // Diagonal forced to 1.
     for (let i = 0; i < 3; i++) expect(arr[i][i]).toBeCloseTo(1, 6);
-    // Symmetric.
     for (let i = 0; i < 3; i++)
       for (let j = 0; j < 3; j++) expect(arr[i][j]).toBeCloseTo(arr[j][i], 6);
-    // cos similarity between [1,0] and [0,1] is 0 -> affinity 0.
+    // cos([1,0], [0,1]) = 0 → affinity 0
     expect(arr[0][1]).toBeCloseTo(0, 6);
-    // cos similarity between [1,0] and [1,1] is 1/sqrt(2).
+    // cos([1,0], [1,1]) = 1/√2
     expect(arr[0][2]).toBeCloseTo(1 / Math.sqrt(2), 5);
 
     A.dispose();
     X.dispose();
   });
 
-  it("is reachable through compute_affinity_matrix dispatcher", () => {
-    const X = tf.tensor2d([
-      [1, 0],
-      [0, 1],
-    ]);
-    const A = compute_affinity_matrix(X, { affinity: "cosine" });
-    const arr = A.arraySync() as number[][];
-    expect(arr[0][0]).toBeCloseTo(1, 6);
-    expect(arr[0][1]).toBeCloseTo(0, 6);
-    A.dispose();
-    X.dispose();
-  });
 });
 
 describe("compute_knn_affinity – tensor lifecycle", () => {

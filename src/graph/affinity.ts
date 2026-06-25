@@ -11,15 +11,7 @@ import {
 } from './sparse';
 
 /**
- * Computes the RBF (Gaussian) kernel affinity matrix for the given points.
- *
  *  A[i, j] = exp(-gamma * ||x_i - x_j||^2)
- *
- *  • The diagonal is guaranteed to be exactly 1 (because the distance is 0).
- *  • The result is symmetric by construction.
- *
- * The function is wrapped in `tf.tidy` so that all intermediate tensors are
- * automatically disposed of once the result tensor has been returned.
  */
 export function compute_rbf_affinity(
   points: tf.Tensor2D,
@@ -35,15 +27,12 @@ export function compute_rbf_affinity(
 
     const gamma_val = gamma ?? 1.0 / n_features;
 
-    const distances = pairwise_euclidean_matrix(points); // (n, n)
-
-    // squared distances
+    const distances = pairwise_euclidean_matrix(points);
     const sq = distances.square();
 
     const A = sq.mul(-gamma_val).exp() as tf.Tensor2D;
 
-    // Ensure exact symmetry by averaging with its transpose (to mitigate any
-    // potential numerical asymmetry) and set the diagonal to 1.
+    // Average with transpose to eliminate any float32 numerical asymmetry.
     const sym = A.add(A.transpose()).div(2);
     const eye = tf.eye(sym.shape[0]);
     return sym.mul(tf.scalar(1).sub(eye)).add(eye) as tf.Tensor2D;
@@ -51,17 +40,11 @@ export function compute_rbf_affinity(
 }
 
 /**
- * Builds a (k-)nearest-neighbour adjacency / affinity matrix.
+ * Self-loops are included by default to ensure connectivity (sklearn behaviour).
+ * Symmetrised via `0.5 * (A + Aᵀ)`: mutual edges → 1.0, asymmetric → 0.5.
  *
- * For each sample the `k` closest neighbours are connected with affinity
- * value **1**. Self-loops are included to ensure connectivity, matching
- * sklearn's behavior. The final matrix is **symmetrised** via `0.5 * (A + Aᵀ)`.
- * Mutual edges get weight 1.0 while asymmetric edges get weight 0.5.
- *
- * The result is returned as a dense `tf.Tensor2D` containing zeros for
- * non-connected pairs.  While a sparse representation would be more memory
- * efficient, downstream TensorFlow.js ops (e.g. eigen-decomposition) currently
- * expect dense tensors.
+ * Returns a dense tensor because downstream ops (eigen-decomposition) expect
+ * dense input; use `compute_sparse_knn_affinity` for the CSR form.
  */
 export function compute_knn_affinity(
   points: tf.Tensor2D,
@@ -74,10 +57,8 @@ export function compute_knn_affinity(
 }
 
 /**
- * Builds a sparse k-nearest-neighbour connectivity graph in CSR form.
- *
- * The directed kNN graph is symmetrised as `0.5 * (A + Aᵀ)`, matching the
- * existing dense helper and sklearn's SpectralClustering connectivity path.
+ * Symmetrised as `0.5 * (A + Aᵀ)`, matching sklearn's SpectralClustering
+ * connectivity path.
  */
 export function compute_sparse_knn_affinity(
   points: tf.Tensor2D,
@@ -119,7 +100,7 @@ export function compute_sparse_knn_affinity(
   // is disposed; only the final (n,) vector is kept across blocks.
   const squared_norms_kept = tf.keep(
     tf.tidy(() => points_kept.square().sum(1)),
-  ) as tf.Tensor1D; // (n)
+  ) as tf.Tensor1D;
 
   const rows: Array<Map<number, number>> = Array.from(
     { length: n_samples },
@@ -144,103 +125,57 @@ export function compute_sparse_knn_affinity(
     const b = Math.min(BLOCK_SIZE, n_samples - start);
 
     tf.tidy(() => {
-      // Slice current block (b,d)
       const block = points_kept.slice([start, 0], [b, -1]);
 
-      // Efficient squared Euclidean distances using the identity
-      // ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy
-      const block_norms = squared_norms_kept.slice([start], [b]).reshape([b, 1]); // (b,1)
-      const all_norms_row = squared_norms_kept.reshape([1, n_samples]); // (1,n)
+      // ‖x − y‖² = ‖x‖² + ‖y‖² − 2·xᵀy  (avoids building an (n,n,d) tensor)
+      const block_norms = squared_norms_kept.slice([start], [b]).reshape([b, 1]);
+      const all_norms_row = squared_norms_kept.reshape([1, n_samples]);
+      const cross = block.matMul(points_kept.transpose());
+      const dists_squared = block_norms.add(all_norms_row).sub(cross.mul(2));
 
-      const cross = block.matMul(points_kept.transpose()); // (b,n)
-      const dists_squared = block_norms.add(all_norms_row).sub(cross.mul(2)); // (b,n)
-
-      // We can avoid the costly sqrt, distances squared preserve ordering.
-      const neg_dists = dists_squared.neg(); // Want k smallest ⇒ largest of negative values.
-
-      // topk on each row
-      // When include_self=true, k neighbors include self
-      // When include_self=false, we need k+1 to later filter out self
+      // Skip sqrt — squared distances preserve the nearest-neighbour ordering.
+      const neg_dists = dists_squared.neg(); // negate so topk picks the smallest
+      // include_self=false needs k+1 candidates to drop self after sorting
       const top_k = include_self ? k : k + 1;
       const { indices } = tf.topk(neg_dists, top_k);
 
-      // Collect indices and apply deterministic tie-breaking: sort ascending
-      // so that ties are resolved towards the lower index mirroring NumPy.
+      // Sort ascending for deterministic tie-breaking, mirroring NumPy.
       const ind_arr = indices.arraySync() as number[][];
 
       for (let i = 0; i < b; i++) {
         const row_global = start + i;
-
-        // Sort to achieve deterministic order of equal-distance neighbours.
         ind_arr[i].sort((a, b) => a - b);
-
-        let neighbours: number[];
-        if (include_self) {
-          // When include_self=true, the k neighbors already include self
-          neighbours = ind_arr[i];
-        } else {
-          // Remove self-index to get exactly k neighbors (excluding self)
-          neighbours = ind_arr[i].filter((idx) => idx !== row_global).slice(0, k);
-        }
-
+        const neighbours = include_self
+          ? ind_arr[i]
+          : ind_arr[i].filter((idx) => idx !== row_global).slice(0, k);
         for (const nb of neighbours) {
           add_symmetrised_edge(row_global, nb);
         }
       }
-    }); // tidy – dispose temporaries for this block
+    });
   }
 
-  // Release tensors created by this helper. The input tensor is caller-owned.
-  squared_norms_kept.dispose();
+  squared_norms_kept.dispose(); // caller owns points; only this helper's keeps need releasing
 
   return sparse_matrix_from_row_maps(rows, n_samples);
 }
 
 /**
- * Computes the cosine affinity matrix for the given points.
+ *   A[i, j] = 1 - cosine_distance(x_i, x_j)
  *
- *   A[i, j] = 1 - cosine_distance(x_i, x_j)  (i.e. cosine similarity)
- *
- *  • The result is symmetric by construction.
- *  • The diagonal is forced to exactly 1.
- *
- * Cosine affinity is the natural similarity for direction-dominated,
- * magnitude-noisy data (text embeddings, TF-IDF vectors). The computation
- * reuses `pairwise_distance_matrix(points, 'cosine')` as the single source of
- * truth for the cosine metric.
+ * Natural similarity for direction-dominated, magnitude-noisy data (text
+ * embeddings, TF-IDF vectors). Diagonal is forced to exactly 1.
  */
 export function compute_cosine_affinity(points: tf.Tensor2D): tf.Tensor2D {
   return tf.tidy(() => {
-    const distances = pairwise_distance_matrix(points, 'cosine'); // (n, n), diag 0
+    const distances = pairwise_distance_matrix(points, 'cosine');
     const ones = tf.ones_like(distances);
-    const sim = ones.sub(distances); // 1 - cosine_distance
+    const sim = ones.sub(distances);
 
-    // Ensure exact symmetry and force the diagonal to 1.
+    // Average with transpose to eliminate float32 numerical asymmetry.
     const sym = sim.add(sim.transpose()).div(2);
     const eye = tf.eye(sym.shape[0]);
     return sym.mul(tf.scalar(1).sub(eye)).add(eye) as tf.Tensor2D;
   });
 }
 
-/**
- * Convenience wrapper that dispatches to the appropriate affinity builder
- * based on the provided `affinity` option.
- */
-export function compute_affinity_matrix(
-  points: tf.Tensor2D,
-  options:
-    | { affinity: 'rbf'; gamma?: number }
-    | { affinity: 'cosine' }
-    | { affinity: 'nearest_neighbors'; n_neighbors: number },
-): tf.Tensor2D {
-  if (options.affinity === 'rbf') {
-    return compute_rbf_affinity(points, options.gamma);
-  }
-
-  if (options.affinity === 'cosine') {
-    return compute_cosine_affinity(points);
-  }
-
-  // nearest neighbours - include self-loops for connectivity
-  return compute_knn_affinity(points, options.n_neighbors, true);
-}
