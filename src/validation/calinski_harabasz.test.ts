@@ -123,11 +123,11 @@ describe("Calinski-Harabasz Score", () => {
         [6.3, 3.3, 6.0], [5.8, 2.7, 5.1], [7.1, 3.0, 5.9], [6.3, 2.9, 5.6]
       ];
       const labels = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2];
-      
+
       const score = calinski_harabasz(X, labels);
-      
-      // Should have reasonably high score for well-separated clusters
-      expect(score).toBeGreaterThan(20);
+
+      // sklearn.metrics.calinski_harabasz_score on this input.
+      expect(score).toBeCloseTo(48.02278037383177, 4);
     });
   });
 
@@ -190,7 +190,7 @@ describe("Calinski-Harabasz Score", () => {
     });
   });
 
-  describe("Labels length validation (AC#6)", () => {
+  describe("Labels length validation", () => {
     it("should throw when labels length mismatches data rows", () => {
       const X = [[1, 2], [3, 4], [5, 6]];
       const labels = [0, 1];
@@ -235,5 +235,13 @@ describe("Calinski-Harabasz – noise (-1) awareness", () => {
   it("returns defined 0 for a single cluster plus noise", () => {
     expect(calinski_harabasz(two_clusters, [0, 0, 0, -1])).toBe(0);
     expect(calinski_harabasz_efficient(two_clusters, [0, 0, 0, -1])).toBe(0);
+  });
+
+  it("returns defined 0 when noise leaves k >= remaining samples", () => {
+    // After dropping the two noise rows, two samples remain in two distinct
+    // clusters (k === n), the degenerate case — defined as 0, not a throw.
+    const labels = [0, 1, -1, -1];
+    expect(calinski_harabasz(two_clusters, labels)).toBe(0);
+    expect(calinski_harabasz_efficient(two_clusters, labels)).toBe(0);
   });
 });
