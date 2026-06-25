@@ -23,8 +23,10 @@ import {
  * The front-half (distance matrix, core distances, mutual reachability) runs
  * on the TensorFlow.js backend in a single fused `tf.tidy` inside `fit`. Core
  * distances use a `tf.topk` order-statistic; mutual reachability is a broadcast
- * `tf.maximum`. The minimum spanning tree comes from `graph/minimum_spanning_tree`
- * and the condensed tree from `graph/condensation_tree`.
+ * `tf.maximum`. The two halves meet at a single `.data()` readback: the
+ * mutual-reachability tensor is flushed once to a flat `Float32Array`, which
+ * `graph/minimum_spanning_tree` consumes directly. Everything downstream of
+ * that readback (MST, condensed tree, EoM) is plain JS.
  *
  * Parity: labels and probabilities match scikit-learn closely but not
  * bit-for-bit. Mutual-reachability weight ties are ordered differently across

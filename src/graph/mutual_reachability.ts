@@ -1,4 +1,9 @@
 /**
+ * Test-only reference oracle for mutual reachability. Production HDBSCAN
+ * computes this on-tensor via a broadcast `tf.maximum` inside
+ * `clustering/hdbscan.ts`; this pure-JS version exists so tests can
+ * cross-check that path against a simple, readable formula.
+ *
  * The mutual-reachability distance smooths raw distance by each point's core
  * (k-)distance:
  *

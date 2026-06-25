@@ -14,14 +14,18 @@ export interface MstEdge {
 
 /**
  * Edges are canonicalised so `source < target`.
- * When a flat typed array is passed without an explicit `n`, the node count
- * is inferred as `round(sqrt(length))`.
+ *
+ * Accepts a nested `number[][]` or a flat row-major typed array. HDBSCAN
+ * passes the `Float32Array` produced by the single tensor readback at the
+ * front-half/tail boundary; element `(i, j)` is at `i * n + j`. When `n` is
+ * omitted it is inferred as `round(sqrt(length))`, which is only reliable for
+ * perfectly square buffers — the production caller always supplies `n`.
  */
 export function minimum_spanning_tree(
   distance_matrix: number[][] | Float32Array | Float64Array,
   n?: number,
 ): MstEdge[] {
-  const is_flat = !(distance_matrix instanceof Array);
+  const is_flat = ArrayBuffer.isView(distance_matrix);
   const size = is_flat
     ? (n ?? Math.round(Math.sqrt(distance_matrix.length)))
     : distance_matrix.length;
@@ -49,7 +53,7 @@ export function minimum_spanning_tree(
   best_weight.fill(Number.POSITIVE_INFINITY);
   best_source.fill(-1);
 
-  best_weight[0] = 0;
+  best_weight[0] = 0; // seed: node 0 is the arbitrary root; its -1 source suppresses a self-edge
 
   const edges: MstEdge[] = [];
 
