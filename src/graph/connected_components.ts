@@ -12,7 +12,6 @@ export function detect_connected_components(
   const n = affinity.shape[0];
   const component_labels = new Int32Array(n).fill(-1);
 
-  // Get affinity data for graph traversal
   const affinity_data = affinity.arraySync();
   let current_component = 0;
 
@@ -102,18 +101,3 @@ export function detect_sparse_connected_components(
   };
 }
 
-/** Mirrors sklearn's connectivity warning: warns when the graph has more than one component. */
-export function check_graph_connectivity(
-  affinity: tf.Tensor2D,
-  tolerance: number = 1e-2,
-): boolean {
-  const { is_fully_connected } = detect_connected_components(affinity, tolerance);
-
-  if (!is_fully_connected) {
-    console.warn(
-      'Graph is not fully connected, spectral embedding may not work as expected.',
-    );
-  }
-
-  return is_fully_connected;
-}

@@ -3,7 +3,6 @@ import * as tf from "../../test_support/tensorflow_helper";
 import {
   detect_connected_components,
   detect_sparse_connected_components,
-  check_graph_connectivity,
 } from "./connected_components";
 import { sparse_matrix_from_row_maps } from "./sparse";
 
@@ -141,65 +140,6 @@ describe("detect_connected_components", () => {
     for (let i = 1; i < unique.length; i++) {
       expect(unique[i]).toBe(unique[i - 1] + 1);
     }
-  });
-});
-
-describe("check_graph_connectivity", () => {
-  const tensors: tf.Tensor[] = [];
-
-  function tracked<T extends tf.Tensor>(t: T): T {
-    tensors.push(t);
-    return t;
-  }
-
-  afterEach(() => {
-    tensors.forEach((t) => t.dispose());
-    tensors.length = 0;
-  });
-
-  it("returns true for a connected graph without emitting a warning", () => {
-    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    const affinity = tracked(
-      tf.tensor2d([
-        [1, 0.5],
-        [0.5, 1],
-      ]),
-    );
-    const result = check_graph_connectivity(affinity);
-    expect(result).toBe(true);
-    expect(warn_spy).not.toHaveBeenCalled();
-    warn_spy.mockRestore();
-  });
-
-  it("returns false for a disconnected graph and emits a warning", () => {
-    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    const affinity = tracked(
-      tf.tensor2d([
-        [1, 0, 0],
-        [0, 1, 0],
-        [0, 0, 1],
-      ]),
-    );
-    const result = check_graph_connectivity(affinity);
-    expect(result).toBe(false);
-    expect(warn_spy).toHaveBeenCalled();
-    warn_spy.mockRestore();
-  });
-
-  it("forwards custom tolerance to detection", () => {
-    const warn_spy = jest.spyOn(console, "warn").mockImplementation(() => {});
-    const affinity = tracked(
-      tf.tensor2d([
-        [1, 0.05],
-        [0.05, 1],
-      ]),
-    );
-    const connected_default = check_graph_connectivity(affinity);
-    expect(connected_default).toBe(true);
-
-    const connected_strict = check_graph_connectivity(affinity, 0.1);
-    expect(connected_strict).toBe(false);
-    warn_spy.mockRestore();
   });
 });
 
