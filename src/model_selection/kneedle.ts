@@ -30,14 +30,8 @@ export interface KneedleResult {
 }
 
 /**
- * Detects the "knee" or "elbow" point in a curve using a simplified
+ * Detects the "knee" or "elbow" point in a curve using the simplified
  * Kneedle algorithm (Satopaa et al., 2011).
- *
- * The algorithm:
- * 1. Normalizes x and y values to [0, 1]
- * 2. Computes the difference between the curve and a straight line
- *    connecting the first and last points
- * 3. Finds the point of maximum deviation as the knee
  *
  * @param x_values - Monotonically increasing x-values (e.g., k values)
  * @param y_values - Corresponding y-values (e.g., WSS values)
@@ -57,7 +51,6 @@ export function find_knee(
     return { knee_x: null, knee_index: null, differences: [] };
   }
 
-  // Normalize x and y to [0, 1]
   const x_min = x_values[0];
   const x_max = x_values[n - 1];
   const x_range = x_max - x_min;
@@ -81,7 +74,6 @@ export function find_knee(
   const x_norm = x_values.map((x) => (x - x_min) / x_range);
   const y_norm = y_values.map((y) => (y - y_min) / y_range);
 
-  // Compute difference from the diagonal line connecting first and last points
   const y_first = y_norm[0];
   const y_last = y_norm[n - 1];
   const x_first = x_norm[0];
@@ -89,7 +81,6 @@ export function find_knee(
 
   const differences: number[] = [];
   for (let i = 0; i < n; i++) {
-    // Point on the straight line at this x
     const y_line =
       y_first + ((y_last - y_first) * (x_norm[i] - x_first)) / (x_last - x_first);
     differences.push(y_norm[i] - y_line);
@@ -100,7 +91,6 @@ export function find_knee(
   // For a convex/increasing curve, the curve rises above the diagonal.
   // The knee is where it deviates most (most positive difference).
 
-  // Threshold: sensitivity * average step size
   const threshold = sensitivity / (n - 1);
 
   let best_index = -1;
@@ -116,7 +106,6 @@ export function find_knee(
     }
   }
 
-  // Check if the knee is significant enough
   if (best_index === -1 || best_deviation < threshold) {
     return { knee_x: null, knee_index: null, differences };
   }
