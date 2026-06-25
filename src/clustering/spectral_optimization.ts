@@ -79,9 +79,8 @@ export async function validation_based_optimization(
 }
 
 /**
- * Tries multiple gamma values and validation configurations. The embedding is
- * computed once per gamma and reused across all metric/attempt combinations to
- * avoid redundant eigendecompositions.
+ * The embedding is computed once per gamma and reused across all
+ * metric/attempt combinations to avoid redundant eigendecompositions.
  *
  * @throws {Error} If every gamma value produces a degenerate embedding so that
  *   no valid clustering is found.
@@ -202,7 +201,7 @@ export async function intensive_parameter_sweep(
     } catch {
       // skip degenerate gamma
     } finally {
-      embedding?.dispose(); // Guaranteed cleanup
+      embedding?.dispose();
     }
   }
 
