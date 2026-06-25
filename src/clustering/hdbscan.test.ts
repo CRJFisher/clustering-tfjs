@@ -13,31 +13,30 @@ const FIXTURE_DIR = path.join(process.cwd(), '__fixtures__', 'hdbscan');
 
 /**
  * float32 parity tolerances for the HDBSCAN front-half. The front-half
- * (distance matrix, core distances, mutual reachability) moves onto tensors in
- * task-54, where it runs in float32: cluster labels are unaffected but per-point
- * membership probabilities drift. These constants bound the probability tiers so
- * the suite admits that drift while the label assertions stay exact. They are
- * set from the float64 baseline plus the float32 drift the task-54 migration
- * probe measured, with deliberate headroom; task-54.9 re-measures and tightens
- * them against the migrated pipeline.
+ * (distance matrix, core distances, mutual reachability) runs on tensors in
+ * float32: cluster labels are unaffected but per-point membership probabilities
+ * drift additively. These constants bound the probability tiers so the suite
+ * admits that drift while the label assertions stay exact. They are set from
+ * the maximum drift observed across all 33 fixtures on the live float32 pipeline,
+ * with 1.5× headroom (tie-free) or 20% headroom (tie-bound MAE) above the worst
+ * case. Tie-bound fixtures diverge from sklearn due to MST tie-breaking (Prim vs
+ * numpy's unstable argsort), not float32 arithmetic — the float32 pipeline
+ * matches the float64 oracle exactly (MAE = 0) for all tie-bound fixtures.
  */
-// Tie-free per-point probability drift. The task-54 float32 probe measured
-// ~1e-4 worst-case overshoot (nested_mcs8_ms2 fixture); ~10x headroom.
-const TIE_FREE_PROB_ATOL = 1e-3;
-// Tie-bound per-fixture probability MAE. The saturated-cosine fixture
-// (blobs_cosine_precomputed_mcs5) sits highest at ~0.150; every other fixture
-// is <= ~0.077. The bound adds slack over the 0.150 outlier for the extra
-// boundary points float32 tie-reordering can shift between equally valid
-// hierarchies.
+// Tie-free per-point probability drift. Measured float32 maximum: 9.897e-5
+// on nested_mcs8_ms2_{eom,leaf}_eps0.8; 1.5× headroom → 1.5e-4.
+const TIE_FREE_PROB_ATOL = 1.5e-4;
+// Tie-bound per-fixture probability MAE vs sklearn. The precomputed-cosine
+// fixture (blobs_cosine_precomputed_mcs5) is the outlier at 0.1497; all other
+// fixtures are <= 0.077. The gap is MST tie-reordering, not float32 drift.
+// 20% headroom → 0.18.
 const TIE_BOUND_MAE_MAX = 0.18;
 // Tie-bound label agreement under optimal cluster-id alignment. The lowest
-// fixtures (circles/moons mcs5 leaf) sit at ~0.975; the bound admits a few
-// additional float32 boundary shifts without masking a genuine cluster-structure
-// regression.
+// observed value is 0.975 (circles/moons mcs5 leaf, tie-reordering shifts a
+// few boundary points). Floor set 0.035 below observed minimum.
 const TIE_BOUND_AGREEMENT_MIN = 0.94;
 // Upper guard on the [0, 1] probability range. float32 can round a true 1.0 to
-// a few ULPs above 1 (float32 eps ~= 1.2e-7); 1e-6 clears that, where the
-// float64-scale round-off it replaces would not.
+// a few ULPs above 1 (float32 eps ~= 1.2e-7); 1e-6 clears that.
 const PROB_UPPER_BOUND = 1 + 1e-6;
 
 interface HdbscanFixture {
