@@ -12,7 +12,6 @@ import {
 import type { CondensedEdge } from './condensation_tree';
 import { minimum_spanning_tree } from './minimum_spanning_tree';
 import { mutual_reachability } from './mutual_reachability';
-import { kdistance } from '../distance/kdistance';
 import {
   alignment_agreement,
   labels_equivalent_with_noise,
@@ -143,7 +142,8 @@ describe('condensation_tree – end-to-end agreement from raw data', () => {
       const ms =
         fixture.params.min_samples ?? fixture.params.min_cluster_size;
       const nd = D.map((row) => [...row].sort((a, b) => a - b));
-      const core = kdistance(nd, Math.min(ms, n));
+      const k = Math.min(ms, n);
+      const core = nd.map((row) => row[k - 1]);
       const mreach = mutual_reachability(D, core);
       const mst = minimum_spanning_tree(mreach);
       const tree = build_condensation_tree(
@@ -171,7 +171,8 @@ describe('condensation_tree – degenerate inputs', () => {
   function cluster(D: number[][], mcs: number, ms: number, method: 'eom' | 'leaf') {
     const n = D.length;
     const nd = D.map((row) => [...row].sort((a, b) => a - b));
-    const core = kdistance(nd, Math.min(ms, n));
+    const k = Math.min(ms, n);
+    const core = nd.map((row) => row[k - 1]);
     const mst = minimum_spanning_tree(mutual_reachability(D, core));
     const tree = build_condensation_tree(mst, n, mcs);
     const selected = excess_of_mass(tree, n, {

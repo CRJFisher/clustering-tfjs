@@ -1,0 +1,133 @@
+algorithm: hdbscan
+pipeline: float32-tfjs-front-half
+repeats: 5
+note: Post-migration benchmark for task-54. Front-half (distance matrix, core distances, mutual reachability) runs on the tfjs backend. Tail (MST, condensed tree, EoM) is plain JS float64.
+results:
+  - label: small
+    dataset_size: 100
+    features: 10
+    backend: cpu
+    median_time_ms: 14.1847929999999
+    min_time_ms: 8.478003000000172
+    max_time_ms: 35.99364000000014
+    tensor_count_delta: 0
+  - label: medium
+    dataset_size: 1000
+    features: 50
+    backend: cpu
+    median_time_ms: 684.5661260000002
+    min_time_ms: 654.9487249999993
+    max_time_ms: 801.642073
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d2
+    dataset_size: 2000
+    features: 2
+    backend: cpu
+    median_time_ms: 2546.55353
+    min_time_ms: 2204.8920160000016
+    max_time_ms: 2613.863453
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d16
+    dataset_size: 2000
+    features: 16
+    backend: cpu
+    median_time_ms: 2281.0384809999996
+    min_time_ms: 2262.6410800000012
+    max_time_ms: 2307.2769709999993
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d64
+    dataset_size: 2000
+    features: 64
+    backend: cpu
+    median_time_ms: 2705.005911
+    min_time_ms: 2682.7618239999974
+    max_time_ms: 2783.4093499999944
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d128
+    dataset_size: 2000
+    features: 128
+    backend: cpu
+    median_time_ms: 3318.6107559999946
+    min_time_ms: 3273.4783620000017
+    max_time_ms: 3833.7601769999965
+    tensor_count_delta: 0
+  - label: hdbscan_n5000_d16
+    dataset_size: 5000
+    features: 16
+    backend: cpu
+    median_time_ms: 15242.768649999998
+    min_time_ms: 14590.543482999987
+    max_time_ms: 18044.394616999998
+    tensor_count_delta: 0
+  - label: hdbscan_n5000_d128
+    dataset_size: 5000
+    features: 128
+    backend: cpu
+    median_time_ms: 28000.247803000006
+    min_time_ms: 22696.247971000004
+    max_time_ms: 31987.063039
+    tensor_count_delta: 0
+  - label: small
+    dataset_size: 100
+    features: 10
+    backend: tensorflow
+    median_time_ms: 1.6588590000174008
+    min_time_ms: 1.5860409999731928
+    max_time_ms: 61.12115000002086
+    tensor_count_delta: 0
+  - label: medium
+    dataset_size: 1000
+    features: 50
+    backend: tensorflow
+    median_time_ms: 36.94168399996124
+    min_time_ms: 31.169610999990255
+    max_time_ms: 61.64921000000322
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d2
+    dataset_size: 2000
+    features: 2
+    backend: tensorflow
+    median_time_ms: 114.47060500003863
+    min_time_ms: 113.49213799997233
+    max_time_ms: 190.3678779999609
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d16
+    dataset_size: 2000
+    features: 16
+    backend: tensorflow
+    median_time_ms: 166.50771299999906
+    min_time_ms: 119.50416900002165
+    max_time_ms: 212.64655200002016
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d64
+    dataset_size: 2000
+    features: 64
+    backend: tensorflow
+    median_time_ms: 167.94786499999464
+    min_time_ms: 122.09810699999798
+    max_time_ms: 246.24720000004163
+    tensor_count_delta: 0
+  - label: hdbscan_n2000_d128
+    dataset_size: 2000
+    features: 128
+    backend: tensorflow
+    median_time_ms: 132.0630859999801
+    min_time_ms: 111.94180800003232
+    max_time_ms: 170.12405399995623
+    tensor_count_delta: 0
+  - label: hdbscan_n5000_d16
+    dataset_size: 5000
+    features: 16
+    backend: tensorflow
+    median_time_ms: 684.4504999999772
+    min_time_ms: 674.2294849999598
+    max_time_ms: 722.9226050000289
+    tensor_count_delta: 0
+  - label: hdbscan_n5000_d128
+    dataset_size: 5000
+    features: 128
+    backend: tensorflow
+    median_time_ms: 702.6193699999712
+    min_time_ms: 684.5952990000369
+    max_time_ms: 1122.4341290000011
+    tensor_count_delta: 0
