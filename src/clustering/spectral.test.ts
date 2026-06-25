@@ -65,7 +65,7 @@ describe("SpectralClustering – dispose() clears all per-fit state", () => {
     [8, 8], [8.1, 8.1],
   ];
 
-  it("dispose() sets medoid_indices_ to null (AC#1)", async () => {
+  it("dispose() sets medoid_indices_ to null", async () => {
     const sc = new SpectralClustering({ n_clusters: 2, random_state: 0 });
     await sc.fit(X1);
     await sc.compute_medoids(X1);
@@ -78,7 +78,7 @@ describe("SpectralClustering – dispose() clears all per-fit state", () => {
     expect(sc.sparse_affinity_matrix_).toBeNull();
   });
 
-  it("re-fit leaves medoid_indices_ null until compute_medoids is called again (AC#2)", async () => {
+  it("re-fit leaves medoid_indices_ null until compute_medoids is called again", async () => {
     const sc = new SpectralClustering({ n_clusters: 2, random_state: 0 });
     await sc.fit(X1);
     await sc.compute_medoids(X1);
@@ -88,7 +88,7 @@ describe("SpectralClustering – dispose() clears all per-fit state", () => {
     expect(sc.medoid_indices_).toBeNull();
   });
 
-  it("after re-fit, labels_ and affinity_matrix_ are populated; medoid_indices_ and sparse_affinity_matrix_ are null (AC#3)", async () => {
+  it("after re-fit, labels_ and affinity_matrix_ are populated; medoid_indices_ and sparse_affinity_matrix_ are null", async () => {
     const sc = new SpectralClustering({ n_clusters: 2, random_state: 0 });
     await sc.fit(X1);
     await sc.compute_medoids(X1);
