@@ -99,6 +99,11 @@ export const Clustering = {
    * {@link Clustering.reset | reset()} first to re-initialize with a new
    * configuration.
    *
+   * The `'webgpu'` backend is experimental and async-only: it initializes and
+   * verifies cleanly, but the clustering algorithms read tensors back
+   * synchronously, so running `fit`/`fit_predict` on `'webgpu'` is not yet
+   * supported. Use `'webgl'` for in-browser GPU acceleration today.
+   *
    * @throws {Error} If called with a different config than a previous call
    *
    * @example

@@ -1,26 +1,37 @@
 import type * as tf_core from '@tensorflow/tfjs-core';
+import type { TensorFlowBackend } from './platform_types';
 
 // Each browser backend is reached through its own static-specifier dynamic
-// import so a code-splitting bundler emits one chunk per backend — requesting a
-// single backend never pulls the others into the bundle. `@tensorflow/tfjs-core`
-// supplies the engine and ops; importing a backend package registers that
-// backend with the shared core engine as an import side-effect.
-const BROWSER_BACKEND_IMPORTERS: Record<string, () => Promise<unknown>> = {
+// import so a code-splitting bundler can emit a separate chunk per backend and
+// a caller requesting one backend never network-loads the webgl OR webgpu lane
+// it did not ask for. (cpu is a dependency of both webgl and webgpu, so its
+// kernels ride along as the fallback whenever either GPU lane is selected.)
+// `@tensorflow/tfjs-core` supplies the engine and ops; importing a backend
+// package registers that backend with the shared core engine as a side-effect.
+const BROWSER_BACKEND_IMPORTERS: Partial<Record<TensorFlowBackend, () => Promise<unknown>>> = {
   cpu: () => import('@tensorflow/tfjs-backend-cpu'),
   webgl: () => import('@tensorflow/tfjs-backend-webgl'),
   webgpu: () => import('@tensorflow/tfjs-backend-webgpu'),
+  wasm: () => import('@tensorflow/tfjs-backend-wasm'),
 };
 
-const DEFAULT_BROWSER_BACKEND = 'webgl';
+// webgl is the broadest GPU-accelerated browser backend and matches the
+// behaviour of the monolithic build this loader replaces; webgpu is opt-in
+// behind feature detection and cpu is the slow universal fallback.
+const DEFAULT_BROWSER_BACKEND: TensorFlowBackend = 'webgl';
 
 export async function load_tensor_flow(
-  backend?: string,
+  backend?: TensorFlowBackend,
   flags?: Record<string, unknown>,
 ): Promise<typeof tf_core> {
+  // A user who loaded tfjs via a <script> tag exposes an initialized window.tf;
+  // respect it rather than loading our own, unless they explicitly asked for a
+  // backend it is not running (then fall through and load that backend).
   if (typeof window !== 'undefined') {
     const global_window: Window & { tf?: typeof tf_core } = window;
-    if (global_window.tf) {
-      return global_window.tf;
+    const global_tf = global_window.tf;
+    if (global_tf && global_tf.getBackend() && (backend === undefined || global_tf.getBackend() === backend)) {
+      return global_tf;
     }
   }
 

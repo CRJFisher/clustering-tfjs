@@ -105,9 +105,10 @@ async function load_backend(config: BackendConfig): Promise<typeof tf_type> {
   const platform_is_react_native = config.force_platform === 'react-native' || is_react_native();
   const platform_is_node = config.force_platform === 'node' || (!platform_is_react_native && is_node());
 
-  // The browser loader selects exactly one backend package, feature-detects
-  // WebGPU, and verifies the active backend itself, so it owns flag application
-  // and readiness for that path.
+  // Browser is the only platform that code-splits per backend and must
+  // feature-detect and verify WebGPU; node and react-native load a monolithic
+  // package, so they share the generic flag + setBackend + ready tail below
+  // while the browser loader owns that sequence for its own path.
   if (!platform_is_react_native && !platform_is_node) {
     const loader = await import('./loader.browser');
     return loader.load_tensor_flow(config.backend, config.flags);
