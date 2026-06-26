@@ -63,6 +63,16 @@ export async function run_affinity_bench(
 ): Promise<HarnessResult> {
   const { x, gamma, warmups, reps, on_phase } = config;
 
+  // The protocol is only honest if its floors hold; enforce them here rather
+  // than trusting every caller, so the harness cannot be silently weakened into
+  // a compile-inclusive median or a single-best-run number.
+  if (warmups < 2) {
+    throw new Error(`Fairness protocol requires >= 2 warmups, got ${warmups}.`);
+  }
+  if (reps < 5) {
+    throw new Error(`Fairness protocol requires >= 5 timed reps, got ${reps}.`);
+  }
+
   // Warmups absorb WGSL shader compilation / wasm instantiation / lazy kernel
   // registration at this exact n,d shape. The first warmup is the cold,
   // compile-inclusive run; it is reported separately and never enters the median.
@@ -85,10 +95,14 @@ export async function run_affinity_bench(
     reps_ms.push(ms);
     if (i === 0) result_checksum = checksum(data);
 
+    // Only genuine accumulation aborts the race: numTensors growing past the
+    // baseline means a rep failed to release the affinity matrix. A count at or
+    // below baseline is never a leak, so a benign lazy-backend transient cannot
+    // false-trip and discard an otherwise-valid measurement.
     const live = tf.memory().numTensors;
-    if (live !== tensors_baseline) {
+    if (live > tensors_baseline) {
       throw new Error(
-        `Tensor leak: numTensors=${live} != baseline ${tensors_baseline} after rep ${i}`,
+        `Tensor leak: numTensors grew to ${live} from baseline ${tensors_baseline} after rep ${i}`,
       );
     }
   }

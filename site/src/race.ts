@@ -50,6 +50,12 @@ function spawn_worker(): Worker {
   });
 }
 
+// A lane that wedges (a GPU that never flushes, a backend that hangs on init)
+// would otherwise leave its promise pending forever and freeze the UI. The
+// timeout terminates the worker and rejects so a single bad lane cannot hang the
+// whole race.
+const LANE_TIMEOUT_MS = 60_000;
+
 function run_lane(
   lane: BackendLane,
   config: RaceConfig,
@@ -58,6 +64,21 @@ function run_lane(
 ): Promise<RaceResult> {
   return new Promise((resolve, reject) => {
     const worker = spawn_worker();
+    const timer = setTimeout(() => {
+      worker.terminate();
+      reject(new Error(`${lane} lane timed out after ${LANE_TIMEOUT_MS} ms`));
+    }, LANE_TIMEOUT_MS);
+
+    const settle_resolve = (result: RaceResult): void => {
+      clearTimeout(timer);
+      worker.terminate();
+      resolve(result);
+    };
+    const settle_reject = (error: Error): void => {
+      clearTimeout(timer);
+      worker.terminate();
+      reject(error);
+    };
 
     worker.onmessage = (event: MessageEvent<WorkerOutbound>) => {
       const message = event.data;
@@ -67,19 +88,23 @@ function run_lane(
       }
       if (message.type === "result") {
         callbacks.on_lane_result?.(message);
-        worker.terminate();
-        resolve(message);
+        settle_resolve(message);
         return;
       }
-      callbacks.on_lane_error?.(lane, message.message);
-      worker.terminate();
-      reject(new Error(message.message));
+      if (message.type === "error") {
+        callbacks.on_lane_error?.(lane, message.message);
+        settle_reject(new Error(message.message));
+        return;
+      }
+      const unreachable: never = message;
+      settle_reject(
+        new Error(`Unhandled worker message: ${JSON.stringify(unreachable)}`),
+      );
     };
 
     worker.onerror = (event) => {
       callbacks.on_lane_error?.(lane, event.message);
-      worker.terminate();
-      reject(new Error(event.message));
+      settle_reject(new Error(event.message));
     };
 
     // A fresh copy per worker: a single transferred buffer would detach after
@@ -101,6 +126,10 @@ function run_lane(
 export interface RaceOutcome {
   cpu: RaceResult;
   gpu: RaceResult;
+  // The backend the GPU lane actually ran (webgpu, or webgl when it fell back).
+  // The headline must name this, never the requested lane, so a WebGL fallback
+  // is never presented as a WebGPU win.
+  gpu_backend: string;
   speedup: number;
 }
 
@@ -116,10 +145,23 @@ export async function run_race(
     random_state: config.random_state,
   });
 
-  const [cpu, gpu] = await Promise.all([
+  // allSettled (not Promise.all): both lanes always run to completion or their
+  // own timeout, and each terminates its own worker on settle, so one lane's
+  // failure can never strand the sibling worker.
+  const [cpu_settled, gpu_settled] = await Promise.allSettled([
     run_lane("cpu", config, data, callbacks),
     run_lane("webgpu", config, data, callbacks),
   ]);
 
-  return { cpu, gpu, speedup: cpu.median_ms / gpu.median_ms };
+  if (cpu_settled.status === "rejected") throw cpu_settled.reason;
+  if (gpu_settled.status === "rejected") throw gpu_settled.reason;
+
+  const cpu = cpu_settled.value;
+  const gpu = gpu_settled.value;
+  return {
+    cpu,
+    gpu,
+    gpu_backend: gpu.actual_backend,
+    speedup: cpu.median_ms / gpu.median_ms,
+  };
 }

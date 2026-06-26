@@ -37,7 +37,7 @@ function init(): void {
         format_lane(outcome.cpu),
         format_lane(outcome.gpu),
         "",
-        `Speedup (CPU median / GPU median): ${outcome.speedup.toFixed(2)}×`,
+        `${outcome.gpu_backend.toUpperCase()} is ${outcome.speedup.toFixed(2)}× faster than CPU (median)`,
         `Result checksum match: ${
           Math.abs(outcome.cpu.result_checksum - outcome.gpu.result_checksum) <
           Math.abs(outcome.cpu.result_checksum) * 1e-3

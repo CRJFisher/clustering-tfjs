@@ -41,8 +41,13 @@ jobs:
       # before the site installs and builds. Build the library from this same
       # checkout rather than the published npm package, so the demo always
       # exercises the WebGPU lane that ships with this branch.
+      # --ignore-scripts skips @tensorflow/tfjs-node's native libtensorflow
+      # download and Puppeteer's Chromium fetch — neither is needed to type-check
+      # the library into dist/, and both are slow, large, and a deploy-failure
+      # risk irrelevant to a browser site. It also skips the root `prepare` build
+      # so the library builds exactly once, in the explicit step below.
       - name: Install library dependencies
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Build library
         run: npm run build

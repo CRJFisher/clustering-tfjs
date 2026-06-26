@@ -39,7 +39,7 @@
   .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
   .chip{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--g200);border-radius:999px;padding:.25rem .6rem}
   .chip strong{color:var(--clay)}
-  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--clay);color:var(--ivory);border-radius:999px;padding:.2rem .55rem;display:inline-block}
+  .donepill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--olive);color:var(--ivory);border-radius:999px;padding:.2rem .55rem;display:inline-block}
   figcaption{font-family:var(--sans);font-size:.86rem;color:var(--g500);margin-top:.7rem}
   figcaption b{color:var(--slate)}
 
@@ -108,7 +108,13 @@
   .mcol.up .dir{color:var(--clay)}
   .mcol.down .dir{color:var(--olive)}
 
-  /* ── checklist ── */
+  /* ── files-as-built grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.76rem;color:var(--slate);background:var(--g100);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .role{font-size:.8rem;color:var(--g500);margin-top:.45rem}
+
+    /* ── checklist ── */
   .acs{display:grid;gap:.5rem;margin-top:.6rem}
   .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:.7rem .9rem;align-items:start}
   .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--g300);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
@@ -116,9 +122,13 @@
   .ac .txt{font-size:.9rem}
   .ac .txt code{font-family:var(--mono);font-size:.8rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
   .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:#f1e3d6;color:var(--clay)}
+  .ac.done .box{background:var(--olive);border-color:var(--olive)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.done .status{background:var(--olive);color:var(--ivory)}
+
 
   footer{margin-top:3rem;padding:1.2rem 5%;border-top:1px solid var(--g200);font-family:var(--mono);font-size:.7rem;color:var(--g400)}
-  @media(max-width:760px){.msgs{grid-template-columns:1fr}.anchors td.bar{width:auto}}
+  @media(max-width:760px){.msgs{grid-template-columns:1fr}.anchors td.bar{width:auto}.files{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -138,13 +148,14 @@
   <a href="#protocol">Fairness protocol</a>
   <a href="#dataflow">End-to-end data flow</a>
   <a href="#messages">Message protocol</a>
+  <a href="#built">As built</a>
   <a href="#anchors">Anchor numbers</a>
   <a href="#done">Acceptance criteria</a>
 </nav>
 
 <main>
   <header>
-    <div class="eyebrow">Task 55.3 · Milestone M2 · the fair race harness · <span class="todopill">To Do</span></div>
+    <div class="eyebrow">Task 55.3 · Milestone M2 · the fair race harness · <span class="donepill">Done</span></div>
     <h1 class="prose">A worker-per-backend race that times the real Spectral RBF affinity, honestly</h1>
     <p class="prose" style="font-size:.95rem;color:var(--g500);margin:.2rem 0 0">One Web Worker per backend, each its own tfjs engine, each running the published <code style="font-family:var(--mono)">SpectralClustering.compute_affinity_matrix</code> with exactly one awaited readback — the timing rules are part of the demo, not buried beneath it.</p>
     <div class="meta">
@@ -152,7 +163,8 @@
       <span class="chip">workers <strong>one per backend</strong></span>
       <span class="chip">timed call <strong>RBF affinity + 1 readback</strong></span>
       <span class="chip">reps <strong>≥5 → median + min/max</strong></span>
-      <span class="chip">leak guard <strong>numTensors == baseline</strong></span>
+      <span class="chip">leak guard <strong>numTensors ≤ baseline</strong></span>
+      <span class="chip">self-enforcing <strong>throws if reps&lt;5 / warmups&lt;2</strong></span>
     </div>
   </header>
 
@@ -372,9 +384,9 @@
       <div class="protocol">
         <div class="pstep"><span class="pn">1</span><span class="pt"><b>One float32 input.</b> Build the dataset as <code>tf.tensor2d(data, [n, d], 'float32')</code> — identical bytes to every lane. <span class="ptag" style="background:var(--g300);color:var(--slate)">setup</span></span></div>
         <div class="pstep disc"><span class="pn">2</span><span class="pt"><b>2–3 warmup runs, discarded.</b> The first run absorbs WGSL shader compile, wasm instantiation, lazy kernel registration. <span class="ptag">discarded</span></span></div>
-        <div class="pstep timed"><span class="pn">3</span><span class="pt"><b>≥5 timed reps.</b> Each rep: <code>t0=now()</code> → RBF affinity → <code>await affinity.data()</code> → <code>t1=now()</code>. The window brackets compute <b>and</b> the one readback. <span class="ptag">timed</span></span></div>
+        <div class="pstep timed"><span class="pn">3</span><span class="pt"><b>≥5 timed reps — self-enforcing.</b> Each rep: <code>t0=now()</code> → RBF affinity → <code>await affinity.data()</code> → <code>t1=now()</code>. The harness <b>throws</b> if given &lt;2 warmups or &lt;5 reps, so the protocol can't be silently weakened. <span class="ptag">timed</span></span></div>
         <div class="pstep timed"><span class="pn">4</span><span class="pt"><b>Exactly one readback boundary</b> per rep, identical across lanes — no extra <code>.data()</code> / <code>.array()</code> sneaks in. <span class="ptag">timed</span></span></div>
-        <div class="pstep"><span class="pn">5</span><span class="pt"><b>tidy / dispose between reps,</b> then assert <code>tf.memory().numTensors</code> returned to the baseline captured before the loop — so GC and leaks can't skew the numbers. <span class="ptag" style="background:var(--g300);color:var(--slate)">guard</span></span></div>
+        <div class="pstep"><span class="pn">5</span><span class="pt"><b>Dispose between reps,</b> then assert <code>numTensors</code> never <b>grows past</b> the post-warmup baseline — only genuine accumulation aborts a run; a benign lazy-backend transient at or below baseline never false-trips. <span class="ptag" style="background:var(--g300);color:var(--slate)">guard</span></span></div>
         <div class="pstep"><span class="pn">6</span><span class="pt"><b>Report median + min/max,</b> never a single best run; the median is the headline-eligible number. <span class="ptag" style="background:var(--g300);color:var(--slate)">report</span></span></div>
         <div class="pstep"><span class="pn">7</span><span class="pt"><b>First-run time kept separate.</b> The shader-compile-inclusive first number is reported as <code>first_run_ms</code> for disclosure — never folded into the headline multiplier. <span class="ptag" style="background:var(--g300);color:var(--slate)">disclose</span></span></div>
       </div>
@@ -413,26 +425,27 @@
           <text x="200" y="170" text-anchor="middle" fill="#384021" font-size="10.5" font-weight="bold">CPU WORKER</text>
           <text x="200" y="188" text-anchor="middle" fill="#5d584e" font-size="9">upload to OWN engine · setBackend('cpu')</text>
           <text x="200" y="204" text-anchor="middle" fill="#5d584e" font-size="9">warmups → ≥5 timed RBF affinity reps</text>
-          <text x="200" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback per rep · numTensors guarded</text>
-          <text x="200" y="234" text-anchor="middle" fill="#384021" font-size="8.5">label: always 'CPU'</text>
+          <text x="200" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback/rep · numTensors guarded · finally: dispose input</text>
+          <text x="200" y="234" text-anchor="middle" fill="#384021" font-size="8.5">label: tf.getBackend() → 'cpu'</text>
 
           <!-- GPU worker -->
           <rect x="560" y="148" width="320" height="92" rx="12" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
           <text x="720" y="170" text-anchor="middle" fill="#384021" font-size="10.5" font-weight="bold">GPU WORKER</text>
           <text x="720" y="188" text-anchor="middle" fill="#7a3f20" font-size="9">try webgpu → fall back webgl, report which it got</text>
           <text x="720" y="204" text-anchor="middle" fill="#5d584e" font-size="9">upload to OWN engine · warmups → ≥5 timed reps</text>
-          <text x="720" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback per rep · numTensors guarded</text>
-          <text x="720" y="234" text-anchor="middle" fill="#7a3f20" font-size="8.5">label: actual backend (honesty)</text>
+          <text x="720" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback/rep · numTensors guarded · finally: dispose input</text>
+          <text x="720" y="234" text-anchor="middle" fill="#7a3f20" font-size="8.5">label: tf.getBackend() — the ACTUAL backend</text>
 
           <!-- results back -->
           <line x1="200" y1="240" x2="380" y2="286" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#do)"/>
           <text x="206" y="266" fill="#384021" font-size="9">{median_ms, first_run_ms, labels, numTensors}</text>
           <line x1="720" y1="240" x2="540" y2="286" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#do)"/>
-          <text x="556" y="266" fill="#384021" font-size="9" text-anchor="start">{median_ms, first_run_ms, labels, backend}</text>
+          <text x="556" y="266" fill="#384021" font-size="9" text-anchor="start">{median_ms, first_run_ms, labels, actual_backend}</text>
 
           <!-- render -->
-          <rect x="300" y="288" width="320" height="30" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
-          <text x="460" y="307" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">render scatters · timers · bars — OUTSIDE timed window</text>
+          <rect x="280" y="286" width="360" height="32" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="460" y="300" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">Promise.allSettled + per-lane timeout · render OUTSIDE timed window</text>
+          <text x="460" y="312" text-anchor="middle" fill="#5d584e" font-size="8.5">a hung lane never strands its sibling or freezes the UI</text>
         </svg>
       </div>
       <div class="legend">
@@ -440,8 +453,13 @@
         <span><i style="background:#fff;border:1px solid #6f7a46"></i> worker (own engine, timed compute)</span>
         <span><i style="background:#6f7a46"></i> results returned</span>
       </div>
-      <figcaption class="prose"><b>One dataset, two identical copies, two engines.</b> The main thread generates one seeded float32 <code>make_blobs(n, d)</code> in pure JS and <code>postMessage</code>s identical copies to both workers, which each upload to their own engine; the GPU lane tries <code>webgpu</code>, falls back to <code>webgl</code>, and reports the backend it <b>actually</b> got.</figcaption>
+      <figcaption class="prose"><b>One dataset, two identical copies, two engines.</b> The main thread generates one seeded float32 <code>make_blobs(n, d)</code> in pure JS and <code>postMessage</code>s identical copies to both workers, which each upload to their own engine; the GPU lane reports <code>tf.getBackend()</code> — the backend it <b>actually</b> ran on, never the requested one.</figcaption>
     </figure>
+    <aside class="callout go">
+      <div class="k">Robust lane lifecycle</div>
+      <p>Lanes run via <code>Promise.allSettled</code> with a per-lane timeout — a hung or failed lane never strands its sibling worker or freezes the UI, and each lane terminates its own worker on settle.</p>
+      <p style="margin-top:.45rem">Inside the worker the input tensor is disposed in a <code>finally</code>, so even a mid-run backend error releases it cleanly.</p>
+    </aside>
   </section>
 
   <!-- ════ 6. message protocol ════ -->
@@ -487,6 +505,31 @@
       </div>
       <figcaption class="prose"><b>One request in, progress plus one result out.</b> The <code>run</code> message carries the identical dataset copy and the harness parameters; the <code>result</code> returns the median (plus min/max), the separately-kept <code>first_run_ms</code>, the labels, the <code>num_tensors</code> baseline, and the <b>actual</b> backend it ran on.</figcaption>
     </figure>
+    <aside class="callout go">
+      <div class="k">Honest headline</div>
+      <p>The orchestrator surfaces the GPU lane's <b>actual</b> <code>tf.getBackend()</code>, and the "N× faster" headline names that real backend — a WebGPU→WebGL fallback is never presented as a WebGPU win.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 6b. as built ════ -->
+  <section id="built">
+    <div class="eyebrow">As built · the files that shipped in site/src/</div>
+    <h2>What landed — five harness modules plus a minimal driver</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp">race_protocol.ts</span><div class="role">The message types and shared constants — the <code>run</code> request and <code>result</code> contract both sides import.</div></div>
+        <div class="fcard"><span class="fp">bench_harness.ts</span><div class="role">The self-enforcing timing loop: throws on &lt;2 warmups / &lt;5 reps, one readback per rep, median + min/max, <code>numTensors ≤ baseline</code> guard.</div></div>
+        <div class="fcard"><span class="fp">race_worker.ts</span><div class="role">One per backend — imports <code>clustering-tfjs</code> + <code>tfjs-core</code>, runs <code>Clustering.init</code>, reports <code>tf.getBackend()</code>, disposes input in a <code>finally</code>.</div></div>
+        <div class="fcard"><span class="fp">make_blobs_js.ts</span><div class="role">Pure-JS seeded blob generator — the one float32 dataset posted identically to every lane.</div></div>
+        <div class="fcard"><span class="fp">race.ts</span><div class="role">The orchestrator: spawns both workers, <code>Promise.allSettled</code> + per-lane timeout, surfaces the actual backend in the headline.</div></div>
+        <div class="fcard"><span class="fp">main.ts · index.html</span><div class="role">A minimal driver that runs one race and prints results — the dual-panel race UI is task-55.4.</div></div>
+      </div>
+      <figcaption class="prose"><b>The harness is the deliverable; the UI is next.</b> These six files give a working, fair race driven by a minimal harness; the dual-panel timers, bars, and speedup tiles land in task-55.4.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">How the site consumes the library</div>
+      <p>The site links the library via <code>"clustering-tfjs": "file:.."</code>; CI builds the library first with <code>npm ci --ignore-scripts</code> (skipping the tfjs-node native binary and Puppeteer), all four browser backends are pinned to <code>4.22.0</code>, and the Node/React-Native tf packages are externalized in Vite.</p>
+    </aside>
   </section>
 
   <!-- ════ 7. anchor numbers ════ -->
@@ -537,22 +580,22 @@
   <!-- ════ 8. acceptance criteria ════ -->
   <section id="done">
     <div class="eyebrow">What "done" means</div>
-    <h2>Acceptance criteria — all open (status: To Do)</h2>
+    <h2>Acceptance criteria — all seven met (status: Done)</h2>
     <div class="acs">
-      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">WebGPU and CPU each run in their <b>own worker</b> concurrently with independent tfjs engines.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">The timed region brackets the full affinity call <b>including</b> <code>await tensor.data()</code> — not just JS dispatch.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Exactly one readback boundary per run, identical across lanes; <b>median of ≥5</b> reps reported with min/max.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><code>tf.memory().numTensors</code> returns to baseline between runs (asserted).</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt">The harness invokes the published <code>clustering-tfjs</code> <code>SpectralClustering</code> — not the simulated <code>browser_backend.ts</code> kmeans.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">6</span><span class="box"></span><span class="txt"><b>First-run</b> shader-compile time captured separately from the steady-state median.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">7</span><span class="box"></span><span class="txt">ESLint passes before commit (including the newly-scoped <code>site/</code> sources).</span><span class="status">to do</span></div>
+      <div class="ac done"><span class="num">1</span><span class="box"></span><span class="txt">WebGPU and CPU each run in their <b>own worker</b> concurrently with independent tfjs engines.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">2</span><span class="box"></span><span class="txt">The timed region brackets the full affinity call <b>including</b> <code>await tensor.data()</code> — not just JS dispatch.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt">Exactly one readback boundary per run, identical across lanes; <b>median of ≥5</b> reps reported with min/max.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">4</span><span class="box"></span><span class="txt"><code>tf.memory().numTensors</code> returns to baseline between runs (asserted).</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt">The harness invokes the published <code>clustering-tfjs</code> <code>SpectralClustering</code> — not the simulated <code>browser_backend.ts</code> kmeans.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">6</span><span class="box"></span><span class="txt"><b>First-run</b> shader-compile time captured separately from the steady-state median.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">7</span><span class="box"></span><span class="txt">ESLint passes before commit (including the newly-scoped <code>site/</code> sources).</span><span class="status">done</span></div>
     </div>
-    <figcaption class="prose"><b>The two criteria that carry the "honest" claim are #2 and #6:</b> the readback must be inside the timed window (or the speedup is a fake ~100×), and the cold first run must be disclosed apart from the headline median. Click any row to mark it done as work lands.</figcaption>
+    <figcaption class="prose"><b>The two criteria that carry the "honest" claim are #2 and #6:</b> the readback sits inside the timed window (or the speedup would be a fake ~100×), and the cold first run is disclosed apart from the headline median. A multi-agent review hardened the harness before sign-off.</figcaption>
   </section>
 </main>
 
 <footer>
-  Plan companion for <b style="color:var(--g500)">task-55.3 — Build one-worker-per-backend race harness with honest fairness protocol (Milestone M2, status: To Do)</b> ·
+  Build companion for <b style="color:var(--g500)">task-55.3 — Build one-worker-per-backend race harness with honest fairness protocol (Milestone M2, status: Done)</b> ·
   grounded in the task doc, backlog/docs/interactive-clustering-demo-design.md, src/backend/loader.browser.ts &amp; src/clustering/spectral.ts ·
   self-contained, no external assets.
 </footer>

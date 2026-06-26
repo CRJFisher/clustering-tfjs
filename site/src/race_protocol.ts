@@ -53,8 +53,11 @@ export interface RaceResult {
   n_features: number;
   // numTensors before the timed loop (input tensor already uploaded).
   tensors_baseline: number;
-  // A cheap order-insensitive signature of the affinity matrix used as a
-  // cross-lane "same result" check; identical lanes should agree closely.
+  // A cheap signature of the affinity matrix used as a cross-lane "same result"
+  // check. Both lanes sum the readback in the identical row order, so a real
+  // divergence (a lane that silently fell back or computed a different kernel)
+  // shows up as a mismatch; matching kernels agree to several significant
+  // figures despite float32.
   result_checksum: number;
 }
 

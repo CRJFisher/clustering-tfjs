@@ -85,6 +85,13 @@ export default tseslint.config(
           leadingUnderscore: "allow",
           trailingUnderscore: "allow",
         },
+        // Single-cap matrix names (X, A, ...) as type properties — kept byte-for-
+        // byte aligned with the root eslint.config so the two stay easy to diff.
+        {
+          selector: "typeProperty",
+          filter: { regex: "^[A-Z]$", match: true },
+          format: null,
+        },
         { selector: "objectLiteralProperty", format: null },
         { selector: "typeLike", format: ["PascalCase"] },
         { selector: "typeParameter", format: ["PascalCase"] },

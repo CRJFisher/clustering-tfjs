@@ -54,6 +54,10 @@ worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
   const request = event.data;
   if (request.type !== "run") return;
 
+  // Hoisted so the finally can release it even when the bench throws (e.g. a
+  // backend error mid-run) — otherwise a failed run would strand the input
+  // tensor if the worker is ever reused for a second race.
+  let x: tf.Tensor2D | undefined;
   try {
     post({ type: "progress", lane: request.lane, phase: "init" });
     const actual_backend = await init_lane(request.lane);
@@ -61,7 +65,7 @@ worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
     // Upload the identical bytes ONCE, outside every timed region, as float32 on
     // this engine. Excluding the host→device transfer from the timed bracket on
     // both lanes is what makes the comparison measure compute, not upload.
-    const x = tf.tensor2d(
+    x = tf.tensor2d(
       request.data,
       [request.n_samples, request.n_features],
       "float32",
@@ -75,8 +79,6 @@ worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
       on_phase: (phase, rep) =>
         post({ type: "progress", lane: request.lane, phase, rep }),
     });
-
-    x.dispose();
 
     post({
       type: "result",
@@ -99,5 +101,7 @@ worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
       requested_lane: request.lane,
       message: error instanceof Error ? error.message : String(error),
     });
+  } finally {
+    x?.dispose();
   }
 };
