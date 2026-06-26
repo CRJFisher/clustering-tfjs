@@ -1,10 +1,15 @@
 import { run_race, DEFAULT_RACE_CONFIG } from "./race";
-import type { RaceOutcome } from "./race";
+import type { RaceConfig, RaceOutcome } from "./race";
 import type { BackendLane, RaceResult } from "./race_protocol";
 import type { MakeBlobsResult } from "./make_blobs_js";
 import { project_2d_pca } from "./project_2d";
 import { render_scatter } from "./scatter_canvas";
 import { make_stopwatch } from "./stopwatch";
+import {
+  make_crossover_estimator,
+  N_MAX,
+  N_MIN,
+} from "./crossover";
 
 // The whole race fold. The controller is a pure orchestrator over the existing
 // `run_race` harness: it translates the harness's callbacks into cheap DOM
@@ -14,8 +19,14 @@ import { make_stopwatch } from "./stopwatch";
 // a measured figure.
 
 // Both lanes emit `warmups + reps` progress events after init; the racing bar
-// advances one step per event toward this total.
+// advances one step per event toward this total. The schedule is fixed across n,
+// so this stays constant regardless of the slider position.
 const EXPECTED_STEPS = DEFAULT_RACE_CONFIG.warmups + DEFAULT_RACE_CONFIG.reps;
+
+// Dragging the slider fires a stream of `input` events; a race spawns two workers
+// and runs warmups+reps, so re-racing on every event would be wasteful and janky.
+// We let the drag settle for this long, then race the n it rests at.
+const RACE_DEBOUNCE_MS = 280;
 
 // Matching float32 RBF kernels sum to within several significant figures despite
 // rounding, so a relative gap this small means "same computation," while a gross
@@ -124,16 +135,18 @@ function make_lane_view(lane: "cpu" | "gpu"): LaneView {
   };
 }
 
-export interface RaceUi {
-  run(): Promise<void>;
-}
-
-export function make_race_ui(): RaceUi {
+export function make_race_ui(): void {
   const run_button = require_el<HTMLButtonElement>("#run-race");
+  const slider = require_el<HTMLInputElement>("#n-slider");
+  const slider_value = require_el<HTMLElement>("#n-value");
+  const crossover_mark = require_el<HTMLElement>("#crossover-mark");
+  const crossover_caption = require_el<HTMLElement>("#crossover-caption");
   const cpu_view = make_lane_view("cpu");
   const gpu_view = make_lane_view("gpu");
   const cpu_canvas = require_el<HTMLCanvasElement>("#cpu-scatter");
   const gpu_canvas = require_el<HTMLCanvasElement>("#gpu-scatter");
+
+  const crossover = make_crossover_estimator();
 
   const tile_cpu_ms = require_el<HTMLElement>("#tile-cpu-ms");
   const tile_gpu_ms = require_el<HTMLElement>("#tile-gpu-ms");
@@ -157,10 +170,10 @@ export function make_race_ui(): RaceUi {
     return lane === "cpu" ? cpu_view : gpu_view;
   }
 
-  function render_scatters(dataset: MakeBlobsResult): void {
+  function render_scatters(dataset: MakeBlobsResult, n_samples: number): void {
     const projection = project_2d_pca(
       dataset.data,
-      DEFAULT_RACE_CONFIG.n_samples,
+      n_samples,
       DEFAULT_RACE_CONFIG.n_features,
     );
     render_scatter(cpu_canvas, projection, dataset.labels);
@@ -234,18 +247,54 @@ export function make_race_ui(): RaceUi {
         : "Race incomplete — a lane failed.";
   }
 
-  async function run(): Promise<void> {
+  // The caption flips on the MEASURED winner of this very race (the same
+  // outcome.speedup the headline tile reads), never on the estimated crossover.
+  // Driving both from one measured number is what guarantees the caption can
+  // never contradict the bars the visitor is watching.
+  function flip_caption(outcome: RaceOutcome): void {
+    crossover_caption.textContent =
+      outcome.speedup >= 1
+        ? "GPU pulls ahead — the O(n²·d) affinity compute now dwarfs the GPU's fixed overhead."
+        : "At small n, CPU wins — GPU transfer + dispatch cost more than the math.";
+  }
+
+  // Renders ONLY what the visitor has empirically bracketed: a tick lands at the
+  // interpolated crossover only once they have raced both a CPU-winning and a
+  // GPU-winning n. Otherwise a directional hint points toward the unraced side —
+  // the page never marks a tick at an n the visitor has not actually measured.
+  function update_crossover_mark(): void {
+    const state = crossover.estimate();
+    crossover_mark.dataset.state = state.kind;
+    if (state.kind === "bracketed") {
+      const fraction = (state.n - N_MIN) / (N_MAX - N_MIN);
+      crossover_mark.style.setProperty(
+        "--crossover-left",
+        `${(fraction * 100).toFixed(1)}%`,
+      );
+      crossover_mark.dataset.label = `crossover ≈ n ${format_count(state.n)}`;
+    } else if (state.kind === "below_range") {
+      crossover_mark.dataset.label = "← smaller n: CPU wins";
+    } else if (state.kind === "above_range") {
+      crossover_mark.dataset.label = "larger n: GPU wins →";
+    } else {
+      crossover_mark.dataset.label = "";
+    }
+  }
+
+  async function run(n_samples: number): Promise<void> {
     run_button.disabled = true;
     cpu_view.reset();
     gpu_view.reset();
     reset_headline();
 
+    const config: RaceConfig = { ...DEFAULT_RACE_CONFIG, n_samples };
+
     let cpu_result: RaceResult | undefined;
     let gpu_result: RaceResult | undefined;
 
     try {
-      const outcome = await run_race(DEFAULT_RACE_CONFIG, {
-        on_dataset: render_scatters,
+      const outcome = await run_race(config, {
+        on_dataset: (dataset) => render_scatters(dataset, n_samples),
         on_progress: (lane, phase) => {
           if (phase === "init") view_for(lane).begin();
           else view_for(lane).advance(phase);
@@ -261,6 +310,13 @@ export function make_race_ui(): RaceUi {
       // if either lane failed), so the headline always has both medians.
       if (cpu_result && gpu_result) {
         render_headline(outcome, cpu_result, gpu_result);
+        crossover.add_sample({
+          n: n_samples,
+          cpu_ms: cpu_result.median_ms,
+          gpu_ms: gpu_result.median_ms,
+        });
+        update_crossover_mark();
+        flip_caption(outcome);
       }
     } catch (error) {
       render_failure(error);
@@ -269,5 +325,49 @@ export function make_race_ui(): RaceUi {
     }
   }
 
-  return { run };
+  // Single-flight scheduler. Dragging the slider can request many races; only one
+  // ever runs at a time and intermediate targets are coalesced into `pending_n`
+  // (latest wins). All compute is in workers, so the main thread only ever does
+  // the cheap debounce + readout work — the page never freezes, even at n=5000.
+  let in_flight = false;
+  let pending_n: number | null = null;
+  let debounce_handle: ReturnType<typeof setTimeout> | undefined;
+
+  function read_slider_n(): number {
+    // The input's min/max/step already bound the value to [200, 5000]; clamp again
+    // so a manually-tampered value can never push n past the dense-affinity memory
+    // ceiling the cap exists to protect (AC#4).
+    return Math.min(N_MAX, Math.max(N_MIN, Number(slider.value)));
+  }
+
+  function drain(): void {
+    if (in_flight || pending_n === null) return;
+    const n = pending_n;
+    pending_n = null;
+    in_flight = true;
+    void run(n).finally(() => {
+      in_flight = false;
+      // A newer target arrived mid-race: run the latest now.
+      if (pending_n !== null) drain();
+    });
+  }
+
+  function schedule_race(n: number): void {
+    pending_n = n;
+    if (debounce_handle !== undefined) clearTimeout(debounce_handle);
+    debounce_handle = setTimeout(() => {
+      debounce_handle = undefined;
+      drain();
+    }, RACE_DEBOUNCE_MS);
+  }
+
+  slider.addEventListener("input", () => {
+    const n = read_slider_n();
+    // The readout updates synchronously on every event so the number tracks the
+    // thumb instantly; the race itself is debounced behind it.
+    slider_value.textContent = format_count(n);
+    schedule_race(n);
+  });
+
+  run_button.addEventListener("click", () => schedule_race(read_slider_n()));
 }

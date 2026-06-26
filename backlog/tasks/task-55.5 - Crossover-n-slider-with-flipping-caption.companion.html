@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.5 — Crossover n-slider with marked crossover point and flipping caption</title>
+<style>
+  :root{
+    /* site theme — matches site/src/style.css */
+    --bg:#0d1117; --bg-glow:#161b2e; --panel:#11182a; --panel-2:#0f1626;
+    --fg:#e6edf3; --fg-muted:#8b949e; --line:#22304a;
+    --accent:#7c9cff; --accent-2:#63e6be; --accent-3:#ffa94d; --warn:#ff8585;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 50% -10%,var(--bg-glow),transparent 55%),var(--bg)}
+  .prose{max-width:70ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
+  .crossnav a{color:var(--fg);background:var(--panel)}
+  .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .crossnav span.cur{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--fg-muted);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--accent);color:var(--bg)}
+
+  main{width:92%;max-width:1640px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.4rem;scroll-margin-top:98px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  h1{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1.12;margin:.3rem 0 .5rem;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
+  .chip strong{color:var(--accent-2)}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-3);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
+  figcaption b{color:var(--fg)}
+
+  .flowwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.9rem;font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 12px 12px 0;padding:.95rem 1.1rem;margin-top:1.1rem}
+  aside.callout.go{border-left-color:var(--accent-2)}
+  aside.callout.warn{border-left-color:var(--accent-3)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  aside.callout.go .k{color:var(--accent-2)}
+  aside.callout.warn .k{color:var(--accent-3)}
+  aside.callout p{margin:.4rem 0 0;font-size:.92rem;color:var(--fg)}
+  aside.callout code,figcaption code,.outline code{font-family:var(--mono);font-size:.82rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .32rem;border-radius:4px;border:1px solid var(--line)}
+
+  /* ── code panel ── */
+  .code{background:#0a0f1a;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid var(--line)}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);background:#0c1322;padding:.45rem .9rem;border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.7;color:#cdd9e5;white-space:pre}
+  .code .kw{color:#ff9d76}.code .str{color:var(--accent-2)}.code .fn{color:var(--accent-3)}.code .cm{color:#5a6b82}.code .var{color:var(--accent)}.code .hl{background:rgba(124,156,255,.18);border-radius:3px;padding:0 2px}
+
+  /* ════════ THE INTERACTIVE CROSSOVER SIM ════════ */
+  .sim{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.4rem clamp(1rem,2vw,1.8rem);margin-top:.6rem;
+    box-shadow:0 0 0 1px rgba(124,156,255,.08), 0 20px 60px -30px #000}
+  .sim-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .sim svg.chart{width:100%;height:auto;display:block;margin-top:.4rem}
+  /* the flipping caption — the headline behaviour */
+  .flipcap{font-family:var(--serif);font-weight:700;font-size:clamp(1.15rem,2.6vw,1.7rem);line-height:1.18;letter-spacing:-.01em;margin:.9rem 0 .2rem;transition:color .25s}
+  .flipcap.cpu{color:var(--accent-3)}
+  .flipcap.gpu{color:var(--accent-2)}
+  .flipcap .why{display:block;font-family:var(--mono);font-weight:500;font-size:.78rem;color:var(--fg-muted);margin-top:.35rem;letter-spacing:0}
+  /* mini race readout under the chart */
+  .mini{display:grid;grid-template-columns:1fr 1fr;gap:.8rem;margin-top:1rem}
+  .mlane{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.85rem 1rem;position:relative}
+  .mlane.cpu{box-shadow:inset 0 0 0 1px rgba(255,169,77,.12)}
+  .mlane.gpu{box-shadow:inset 0 0 0 1px rgba(99,230,190,.16)}
+  .mlane.win{box-shadow:0 0 0 1px var(--accent-2),0 0 36px -16px var(--accent-2)}
+  .mlane.cpu.win{box-shadow:0 0 0 1px var(--accent-3),0 0 36px -16px var(--accent-3)}
+  .mlane .mname{font-family:var(--mono);font-size:.74rem;font-weight:600;letter-spacing:.04em}
+  .mlane.cpu .mname{color:var(--accent-3)}.mlane.gpu .mname{color:var(--accent-2)}
+  .mlane .mtime{font-family:var(--mono);font-weight:700;font-size:clamp(1.5rem,4vw,2.4rem);letter-spacing:-.02em;margin:.35rem 0 .25rem;line-height:1;font-variant-numeric:tabular-nums}
+  .mlane.cpu .mtime{color:var(--accent-3)}.mlane.gpu .mtime{color:var(--accent-2)}
+  .mlane .mtime small{font-size:.4em;color:var(--fg-muted);font-weight:600;margin-left:.2em}
+  .mtrack{height:12px;background:#0a0f1a;border:1px solid var(--line);border-radius:7px;overflow:hidden;margin-top:.2rem}
+  .mfill{height:100%;border-radius:6px;transition:width .35s cubic-bezier(.22,1,.36,1)}
+  .mlane.cpu .mfill{background:linear-gradient(90deg,#b5673f,var(--accent-3))}
+  .mlane.gpu .mfill{background:linear-gradient(90deg,#2d8d72,var(--accent-2))}
+  .mlane .mwin{position:absolute;top:-.55rem;right:.9rem;font-family:var(--mono);font-size:.54rem;text-transform:uppercase;letter-spacing:.08em;padding:.12rem .5rem;border-radius:999px;font-weight:700;display:none}
+  .mlane.win .mwin{display:inline-block}
+  .mlane.cpu .mwin{background:var(--accent-3);color:var(--bg)}.mlane.gpu .mwin{background:var(--accent-2);color:var(--bg)}
+  /* the slider with marked crossover */
+  .sliderbox{margin-top:1.2rem}
+  .sliderlab{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:.74rem;color:var(--fg-muted)}
+  .sliderlab .nval{font-family:var(--serif);font-weight:800;font-size:1.5rem;color:var(--fg);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+  .sliderlab .cap5000{color:var(--warn)}
+  .track-wrap{position:relative;margin-top:.7rem;padding-top:1.1rem}
+  /* the crossover mark — the AC#3 element, sits ON the track */
+  .xmark{position:absolute;top:0;width:2px;background:var(--accent);transform:translateX(-1px);height:2.1rem}
+  .xmark::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%) rotate(45deg);width:9px;height:9px;background:var(--accent);border-radius:2px}
+  .xmark .xlab{position:absolute;top:-.05rem;left:50%;transform:translateX(-50%) translateY(-100%);white-space:nowrap;font-family:var(--mono);font-size:.6rem;color:var(--accent);background:#0a0f1a;border:1px solid var(--accent);border-radius:999px;padding:.1rem .45rem}
+  input[type=range].nslider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:6px;
+    background:linear-gradient(90deg,rgba(255,169,77,.5) 0%,rgba(255,169,77,.5) var(--xpct,40%),rgba(99,230,190,.5) var(--xpct,40%),rgba(99,230,190,.5) 100%);
+    border:1px solid var(--line);outline:none;cursor:pointer}
+  input[type=range].nslider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent),0 2px 8px #000;cursor:grab}
+  input[type=range].nslider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);cursor:grab}
+  input[type=range].nslider:focus-visible{box-shadow:0 0 0 3px rgba(124,156,255,.4)}
+  .zoneslab{display:flex;justify-content:space-between;margin-top:.5rem;font-family:var(--mono);font-size:.64rem}
+  .zoneslab .zc{color:var(--accent-3)}.zoneslab .zg{color:var(--accent-2)}
+  .simnote{font-family:var(--mono);font-size:.62rem;color:var(--fg-muted);margin-top:1rem;text-align:center;opacity:.85}
+
+  /* ── files grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.74rem;color:var(--accent-2);background:#0a0f1a;border:1px solid var(--line);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .fp.new{color:var(--accent)}
+  .fcard .role{font-size:.8rem;color:var(--fg-muted);margin-top:.45rem}
+  .fcard .role b{color:var(--fg)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--line);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
+  .ac .txt{font-size:.9rem;color:var(--fg)}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:rgba(255,169,77,.14);color:var(--accent-3)}
+
+  footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
+  footer b{color:var(--fg-muted)}
+
+  @media(max-width:820px){
+    .mini{grid-template-columns:1fr}
+    .files{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html">55.1 · WebGPU backend</a>
+  <a href="task-55.2 - Scaffold-Vite-site-and-GitHub-Pages-deploy.companion.html">55.2 · Vite /site + deploy</a>
+  <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html">55.3 · Race harness</a>
+  <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html">55.4 · Race UI</a>
+  <span class="cur" aria-current="page">55.5 · Crossover slider</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#sim">Drag it · the crossover</a>
+  <a href="#physics">Why the curves cross</a>
+  <a href="#detection">How the mark is found</a>
+  <a href="#singleflight">Single-flight on drag</a>
+  <a href="#build">What gets built</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.5 · Milestone M3 · the un-riggable interaction · <span class="todopill">To do</span></div>
+    <h1 class="prose">Drag <code style="font-family:var(--mono);color:var(--accent-2)">n</code> and the race re-runs — at small <code style="font-family:var(--mono);color:var(--accent-3)">n</code> the CPU wins, and the demo says so out loud</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">An <code style="font-family:var(--mono);color:var(--accent)">n</code>-slider (200 → 5000, hard cap) re-runs the race live, flipping the caption between <em>"CPU wins"</em> and <em>"GPU pulls ahead"</em> and marking the crossover <code style="font-family:var(--mono);color:var(--accent)">n</code> — a first-class small-<code style="font-family:var(--mono);color:var(--accent)">n</code> CPU win is what makes the demo un-riggable.</p>
+    <div class="meta">
+      <span class="chip">range <strong>200 – 5000</strong></span>
+      <span class="chip">hard cap <strong>n = 5000</strong></span>
+      <span class="chip">re-run <strong>debounced, single-flight</strong></span>
+      <span class="chip">crossover <strong>fit a + b·n², solve</strong></span>
+      <span class="chip">builds on <strong>55.4 race UI · 55.3 run_race</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. THE INTERACTIVE SIM — the crux, made felt ════ -->
+  <section id="sim">
+    <div class="eyebrow">Comprehension job 1 · the crux · feel it before it is coded</div>
+    <h2>Grab the slider — watch the winner, and the caption, flip at the crossover</h2>
+    <figure>
+      <div class="sim">
+        <div class="sim-eyebrow">clustering-tfjs · live WebGPU vs CPU race · sweep n</div>
+
+        <!-- the flipping caption: the headline behaviour (AC#2) -->
+        <div class="flipcap" id="flipcap"></div>
+
+        <!-- the two cost curves intersecting (the physics, drawn live) -->
+        <svg class="chart" viewBox="0 0 760 300" role="img" aria-label="A chart of wall time against n. The GPU curve starts high at a fixed overhead of a few milliseconds and stays nearly flat. The CPU curve starts near zero and rises as n squared. They intersect at the crossover n; a vertical line shows the current slider position, and the lower curve at that position is the winning lane.">
+          <!-- axes -->
+          <line x1="56" y1="20" x2="56" y2="252" stroke="#22304a" stroke-width="1.4"/>
+          <line x1="56" y1="252" x2="724" y2="252" stroke="#22304a" stroke-width="1.4"/>
+          <text x="14" y="40" fill="#8b949e" font-size="11">ms</text>
+          <text x="688" y="274" fill="#8b949e" font-size="11">n →</text>
+          <!-- gpu fixed-overhead floor guide -->
+          <line id="gpu-floor" x1="56" y1="0" x2="724" y2="0" stroke="#63e6be" stroke-width="1" stroke-dasharray="3 4" opacity=".4"/>
+          <text id="gpu-floor-lab" x="60" y="0" fill="#63e6be" font-size="9.5" opacity=".75">GPU fixed overhead ≈ dispatch + upload + 1 readback</text>
+          <!-- curves (paths filled by JS) -->
+          <path id="cpu-curve" fill="none" stroke="#ffa94d" stroke-width="2.4"/>
+          <path id="gpu-curve" fill="none" stroke="#63e6be" stroke-width="2.4"/>
+          <!-- crossover marker on the chart -->
+          <line id="x-cross" x1="0" y1="20" x2="0" y2="252" stroke="#7c9cff" stroke-width="1.3" stroke-dasharray="2 3" opacity=".7"/>
+          <circle id="x-dot" r="5" fill="#7c9cff" stroke="#0a0e16" stroke-width="2"/>
+          <text id="x-lab" fill="#7c9cff" font-size="10" text-anchor="middle"></text>
+          <!-- the slider's current-n indicator -->
+          <line id="now-line" x1="0" y1="20" x2="0" y2="252" stroke="#e6edf3" stroke-width="1.6"/>
+          <circle id="now-cpu" r="4.5" fill="#ffa94d" stroke="#0a0e16" stroke-width="1.5"/>
+          <circle id="now-gpu" r="4.5" fill="#63e6be" stroke="#0a0e16" stroke-width="1.5"/>
+          <!-- curve labels -->
+          <text x="600" y="44" fill="#63e6be" font-size="11" font-weight="bold">GPU = a + b·n² (flat)</text>
+          <text x="120" y="120" fill="#ffa94d" font-size="11" font-weight="bold">CPU ≈ b·n²·d</text>
+        </svg>
+
+        <!-- the mini race readout: bars + timers re-running (AC#1) -->
+        <div class="mini">
+          <div class="mlane cpu" id="lane-cpu">
+            <span class="mwin">winner</span>
+            <div class="mname">CPU · tfjs-backend-cpu</div>
+            <div class="mtime"><span id="cpu-ms">—</span><small>ms</small></div>
+            <div class="mtrack"><div class="mfill" id="cpu-fill" style="width:0"></div></div>
+          </div>
+          <div class="mlane gpu" id="lane-gpu">
+            <span class="mwin">winner</span>
+            <div class="mname">WebGPU · actual_backend ✓</div>
+            <div class="mtime"><span id="gpu-ms">—</span><small>ms</small></div>
+            <div class="mtrack"><div class="mfill" id="gpu-fill" style="width:0"></div></div>
+          </div>
+        </div>
+
+        <!-- the slider with the marked crossover (AC#3, AC#4) -->
+        <div class="sliderbox">
+          <div class="sliderlab">
+            <span>n_samples</span>
+            <span><span class="nval" id="n-readout">2000</span> <span id="cap-hint"></span></span>
+          </div>
+          <div class="track-wrap">
+            <div class="xmark" id="xmark"><span class="xlab" id="xmark-lab">crossover</span></div>
+            <input type="range" class="nslider" id="nslider" min="200" max="5000" step="50" value="2000"
+              aria-label="n samples, 200 to 5000, capped at 5000">
+          </div>
+          <div class="zoneslab">
+            <span class="zc">◀ below crossover · CPU wins</span>
+            <span class="zg">above crossover · GPU wins ▶</span>
+          </div>
+        </div>
+        <div class="simnote">Illustrative model on this page (a + b·n² with anchor values from the harness); the live demo substitutes the visitor's own measured medians.</div>
+      </div>
+      <figcaption class="prose"><b>This is the proposed interaction, working.</b> Below the marked crossover the orange CPU lane wins and the caption reads <em>"CPU wins"</em>; above it the green GPU lane wins and it flips to <em>"GPU pulls ahead."</em> The blue diamond is the computed crossover <code>n</code>.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">What's really new here</div>
+      <p>55.4 already runs one race at the fixed default <code>n=2000</code> and already shows a CPU win as <b>"CPU is faster"</b>. 55.5 makes <code>n</code> a <b>live input</b>: a debounced, single-flight re-run, a flipping plain-language caption, and a computed crossover mark on the track.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 2. THE PHYSICS — why two curves cross ════ -->
+  <section id="physics">
+    <div class="eyebrow">Comprehension job 2 · the physics · why a crossover exists at all</div>
+    <h2>Each lane's wall time is fixed overhead + compute — and the two have opposite shapes</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 940 300" role="img" aria-label="Each lane's wall time decomposes into fixed overhead plus compute. The GPU lane has a few-millisecond fixed overhead from kernel dispatch, data upload, and one awaited readback, with near-zero marginal cost per element, so its total stays nearly flat as n grows. The CPU lane has near-zero fixed overhead but compute that grows as n squared times d, the dense affinity matrix, so its total rises steeply. Below the crossover n the GPU overhead dominates and CPU wins; above it the n squared d compute dominates and GPU wins.">
+          <defs>
+            <marker id="ar" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#8b949e"/></marker>
+          </defs>
+          <!-- GPU decomposition -->
+          <rect x="20" y="34" width="416" height="100" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="228" y="58" text-anchor="middle" fill="#63e6be" font-size="12" font-weight="bold">GPU lane wall time</text>
+          <rect x="44" y="74" width="178" height="44" rx="9" fill="#0a0f1a" stroke="#63e6be"/>
+          <text x="133" y="92" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">fixed overhead ≈ few ms</text>
+          <text x="133" y="108" text-anchor="middle" fill="#8b949e" font-size="8.5">dispatch + upload + 1 readback</text>
+          <text x="240" y="100" text-anchor="middle" fill="#e6edf3" font-size="16" font-weight="bold">+</text>
+          <rect x="258" y="74" width="156" height="44" rx="9" fill="#0a0f1a" stroke="#22304a"/>
+          <text x="336" y="92" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">compute ≈ near 0 / elem</text>
+          <text x="336" y="108" text-anchor="middle" fill="#8b949e" font-size="8.5">thousands of lanes in parallel</text>
+
+          <!-- CPU decomposition -->
+          <rect x="20" y="166" width="416" height="100" rx="12" fill="#1a130c" stroke="#ffa94d" stroke-width="1.6"/>
+          <text x="228" y="190" text-anchor="middle" fill="#ffa94d" font-size="12" font-weight="bold">CPU lane wall time</text>
+          <rect x="44" y="206" width="150" height="44" rx="9" fill="#0a0f1a" stroke="#22304a"/>
+          <text x="119" y="224" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">fixed overhead ≈ 0</text>
+          <text x="119" y="240" text-anchor="middle" fill="#8b949e" font-size="8.5">no upload, no readback</text>
+          <text x="212" y="232" text-anchor="middle" fill="#e6edf3" font-size="16" font-weight="bold">+</text>
+          <rect x="230" y="206" width="184" height="44" rx="9" fill="#0a0f1a" stroke="#ffa94d"/>
+          <text x="322" y="224" text-anchor="middle" fill="#ffa94d" font-size="10" font-weight="bold">compute grows ∝ n²·d</text>
+          <text x="322" y="240" text-anchor="middle" fill="#8b949e" font-size="8.5">dense RBF affinity, serial</text>
+
+          <!-- the consequence -->
+          <line x1="436" y1="100" x2="494" y2="120" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ar)"/>
+          <line x1="436" y1="216" x2="494" y2="180" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ar)"/>
+          <rect x="500" y="86" width="424" height="128" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="712" y="112" text-anchor="middle" fill="#7c9cff" font-size="12" font-weight="bold">→ they cross at one n</text>
+          <text x="712" y="138" text-anchor="middle" fill="#ffa94d" font-size="10.5">below crossover: GPU's few-ms overhead</text>
+          <text x="712" y="153" text-anchor="middle" fill="#ffa94d" font-size="10.5">dwarfs CPU's tiny n²·d  →  CPU wins</text>
+          <text x="712" y="180" text-anchor="middle" fill="#63e6be" font-size="10.5">above crossover: n²·d explodes past the</text>
+          <text x="712" y="195" text-anchor="middle" fill="#63e6be" font-size="10.5">fixed cost  →  GPU's parallelism wins</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#63e6be"></i> GPU: big fixed cost, flat slope</span>
+        <span><i style="background:#ffa94d"></i> CPU: ~0 fixed cost, n²·d slope</span>
+        <span><i style="background:#7c9cff"></i> crossover: where they meet</span>
+      </div>
+      <figcaption class="prose"><b>The crossover is forced by the two shapes.</b> The GPU pays a constant few-ms toll but barely more per element; the CPU starts near zero but its dense <code>O(n²·d)</code> affinity grows without bound — a flat-but-offset line and a steep parabola intersect exactly once for <code>n &gt; 0</code>.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">Why the cap is n = 5000</div>
+      <p>The same <code>n²</code> grows the dense affinity matrix — 25M cells at <code>n=5000</code> — which risks OOM/jank on mobile, so the slider <b>hard-caps at 5000</b>; compute runs in workers, so a large-<code>n</code> run never freezes the main thread (AC#4).</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. DETECTION — how the mark is computed ════ -->
+  <section id="detection">
+    <div class="eyebrow">Comprehension job 3 · the detection · the mark is computed, never hard-coded</div>
+    <h2>Fit each lane to t(n) = a + b·n² from observed runs, then solve for where they meet</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 940 250" role="img" aria-label="As the user drags, each completed race adds an observed sample of n, cpu milliseconds and gpu milliseconds to a small store keyed by n. Each lane is fit to t of n equals a plus b times n squared by least squares over those samples. Setting the two fitted curves equal and solving gives the crossover n as the square root of the difference in intercepts over the difference in quadratic coefficients. That n is converted to a track position and the crossover mark is placed; it refines as more samples accumulate.">
+          <defs>
+            <marker id="dx" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
+          </defs>
+          <rect x="16" y="80" width="196" height="90" rx="12" fill="#11182a" stroke="#22304a"/>
+          <text x="114" y="104" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">observed samples</text>
+          <text x="114" y="124" text-anchor="middle" fill="#8b949e" font-size="9">each race → (n, cpu_ms, gpu_ms)</text>
+          <text x="114" y="139" text-anchor="middle" fill="#8b949e" font-size="9">stored keyed by n (deduped)</text>
+          <text x="114" y="156" text-anchor="middle" fill="#63e6be" font-size="9">read from RaceResult.median_ms</text>
+
+          <rect x="252" y="60" width="216" height="130" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="360" y="84" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">least-squares fit per lane</text>
+          <text x="360" y="106" text-anchor="middle" fill="#8b949e" font-size="9.5">basis x = n²  (linear in a, b)</text>
+          <text x="360" y="122" text-anchor="middle" fill="#ffa94d" font-size="9.5">cpu: t = a_c + b_c·n²</text>
+          <text x="360" y="137" text-anchor="middle" fill="#63e6be" font-size="9.5">gpu: t = a_g + b_g·n²</text>
+          <text x="360" y="159" text-anchor="middle" fill="#8b949e" font-size="9">2-param OLS · closed form</text>
+          <text x="360" y="174" text-anchor="middle" fill="#8b949e" font-size="9">needs ≥ 2 distinct n per lane</text>
+
+          <rect x="508" y="60" width="216" height="130" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="616" y="84" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">solve a_c+b_c·n² = a_g+b_g·n²</text>
+          <text x="616" y="112" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">n* = √((a_g − a_c)/(b_c − b_g))</text>
+          <text x="616" y="138" text-anchor="middle" fill="#8b949e" font-size="9">real & in [200,5000] → mark it</text>
+          <text x="616" y="153" text-anchor="middle" fill="#8b949e" font-size="9">else: no crossover in range</text>
+          <text x="616" y="172" text-anchor="middle" fill="#8b949e" font-size="9">(clamp / hide the mark)</text>
+
+          <rect x="764" y="80" width="160" height="90" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="844" y="108" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">place mark</text>
+          <text x="844" y="130" text-anchor="middle" fill="#8b949e" font-size="9">pct = (n*−200)/4800</text>
+          <text x="844" y="145" text-anchor="middle" fill="#8b949e" font-size="9">→ left offset on track</text>
+          <text x="844" y="162" text-anchor="middle" fill="#e6edf3" font-size="9">refines as samples grow</text>
+
+          <line x1="212" y1="125" x2="248" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <line x1="468" y1="125" x2="504" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <line x1="724" y1="125" x2="760" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+        </svg>
+      </div>
+      <div class="code">
+        <div class="fl">crossover detection — fit t(n)=a+b·n² per lane, solve for n* (sketch, snake_case)</div>
+<pre><span class="cm">// One sample per completed race; key by n so a re-run at the same n replaces it.</span>
+<span class="kw">type</span> <span class="var">Sample</span> = { <span class="var">n</span>: number; <span class="var">cpu_ms</span>: number; <span class="var">gpu_ms</span>: number };
+
+<span class="cm">// 2-parameter ordinary least squares on basis x = n²  →  returns [a, b].</span>
+<span class="kw">function</span> <span class="fn">fit_a_plus_b_n2</span>(<span class="var">samples</span>: <span class="var">Sample</span>[], <span class="var">pick</span>: (<span class="var">s</span>: <span class="var">Sample</span>) =&gt; number): [number, number] {
+  <span class="kw">const</span> xs = samples.<span class="fn">map</span>((s) =&gt; s.n * s.n);   <span class="cm">// x = n²</span>
+  <span class="kw">const</span> ys = samples.<span class="fn">map</span>(pick);             <span class="cm">// y = observed ms</span>
+  <span class="kw">const</span> m = xs.length;
+  <span class="kw">const</span> sx = <span class="fn">sum</span>(xs), sy = <span class="fn">sum</span>(ys);
+  <span class="kw">const</span> sxx = <span class="fn">sum</span>(xs.<span class="fn">map</span>((x) =&gt; x * x)), sxy = <span class="fn">sum</span>(xs.<span class="fn">map</span>((x, i) =&gt; x * ys[i]));
+  <span class="kw">const</span> denom = m * sxx - sx * sx;       <span class="cm">// 0 when &lt; 2 distinct n</span>
+  <span class="kw">const</span> b = (m * sxy - sx * sy) / denom;  <span class="cm">// quadratic coefficient</span>
+  <span class="kw">const</span> a = (sy - b * sx) / m;            <span class="cm">// fixed overhead intercept</span>
+  <span class="kw">return</span> [a, b];
+}
+
+<span class="kw">function</span> <span class="fn">crossover_n</span>(<span class="var">samples</span>: <span class="var">Sample</span>[]): number | <span class="kw">null</span> {
+  <span class="kw">if</span> (<span class="fn">distinct_n</span>(samples) &lt; <span class="hl">2</span>) <span class="kw">return</span> <span class="kw">null</span>;            <span class="cm">// not enough to fit</span>
+  <span class="kw">const</span> [a_c, b_c] = <span class="fn">fit_a_plus_b_n2</span>(samples, (s) =&gt; s.cpu_ms);
+  <span class="kw">const</span> [a_g, b_g] = <span class="fn">fit_a_plus_b_n2</span>(samples, (s) =&gt; s.gpu_ms);
+  <span class="kw">const</span> ratio = (a_g - a_c) / (b_c - b_g);            <span class="cm">// n*² = Δintercept / Δslope</span>
+  <span class="kw">if</span> (!<span class="fn">isFinite</span>(ratio) || ratio &lt;= <span class="hl">0</span>) <span class="kw">return</span> <span class="kw">null</span>;   <span class="cm">// no real crossover</span>
+  <span class="kw">return</span> Math.<span class="fn">sqrt</span>(ratio);                            <span class="cm">// the crossover n — refines as samples grow</span>
+}</pre>
+      </div>
+      <figcaption class="prose"><b>The mark is derived, not painted on.</b> Since <code>t(n)=a+b·n²</code> is linear in <code>x=n²</code>, a closed-form fit recovers each lane's overhead and slope; setting them equal gives <code>n* = √((a_g − a_c)/(b_c − b_g))</code>, sharpening as each drag adds a sample.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">Reading the formula</div>
+      <p><code>a_g − a_c</code> is the GPU's extra fixed overhead (positive — the few-ms dispatch); <code>b_c − b_g</code> is CPU's steeper per-<code>n²</code> growth (positive). Their ratio is <code>n*²</code>; a non-positive or non-finite ratio means the curves never cross in range, so no mark is drawn.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 4. SINGLE-FLIGHT — re-entrancy on drag ════ -->
+  <section id="singleflight">
+    <div class="eyebrow">Comprehension job 4 · the hazard · dragging fires a flood of input events</div>
+    <h2>One drag = dozens of input events — debounce, then run latest-target-wins single-flight</h2>
+    <figure>
+      <div class="flowwrap" style="display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center">
+        <!-- CURRENT -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-3);margin-bottom:.5rem">Current — 55.4</div>
+          <svg viewBox="0 0 360 260" role="img" aria-label="Current control in task 55.4: a single Run button. Click disables the button, runs one race at the fixed default n of 2000, then re-enables the button when the race resolves. There is no slider and only one race can be in flight, gated by the disabled button.">
+            <rect x="20" y="20" width="320" height="46" rx="11" fill="#0f1626" stroke="#ffa94d" stroke-width="1.4"/>
+            <text x="180" y="40" text-anchor="middle" fill="#ffa94d" font-size="11" font-weight="bold">click "Run the race"</text>
+            <text x="180" y="56" text-anchor="middle" fill="#8b949e" font-size="9">one user gesture</text>
+            <line x1="180" y1="66" x2="180" y2="92" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sa)"/>
+            <rect x="20" y="94" width="320" height="44" rx="11" fill="#11182a" stroke="#22304a"/>
+            <text x="180" y="113" text-anchor="middle" fill="#e6edf3" font-size="10.5" font-weight="bold">run_button.disabled = true</text>
+            <text x="180" y="129" text-anchor="middle" fill="#8b949e" font-size="9">button gates overlap by hand</text>
+            <line x1="180" y1="138" x2="180" y2="164" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sa)"/>
+            <rect x="20" y="166" width="320" height="44" rx="11" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="185" text-anchor="middle" fill="#7c9cff" font-size="10.5" font-weight="bold">run_race(DEFAULT_RACE_CONFIG)</text>
+            <text x="180" y="201" text-anchor="middle" fill="#8b949e" font-size="9">fixed n = 2000 · two workers</text>
+            <line x1="180" y1="210" x2="180" y2="236" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sa)"/>
+            <rect x="20" y="238" width="320" height="18" rx="9" fill="#11182a" stroke="#22304a"/>
+            <text x="180" y="251" text-anchor="middle" fill="#8b949e" font-size="9">finally → button re-enabled</text>
+            <defs><marker id="sa" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker></defs>
+          </svg>
+        </div>
+
+        <div style="font-family:var(--serif);font-size:1.8rem;color:var(--accent);text-align:center">→</div>
+
+        <!-- PLANNED -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-2);margin-bottom:.5rem">Planned — 55.5</div>
+          <svg viewBox="0 0 360 260" role="img" aria-label="Planned control in task 55.5: dragging the slider fires many input events. Each input updates n and the readout instantly, then schedules a debounced run after about 120 milliseconds of quiet. The debounced run is single-flight: if a race is already in flight it records the latest target n and returns; when the in-flight race finishes, if the latest target differs from what just ran, it runs once more for that latest n. So only one race runs at a time and the last value the user lands on always wins.">
+            <rect x="20" y="14" width="320" height="44" rx="11" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="33" text-anchor="middle" fill="#7c9cff" font-size="10.5" font-weight="bold">drag → many 'input' events</text>
+            <text x="180" y="49" text-anchor="middle" fill="#8b949e" font-size="9">update n + readout instantly (cheap)</text>
+            <line x1="180" y1="58" x2="180" y2="80" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
+            <rect x="20" y="82" width="320" height="42" rx="11" fill="#11182a" stroke="#63e6be" stroke-width="1.4"/>
+            <text x="180" y="100" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">debounce ≈ 120 ms quiet</text>
+            <text x="180" y="116" text-anchor="middle" fill="#8b949e" font-size="9">collapse the flood to one trailing call</text>
+            <line x1="180" y1="124" x2="180" y2="146" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
+            <rect x="20" y="148" width="320" height="60" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.8"/>
+            <text x="180" y="168" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">single-flight: latest-target-wins</text>
+            <text x="180" y="184" text-anchor="middle" fill="#8b949e" font-size="9">in flight? store target_n, return</text>
+            <text x="180" y="198" text-anchor="middle" fill="#8b949e" font-size="9">on finish: target ≠ ran? run once more</text>
+            <line x1="180" y1="208" x2="180" y2="230" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
+            <rect x="20" y="232" width="320" height="24" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="248" text-anchor="middle" fill="#e6edf3" font-size="9.5">exactly one race at a time · last value wins</text>
+            <defs><marker id="sb" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker></defs>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#ffa94d"></i> current: button-gated single run, fixed n</span>
+        <span><i style="background:#63e6be"></i> added: debounce + single-flight loop</span>
+        <span><i style="background:#7c9cff"></i> n is now a live input</span>
+      </div>
+      <figcaption class="prose"><b>The control goes from "click once" to "drag continuously" without overlapping races.</b> Cheap per-event work updates instantly; the expensive race is debounced to fire once the slider settles, and a single-flight guard makes the landed value the one that races — intermediate targets are dropped, never queued.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">Why this stays smooth (AC#4)</div>
+      <p>Every measured computation runs off-thread in the two workers (55.3, unchanged), so even <code>n=5000</code> never blocks the main thread; the single-flight guard just prevents two worker-pairs at once, and debounce ties worker churn to <b>landings</b>, not raw events.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 5. WHAT GETS BUILT ════ -->
+  <section id="build">
+    <div class="eyebrow">To build · what 55.5 adds on top of the shipped 55.4 race UI</div>
+    <h2>Mostly controller logic; the harness and protocol are untouched</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> <code>make_race_ui</code> gains the slider wiring: a debounced, single-flight <code>run(n)</code> that builds a per-<code>n</code> <code>RaceConfig</code> from <code>DEFAULT_RACE_CONFIG</code> (keeping <code>gamma = 1/n_features</code>), records each <code>(n, cpu_ms, gpu_ms)</code> sample, fits the curves, and places the crossover mark. The caption flips off <code>outcome.speedup</code>.</div></div>
+        <div class="fcard"><span class="fp new">site/src/crossover.ts</span><div class="role"><b>New.</b> Pure functions <code>fit_a_plus_b_n2</code> and <code>crossover_n(samples)</code> — closed-form 2-parameter least squares, no tfjs, no DOM. Trivially unit-testable.</div></div>
+        <div class="fcard"><span class="fp new">site/src/crossover.test.ts</span><div class="role"><b>New.</b> Colocated tests: known-curve recovery, &lt; 2 samples → <code>null</code>, no-real-crossover → <code>null</code>, monotone refinement as samples are added.</div></div>
+        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The <code>#race</code> section gains the <code>n</code> range input (200–5000, step), the <code>n</code> readout, the crossover mark element on the track, the zone labels, and the flipping caption node.</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Slider thumb/track (zone-tinted from CPU-orange to GPU-green), the crossover-mark diamond + label, and the flipping-caption type — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> tokens.</div></div>
+        <div class="fcard"><span class="fp">site/src/race.ts · race_protocol.ts</span><div class="role"><b>Untouched.</b> <code>n_samples</code> is already a <code>RaceConfig</code> field and <code>run_race</code> already takes a config per call — 55.5 just calls it with a varying <code>n</code>. No worker or protocol change.</div></div>
+      </div>
+      <figcaption class="prose"><b>55.5 is controller + a pure math module.</b> It pulls the curve-fitting into its own testable <code>crossover.ts</code>, extends <code>race_ui.ts</code> with the debounced single-flight loop and the mark placement, and adds the slider markup/styles — while <code>run_race</code>, the workers, and the protocol stay exactly as 55.3 left them.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. ACCEPTANCE CRITERIA ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means · status: to do</div>
+    <h2>Acceptance criteria — five, the slider above exercises 1–4</h2>
+    <div class="acs">
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">Dragging the slider <b>re-runs the race</b> and updates the bars and timers for the new <code>n</code>.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Below the crossover the <b>CPU lane wins</b> and the caption reflects it; above it the <b>GPU wins</b>.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">The crossover <code>n</code> is <b>computed</b> and <b>visibly marked</b> on the slider track.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt">The slider <b>cannot exceed <code>n=5000</code></b>; large-<code>n</code> runs do not freeze the main thread (compute stays in workers).</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit (Python-style <code>snake_case</code> on the new and extended <code>site/</code> sources).</span><span class="status">to do</span></div>
+    </div>
+    <figcaption class="prose"><b>The criterion carrying the "un-riggable" claim is #2:</b> the small-<code>n</code> CPU win is a first-class, captioned state, never hidden. #3 marks the computed crossover; #4 keeps the cap honest and the page responsive. Tap any row to mark it done.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Companion for <b>task-55.5 — Crossover n-slider with marked crossover point and flipping caption (Milestone M3, to do)</b> ·
+  built against the shipped integration points: site/src/race.ts (run_race, RaceConfig, n_samples, gamma=1/n_features), site/src/race_ui.ts (make_race_ui), site/src/race_protocol.ts (RaceResult.median_ms), site/index.html #race · dark theme matches site/src/style.css · self-contained, no external assets.
+</footer>
+
+<script>
+(function(){
+  // ── illustrative cost model (anchored to the harness reference figures) ──
+  // GPU: a + b·n²  (large fixed overhead, near-flat).  CPU: b·n²·d (≈0 fixed).
+  // Tuned so CPU≈GPU near n≈1100 and CPU≈1412 / GPU≈59 at n=2000 (the 55.4 anchors).
+  var N_MIN=200, N_MAX=5000;
+  var GPU_A=46, GPU_B=3.0e-6;            // GPU ms = GPU_A + GPU_B·n²
+  var CPU_A=2,  CPU_B=3.515e-4;          // CPU ms = CPU_A + CPU_B·n²
+  function cpu_ms(n){ return CPU_A + CPU_B*n*n; }
+  function gpu_ms(n){ return GPU_A + GPU_B*n*n; }
+  // crossover: CPU_A+CPU_B·n² = GPU_A+GPU_B·n²  →  n² = (GPU_A−CPU_A)/(CPU_B−GPU_B)
+  var X_N = Math.sqrt((GPU_A-CPU_A)/(CPU_B-GPU_B));
+
+  // ── chart geometry ──
+  var X0=56, X1=724, Y0=20, Y1=252;
+  var Y_MAX=2400; // ms ceiling for the plot (CPU at 5000 ≈ 8790ms; clamp to keep both readable up to crossover region)
+  function px(n){ return X0 + (n-N_MIN)/(N_MAX-N_MIN)*(X1-X0); }
+  function py(ms){ var c=Math.min(ms,Y_MAX); return Y1 - c/Y_MAX*(Y1-Y0); }
+
+  function build_path(fn){
+    var d='';
+    for(var n=N_MIN;n<=N_MAX;n+=40){ d += (d?'L':'M')+px(n).toFixed(1)+' '+py(fn(n)).toFixed(1); }
+    return d;
+  }
+  document.getElementById('cpu-curve').setAttribute('d', build_path(cpu_ms));
+  document.getElementById('gpu-curve').setAttribute('d', build_path(gpu_ms));
+
+  // GPU fixed-overhead floor guide line
+  var floorY = py(GPU_A);
+  var fl=document.getElementById('gpu-floor'); fl.setAttribute('y1',floorY); fl.setAttribute('y2',floorY);
+  document.getElementById('gpu-floor-lab').setAttribute('y', (floorY-5).toFixed(1));
+
+  // chart crossover marker (static — the model's true crossover)
+  var xcx=px(X_N), xcy=py(cpu_ms(X_N));
+  var xl=document.getElementById('x-cross'); xl.setAttribute('x1',xcx); xl.setAttribute('x2',xcx);
+  var xd=document.getElementById('x-dot'); xd.setAttribute('cx',xcx); xd.setAttribute('cy',xcy);
+  var xlab=document.getElementById('x-lab'); xlab.setAttribute('x',xcx); xlab.setAttribute('y', Y0+12);
+  xlab.textContent='crossover n≈'+Math.round(X_N);
+
+  // ── live elements ──
+  var slider=document.getElementById('nslider');
+  var n_readout=document.getElementById('n-readout');
+  var cap_hint=document.getElementById('cap-hint');
+  var flipcap=document.getElementById('flipcap');
+  var cpu_ms_el=document.getElementById('cpu-ms'), gpu_ms_el=document.getElementById('gpu-ms');
+  var cpu_fill=document.getElementById('cpu-fill'), gpu_fill=document.getElementById('gpu-fill');
+  var lane_cpu=document.getElementById('lane-cpu'), lane_gpu=document.getElementById('lane-gpu');
+  var now_line=document.getElementById('now-line');
+  var now_cpu=document.getElementById('now-cpu'), now_gpu=document.getElementById('now-gpu');
+  var xmark=document.getElementById('xmark');
+
+  // place the crossover mark on the actual track (computed n → percent of range)
+  var xpct=(X_N-N_MIN)/(N_MAX-N_MIN);
+  function place_track_mark(){
+    var rect=slider.getBoundingClientRect();
+    var wrap=slider.parentElement.getBoundingClientRect();
+    var left=(rect.left-wrap.left)+xpct*rect.width;
+    xmark.style.left=left.toFixed(1)+'px';
+    slider.style.setProperty('--xpct',(xpct*100).toFixed(1)+'%');
+  }
+  document.getElementById('xmark-lab').textContent='crossover n≈'+Math.round(X_N);
+
+  function render(){
+    var n=parseInt(slider.value,10);
+    n_readout.textContent=n.toLocaleString();
+    cap_hint.innerHTML = n>=N_MAX ? '<span class="cap5000">· hard cap</span>' : '';
+
+    var c=cpu_ms(n), g=gpu_ms(n);
+    cpu_ms_el.textContent=c.toFixed(0);
+    gpu_ms_el.textContent=g.toFixed(0);
+
+    // bars: faster lane fills less; scale to the slower of the two
+    var slow=Math.max(c,g);
+    cpu_fill.style.width=(c/slow*100).toFixed(1)+'%';
+    gpu_fill.style.width=(g/slow*100).toFixed(1)+'%';
+
+    var cpu_wins = c < g;
+    lane_cpu.classList.toggle('win', cpu_wins);
+    lane_gpu.classList.toggle('win', !cpu_wins);
+
+    // the flipping caption (AC#2) — plain-language, with the "why"
+    if(cpu_wins){
+      flipcap.className='flipcap cpu';
+      flipcap.innerHTML='At small n, CPU wins.<span class="why">GPU transfer + dispatch cost more than the math at this size.</span>';
+    } else {
+      flipcap.className='flipcap gpu';
+      var x=(c/g).toFixed(1);
+      flipcap.innerHTML='GPU pulls ahead — '+x+'× faster.<span class="why">n²·d compute now dwarfs the GPU\'s fixed overhead.</span>';
+    }
+
+    // chart "now" indicators
+    var nx=px(n);
+    now_line.setAttribute('x1',nx); now_line.setAttribute('x2',nx);
+    now_cpu.setAttribute('cx',nx); now_cpu.setAttribute('cy',py(c));
+    now_gpu.setAttribute('cx',nx); now_gpu.setAttribute('cy',py(g));
+  }
+
+  slider.addEventListener('input', render);
+  window.addEventListener('resize', place_track_mark);
+  place_track_mark();
+  render();
+  // re-place after layout settles (fonts/reflow)
+  setTimeout(place_track_mark, 60);
+
+  // ── checklist toggle (progressive enhancement) ──
+  document.querySelectorAll('.ac').forEach(function(ac){
+    ac.style.cursor='pointer';
+    ac.addEventListener('click',function(){
+      ac.classList.toggle('done');
+      var st=ac.querySelector('.status');
+      var done=ac.classList.contains('done');
+      st.textContent=done?'done':'to do';
+      ac.querySelector('.box').style.background=done?'var(--accent-2)':'';
+      ac.querySelector('.box').style.borderColor=done?'var(--accent-2)':'';
+      st.style.background=done?'var(--accent-2)':''; st.style.color=done?'var(--bg)':'';
+    });
+  });
+
+  // ── outline active-state via IntersectionObserver ──
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+})();
+</script>
+</body>
+</html>

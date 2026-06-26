@@ -113,6 +113,38 @@
           <span class="race__first-run" id="first-run-readout" hidden></span>
         </div>
 
+        <div class="race__slider">
+          <label class="race__slider-label" for="n-slider">
+            Samples (n)
+            <span class="race__slider-value" id="n-value">2,000</span>
+          </label>
+          <div class="race__slider-track-wrap">
+            <input
+              id="n-slider"
+              class="race__slider-input"
+              type="range"
+              min="200"
+              max="5000"
+              step="50"
+              value="2000"
+              aria-describedby="crossover-caption"
+            />
+            <span
+              class="race__crossover-mark"
+              id="crossover-mark"
+              data-state="unknown"
+              aria-hidden="true"
+            ></span>
+          </div>
+          <p
+            class="race__crossover-caption"
+            id="crossover-caption"
+            aria-live="polite"
+          >
+            Drag the slider to find the crossover — where the GPU overtakes the CPU.
+          </p>
+        </div>
+
         <div class="race__controls">
           <button id="run-race" type="button" class="race__run">
             Run the race

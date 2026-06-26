@@ -281,6 +281,105 @@ body {
   margin-top: 0.5rem;
 }
 
+.race__slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 32rem;
+  margin: 1.75rem auto 0;
+}
+
+.race__slider-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.race__slider-value {
+  color: var(--fg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Anchors the absolutely-positioned crossover mark to the track. The vertical
+   padding leaves room for the mark's label above the input. */
+.race__slider-track-wrap {
+  position: relative;
+  padding-top: 1.4rem;
+}
+
+.race__slider-input {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* The mark is positioned from JS via --crossover-left and only shown in the
+   `bracketed` state — the one state backed by two measured, sign-straddling runs.
+   In the directional-hint states it sits at an edge and shows an arrow instead of
+   a value, so the page never draws a tick at a guessed n. */
+.race__crossover-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--crossover-left, 50%);
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent-2);
+}
+
+.race__crossover-mark[data-state="unknown"] {
+  display: none;
+}
+
+.race__crossover-mark::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+/* Directional hints: no measured bracket yet, so pin to the edge the crossover
+   lies beyond and point that way rather than marking a position. */
+.race__crossover-mark[data-state="below_range"] {
+  left: 0;
+  background: transparent;
+}
+
+.race__crossover-mark[data-state="above_range"] {
+  left: 100%;
+  background: transparent;
+}
+
+.race__crossover-mark[data-state="below_range"]::after {
+  left: 0;
+  transform: none;
+  color: var(--fg-muted);
+}
+
+.race__crossover-mark[data-state="above_range"]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+  color: var(--fg-muted);
+}
+
+.race__crossover-caption {
+  margin: 0;
+  min-height: 2.4em;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
 .race__controls {
   margin-top: 1.5rem;
 }
