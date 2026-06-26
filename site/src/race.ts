@@ -1,4 +1,5 @@
 import { make_blobs_js } from "./make_blobs_js";
+import type { MakeBlobsResult } from "./make_blobs_js";
 import type {
   BackendLane,
   RaceRequest,
@@ -39,6 +40,10 @@ export const DEFAULT_RACE_CONFIG: RaceConfig = {
 };
 
 export interface RaceCallbacks {
+  // Fires once with the seeded dataset before any lane starts, so the UI can
+  // project and draw both scatter panels OUTSIDE every timed region — the page
+  // must never redraw a chart while a measured run is in flight.
+  on_dataset?: (dataset: MakeBlobsResult) => void;
   on_progress?: (lane: BackendLane, phase: string, rep?: number) => void;
   on_lane_result?: (result: RaceResult) => void;
   on_lane_error?: (lane: BackendLane, message: string) => void;
@@ -137,13 +142,15 @@ export async function run_race(
   config: RaceConfig = DEFAULT_RACE_CONFIG,
   callbacks: RaceCallbacks = {},
 ): Promise<RaceOutcome> {
-  const { data } = make_blobs_js({
+  const dataset = make_blobs_js({
     n_samples: config.n_samples,
     n_features: config.n_features,
     centers: config.centers,
     cluster_std: config.cluster_std,
     random_state: config.random_state,
   });
+  callbacks.on_dataset?.(dataset);
+  const { data } = dataset;
 
   // allSettled (not Promise.all): both lanes always run to completion or their
   // own timeout, and each terminates its own worker on settle, so one lane's

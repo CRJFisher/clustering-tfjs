@@ -1,11 +1,16 @@
 :root {
   --bg: #0d1117;
   --bg-glow: #161b2e;
+  --panel: #11162a;
   --fg: #e6edf3;
   --fg-muted: #8b949e;
   --accent: #7c9cff;
   --accent-2: #63e6be;
   --accent-3: #ffa94d;
+  --cluster-4: #ff8787;
+  --ok: #63e6be;
+  --warn: #ffa94d;
+  --line: rgba(124, 156, 255, 0.18);
   font-family:
     system-ui,
     -apple-system,
@@ -39,7 +44,7 @@ body {
 }
 
 .hero {
-  max-width: 46rem;
+  max-width: min(72rem, 95vw);
   text-align: center;
 }
 
@@ -73,70 +78,228 @@ body {
   color: var(--fg-muted);
 }
 
-.cluster-dots {
-  display: flex;
+/* The race fold. This whole section is sized to double as the 1200×630
+   og:image: dual panels side by side, large legible numbers, dark theme. */
+.race {
+  margin-top: 2.5rem;
+}
+
+.race__panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.race-panel {
+  display: grid;
+  grid-template-rows: auto auto auto auto auto;
   gap: 0.75rem;
-  justify-content: center;
-  margin: 2.5rem 0;
+  padding: 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  transition: border-color 0.2s ease;
 }
 
-.dot {
-  width: 0.85rem;
-  height: 0.85rem;
-  border-radius: 50%;
-  animation: pulse 2.4s ease-in-out infinite;
+.race-panel--won {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 28px rgba(99, 230, 190, 0.22);
 }
 
-.dot-a {
-  background: var(--accent);
+.race-panel--failed {
+  border-color: var(--warn);
 }
 
-.dot-b {
-  background: var(--accent-2);
-  animation-delay: 0.3s;
+.race-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
-.dot-c {
-  background: var(--accent-3);
-  animation-delay: 0.6s;
+.race-panel__backend {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 0.35;
-    transform: translateY(0);
-  }
-  50% {
-    opacity: 1;
-    transform: translateY(-0.35rem);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dot {
-    animation: none;
-    opacity: 0.85;
-  }
-}
-
-.status {
-  margin: 0 auto;
-  max-width: 30rem;
-  font-size: 1rem;
-  line-height: 1.6;
+.race-panel__phase {
+  font-size: 0.85rem;
   color: var(--fg-muted);
 }
 
-.status-pill {
-  display: inline-block;
-  margin-right: 0.5rem;
-  padding: 0.15rem 0.6rem;
-  border: 1px solid rgba(124, 156, 255, 0.4);
+.race-panel__scatter {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.race-panel__timer {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.race-panel__timer-value {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.race-panel__timer-unit {
+  font-size: 1.1rem;
+  color: var(--fg-muted);
+}
+
+.race-panel__caption {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  min-height: 1.2em;
+}
+
+.race-panel__track {
+  height: 0.6rem;
   border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.race-panel__bar {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 90ms linear;
+}
+
+.race-panel[data-lane="cpu"] .race-panel__bar {
+  background: linear-gradient(90deg, var(--accent-3), var(--cluster-4));
+}
+
+.race-panel--won .race-panel__bar {
+  box-shadow: 0 0 14px var(--accent-2);
+}
+
+.race__tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.tile__value {
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tile__label {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--accent);
+  color: var(--fg-muted);
+}
+
+/* The tweet line: emphasize the multiplier above every other tile. */
+.tile--multiplier {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(124, 156, 255, 0.16), var(--panel));
+}
+
+.tile--multiplier .tile__value {
+  color: var(--accent-2);
+}
+
+.race__parity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem auto 0;
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+}
+
+.race__parity-mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex: none;
+}
+
+.race__parity[data-state="match"] .race__parity-mark {
+  background: var(--ok);
+}
+
+.race__parity[data-state="match"] {
+  color: var(--fg);
+}
+
+.race__parity[data-state="diverged"] {
+  color: var(--warn);
+}
+
+.race__parity[data-state="diverged"] .race__parity-mark {
+  background: var(--warn);
+}
+
+.race__disclosure {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.race__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.race__first-run {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.race__controls {
+  margin-top: 1.5rem;
+}
+
+.race__run {
+  padding: 0.65rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.race__run:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.race__footer {
+  margin: 1.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
 }
 
 .repo-link {
@@ -154,38 +317,18 @@ body {
   color: var(--accent);
 }
 
-.race-harness {
-  margin-top: 2.5rem;
-  width: min(640px, 90vw);
+@media (max-width: 720px) {
+  .race__panels {
+    grid-template-columns: 1fr;
+  }
+
+  .race__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-#run-race {
-  padding: 0.6rem 1.4rem;
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--bg);
-  background: var(--accent);
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: opacity 0.15s ease;
-}
-
-#run-race:disabled {
-  opacity: 0.5;
-  cursor: progress;
-}
-
-.race-output {
-  margin-top: 1rem;
-  min-height: 1.5rem;
-  padding: 1rem;
-  text-align: left;
-  font-size: 0.85rem;
-  line-height: 1.5;
-  color: var(--fg-muted);
-  background: var(--bg-glow);
-  border-radius: 8px;
-  white-space: pre-wrap;
-  overflow-x: auto;
+@media (prefers-reduced-motion: reduce) {
+  .race-panel__bar {
+    transition: none;
+  }
 }

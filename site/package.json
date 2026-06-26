@@ -11,18 +11,19 @@
     "lint": "eslint ."
   },
   "dependencies": {
-    "clustering-tfjs": "file:..",
-    "@tensorflow/tfjs-core": "4.22.0",
     "@tensorflow/tfjs-backend-cpu": "4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "4.22.0",
     "@tensorflow/tfjs-backend-webgl": "4.22.0",
     "@tensorflow/tfjs-backend-webgpu": "4.22.0",
-    "@tensorflow/tfjs-backend-wasm": "4.22.0"
+    "@tensorflow/tfjs-core": "4.22.0",
+    "clustering-tfjs": "file:.."
   },
   "devDependencies": {
-    "typescript": "^6.0.3",
-    "vite": "^8.1.0",
+    "@types/jest": "^29.5.14",
     "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.0.0",
+    "typescript": "^6.0.3",
     "typescript-eslint": "^8.57.1",
-    "eslint-config-prettier": "^10.0.0"
+    "vite": "^8.1.0"
   }
 }

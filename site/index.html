@@ -17,6 +17,7 @@
       property="og:description"
       content="scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install."
     />
+    <meta name="theme-color" content="#0d1117" />
   </head>
   <body>
     <main class="hero">
@@ -27,22 +28,101 @@
       </h1>
       <p class="subhook">No Python. No install.</p>
 
-      <div class="cluster-dots" aria-hidden="true">
-        <span class="dot dot-a"></span>
-        <span class="dot dot-b"></span>
-        <span class="dot dot-c"></span>
-      </div>
+      <section id="race" class="race" aria-label="WebGPU vs CPU clustering race">
+        <div class="race__panels">
+          <article class="race-panel" id="panel-cpu" data-lane="cpu">
+            <header class="race-panel__head">
+              <span class="race-panel__backend" id="cpu-backend">CPU</span>
+              <span class="race-panel__phase" id="cpu-phase" aria-live="polite"
+                >ready</span
+              >
+            </header>
+            <canvas
+              class="race-panel__scatter"
+              id="cpu-scatter"
+              width="320"
+              height="320"
+              role="img"
+              aria-label="Seeded dataset, clustered on CPU"
+            ></canvas>
+            <div class="race-panel__timer">
+              <span class="race-panel__timer-value" id="cpu-timer">0</span>
+              <span class="race-panel__timer-unit">ms</span>
+            </div>
+            <span class="race-panel__caption" id="cpu-caption">ready</span>
+            <div class="race-panel__track" aria-hidden="true">
+              <div class="race-panel__bar" id="cpu-bar"></div>
+            </div>
+          </article>
 
-      <p class="status">
-        <span class="status-pill">Preview</span>
-        A live WebGPU&nbsp;vs&nbsp;CPU clustering race and the familiar
-        scikit-learn toy-dataset grid.
-      </p>
+          <article class="race-panel" id="panel-gpu" data-lane="gpu">
+            <header class="race-panel__head">
+              <span class="race-panel__backend" id="gpu-backend">WebGPU</span>
+              <span class="race-panel__phase" id="gpu-phase" aria-live="polite"
+                >ready</span
+              >
+            </header>
+            <canvas
+              class="race-panel__scatter"
+              id="gpu-scatter"
+              width="320"
+              height="320"
+              role="img"
+              aria-label="Seeded dataset, clustered on GPU"
+            ></canvas>
+            <div class="race-panel__timer">
+              <span class="race-panel__timer-value" id="gpu-timer">0</span>
+              <span class="race-panel__timer-unit">ms</span>
+            </div>
+            <span class="race-panel__caption" id="gpu-caption">ready</span>
+            <div class="race-panel__track" aria-hidden="true">
+              <div class="race-panel__bar" id="gpu-bar"></div>
+            </div>
+          </article>
+        </div>
 
-      <div class="race-harness">
-        <button id="run-race" type="button">Run the race</button>
-        <pre id="race-output" class="race-output" aria-live="polite"></pre>
-      </div>
+        <div class="race__tiles">
+          <div class="tile">
+            <span class="tile__value" id="tile-cpu-ms">—</span>
+            <span class="tile__label">CPU median</span>
+          </div>
+          <div class="tile tile--multiplier">
+            <span class="tile__value" id="tile-speedup">—</span>
+            <span class="tile__label" id="tile-speedup-label">speedup</span>
+          </div>
+          <div class="tile">
+            <span class="tile__value" id="tile-gpu-ms">—</span>
+            <span class="tile__label">GPU median</span>
+          </div>
+          <div class="tile">
+            <span class="tile__value" id="tile-throughput">—</span>
+            <span class="tile__label">throughput</span>
+          </div>
+        </div>
+
+        <p class="race__parity" id="parity" data-state="idle">
+          <span class="race__parity-mark" aria-hidden="true"></span>
+          <span id="parity-text">Run the race to compare both backends.</span>
+        </p>
+
+        <div class="race__disclosure">
+          <label class="race__toggle">
+            <input type="checkbox" id="first-run-toggle" />
+            Show first-run (shader compile)
+          </label>
+          <span class="race__first-run" id="first-run-readout" hidden></span>
+        </div>
+
+        <div class="race__controls">
+          <button id="run-race" type="button" class="race__run">
+            Run the race
+          </button>
+        </div>
+
+        <p class="race__footer">
+          These numbers come from <b>YOUR</b> hardware.
+        </p>
+      </section>
 
       <a class="repo-link" href="https://github.com/CRJFisher/clustering-tfjs"
         >View the library on GitHub →</a
