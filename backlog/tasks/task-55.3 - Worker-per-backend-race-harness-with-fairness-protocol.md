@@ -56,4 +56,6 @@ Default workload: Spectral RBF affinity (`O(n²·d)`), make_blobs `n=2000`, `d=3
 
 Reference anchor points the live numbers should approximate: Spectral affinity ~1410ms→67ms at 1000×50 (~21×); ~140,738ms→5,392ms at 10000×100 (~26×) on the native backend. The slider (task-55.5) hard-caps `n` at 5000 — above that the dense `O(n²)` matrix risks OOM/jank on low-end and mobile devices.
 
+Task-55.2 left `site/` outside the repo's ESLint scope (its only TypeScript was a one-line CSS import, so linting it then was YAGNI). This sub-task adds the first real site logic, so wire `site/` into ESLint here with the project's Python-style snake_case rules — either extend the root flat config with a `site/src/**/*.ts` block or add a site-local config — and add an `npm run lint` step to the `deploy-site.yml` build job so the convention is enforced in CI (satisfies this task's AC #7 for the site sources).
+
 <!-- SECTION:NOTES:END -->

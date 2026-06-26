@@ -19,13 +19,6 @@ permissions:
   pages: write
   id-token: write
 
-# Serialize Pages publishes. cancel-in-progress is false so an in-flight deploy
-# finishes rather than leaving the site half-published — the pattern GitHub
-# recommends for the Pages environment.
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -57,17 +50,26 @@ jobs:
         working-directory: site
 
       # Path is repo-root-relative, so it must be site/dist (the Vite outDir).
-      # Uploaded on PRs too; the deploy job below is what gates publication.
+      # Only the runs that can deploy need the artifact; PRs are a build-only
+      # guard, so skip the upload for them.
       - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist
 
   deploy:
     needs: build
-    # PRs build (guard) but never publish; only a push to main deploys.
-    if: github.event_name == 'push'
+    # PRs are a build-only guard and never publish; a push to main or a manual
+    # workflow_dispatch deploys.
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # Serialize Pages publishes. cancel-in-progress is false so an in-flight
+    # deploy finishes rather than leaving the site half-published. Scoped to the
+    # deploy job so PR guard builds never queue behind a publish.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
