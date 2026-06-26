@@ -26,28 +26,42 @@ function has_webgpu(): boolean {
   return nav.gpu != null;
 }
 
+// The GPU lane walks this chain in order until one backend initializes, so a
+// browser without WebGPU (Firefox-Linux/Android, older Safari) still gets a real
+// GPU lane (webgl), then wasm, then the universal cpu floor — the lane is never
+// left empty or broken. The honest label is whatever actually initialized.
+const GPU_FALLBACK_CHAIN: BackendLane[] = ["webgpu", "webgl", "wasm", "cpu"];
+
 // Establish the lane and return tf.getBackend() — the honest label of what
-// actually runs. A 'webgpu' request degrades to 'webgl' when the realm lacks
-// navigator.gpu or the backend fails to initialize, so the UI never claims a
-// WebGPU win it did not measure.
+// actually runs. The GPU lane degrades down GPU_FALLBACK_CHAIN whenever a
+// backend is missing or fails to initialize, so the UI never claims a WebGPU win
+// it did not measure. The cpu lane has nothing to fall back to and is the floor.
 async function init_lane(lane: BackendLane): Promise<string> {
-  if (lane === "webgpu" && !has_webgpu()) {
-    await Clustering.init({ backend: "webgl" });
+  if (lane !== "webgpu") {
+    await Clustering.init({ backend: lane });
     return tf.getBackend();
   }
 
-  try {
-    await Clustering.init({ backend: lane });
-  } catch (error) {
-    if (lane === "webgpu") {
-      Clustering.reset();
-      await Clustering.init({ backend: "webgl" });
-      return tf.getBackend();
-    }
-    throw error;
-  }
+  // Skip the webgpu attempt entirely when the realm has no navigator.gpu —
+  // importing the heavy backend package only to fail wastes a network fetch.
+  const chain = has_webgpu()
+    ? GPU_FALLBACK_CHAIN
+    : GPU_FALLBACK_CHAIN.filter((backend) => backend !== "webgpu");
 
-  return tf.getBackend();
+  let last_error: unknown;
+  for (const candidate of chain) {
+    try {
+      await Clustering.init({ backend: candidate });
+      return tf.getBackend();
+    } catch (error) {
+      last_error = error;
+      // Clear the failed backend's partial singleton state before the next try.
+      Clustering.reset();
+    }
+  }
+  throw last_error instanceof Error
+    ? last_error
+    : new Error("No GPU-lane backend could be initialized.");
 }
 
 worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
@@ -84,6 +98,7 @@ worker_self.onmessage = async (event: MessageEvent<RaceRequest>) => {
       type: "result",
       requested_lane: request.lane,
       actual_backend,
+      tfjs_version: tf.version_core,
       median_ms: result.median_ms,
       min_ms: result.min_ms,
       max_ms: result.max_ms,

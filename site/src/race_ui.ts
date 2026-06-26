@@ -58,6 +58,16 @@ function results_agree(cpu_checksum: number, gpu_checksum: number): boolean {
   return Math.abs(cpu_checksum - gpu_checksum) / denom <= RESULT_MATCH_REL_TOL;
 }
 
+// Main-thread feature probe for the pre-race banner. The worker runs its own
+// authoritative check before initializing; this only decides whether to warn and
+// reveal the reference clip BEFORE the first race, so the visitor never stares at
+// a "WebGPU" panel the browser cannot honour. The post-race `actual_backend`
+// reconciliation is the source of truth.
+function has_webgpu(): boolean {
+  const nav: Navigator & { gpu?: unknown } = navigator;
+  return nav.gpu != null;
+}
+
 interface LaneView {
   begin(): void;
   advance(phase: string): void;
@@ -159,6 +169,71 @@ export function make_race_ui(): void {
 
   const first_run_toggle = require_el<HTMLInputElement>("#first-run-toggle");
   const first_run_readout = require_el<HTMLElement>("#first-run-readout");
+
+  const gpu_backend_label = require_el<HTMLElement>("#gpu-backend");
+  const fallback_banner = require_el<HTMLElement>("#fallback-banner");
+  const fallback_banner_text = require_el<HTMLElement>("#fallback-banner-text");
+  const reference_figure = require_el<HTMLElement>("#race-reference");
+  const reference_media = require_el<HTMLImageElement>("#race-reference-media");
+
+  const config_n = require_el<HTMLElement>("#config-n");
+  const config_cpu_backend = require_el<HTMLElement>("#config-cpu-backend");
+  const config_gpu_backend = require_el<HTMLElement>("#config-gpu-backend");
+  const config_tfjs_version = require_el<HTMLElement>("#config-tfjs-version");
+
+  // Seed the methodology panel's fixed fields from the one config the workers
+  // actually run, so the documented schedule can never drift from the code.
+  require_el<HTMLElement>("#methodology-warmups").textContent = String(
+    DEFAULT_RACE_CONFIG.warmups,
+  );
+  require_el<HTMLElement>("#methodology-reps").textContent = String(
+    DEFAULT_RACE_CONFIG.reps,
+  );
+  require_el<HTMLElement>("#config-d").textContent = String(
+    DEFAULT_RACE_CONFIG.n_features,
+  );
+  require_el<HTMLElement>("#config-schedule").textContent =
+    `${DEFAULT_RACE_CONFIG.warmups} · ${DEFAULT_RACE_CONFIG.reps}`;
+
+  // The reference clip is base-aware (Pages serves under a sub-path) and only
+  // attached when first revealed, so its animation does not run off-screen.
+  function reveal_reference(): void {
+    if (!reference_figure.hidden) return;
+    reference_media.src = `${import.meta.env.BASE_URL}race-reference.svg`;
+    reference_figure.hidden = false;
+  }
+
+  // Authoritative reconciliation against what the GPU worker actually ran. A
+  // 'webgpu' result clears the notice; anything else means the lane fell back,
+  // so the banner names the real backend and the reference clip is revealed.
+  function reconcile_fallback(gpu_backend: string): void {
+    if (gpu_backend === "webgpu") {
+      fallback_banner.hidden = true;
+      return;
+    }
+    const name = gpu_backend.toUpperCase();
+    fallback_banner_text.textContent =
+      `WebGPU isn't available in this browser — the GPU lane is running ${name}, ` +
+      "your fastest available backend. The timings below are real, measured on your hardware.";
+    fallback_banner.hidden = false;
+    reveal_reference();
+  }
+
+  // Before any race, navigator.gpu is the best signal: when it is absent the GPU
+  // panel must not advertise "WebGPU", and the visitor should already see both
+  // the honest notice and the reference payoff.
+  if (!has_webgpu()) {
+    gpu_backend_label.textContent = "GPU";
+    fallback_banner_text.textContent =
+      "WebGPU isn't available in this browser — the GPU lane will race your fastest " +
+      "available backend (WebGL → WASM → CPU). The timings below are real, measured on your hardware.";
+    fallback_banner.hidden = false;
+    reveal_reference();
+  }
+
+  function update_config(n_samples: number): void {
+    config_n.textContent = format_count(n_samples);
+  }
 
   // The cold first-run number lives ONLY behind this toggle and is never read by
   // the headline multiplier, so it cannot leak into the "N.Nx faster" claim.
@@ -298,6 +373,7 @@ export function make_race_ui(): void {
     // line, so a re-run never shows the previous race's verdict next to lanes that
     // have already reset to zero.
     crossover_caption.textContent = `Racing n = ${format_count(n_samples)}…`;
+    update_config(n_samples);
 
     const config: RaceConfig = { ...DEFAULT_RACE_CONFIG, n_samples };
 
@@ -322,6 +398,12 @@ export function make_race_ui(): void {
       // if either lane failed), so the headline always has both medians.
       if (cpu_result && gpu_result) {
         render_headline(outcome, cpu_result, gpu_result);
+        // The methodology panel reports what THIS race ran: the real backends
+        // (after any fallback) and the engine version straight off the result.
+        config_cpu_backend.textContent = cpu_result.actual_backend.toUpperCase();
+        config_gpu_backend.textContent = gpu_result.actual_backend.toUpperCase();
+        config_tfjs_version.textContent = gpu_result.tfjs_version;
+        reconcile_fallback(gpu_result.actual_backend);
         crossover.add_sample({
           n: n_samples,
           cpu_ms: cpu_result.median_ms,
@@ -379,6 +461,7 @@ export function make_race_ui(): void {
     // thumb instantly; the race itself is debounced behind it.
     const formatted = format_count(n);
     slider_value.textContent = formatted;
+    update_config(n);
     // Screen readers otherwise announce a bare number; name the unit so the value
     // is meaningful when dragging without sight of the readout.
     slider.setAttribute("aria-valuetext", `${formatted} samples`);

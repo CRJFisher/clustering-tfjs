@@ -84,6 +84,42 @@ body {
   margin-top: 2.5rem;
 }
 
+/* Load-bearing fallback notice: non-apologetic, states which GPU backend the
+   race actually used when WebGPU was unavailable. Hidden until the environment
+   probe (or a post-race reconciliation) finds the GPU lane is not WebGPU. */
+.race__banner {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(255, 169, 77, 0.1);
+  border: 1px solid rgba(255, 169, 77, 0.4);
+  border-radius: 10px;
+}
+
+/* Reference clip shown to visitors whose browser can't run WebGPU (and mobile):
+   they still get the live fallback race below, but this guarantees they see the
+   WebGPU payoff. The img holds an illustrative animated SVG until the recorded
+   clip ships with the launch assets. */
+.race-reference {
+  margin: 0 0 1.5rem;
+}
+
+.race-reference__media {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  display: block;
+}
+
+.race-reference__caption {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+}
+
 .race__panels {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -414,6 +450,82 @@ body {
   cursor: progress;
 }
 
+/* Always-available "how this is timed" disclosure. Collapsed by default to keep
+   the fold clean, but never hidden — the protocol is one click from any visitor
+   who wants to audit the numbers. */
+.race__methodology {
+  max-width: 44rem;
+  margin: 2rem auto 0;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.race__methodology-summary {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.race__methodology-body {
+  padding: 0 1.1rem 1.1rem;
+}
+
+.race__methodology-list {
+  margin: 0 0 1.1rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.race__methodology-list li {
+  margin-bottom: 0.4rem;
+}
+
+.race__methodology-list b {
+  color: var(--fg);
+}
+
+.race__methodology-list code,
+.race__methodology code {
+  font-size: 0.82em;
+  color: var(--accent-2);
+}
+
+/* Live config: each backend/version cell is filled from the worker's real
+   result so the panel never asserts a config the race did not run. */
+.race__config {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.race__config > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.race__config dt {
+  color: var(--fg-muted);
+}
+
+.race__config dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--fg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .race__footer {
   margin: 1.5rem 0 0;
   font-size: 0.85rem;
@@ -442,6 +554,10 @@ body {
 
   .race__tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .race__config {
+    grid-template-columns: 1fr;
   }
 }
 

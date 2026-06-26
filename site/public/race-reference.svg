@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" role="img"
+     aria-label="Reference WebGPU vs CPU race: the WebGPU bar finishes far ahead of the CPU bar at n = 10,000.">
+  <!-- Illustrative schematic, not a hardware capture: two affinity-race lanes
+       loop on a 6s cycle, the WebGPU lane finishing ~26x sooner than CPU. The
+       real recorded clip lands with the launch assets (task-55.10). -->
+  <defs>
+    <linearGradient id="gpu-fill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3bc9a0" />
+      <stop offset="1" stop-color="#63e6be" />
+    </linearGradient>
+    <linearGradient id="cpu-fill" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#5b73c4" />
+      <stop offset="1" stop-color="#7c9cff" />
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="720" height="200" rx="14" fill="#11162a" />
+  <rect x="0.5" y="0.5" width="719" height="199" rx="14" fill="none"
+        stroke="rgba(124,156,255,0.18)" />
+
+  <text x="24" y="32" fill="#e6edf3" font-family="system-ui, sans-serif"
+        font-size="16" font-weight="700">WebGPU vs CPU — Spectral RBF affinity</text>
+  <text x="696" y="32" text-anchor="end" fill="#8b949e"
+        font-family="system-ui, sans-serif" font-size="14">n = 10,000 · d = 100</text>
+
+  <!-- WebGPU lane -->
+  <text x="24" y="78" fill="#63e6be" font-family="system-ui, sans-serif"
+        font-size="14" font-weight="700">WebGPU</text>
+  <rect x="110" y="60" width="500" height="26" rx="8" fill="rgba(124,156,255,0.12)" />
+  <rect x="110" y="60" height="26" rx="8" fill="url(#gpu-fill)">
+    <animate attributeName="width" values="0;500;500;0"
+             keyTimes="0;0.035;0.985;1" dur="6s" repeatCount="indefinite" />
+  </rect>
+  <text x="696" y="78" text-anchor="end" fill="#63e6be"
+        font-family="system-ui, sans-serif" font-size="14" font-weight="700"
+        opacity="0">≈ 38 ms
+    <animate attributeName="opacity" values="0;0;1;1;0"
+             keyTimes="0;0.035;0.05;0.985;1" dur="6s" repeatCount="indefinite" />
+  </text>
+
+  <!-- CPU lane -->
+  <text x="24" y="140" fill="#7c9cff" font-family="system-ui, sans-serif"
+        font-size="14" font-weight="700">CPU</text>
+  <rect x="110" y="122" width="500" height="26" rx="8" fill="rgba(124,156,255,0.12)" />
+  <rect x="110" y="122" height="26" rx="8" fill="url(#cpu-fill)">
+    <animate attributeName="width" values="0;500;500;0"
+             keyTimes="0;0.92;0.985;1" dur="6s" repeatCount="indefinite" />
+  </rect>
+  <text x="696" y="140" text-anchor="end" fill="#7c9cff"
+        font-family="system-ui, sans-serif" font-size="14" font-weight="700"
+        opacity="0">≈ 1,000 ms
+    <animate attributeName="opacity" values="0;0;1;1;0"
+             keyTimes="0;0.92;0.94;0.985;1" dur="6s" repeatCount="indefinite" />
+  </text>
+
+  <text x="360" y="184" text-anchor="middle" fill="#e6edf3"
+        font-family="system-ui, sans-serif" font-size="15" font-weight="800"
+        opacity="0">WebGPU ≈ 26× faster
+    <animate attributeName="opacity" values="0;0;1;1;0"
+             keyTimes="0;0.92;0.95;0.985;1" dur="6s" repeatCount="indefinite" />
+  </text>
+</svg>

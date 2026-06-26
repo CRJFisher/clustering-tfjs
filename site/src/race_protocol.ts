@@ -41,6 +41,9 @@ export interface RaceResult {
   requested_lane: BackendLane;
   // tf.getBackend() after init — 'webgpu' or the lane it fell back to.
   actual_backend: string;
+  // tf.version_core of the engine that actually ran this lane, surfaced so the
+  // methodology panel reports the real loaded version, not a hardcoded string.
+  tfjs_version: string;
   median_ms: number;
   min_ms: number;
   max_ms: number;

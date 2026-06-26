@@ -29,6 +29,33 @@
       <p class="subhook">No Python. No install.</p>
 
       <section id="race" class="race" aria-label="WebGPU vs CPU clustering race">
+        <p
+          class="race__banner"
+          id="fallback-banner"
+          role="status"
+          aria-live="polite"
+          hidden
+        >
+          <span id="fallback-banner-text"></span>
+        </p>
+
+        <figure class="race-reference" id="race-reference" hidden>
+          <img
+            class="race-reference__media"
+            id="race-reference-media"
+            alt="Reference WebGPU-vs-CPU race: the GPU bar finishes far ahead of the CPU bar at n = 10,000."
+            width="720"
+            height="200"
+          />
+          <figcaption class="race-reference__caption">
+            Illustrative reference race (n = 10,000, ~26× on reference
+            hardware). This browser can't run WebGPU, so this shows the payoff
+            you'd see on a WebGPU-capable device — the live race below still
+            runs on <b>your</b> hardware. A recorded clip replaces this at
+            launch.
+          </figcaption>
+        </figure>
+
         <div class="race__panels">
           <article class="race-panel" id="panel-cpu" data-lane="cpu">
             <header class="race-panel__head">
@@ -152,8 +179,87 @@
           </button>
         </div>
 
+        <details class="race__methodology" id="methodology">
+          <summary class="race__methodology-summary">
+            How this is timed
+          </summary>
+          <div class="race__methodology-body">
+            <ul class="race__methodology-list">
+              <li>
+                Every lane runs <b>float32</b> on byte-identical input tensors.
+              </li>
+              <li>
+                The dataset is uploaded to each backend
+                <b>once, outside the timed region</b> — timing measures compute,
+                not host→device transfer.
+              </li>
+              <li>
+                <b id="methodology-warmups">3</b> warmup runs are discarded to
+                absorb shader compile / wasm init / lazy kernel registration; the
+                cold first run is reported separately (toggle above) and never
+                enters the headline multiplier.
+              </li>
+              <li>
+                Each timed rep brackets the affinity construction
+                <b>plus its single awaited readback</b>
+                (<code>await affinity.data()</code>), so deferred GPU work is
+                counted.
+              </li>
+              <li>
+                The reported figure is the
+                <b>median of <span id="methodology-reps">7</span> timed reps</b>
+                (protocol floor: ≥ 5).
+              </li>
+              <li>
+                After every rep <code>tf.memory().numTensors</code> must return
+                to baseline — a leak <b>aborts</b> the race instead of reporting
+                a drifting number.
+              </li>
+              <li>
+                A cross-lane <b>checksum</b> on the affinity matrix confirms both
+                backends computed the same kernel.
+              </li>
+            </ul>
+            <dl class="race__config" aria-label="Live race configuration">
+              <div>
+                <dt>Workload</dt>
+                <dd>Spectral RBF affinity · O(n²·d)</dd>
+              </div>
+              <div>
+                <dt>Samples (n)</dt>
+                <dd id="config-n">2,000</dd>
+              </div>
+              <div>
+                <dt>Features (d)</dt>
+                <dd id="config-d">32</dd>
+              </div>
+              <div>
+                <dt>Dtype</dt>
+                <dd>float32</dd>
+              </div>
+              <div>
+                <dt>Warmups · reps</dt>
+                <dd id="config-schedule">3 · 7</dd>
+              </div>
+              <div>
+                <dt>CPU backend</dt>
+                <dd id="config-cpu-backend">—</dd>
+              </div>
+              <div>
+                <dt>GPU backend</dt>
+                <dd id="config-gpu-backend">—</dd>
+              </div>
+              <div>
+                <dt>tfjs version</dt>
+                <dd id="config-tfjs-version">—</dd>
+              </div>
+            </dl>
+          </div>
+        </details>
+
         <p class="race__footer">
-          These numbers come from <b>YOUR</b> hardware.
+          Times are from <b>YOUR</b> browser/GPU right now — not a cherry-picked
+          machine; numbers vary by hardware.
         </p>
       </section>
 
