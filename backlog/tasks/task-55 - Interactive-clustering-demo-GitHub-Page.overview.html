@@ -95,7 +95,7 @@
     <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html"><span class="dot" style="background:var(--olive)"></span>55.3 Race harness <span class="ng" style="color:var(--olive)">done</span></a>
     <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html"><span class="dot" style="background:var(--olive)"></span>55.4 Race UI <span class="ng" style="color:var(--olive)">done</span></a>
     <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 Crossover slider <span class="ng" style="color:var(--olive)">done</span></a>
-    <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.6 Fallback + methodology <span class="ng">soon</span></span>
+    <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html"><span class="dot" style="background:var(--olive)"></span>55.6 Fallback + methodology <span class="ng" style="color:var(--olive)">done</span></a>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.7 sklearn grid <span class="ng">soon</span></span>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.8 Param sliders <span class="ng">soon</span></span>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.9 Conversion surfaces <span class="ng">soon</span></span>
@@ -113,14 +113,14 @@
       <span class="chip">headline workload <strong>Spectral RBF affinity O(n²·d)</strong></span>
       <span class="chip">measured <strong>~26× @ 10000×100</strong></span>
       <span class="chip">5 algorithms</span>
-      <span class="chip">progress <strong>M0 + M1 done · M2 next</strong></span>
+      <span class="chip">progress <strong>M0–M3 done · M4 next</strong></span>
     </div>
   </header>
 
   <!-- hero: how the pieces fit -->
   <section id="shape">
     <div class="eyebrow">How the ten sub-tasks compose</div>
-    <h2>The shape of the demo — 55.1 and 55.2 done, the race next</h2>
+    <h2>The shape of the demo — M0–M3 done through the crossover slider + fallback, the sklearn grid next</h2>
     <figure>
       <div class="hero">
         <svg viewBox="0 0 920 330" role="img" aria-label="Architecture: task 55.1 (done) wires WebGPU into the library, which feeds a worker-per-backend race harness, a race UI, a crossover slider, the sklearn grid, and conversion surfaces. Task 55.2 (done) stands up the Vite site and GitHub Pages deploy that hosts all of it. The worker race harness in 55.3 is next.">
@@ -143,21 +143,21 @@
           <text x="325" y="42" text-anchor="middle" fill="#384021" font-weight="bold">55.2 · M1 ✓ done</text>
           <text x="325" y="58" text-anchor="middle" fill="#384021" font-size="9">Vite site + Pages deploy</text>
 
-          <!-- 55.3 + 55.4 race core (NEXT) -->
-          <rect x="250" y="100" width="150" height="64" rx="10" fill="#f1e3d6" stroke="#b5673f" stroke-width="2"/>
-          <text x="325" y="122" text-anchor="middle" fill="#7a3f20" font-weight="bold">55.3 / 55.4 · M2 ◐ next</text>
-          <text x="325" y="138" text-anchor="middle" fill="#7a3f20" font-size="9">worker-per-backend race</text>
-          <text x="325" y="152" text-anchor="middle" fill="#7a3f20" font-size="9">the screenshot-worthy core</text>
+          <!-- 55.3 + 55.4 race core (DONE) -->
+          <rect x="250" y="100" width="150" height="64" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="122" text-anchor="middle" fill="#384021" font-weight="bold">55.3 / 55.4 · M2 ✓ done</text>
+          <text x="325" y="138" text-anchor="middle" fill="#384021" font-size="9">worker-per-backend race</text>
+          <text x="325" y="152" text-anchor="middle" fill="#384021" font-size="9">the screenshot-worthy core</text>
 
-          <!-- 55.5 + 55.6 -->
-          <rect x="250" y="188" width="150" height="56" rx="10" fill="#efeadd" stroke="#bdb6a3"/>
-          <text x="325" y="210" text-anchor="middle" fill="#2b2a26">55.5 / 55.6 · M3</text>
-          <text x="325" y="226" text-anchor="middle" fill="#5d584e" font-size="9">crossover + fallback</text>
+          <!-- 55.5 + 55.6 (DONE) -->
+          <rect x="250" y="188" width="150" height="56" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="210" text-anchor="middle" fill="#384021" font-weight="bold">55.5 / 55.6 · M3 ✓ done</text>
+          <text x="325" y="226" text-anchor="middle" fill="#384021" font-size="9">crossover + fallback</text>
 
-          <!-- 55.7 + 55.8 grid -->
-          <rect x="250" y="268" width="150" height="50" rx="10" fill="#efeadd" stroke="#bdb6a3"/>
-          <text x="325" y="288" text-anchor="middle" fill="#2b2a26">55.7 / 55.8 · M4</text>
-          <text x="325" y="304" text-anchor="middle" fill="#5d584e" font-size="9">sklearn grid + sliders</text>
+          <!-- 55.7 + 55.8 grid (NEXT) -->
+          <rect x="250" y="268" width="150" height="50" rx="10" fill="#f1e3d6" stroke="#b5673f" stroke-width="2"/>
+          <text x="325" y="288" text-anchor="middle" fill="#7a3f20" font-weight="bold">55.7 / 55.8 · M4 ◐ next</text>
+          <text x="325" y="304" text-anchor="middle" fill="#7a3f20" font-size="9">sklearn grid + sliders</text>
 
           <!-- 55.9 conversion -->
           <rect x="460" y="120" width="160" height="92" rx="11" fill="#fff" stroke="#bdb6a3"/>
@@ -188,11 +188,11 @@
         </svg>
       </div>
       <div class="legend">
-        <span><i style="background:#6f7a46"></i> 55.1 + 55.2 done — library change + the deploy that hosts it</span>
-        <span><i style="background:#b5673f"></i> 55.3 next — the worker race harness</span>
+        <span><i style="background:#6f7a46"></i> M0–M3 done — library change, deploy, the race, crossover + fallback</span>
+        <span><i style="background:#b5673f"></i> 55.7 / 55.8 next — the sklearn toy-dataset grid</span>
         <span><i style="background:#2b2a26"></i> launch</span>
       </div>
-      <figcaption class="prose"><b>55.1 is done: WebGPU now loads behind a per-backend ESM map.</b> A single global TF.js engine per JS context means WebGPU and CPU cannot run concurrently on the main thread — a fair race needs one Web Worker per backend, each loading <code>tfjs-core</code> + one backend package. <b>55.2 is done too: the Vite site and GitHub Pages pipeline that hosts the race ship as a blank-but-live page</b>, proven before any compute lands. <b>55.3 (M2)</b> is next — the worker harness, where the library-link strategy is finally decided.</figcaption>
+      <figcaption class="prose"><b>The race core is live: one global TF.js engine per JS context forces one Web Worker per backend</b>, so WebGPU and CPU race fairly off the main thread (55.3 / 55.4). The <code>n</code>-slider flips CPU-wins-small to GPU-wins-large (55.5); a <code>webgpu → webgl → wasm → cpu</code> fallback chain and an always-on methodology expander keep it honest on any browser (55.6). <b>55.7 / 55.8 (M4)</b> is next — the scikit-learn grid.</figcaption>
     </figure>
   </section>
 
@@ -225,18 +225,18 @@
           <div class="tasks"><a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html"><span class="dot" style="background:var(--olive)"></span>55.3 · companion</a><a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html"><span class="dot" style="background:var(--olive)"></span>55.4 · companion</a></div>
         </div>
       </div>
-      <div class="ms now">
+      <div class="ms done">
         <div class="when">M3</div><div class="spine"><div class="d"></div><div class="line"></div></div>
         <div class="body">
-          <h3>Crossover slider + methodology + WebGPU fallback <span class="pill">next</span></h3>
-          <div class="sub prose">The <code>n</code>-slider (200–5000) visibly flips CPU-wins-small to GPU-wins-large; non-WebGPU/mobile visitors get a recorded race GIF.</div>
-          <div class="tasks"><a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 · companion</a><span><span class="dot" style="background:var(--g300)"></span>55.6 · not yet generated</span></div>
+          <h3>Crossover slider + methodology + WebGPU fallback <span class="pill">done</span></h3>
+          <div class="sub prose">The <code>n</code>-slider (200–5000) visibly flips CPU-wins-small to GPU-wins-large; a <code>webgpu → webgl → wasm → cpu</code> fallback chain keeps the GPU lane honest and never empty, an always-visible "how this is timed" expander reads live config from the run, and non-WebGPU/mobile visitors see an honestly-labelled reference clip.</div>
+          <div class="tasks"><a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 · companion</a><a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html"><span class="dot" style="background:var(--olive)"></span>55.6 · companion</a></div>
         </div>
       </div>
-      <div class="ms">
+      <div class="ms now">
         <div class="when">M4</div><div class="spine"><div class="d"></div><div class="line"></div></div>
         <div class="body">
-          <h3>The scikit-learn toy-dataset grid + per-algorithm sliders</h3>
+          <h3>The scikit-learn toy-dataset grid + per-algorithm sliders <span class="pill">next</span></h3>
           <div class="sub prose">Moons / circles / blobs / anisotropic / no-structure, live across K-Means, Spectral, Agglomerative, HDBSCAN, SOM — the trust signal.</div>
           <div class="tasks"><span><span class="dot" style="background:var(--g300)"></span>55.7 · not yet generated</span><span><span class="dot" style="background:var(--g300)"></span>55.8 · not yet generated</span></div>
         </div>
@@ -268,7 +268,7 @@
 
 <footer>
   Overview for <b style="color:var(--g500)">task-55 — Interactive clustering demo GitHub Page (WebGPU vs CPU race)</b> ·
-  sub-task companions re-scanned from this directory · 55.1 &amp; 55.2 done (companions present), 55.3–55.10 not yet generated ·
+  sub-task companions re-scanned from this directory · 55.1–55.6 done (companions present), 55.7–55.10 not yet generated ·
   self-contained, no external assets.
 </footer>
 </body>

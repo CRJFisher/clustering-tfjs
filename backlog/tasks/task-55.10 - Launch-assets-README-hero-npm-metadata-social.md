@@ -45,4 +45,6 @@ Convert the live demo into a coordinated launch.
 
 Have the honest-methodology reply prepared before posting: link the live methodology expander, point to the "numbers from YOUR hardware" footer, and the "datasets/params are in the URL — try your own" permalink. Lead every channel with the race GIF.
 
+The recorded race GIF/MP4 produced here also replaces the illustrative placeholder shipped in task-55.6. The non-WebGPU fallback `<figure>` (`#race-reference`) and its reveal logic already exist; swap `site/public/race-reference.svg` for the real ≤6s recording (and update the `<img>`/figcaption in `site/index.html` if moving to `<video>`), keeping the same reveal mechanism. Remove the "A recorded clip replaces this at launch" caveat from the figcaption once the real asset is in.
+
 <!-- SECTION:NOTES:END -->

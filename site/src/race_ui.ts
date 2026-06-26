@@ -231,7 +231,7 @@ export function make_race_ui(): void {
     reveal_reference();
   }
 
-  function update_config(n_samples: number): void {
+  function update_config_n(n_samples: number): void {
     config_n.textContent = format_count(n_samples);
   }
 
@@ -265,6 +265,11 @@ export function make_race_ui(): void {
     first_run_toggle.checked = false;
     first_run_readout.hidden = true;
     first_run_readout.textContent = "";
+    // The measured backends/version belong to the previous race; clear them so a
+    // failed or in-flight race never shows last race's config next to this n.
+    config_cpu_backend.textContent = "—";
+    config_gpu_backend.textContent = "—";
+    config_tfjs_version.textContent = "—";
   }
 
   function render_headline(
@@ -373,7 +378,7 @@ export function make_race_ui(): void {
     // line, so a re-run never shows the previous race's verdict next to lanes that
     // have already reset to zero.
     crossover_caption.textContent = `Racing n = ${format_count(n_samples)}…`;
-    update_config(n_samples);
+    update_config_n(n_samples);
 
     const config: RaceConfig = { ...DEFAULT_RACE_CONFIG, n_samples };
 
@@ -461,7 +466,7 @@ export function make_race_ui(): void {
     // thumb instantly; the race itself is debounced behind it.
     const formatted = format_count(n);
     slider_value.textContent = formatted;
-    update_config(n);
+    update_config_n(n);
     // Screen readers otherwise announce a bare number; name the unit so the value
     // is meaningful when dragging without sight of the readout.
     slider.setAttribute("aria-valuetext", `${formatted} samples`);
