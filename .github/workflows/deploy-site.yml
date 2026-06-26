@@ -1,0 +1,77 @@
+name: Deploy Site
+
+# Build on every PR (the guard that keeps the live-demo link from rotting) and
+# on push to main (build + deploy). workflow_dispatch allows a manual re-deploy
+# without a new commit.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege scopes for the Pages deploy chain:
+#   contents: read   -> checkout
+#   pages: write     -> publish the Pages deployment
+#   id-token: write  -> mint the OIDC token deploy-pages exchanges with Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Serialize Pages publishes. cancel-in-progress is false so an in-flight deploy
+# finishes rather than leaving the site half-published — the pattern GitHub
+# recommends for the Pages environment.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          # The site has its own lockfile, independent of the library root.
+          cache-dependency-path: site/package-lock.json
+
+      # Install ONLY the site's deps — never the library root. The marketing
+      # site builds independently of the published package.
+      - name: Install site dependencies
+        run: npm ci
+        working-directory: site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Fails the whole workflow if the bundle stops building. On PRs this is the
+      # only thing that runs, so a broken site never reaches main.
+      - name: Build site
+        run: npm run build
+        working-directory: site
+
+      # Path is repo-root-relative, so it must be site/dist (the Vite outDir).
+      # Uploaded on PRs too; the deploy job below is what gates publication.
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    # PRs build (guard) but never publish; only a push to main deploys.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

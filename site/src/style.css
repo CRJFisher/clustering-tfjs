@@ -1,0 +1,155 @@
+:root {
+  --bg: #0d1117;
+  --bg-glow: #161b2e;
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --accent: #7c9cff;
+  --accent-2: #63e6be;
+  --accent-3: #ffa94d;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  color: var(--fg);
+  background:
+    radial-gradient(circle at 50% 0%, var(--bg-glow), transparent 60%),
+    var(--bg);
+}
+
+.hero {
+  max-width: 46rem;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hook {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.accent {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subhook {
+  margin: 1rem 0 0;
+  font-size: clamp(1rem, 2.5vw, 1.35rem);
+  color: var(--fg-muted);
+}
+
+.cluster-dots {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  margin: 2.5rem 0;
+}
+
+.dot {
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 50%;
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+.dot-a {
+  background: var(--accent);
+}
+
+.dot-b {
+  background: var(--accent-2);
+  animation-delay: 0.3s;
+}
+
+.dot-c {
+  background: var(--accent-3);
+  animation-delay: 0.6s;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-0.35rem);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dot {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+.status {
+  margin: 0 auto;
+  max-width: 30rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--fg-muted);
+}
+
+.status-pill {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.15rem 0.6rem;
+  border: 1px solid rgba(124, 156, 255, 0.4);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.repo-link {
+  display: inline-block;
+  margin-top: 2.5rem;
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.15rem;
+  transition: color 0.15s ease;
+}
+
+.repo-link:hover {
+  color: var(--accent);
+}

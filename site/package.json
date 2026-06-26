@@ -1,0 +1,16 @@
+{
+  "name": "clustering-tfjs-site",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Marketing demo site for clustering-tfjs (WebGPU vs CPU race + sklearn grid)",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^8.1.0"
+  }
+}
