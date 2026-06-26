@@ -62,7 +62,7 @@ The site sets `base: '/clustering-tfjs/'` so every emitted asset URL carries the
 
 ### Deploy prerequisites (why #1 is unchecked)
 
-AC #1 is confirmable only after the work merges to `main` and the repo's **Settings → Pages → Source** is set to **GitHub Actions** (a one-time manual setting no YAML can apply). Until both happen, the live URL does not resolve; the pipeline itself is verified end to end locally.
+AC #1 is confirmable only after the work merges to `main` and the repo's **Settings → Pages → Source** is set to **GitHub Actions** (a one-time manual setting no YAML can apply, tracked as task-55.11). Until both happen, the live URL does not resolve; the pipeline itself is verified end to end locally.
 
 ### Build guard caught a real issue
 
