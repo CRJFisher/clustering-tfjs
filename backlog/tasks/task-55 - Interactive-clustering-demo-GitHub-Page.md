@@ -52,7 +52,7 @@ See `backlog/docs/interactive-clustering-demo-design.md` for the full design, ar
 <!-- AC:BEGIN -->
 
 - [ ] #1 A live GitHub Page at `https://CRJFisher.github.io/clustering-tfjs/` shows a working WebGPU-vs-CPU Spectral-affinity race with live timers, racing bars, and an "N.Nx faster" headline, deployed via GitHub Actions on push to main
-- [ ] #2 The race is fair and honest: every lane runs float32 on identical input, timing includes the awaited readback, first-run shader-compile cost is shown separately, an always-visible methodology note documents the protocol, and a cross-backend "same result" label-equality check is displayed
+- [ ] #2 The race is fair and honest: every lane runs float32 on identical input, timing includes the awaited readback, first-run shader-compile cost is shown separately, an always-visible methodology note documents the protocol, and a cross-backend "same result" check is displayed — an equality check on the timed affinity output (the headline workload produces an affinity matrix, not labels, and the async-only WebGPU backend cannot survive `fit_predict`'s sync readback)
 - [ ] #3 A crossover `n`-slider (200–5000, hard-capped) visibly flips from CPU-wins at small `n` to GPU-wins past the marked crossover point
 - [ ] #4 The scikit-learn toy-dataset grid clusters live across all five algorithms (K-Means, Spectral, Agglomerative, HDBSCAN, SOM) with per-algorithm parameter sliders, on curated datasets/params where float32 parity holds (differences annotated, not hidden)
 - [ ] #5 WebGPU is supported in the library via a per-backend ESM loader with `navigator.gpu` feature-detection, `getBackend()` verification, and graceful WebGL→WASM→CPU fallback; non-WebGPU/mobile visitors see a recorded race GIF/MP4

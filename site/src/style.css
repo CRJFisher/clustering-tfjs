@@ -257,6 +257,12 @@ body {
   background: var(--warn);
 }
 
+/* Incomplete race (a lane crashed or timed out): no verdict to show, so it stays
+   neutral rather than borrowing the divergence warning colour. */
+.race__parity[data-state="error"] .race__parity-mark {
+  background: var(--fg-muted);
+}
+
 .race__disclosure {
   margin-top: 1rem;
   font-size: 0.85rem;

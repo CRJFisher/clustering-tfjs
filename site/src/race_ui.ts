@@ -205,8 +205,11 @@ export function make_race_ui(): RaceUi {
 
     if (results_agree(cpu_result.result_checksum, gpu_result.result_checksum)) {
       parity.dataset.state = "match";
+      // "matching checksum", not "identical matrix": the cross-lane signal is a
+      // scalar sum of the affinity entries, which agreeing proves the same
+      // kernel ran, not that all 4M entries are bit-identical.
       parity_text.textContent =
-        "Same result — both backends produced an identical RBF affinity matrix.";
+        "Same result — both backends agree on the RBF affinity matrix (matching checksum).";
     } else {
       parity.dataset.state = "diverged";
       parity_text.textContent =
@@ -221,7 +224,10 @@ export function make_race_ui(): RaceUi {
   function render_failure(error: unknown): void {
     tile_speedup.textContent = "—";
     tile_speedup_label.textContent = "race incomplete";
-    parity.dataset.state = "diverged";
+    // Distinct from "diverged": a crashed or timed-out lane yields no comparison
+    // at all, so it must not wear the verdict colour that means "results
+    // disagreed".
+    parity.dataset.state = "error";
     parity_text.textContent =
       error instanceof Error
         ? `Race incomplete: ${error.message}`
