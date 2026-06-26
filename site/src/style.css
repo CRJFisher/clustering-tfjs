@@ -153,3 +153,39 @@ body {
 .repo-link:hover {
   color: var(--accent);
 }
+
+.race-harness {
+  margin-top: 2.5rem;
+  width: min(640px, 90vw);
+}
+
+#run-race {
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+#run-race:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+.race-output {
+  margin-top: 1rem;
+  min-height: 1.5rem;
+  padding: 1rem;
+  text-align: left;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+  background: var(--bg-glow);
+  border-radius: 8px;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}

@@ -31,13 +31,29 @@ jobs:
         with:
           node-version: '22'
           cache: 'npm'
-          # The site has its own lockfile, independent of the library root.
-          cache-dependency-path: site/package-lock.json
+          # Cache against both lockfiles: the library root is built so the site's
+          # `clustering-tfjs: file:..` dependency resolves to a fresh dist/.
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
 
-      # Install ONLY the site's deps — never the library root. The marketing
-      # site builds independently of the published package.
+      # The site depends on the library through a file: link, so dist/ must exist
+      # before the site installs and builds. Build the library from this same
+      # checkout rather than the published npm package, so the demo always
+      # exercises the WebGPU lane that ships with this branch.
+      - name: Install library dependencies
+        run: npm ci
+
+      - name: Build library
+        run: npm run build
+
       - name: Install site dependencies
         run: npm ci
+        working-directory: site
+
+      # Enforce the project's snake_case convention on the site sources in CI.
+      - name: Lint site
+        run: npm run lint
         working-directory: site
 
       - name: Configure Pages

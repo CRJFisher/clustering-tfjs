@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.3 — Worker-per-backend race harness &amp; fairness protocol</title>
+<style>
+  :root{
+    --ivory:#f7f4ec; --slate:#2b2a26; --clay:#b5673f; --olive:#6f7a46; --oat:#e7dfca; --rust:#8f3a26;
+    --g100:#efeadd; --g200:#ddd6c4; --g300:#bdb6a3; --g400:#8d877a; --g500:#5d584e;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .prose{max-width:68ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:var(--ivory);border-bottom:1px solid var(--g200);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--g200)}
+  .crossnav a{color:var(--slate);background:#fff}
+  .crossnav a:hover{border-color:var(--clay)}
+  .crossnav span.cur{background:var(--slate);color:var(--ivory);border-color:var(--slate)}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:var(--g100);border-bottom:1px solid var(--g200);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--g500);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--slate);color:var(--ivory)}
+
+  main{width:90%;max-width:1600px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.2rem;scroll-margin-top:96px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--clay)}
+  h1{font-family:var(--serif);font-weight:600;font-size:2.1rem;line-height:1.1;margin:.3rem 0 .5rem}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--g200);border-radius:999px;padding:.25rem .6rem}
+  .chip strong{color:var(--clay)}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--clay);color:var(--ivory);border-radius:999px;padding:.2rem .55rem;display:inline-block}
+  figcaption{font-family:var(--sans);font-size:.86rem;color:var(--g500);margin-top:.7rem}
+  figcaption b{color:var(--slate)}
+
+  .flowwrap{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono);font-size:11px}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.8rem;font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--clay);background:#fff;border-radius:0 12px 12px 0;padding:.9rem 1.1rem;margin-top:1rem}
+  aside.callout.go{border-left-color:var(--olive)}
+  aside.callout.warn{border-left-color:var(--rust)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+  aside.callout.go .k{color:var(--olive)}
+  aside.callout.warn .k{color:var(--rust)}
+  aside.callout p{margin:.35rem 0 0;font-size:.92rem}
+  aside.callout code{font-family:var(--mono);font-size:.82rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+
+  /* ── code panel ── */
+  .code{background:#23211c;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid #322f29}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:#b8b1a0;background:#1b1915;padding:.45rem .9rem;border-bottom:1px solid #322f29}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.65;color:#e7e1d3;white-space:pre}
+  .code .kw{color:#cf8a63}.code .str{color:#a3b07a}.code .fn{color:#e0c071}.code .cm{color:#6f6a5e}.code .add{display:inline-block;width:100%;background:rgba(111,122,70,.22)}.code .del{display:inline-block;width:100%;background:rgba(143,58,38,.25)}.code .hl{background:rgba(181,103,63,.3);border-radius:3px;padding:0 2px}
+
+  /* ── anchor numbers table ── */
+  .anchors{width:100%;border-collapse:collapse;margin-top:.6rem;background:#fff;border:1px solid var(--g200);border-radius:14px;overflow:hidden}
+  .anchors th,.anchors td{padding:.6rem .9rem;text-align:left;font-size:.86rem;border-bottom:1px solid var(--g200)}
+  .anchors th{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;color:var(--g500);background:var(--g100)}
+  .anchors td{font-family:var(--mono)}
+  .anchors tr:last-child td{border-bottom:none}
+  .anchors td.bar{padding:0;width:46%}
+  .anchors .barwrap{display:flex;flex-direction:column;gap:.3rem;padding:.6rem .9rem}
+  .anchors .brow{display:flex;align-items:center;gap:.5rem}
+  .anchors .blab{font-size:.66rem;color:var(--g500);width:3.2rem;flex:none}
+  .anchors .btrack{flex:1;height:14px;background:var(--g100);border-radius:7px;overflow:hidden}
+  .anchors .bfill{height:100%;border-radius:7px}
+  .anchors .bfill.cpu{background:var(--rust)}
+  .anchors .bfill.gpu{background:var(--olive)}
+  .anchors .bval{font-size:.66rem;width:5.5rem;flex:none;text-align:right}
+  .anchors .spd{font-family:var(--serif);font-size:1.3rem;color:var(--olive);font-weight:600}
+  .anchors td.trap{color:var(--rust)}
+  .anchors td.trap .spd{color:var(--rust);font-size:1rem}
+
+  /* ── protocol timeline ── */
+  .protocol{display:grid;gap:.5rem;margin-top:.6rem}
+  .pstep{display:grid;grid-template-columns:2.2rem 1fr;gap:.8rem;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .pstep .pn{width:1.9rem;height:1.9rem;border-radius:50%;display:grid;place-items:center;background:var(--slate);color:var(--ivory);font-family:var(--mono);font-size:.74rem;flex:none}
+  .pstep.timed{border-color:var(--olive);box-shadow:0 0 0 1px var(--olive)}
+  .pstep.timed .pn{background:var(--olive)}
+  .pstep.disc{opacity:.72}
+  .pstep.disc .pn{background:var(--g400)}
+  .pstep .pt{font-size:.9rem}
+  .pstep .pt b{color:var(--slate)}
+  .pstep .pt code{font-family:var(--mono);font-size:.8rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+  .pstep .ptag{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.15rem .45rem;margin-left:.4rem;white-space:nowrap}
+  .pstep.timed .ptag{background:var(--olive);color:var(--ivory)}
+  .pstep.disc .ptag{background:var(--g300);color:var(--slate)}
+
+  /* ── message protocol ── */
+  .msgs{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.6rem}
+  .mcol{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1rem}
+  .mcol h3{font-family:var(--serif);font-size:1.05rem;margin:.1rem 0 .1rem}
+  .mcol .dir{font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;color:var(--clay)}
+  .mcol.up .dir{color:var(--clay)}
+  .mcol.down .dir{color:var(--olive)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--g300);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--clay);font-weight:600}
+  .ac .txt{font-size:.9rem}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:#f1e3d6;color:var(--clay)}
+
+  footer{margin-top:3rem;padding:1.2rem 5%;border-top:1px solid var(--g200);font-family:var(--mono);font-size:.7rem;color:var(--g400)}
+  @media(max-width:760px){.msgs{grid-template-columns:1fr}.anchors td.bar{width:auto}}
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html">55.1 · WebGPU backend</a>
+  <a href="task-55.2 - Scaffold-Vite-site-and-GitHub-Pages-deploy.companion.html">55.2 · Vite /site + deploy</a>
+  <span class="cur" aria-current="page">55.3 · Race harness + fairness</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#why">Why one worker each</a>
+  <a href="#workload">The timed workload</a>
+  <a href="#engine">Shared engine in the worker</a>
+  <a href="#protocol">Fairness protocol</a>
+  <a href="#dataflow">End-to-end data flow</a>
+  <a href="#messages">Message protocol</a>
+  <a href="#anchors">Anchor numbers</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.3 · Milestone M2 · the fair race harness · <span class="todopill">To Do</span></div>
+    <h1 class="prose">A worker-per-backend race that times the real Spectral RBF affinity, honestly</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--g500);margin:.2rem 0 0">One Web Worker per backend, each its own tfjs engine, each running the published <code style="font-family:var(--mono)">SpectralClustering.compute_affinity_matrix</code> with exactly one awaited readback — the timing rules are part of the demo, not buried beneath it.</p>
+    <div class="meta">
+      <span class="chip">new <strong>site/src/race_worker.ts</strong></span>
+      <span class="chip">workers <strong>one per backend</strong></span>
+      <span class="chip">timed call <strong>RBF affinity + 1 readback</strong></span>
+      <span class="chip">reps <strong>≥5 → median + min/max</strong></span>
+      <span class="chip">leak guard <strong>numTensors == baseline</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. why one worker per backend ════ -->
+  <section id="why">
+    <div class="eyebrow">Comprehension job 1 · the load-bearing constraint</div>
+    <h2>Why one worker per backend — not a preference, the only correct design</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 250" role="img" aria-label="Left: a single main thread holds one tfjs global engine, so setBackend('webgpu') and setBackend('cpu') overwrite each other and the two backends cannot be active at once — impossible to race fairly. Right: two separate Web Workers, each its own JS realm with its own independent tfjs engine, one set to webgpu and one to cpu, run concurrently — a fair race.">
+          <defs>
+            <marker id="wa" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="wr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8f3a26"/></marker>
+            <marker id="wo" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+          </defs>
+
+          <!-- WRONG: single thread -->
+          <rect x="14" y="14" width="420" height="222" rx="12" fill="#f3ddd6" stroke="#8f3a26"/>
+          <text x="30" y="36" fill="#8f3a26" font-size="10.5" font-weight="bold">ONE THREAD — impossible to race fairly</text>
+
+          <rect x="40" y="54" width="170" height="40" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="125" y="73" text-anchor="middle" fill="#2b2a26" font-size="10">setBackend('webgpu')</text>
+          <text x="125" y="87" text-anchor="middle" fill="#5d584e" font-size="9">main thread</text>
+
+          <rect x="238" y="54" width="170" height="40" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="323" y="73" text-anchor="middle" fill="#2b2a26" font-size="10">setBackend('cpu')</text>
+          <text x="323" y="87" text-anchor="middle" fill="#5d584e" font-size="9">main thread</text>
+
+          <line x1="210" y1="74" x2="234" y2="74" stroke="#8f3a26" stroke-width="1.6" marker-end="url(#wr)"/>
+          <text x="222" y="48" text-anchor="middle" fill="#8f3a26" font-size="9">overwrites</text>
+
+          <rect x="70" y="124" width="308" height="46" rx="10" fill="#fff" stroke="#8f3a26" stroke-width="1.6"/>
+          <text x="224" y="143" text-anchor="middle" fill="#8f3a26" font-weight="bold" font-size="10.5">ONE global tfjs engine per JS context</text>
+          <text x="224" y="158" text-anchor="middle" fill="#8f3a26" font-size="9">backend.ts singleton · setBackend is global</text>
+
+          <rect x="70" y="186" width="308" height="36" rx="9" fill="#fff" stroke="#8f3a26"/>
+          <text x="224" y="208" text-anchor="middle" fill="#8f3a26" font-size="10">only one backend live at a time → no concurrency</text>
+
+          <line x1="125" y1="94" x2="160" y2="122" stroke="#8f3a26" stroke-width="1.5" marker-end="url(#wr)"/>
+          <line x1="323" y1="94" x2="288" y2="122" stroke="#8f3a26" stroke-width="1.5" marker-end="url(#wr)"/>
+
+          <!-- arrow between -->
+          <text x="455" y="130" text-anchor="middle" fill="#b5673f" font-family="ui-serif,Georgia,serif" font-size="26">→</text>
+
+          <!-- RIGHT: two workers -->
+          <rect x="486" y="14" width="420" height="222" rx="12" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="502" y="36" fill="#384021" font-size="10.5" font-weight="bold">ONE WORKER PER BACKEND — a fair concurrent race</text>
+
+          <!-- worker A -->
+          <rect x="508" y="52" width="180" height="170" rx="11" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="598" y="72" text-anchor="middle" fill="#384021" font-weight="bold" font-size="10">Worker — GPU lane</text>
+          <text x="598" y="88" text-anchor="middle" fill="#5d584e" font-size="9">own JS realm</text>
+          <rect x="524" y="100" width="148" height="36" rx="8" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="598" y="116" text-anchor="middle" fill="#384021" font-size="9.5">own tfjs engine</text>
+          <text x="598" y="128" text-anchor="middle" fill="#5d584e" font-size="8.5">setBackend('webgpu')</text>
+          <rect x="524" y="146" width="148" height="32" rx="8" fill="#fff" stroke="#bdb6a3"/>
+          <text x="598" y="166" text-anchor="middle" fill="#2b2a26" font-size="9">Clustering.init({webgpu})</text>
+          <rect x="524" y="186" width="148" height="26" rx="8" fill="#fff" stroke="#bdb6a3"/>
+          <text x="598" y="203" text-anchor="middle" fill="#2b2a26" font-size="9">timed affinity</text>
+
+          <!-- worker B -->
+          <rect x="704" y="52" width="180" height="170" rx="11" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="794" y="72" text-anchor="middle" fill="#384021" font-weight="bold" font-size="10">Worker — CPU lane</text>
+          <text x="794" y="88" text-anchor="middle" fill="#5d584e" font-size="9">own JS realm</text>
+          <rect x="720" y="100" width="148" height="36" rx="8" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="794" y="116" text-anchor="middle" fill="#384021" font-size="9.5">own tfjs engine</text>
+          <text x="794" y="128" text-anchor="middle" fill="#5d584e" font-size="8.5">setBackend('cpu')</text>
+          <rect x="720" y="146" width="148" height="32" rx="8" fill="#fff" stroke="#bdb6a3"/>
+          <text x="794" y="166" text-anchor="middle" fill="#2b2a26" font-size="9">Clustering.init({cpu})</text>
+          <rect x="720" y="186" width="148" height="26" rx="8" fill="#fff" stroke="#bdb6a3"/>
+          <text x="794" y="203" text-anchor="middle" fill="#2b2a26" font-size="9">timed affinity</text>
+
+          <line x1="598" y1="42" x2="598" y2="50" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#wo)"/>
+          <line x1="794" y1="42" x2="794" y2="50" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#wo)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#8f3a26"></i> single global engine — backends overwrite each other</span>
+        <span><i style="background:#e4ead4;border:1px solid #6f7a46"></i> isolated worker realm — its own engine</span>
+      </div>
+      <figcaption class="prose"><b>tfjs keeps one global engine per JS context.</b> <code>src/backend/backend.ts</code> holds a module-level singleton and <code>Clustering.init</code> calls <code>tf.setBackend</code> once, so WebGPU and CPU cannot be active on the same thread. Each backend gets a <code>new Worker(new URL('./race_worker.ts', import.meta.url), { type: 'module' })</code> — its own realm, its own engine — so the two run concurrently and fairly.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 2. the timed workload ════ -->
+  <section id="workload">
+    <div class="eyebrow">Comprehension job 2 · the key insight</div>
+    <h2>What exactly is timed: the real published RBF affinity block, one readback</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 210" role="img" aria-label="The timed region: t0 = performance.now() just before SpectralClustering.compute_affinity_matrix with affinity rbf and gamma, which is the dense O(n squared times d) matmul and exp block producing the affinity tensor still on device; then exactly one awaited readback affinity.data() pulls it to JS, and t1 = performance.now() right after. The timed window brackets the compute AND the readback together.">
+          <defs>
+            <marker id="ta" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="to" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+          </defs>
+
+          <!-- timed window band -->
+          <rect x="120" y="30" width="700" height="118" rx="12" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="470" y="22" text-anchor="middle" fill="#384021" font-size="10" font-weight="bold">TIMED REGION — includes the awaited readback</text>
+
+          <!-- t0 -->
+          <rect x="40" y="62" width="70" height="54" rx="9" fill="#fff" stroke="#b5673f" stroke-width="1.4"/>
+          <text x="75" y="86" text-anchor="middle" fill="#7a3f20" font-size="9.5">t0 =</text>
+          <text x="75" y="100" text-anchor="middle" fill="#7a3f20" font-size="9">now()</text>
+
+          <!-- compute -->
+          <rect x="146" y="50" width="300" height="78" rx="10" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="296" y="72" text-anchor="middle" fill="#384021" font-weight="bold" font-size="10">SpectralClustering.compute_affinity_matrix</text>
+          <text x="296" y="88" text-anchor="middle" fill="#5d584e" font-size="9">(X, { affinity:'rbf', gamma })</text>
+          <text x="296" y="106" text-anchor="middle" fill="#5d584e" font-size="9">dense O(n² · d) matmul · exp</text>
+          <text x="296" y="119" text-anchor="middle" fill="#5d584e" font-size="8.5">→ affinity tensor still on device</text>
+
+          <line x1="446" y1="89" x2="488" y2="89" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#to)"/>
+
+          <!-- readback -->
+          <rect x="492" y="50" width="222" height="78" rx="10" fill="#fff" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="603" y="74" text-anchor="middle" fill="#384021" font-weight="bold" font-size="10.5">await affinity.data()</text>
+          <text x="603" y="91" text-anchor="middle" fill="#5d584e" font-size="9">EXACTLY ONE readback</text>
+          <text x="603" y="106" text-anchor="middle" fill="#5d584e" font-size="9">pulls result device → JS</text>
+          <text x="603" y="119" text-anchor="middle" fill="#5d584e" font-size="8.5">the boundary that forces real work</text>
+
+          <!-- t1 -->
+          <rect x="752" y="62" width="70" height="54" rx="9" fill="#fff" stroke="#b5673f" stroke-width="1.4"/>
+          <text x="787" y="86" text-anchor="middle" fill="#7a3f20" font-size="9.5">t1 =</text>
+          <text x="787" y="100" text-anchor="middle" fill="#7a3f20" font-size="9">now()</text>
+
+          <line x1="110" y1="89" x2="142" y2="89" stroke="#5d584e" stroke-width="1.5" marker-end="url(#ta)"/>
+          <line x1="714" y1="89" x2="748" y2="89" stroke="#5d584e" stroke-width="1.5" marker-end="url(#ta)"/>
+
+          <!-- duration callout -->
+          <text x="470" y="172" text-anchor="middle" fill="#7a3f20" font-size="11" font-weight="bold">elapsed = t1 − t0   (one rep)</text>
+          <text x="470" y="190" text-anchor="middle" fill="#5d584e" font-size="9">timing only JS dispatch (no readback) fakes ~100× and reads as dishonest</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#fff;border:1px solid #b5673f"></i> clock boundary (performance.now)</span>
+        <span><i style="background:#e4ead4;border:1px solid #6f7a46"></i> inside the timed window</span>
+      </div>
+      <figcaption class="prose"><b>This is the real library's RBF affinity construction</b> — the static <code>SpectralClustering.compute_affinity_matrix(X, { affinity: 'rbf', gamma })</code>, which is <code>sq.mul(-gamma).exp()</code>: the dense O(n²·d) matmul/exp that returns a <code>Tensor2D</code>. It is <b>not</b> the full <code>fit_predict</code> (many internal readbacks) and <b>not</b> the simulated kmeans in <code>benchmarks/browser_backend.ts</code>. The single awaited <code>affinity.data()</code> is what the anchor numbers measure.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">Why Spectral affinity, not KMeans</div>
+      <p>RBF affinity is one big matmul/exp with a <b>single readback</b> before the eigensolver — the cleanest, largest, most defensible gap (~21–26×).</p>
+      <p style="margin-top:.45rem">KMeans is the trap: its Lloyd loop reads back <b>every iteration</b> and reduces centroids in a pure-JS double loop, stalling the GPU on the bus for only ~1.2×.</p>
+      <p style="margin-top:.45rem">So KMeans appears in the grid as convergence eye-candy, never as the headline multiplier.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. shared engine in the worker ════ -->
+  <section id="engine">
+    <div class="eyebrow">Comprehension job 3 · the dedupe that makes raw tf calls safe</div>
+    <h2>How the worker drives one engine through two imports</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 240" role="img" aria-label="Inside one worker: it imports both clustering-tfjs (for Clustering.init and SpectralClustering) and @tensorflow/tfjs-core (to build the float32 input tensor, run tidy, and read tf.memory().numTensors). Because tfjs-core's engine is a module-level singleton and the bundle dedupes it, after await Clustering.init({backend}) the worker's direct tf calls operate on the very same engine the library uses.">
+          <defs>
+            <marker id="ea" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="eo" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+          </defs>
+
+          <text x="30" y="26" fill="#5d584e" font-size="10.5" font-weight="bold">ONE WORKER, TWO IMPORTS, ONE SHARED ENGINE</text>
+
+          <!-- import 1 -->
+          <rect x="20" y="44" width="270" height="62" rx="10" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="155" y="66" text-anchor="middle" fill="#2b2a26" font-size="10">import { Clustering, SpectralClustering }</text>
+          <text x="155" y="80" text-anchor="middle" fill="#5d584e" font-size="9">from 'clustering-tfjs'</text>
+          <text x="155" y="96" text-anchor="middle" fill="#5d584e" font-size="8.5">Clustering.init · the timed compute</text>
+
+          <!-- import 2 -->
+          <rect x="20" y="130" width="270" height="62" rx="10" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="155" y="152" text-anchor="middle" fill="#2b2a26" font-size="10">import * as tf</text>
+          <text x="155" y="166" text-anchor="middle" fill="#5d584e" font-size="9">from '@tensorflow/tfjs-core'</text>
+          <text x="155" y="182" text-anchor="middle" fill="#5d584e" font-size="8.5">build input · tidy · tf.memory()</text>
+
+          <!-- dedupe note -->
+          <rect x="330" y="86" width="230" height="64" rx="10" fill="#f1e3d6" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="445" y="108" text-anchor="middle" fill="#7a3f20" font-weight="bold" font-size="10">bundle dedupes tfjs-core</text>
+          <text x="445" y="124" text-anchor="middle" fill="#7a3f20" font-size="9">engine is a module-level singleton</text>
+          <text x="445" y="139" text-anchor="middle" fill="#7a3f20" font-size="9">both imports resolve to it</text>
+
+          <line x1="290" y1="75" x2="326" y2="105" stroke="#5d584e" stroke-width="1.5" marker-end="url(#ea)"/>
+          <line x1="290" y1="161" x2="326" y2="131" stroke="#5d584e" stroke-width="1.5" marker-end="url(#ea)"/>
+
+          <!-- init -->
+          <rect x="600" y="40" width="300" height="40" rx="9" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="750" y="59" text-anchor="middle" fill="#384021" font-size="10">await Clustering.init({ backend })</text>
+          <text x="750" y="72" text-anchor="middle" fill="#5d584e" font-size="8.5">runs loader.browser.ts → setBackend(backend)</text>
+
+          <!-- shared engine -->
+          <rect x="600" y="100" width="300" height="56" rx="11" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.8"/>
+          <text x="750" y="124" text-anchor="middle" fill="#384021" font-weight="bold" font-size="11">THE ONE ENGINE (this backend)</text>
+          <text x="750" y="140" text-anchor="middle" fill="#5d584e" font-size="9">library ops AND direct tf calls share it</text>
+
+          <rect x="600" y="176" width="300" height="40" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="750" y="195" text-anchor="middle" fill="#2b2a26" font-size="9.5">tf.tensor2d(input) · tf.tidy · tf.memory().numTensors</text>
+          <text x="750" y="208" text-anchor="middle" fill="#5d584e" font-size="8.5">all hit the same engine the library uses</text>
+
+          <line x1="560" y1="118" x2="596" y2="80" stroke="#b5673f" stroke-width="1.5" marker-end="url(#ea)"/>
+          <line x1="750" y1="80" x2="750" y2="98" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#eo)"/>
+          <line x1="750" y1="156" x2="750" y2="174" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#eo)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#e7dfca;border:1px solid #bdb6a3"></i> the two imports</span>
+        <span><i style="background:#f1e3d6;border:1px solid #b5673f"></i> module-singleton dedupe</span>
+        <span><i style="background:#e4ead4;border:1px solid #6f7a46"></i> the one shared engine</span>
+      </div>
+      <figcaption class="prose"><b>The worker imports both packages on purpose.</b> <code>clustering-tfjs</code> supplies <code>Clustering.init</code> and <code>SpectralClustering</code>; <code>@tensorflow/tfjs-core</code> lets the worker build the float32 input, wrap runs in <code>tidy</code>, and read <code>tf.memory().numTensors</code>. Because the core engine is a module-level singleton the bundle dedupes, after <code>await Clustering.init({ backend })</code> the worker's direct <code>tf</code> calls operate on the very engine the library set.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 4. fairness protocol ════ -->
+  <section id="protocol">
+    <div class="eyebrow">Comprehension job 4 · honesty as a feature</div>
+    <h2>The fairness protocol, as a sequence the same in every worker</h2>
+    <figure>
+      <div class="protocol">
+        <div class="pstep"><span class="pn">1</span><span class="pt"><b>One float32 input.</b> Build the dataset as <code>tf.tensor2d(data, [n, d], 'float32')</code> — identical bytes to every lane. <span class="ptag" style="background:var(--g300);color:var(--slate)">setup</span></span></div>
+        <div class="pstep disc"><span class="pn">2</span><span class="pt"><b>2–3 warmup runs, discarded.</b> The first run absorbs WGSL shader compile, wasm instantiation, lazy kernel registration. <span class="ptag">discarded</span></span></div>
+        <div class="pstep timed"><span class="pn">3</span><span class="pt"><b>≥5 timed reps.</b> Each rep: <code>t0=now()</code> → RBF affinity → <code>await affinity.data()</code> → <code>t1=now()</code>. The window brackets compute <b>and</b> the one readback. <span class="ptag">timed</span></span></div>
+        <div class="pstep timed"><span class="pn">4</span><span class="pt"><b>Exactly one readback boundary</b> per rep, identical across lanes — no extra <code>.data()</code> / <code>.array()</code> sneaks in. <span class="ptag">timed</span></span></div>
+        <div class="pstep"><span class="pn">5</span><span class="pt"><b>tidy / dispose between reps,</b> then assert <code>tf.memory().numTensors</code> returned to the baseline captured before the loop — so GC and leaks can't skew the numbers. <span class="ptag" style="background:var(--g300);color:var(--slate)">guard</span></span></div>
+        <div class="pstep"><span class="pn">6</span><span class="pt"><b>Report median + min/max,</b> never a single best run; the median is the headline-eligible number. <span class="ptag" style="background:var(--g300);color:var(--slate)">report</span></span></div>
+        <div class="pstep"><span class="pn">7</span><span class="pt"><b>First-run time kept separate.</b> The shader-compile-inclusive first number is reported as <code>first_run_ms</code> for disclosure — never folded into the headline multiplier. <span class="ptag" style="background:var(--g300);color:var(--slate)">disclose</span></span></div>
+      </div>
+      <figcaption class="prose"><b>The demo faces Hacker News scrutiny, so these rules live in the UI.</b> Warmups discarded, ≥5 reps reduced to a median with min/max, the readback inside the timed window, the tensor count asserted back to baseline, and the cold first run disclosed separately rather than hidden.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 5. end-to-end data flow ════ -->
+  <section id="dataflow">
+    <div class="eyebrow">Comprehension job 5 · main thread orchestrates, workers compute</div>
+    <h2>One seeded dataset, posted identically to both lanes</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 320" role="img" aria-label="The main thread generates ONE seeded float32 dataset with a pure-JS make_blobs at n by d, then posts identical copies to two workers. The CPU worker uploads it to its own engine and runs the timed affinity; the GPU worker first tries webgpu then falls back to webgl, reporting which it actually got, uploads to its own engine and runs the timed affinity. Each worker returns median_ms, first_run_ms, labels, and numTensors to the main thread, which renders scatters, timers and bars OUTSIDE the timed window.">
+          <defs>
+            <marker id="da" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="do" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+            <marker id="dc" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#b5673f"/></marker>
+          </defs>
+
+          <!-- main thread -->
+          <rect x="300" y="14" width="320" height="86" rx="12" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="460" y="36" text-anchor="middle" fill="#2b2a26" font-size="10.5" font-weight="bold">MAIN THREAD — UI orchestrator</text>
+          <text x="460" y="56" text-anchor="middle" fill="#5d584e" font-size="9.5">make_blobs(n, d) — ONE seeded float32 dataset</text>
+          <text x="460" y="72" text-anchor="middle" fill="#5d584e" font-size="9.5">pure JS · n hard-capped at 5000 (dense O(n²) OOM guard)</text>
+          <text x="460" y="88" text-anchor="middle" fill="#5d584e" font-size="9">computed in d=32 dims, rendered in 2</text>
+
+          <!-- post copies -->
+          <line x1="380" y1="100" x2="200" y2="146" stroke="#5d584e" stroke-width="1.6" marker-end="url(#da)"/>
+          <text x="250" y="120" fill="#5d584e" font-size="9">postMessage: identical copy</text>
+          <line x1="540" y1="100" x2="720" y2="146" stroke="#5d584e" stroke-width="1.6" marker-end="url(#da)"/>
+          <text x="600" y="120" fill="#5d584e" font-size="9">postMessage: identical copy</text>
+
+          <!-- CPU worker -->
+          <rect x="40" y="148" width="320" height="92" rx="12" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="200" y="170" text-anchor="middle" fill="#384021" font-size="10.5" font-weight="bold">CPU WORKER</text>
+          <text x="200" y="188" text-anchor="middle" fill="#5d584e" font-size="9">upload to OWN engine · setBackend('cpu')</text>
+          <text x="200" y="204" text-anchor="middle" fill="#5d584e" font-size="9">warmups → ≥5 timed RBF affinity reps</text>
+          <text x="200" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback per rep · numTensors guarded</text>
+          <text x="200" y="234" text-anchor="middle" fill="#384021" font-size="8.5">label: always 'CPU'</text>
+
+          <!-- GPU worker -->
+          <rect x="560" y="148" width="320" height="92" rx="12" fill="#fff" stroke="#6f7a46" stroke-width="1.4"/>
+          <text x="720" y="170" text-anchor="middle" fill="#384021" font-size="10.5" font-weight="bold">GPU WORKER</text>
+          <text x="720" y="188" text-anchor="middle" fill="#7a3f20" font-size="9">try webgpu → fall back webgl, report which it got</text>
+          <text x="720" y="204" text-anchor="middle" fill="#5d584e" font-size="9">upload to OWN engine · warmups → ≥5 timed reps</text>
+          <text x="720" y="220" text-anchor="middle" fill="#5d584e" font-size="9">one readback per rep · numTensors guarded</text>
+          <text x="720" y="234" text-anchor="middle" fill="#7a3f20" font-size="8.5">label: actual backend (honesty)</text>
+
+          <!-- results back -->
+          <line x1="200" y1="240" x2="380" y2="286" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#do)"/>
+          <text x="206" y="266" fill="#384021" font-size="9">{median_ms, first_run_ms, labels, numTensors}</text>
+          <line x1="720" y1="240" x2="540" y2="286" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#do)"/>
+          <text x="556" y="266" fill="#384021" font-size="9" text-anchor="start">{median_ms, first_run_ms, labels, backend}</text>
+
+          <!-- render -->
+          <rect x="300" y="288" width="320" height="30" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="460" y="307" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">render scatters · timers · bars — OUTSIDE timed window</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#e7dfca;border:1px solid #bdb6a3"></i> main thread (orchestrate + render)</span>
+        <span><i style="background:#fff;border:1px solid #6f7a46"></i> worker (own engine, timed compute)</span>
+        <span><i style="background:#6f7a46"></i> results returned</span>
+      </div>
+      <figcaption class="prose"><b>One dataset, two identical copies, two engines.</b> The main thread generates one seeded float32 <code>make_blobs(n, d)</code> in pure JS and <code>postMessage</code>s identical copies to both workers, which each upload to their own engine; the GPU lane tries <code>webgpu</code>, falls back to <code>webgl</code>, and reports the backend it <b>actually</b> got.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. message protocol ════ -->
+  <section id="messages">
+    <div class="eyebrow">Comprehension job 6 · main ⇄ worker contract</div>
+    <h2>The message protocol between main thread and worker</h2>
+    <figure>
+      <div class="msgs">
+        <div class="mcol up">
+          <div class="dir">main → worker · run request</div>
+          <h3>run</h3>
+          <div class="code" style="margin-top:.5rem">
+            <div class="fl">postMessage from main thread</div>
+<pre>{
+  <span class="hl">type</span>: <span class="str">'run'</span>,
+  <span class="hl">backend</span>: <span class="str">'webgpu'</span> | <span class="str">'cpu'</span>,
+  <span class="hl">data</span>: Float32Array,   <span class="cm">// identical copy</span>
+  <span class="hl">n</span>: <span class="fn">number</span>, <span class="hl">d</span>: <span class="fn">number</span>,
+  <span class="hl">gamma</span>: <span class="fn">number</span>,
+  <span class="hl">warmups</span>: <span class="fn">number</span>, <span class="hl">reps</span>: <span class="fn">number</span>
+}</pre>
+          </div>
+        </div>
+        <div class="mcol down">
+          <div class="dir">worker → main · progress + result</div>
+          <h3>progress · result</h3>
+          <div class="code" style="margin-top:.5rem">
+            <div class="fl">postMessage back to main thread</div>
+<pre><span class="cm">// while running</span>
+{ <span class="hl">type</span>:<span class="str">'progress'</span>, phase, rep }
+
+<span class="cm">// when finished</span>
+{
+  <span class="hl">type</span>: <span class="str">'result'</span>,
+  <span class="hl">backend</span>: <span class="str">'webgpu'</span>|<span class="str">'webgl'</span>|<span class="str">'cpu'</span>,
+  <span class="hl">median_ms</span>, <span class="hl">min_ms</span>, <span class="hl">max_ms</span>,
+  <span class="hl">first_run_ms</span>,        <span class="cm">// disclosed apart</span>
+  <span class="hl">labels</span>: Int32Array,
+  <span class="hl">num_tensors</span>: <span class="fn">number</span>  <span class="cm">// == baseline</span>
+}</pre>
+          </div>
+        </div>
+      </div>
+      <figcaption class="prose"><b>One request in, progress plus one result out.</b> The <code>run</code> message carries the identical dataset copy and the harness parameters; the <code>result</code> returns the median (plus min/max), the separately-kept <code>first_run_ms</code>, the labels, the <code>num_tensors</code> baseline, and the <b>actual</b> backend it ran on.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 7. anchor numbers ════ -->
+  <section id="anchors">
+    <div class="eyebrow">Comprehension job 7 · the numbers the live race should approximate</div>
+    <h2>Recorded anchor points — Spectral RBF affinity, native backend</h2>
+    <figure>
+      <table class="anchors">
+        <thead>
+          <tr><th>Config (n × d)</th><th>CPU</th><th>Native tensor</th><th class="bar">relative wall time</th><th>Speedup</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1000 × 50</td>
+            <td>~1,410 ms</td>
+            <td>~67 ms</td>
+            <td class="bar"><div class="barwrap">
+              <div class="brow"><span class="blab">CPU</span><span class="btrack"><span class="bfill cpu" style="width:100%"></span></span><span class="bval">1,410 ms</span></div>
+              <div class="brow"><span class="blab">GPU</span><span class="btrack"><span class="bfill gpu" style="width:4.8%"></span></span><span class="bval">67 ms</span></div>
+            </div></td>
+            <td><span class="spd">~21×</span></td>
+          </tr>
+          <tr>
+            <td>10000 × 100</td>
+            <td>~140,738 ms</td>
+            <td>~5,392 ms</td>
+            <td class="bar"><div class="barwrap">
+              <div class="brow"><span class="blab">CPU</span><span class="btrack"><span class="bfill cpu" style="width:100%"></span></span><span class="bval">140,738 ms</span></div>
+              <div class="brow"><span class="blab">GPU</span><span class="btrack"><span class="bfill gpu" style="width:3.8%"></span></span><span class="bval">5,392 ms</span></div>
+            </div></td>
+            <td><span class="spd">~26×</span></td>
+          </tr>
+          <tr>
+            <td class="trap">KMeans (any n)<br><span style="font-size:.7rem;color:var(--g500)">the trap, never headlined</span></td>
+            <td class="trap" colspan="3" style="font-size:.82rem">Lloyd loop reads back every iteration + reduces centroids in a pure-JS double loop → GPU stalls on the bus</td>
+            <td class="trap"><span class="spd">~1.2×</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <figcaption class="prose"><b>The live numbers come from the visitor's own hardware</b> and should land near these recorded anchors. The default harness workload is make_blobs <code>n=2000, d=32</code>; the table shows the two recorded reference configs. The KMeans row is shown to make explicit why it is never the multiplier.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">This sub-task also wires site/ into ESLint</div>
+      <p>55.3 adds the first real <code>site/</code> logic, so it brings <code>site/src/**/*.ts</code> under the project's Python-style <code>snake_case</code> ESLint rules and adds an <code>npm run lint</code> step to the <code>deploy-site.yml</code> build job — satisfying AC #7 for the site sources (55.2 left <code>site/</code> outside ESLint scope as YAGNI).</p>
+    </aside>
+  </section>
+
+  <!-- ════ 8. acceptance criteria ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means</div>
+    <h2>Acceptance criteria — all open (status: To Do)</h2>
+    <div class="acs">
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">WebGPU and CPU each run in their <b>own worker</b> concurrently with independent tfjs engines.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">The timed region brackets the full affinity call <b>including</b> <code>await tensor.data()</code> — not just JS dispatch.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Exactly one readback boundary per run, identical across lanes; <b>median of ≥5</b> reps reported with min/max.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><code>tf.memory().numTensors</code> returns to baseline between runs (asserted).</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt">The harness invokes the published <code>clustering-tfjs</code> <code>SpectralClustering</code> — not the simulated <code>browser_backend.ts</code> kmeans.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">6</span><span class="box"></span><span class="txt"><b>First-run</b> shader-compile time captured separately from the steady-state median.</span><span class="status">to do</span></div>
+      <div class="ac"><span class="num">7</span><span class="box"></span><span class="txt">ESLint passes before commit (including the newly-scoped <code>site/</code> sources).</span><span class="status">to do</span></div>
+    </div>
+    <figcaption class="prose"><b>The two criteria that carry the "honest" claim are #2 and #6:</b> the readback must be inside the timed window (or the speedup is a fake ~100×), and the cold first run must be disclosed apart from the headline median. Click any row to mark it done as work lands.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Plan companion for <b style="color:var(--g500)">task-55.3 — Build one-worker-per-backend race harness with honest fairness protocol (Milestone M2, status: To Do)</b> ·
+  grounded in the task doc, backlog/docs/interactive-clustering-demo-design.md, src/backend/loader.browser.ts &amp; src/clustering/spectral.ts ·
+  self-contained, no external assets.
+</footer>
+
+<script>
+  // checklist toggle (progressive enhancement): cycle to/from done
+  document.querySelectorAll('.ac').forEach(function(ac){
+    ac.style.cursor='pointer';
+    ac.addEventListener('click',function(){
+      ac.classList.toggle('done');
+      var box=ac.querySelector('.box'); var st=ac.querySelector('.status');
+      if(ac.classList.contains('done')){
+        box.style.background='var(--olive)'; box.style.borderColor='var(--olive)';
+        st.textContent='done'; st.style.background='var(--olive)'; st.style.color='var(--ivory)';
+      } else {
+        box.style.background=''; box.style.borderColor='';
+        st.textContent='to do'; st.style.background='#f1e3d6'; st.style.color='var(--clay)';
+      }
+    });
+  });
+  // outline active-state via IntersectionObserver
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+</script>
+</body>
+</html>
