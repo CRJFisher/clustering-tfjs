@@ -346,6 +346,19 @@ body {
   color: var(--accent-2);
 }
 
+/* When the crossover sits near a track end, the centred label would spill off
+   the slider; anchor it inward from the relevant edge instead. */
+.race__crossover-mark[data-edge="min"]::after {
+  left: 0;
+  transform: none;
+}
+
+.race__crossover-mark[data-edge="max"]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
 /* Directional hints: no measured bracket yet, so pin to the edge the crossover
    lies beyond and point that way rather than marking a position. */
 .race__crossover-mark[data-state="below_range"] {

@@ -245,6 +245,10 @@ export function make_race_ui(): void {
       error instanceof Error
         ? `Race incomplete: ${error.message}`
         : "Race incomplete — a lane failed.";
+    // A failed race produced no winner, so the verdict caption must not keep
+    // asserting the previous race's outcome. The mark is left untouched — it is a
+    // cumulative estimate over every completed race, not a per-race verdict.
+    crossover_caption.textContent = "Race incomplete — drag to retry.";
   }
 
   // The caption flips on the MEASURED winner of this very race (the same
@@ -271,6 +275,10 @@ export function make_race_ui(): void {
         "--crossover-left",
         `${(fraction * 100).toFixed(1)}%`,
       );
+      // Near a track end the centred label would overflow the slider; anchor it
+      // inward so the value stays on-screen on narrow viewports.
+      crossover_mark.dataset.edge =
+        fraction < 0.12 ? "min" : fraction > 0.88 ? "max" : "mid";
       crossover_mark.dataset.label = `crossover ≈ n ${format_count(state.n)}`;
     } else if (state.kind === "below_range") {
       crossover_mark.dataset.label = "← smaller n: CPU wins";
@@ -286,6 +294,10 @@ export function make_race_ui(): void {
     cpu_view.reset();
     gpu_view.reset();
     reset_headline();
+    // Pull the verdict caption into the busy state alongside the tiles and parity
+    // line, so a re-run never shows the previous race's verdict next to lanes that
+    // have already reset to zero.
+    crossover_caption.textContent = `Racing n = ${format_count(n_samples)}…`;
 
     const config: RaceConfig = { ...DEFAULT_RACE_CONFIG, n_samples };
 
@@ -365,7 +377,11 @@ export function make_race_ui(): void {
     const n = read_slider_n();
     // The readout updates synchronously on every event so the number tracks the
     // thumb instantly; the race itself is debounced behind it.
-    slider_value.textContent = format_count(n);
+    const formatted = format_count(n);
+    slider_value.textContent = formatted;
+    // Screen readers otherwise announce a bare number; name the unit so the value
+    // is meaningful when dragging without sight of the readout.
+    slider.setAttribute("aria-valuetext", `${formatted} samples`);
     schedule_race(n);
   });
 

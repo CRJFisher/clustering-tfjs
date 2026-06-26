@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Task 55.5 — Crossover n-slider with marked crossover point and flipping caption</title>
+<title>Task 55.5 — Crossover n-slider with empirically-bracketed crossover mark and flipping caption</title>
 <style>
   :root{
     /* site theme — matches site/src/style.css */
@@ -42,7 +42,7 @@
   .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
   .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
   .chip strong{color:var(--accent-2)}
-  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-3);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
   figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
   figcaption b{color:var(--fg)}
 
@@ -98,18 +98,30 @@
   .mlane .mwin{position:absolute;top:-.55rem;right:.9rem;font-family:var(--mono);font-size:.54rem;text-transform:uppercase;letter-spacing:.08em;padding:.12rem .5rem;border-radius:999px;font-weight:700;display:none}
   .mlane.win .mwin{display:inline-block}
   .mlane.cpu .mwin{background:var(--accent-3);color:var(--bg)}.mlane.gpu .mwin{background:var(--accent-2);color:var(--bg)}
+  /* "race both sides" sample readout */
+  .samples{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.9rem;align-items:center}
+  .samples .slab{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.3rem}
+  .sdot{font-family:var(--mono);font-size:.64rem;border-radius:999px;padding:.16rem .5rem;border:1px solid var(--line);background:#0a0f1a}
+  .sdot.cpu{color:var(--accent-3);border-color:rgba(255,169,77,.4)}
+  .sdot.gpu{color:var(--accent-2);border-color:rgba(99,230,190,.4)}
   /* the slider with marked crossover */
   .sliderbox{margin-top:1.2rem}
   .sliderlab{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:.74rem;color:var(--fg-muted)}
   .sliderlab .nval{font-family:var(--serif);font-weight:800;font-size:1.5rem;color:var(--fg);letter-spacing:-.01em;font-variant-numeric:tabular-nums}
   .sliderlab .cap5000{color:var(--warn)}
-  .track-wrap{position:relative;margin-top:.7rem;padding-top:1.1rem}
-  /* the crossover mark — the AC#3 element, sits ON the track */
-  .xmark{position:absolute;top:0;width:2px;background:var(--accent);transform:translateX(-1px);height:2.1rem}
+  .track-wrap{position:relative;margin-top:.7rem;padding-top:1.5rem}
+  /* the crossover mark — the AC#3 element, sits ON the track (only when bracketed) */
+  .xmark{position:absolute;top:.2rem;width:2px;background:var(--accent);transform:translateX(-1px);height:2.3rem;display:none}
+  .xmark.show{display:block}
   .xmark::before{content:'';position:absolute;top:0;left:50%;transform:translateX(-50%) rotate(45deg);width:9px;height:9px;background:var(--accent);border-radius:2px}
   .xmark .xlab{position:absolute;top:-.05rem;left:50%;transform:translateX(-50%) translateY(-100%);white-space:nowrap;font-family:var(--mono);font-size:.6rem;color:var(--accent);background:#0a0f1a;border:1px solid var(--accent);border-radius:999px;padding:.1rem .45rem}
+  /* directional hint (when only one side is raced) */
+  .hint{position:absolute;top:.2rem;font-family:var(--mono);font-size:.62rem;border-radius:999px;padding:.14rem .55rem;display:none;white-space:nowrap}
+  .hint.show{display:inline-block}
+  .hint.left{left:0;color:var(--accent-3);background:rgba(255,169,77,.1);border:1px solid rgba(255,169,77,.4)}
+  .hint.right{right:0;color:var(--accent-2);background:rgba(99,230,190,.1);border:1px solid rgba(99,230,190,.4)}
   input[type=range].nslider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:6px;
-    background:linear-gradient(90deg,rgba(255,169,77,.5) 0%,rgba(255,169,77,.5) var(--xpct,40%),rgba(99,230,190,.5) var(--xpct,40%),rgba(99,230,190,.5) 100%);
+    background:linear-gradient(90deg,rgba(255,169,77,.5) 0%,rgba(99,230,190,.5) 100%);
     border:1px solid var(--line);outline:none;cursor:pointer}
   input[type=range].nslider::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent),0 2px 8px #000;cursor:grab}
   input[type=range].nslider::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);cursor:grab}
@@ -128,12 +140,15 @@
 
   /* ── checklist ── */
   .acs{display:grid;gap:.5rem;margin-top:.6rem}
-  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start;cursor:pointer}
   .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--line);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
   .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
   .ac .txt{font-size:.9rem;color:var(--fg)}
   .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
   .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:rgba(255,169,77,.14);color:var(--accent-3)}
+  .ac.done .box{background:var(--accent-2);border-color:var(--accent-2)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.done .status{background:var(--accent-2);color:var(--bg)}
 
   footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
   footer b{color:var(--fg-muted)}
@@ -157,32 +172,32 @@
 </nav>
 
 <nav class="outline" aria-label="On this page">
-  <a href="#sim">Drag it · the crossover</a>
+  <a href="#sim">Drag it · race both sides</a>
   <a href="#physics">Why the curves cross</a>
   <a href="#detection">How the mark is found</a>
   <a href="#singleflight">Single-flight on drag</a>
-  <a href="#build">What gets built</a>
+  <a href="#build">What was built</a>
   <a href="#done">Acceptance criteria</a>
 </nav>
 
 <main>
   <header>
-    <div class="eyebrow">Task 55.5 · Milestone M3 · the un-riggable interaction · <span class="todopill">To do</span></div>
+    <div class="eyebrow">Task 55.5 · Milestone M3 · the un-riggable interaction · <span class="todopill">Done · reviewed</span></div>
     <h1 class="prose">Drag <code style="font-family:var(--mono);color:var(--accent-2)">n</code> and the race re-runs — at small <code style="font-family:var(--mono);color:var(--accent-3)">n</code> the CPU wins, and the demo says so out loud</h1>
     <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">An <code style="font-family:var(--mono);color:var(--accent)">n</code>-slider (200 → 5000, hard cap) re-runs the race live, flipping the caption between <em>"CPU wins"</em> and <em>"GPU pulls ahead"</em> and marking the crossover <code style="font-family:var(--mono);color:var(--accent)">n</code> — a first-class small-<code style="font-family:var(--mono);color:var(--accent)">n</code> CPU win is what makes the demo un-riggable.</p>
     <div class="meta">
       <span class="chip">range <strong>200 – 5000</strong></span>
       <span class="chip">hard cap <strong>n = 5000</strong></span>
-      <span class="chip">re-run <strong>debounced, single-flight</strong></span>
-      <span class="chip">crossover <strong>fit a + b·n², solve</strong></span>
+      <span class="chip">re-run <strong>debounced 280ms, single-flight</strong></span>
+      <span class="chip">crossover <strong>empirical sign-change bracket</strong></span>
       <span class="chip">builds on <strong>55.4 race UI · 55.3 run_race</strong></span>
     </div>
   </header>
 
   <!-- ════ 1. THE INTERACTIVE SIM — the crux, made felt ════ -->
   <section id="sim">
-    <div class="eyebrow">Comprehension job 1 · the crux · feel it before it is coded</div>
-    <h2>Grab the slider — watch the winner, and the caption, flip at the crossover</h2>
+    <div class="eyebrow">Comprehension job 1 · the crux · feel it before reading the code</div>
+    <h2>Race a small n and a large n — the mark appears between your two measurements</h2>
     <figure>
       <div class="sim">
         <div class="sim-eyebrow">clustering-tfjs · live WebGPU vs CPU race · sweep n</div>
@@ -191,7 +206,7 @@
         <div class="flipcap" id="flipcap"></div>
 
         <!-- the two cost curves intersecting (the physics, drawn live) -->
-        <svg class="chart" viewBox="0 0 760 300" role="img" aria-label="A chart of wall time against n. The GPU curve starts high at a fixed overhead of a few milliseconds and stays nearly flat. The CPU curve starts near zero and rises as n squared. They intersect at the crossover n; a vertical line shows the current slider position, and the lower curve at that position is the winning lane.">
+        <svg class="chart" viewBox="0 0 760 300" role="img" aria-label="A chart of wall time against n. The GPU curve starts high at a fixed overhead of a few milliseconds and stays nearly flat. The CPU curve starts near zero and rises as n squared. They intersect once. Hollow dots mark the n values the visitor has actually raced; a solid blue tick appears between two raced points only once one was a CPU win and the other a GPU win — the empirically bracketed crossover.">
           <!-- axes -->
           <line x1="56" y1="20" x2="56" y2="252" stroke="#22304a" stroke-width="1.4"/>
           <line x1="56" y1="252" x2="724" y2="252" stroke="#22304a" stroke-width="1.4"/>
@@ -200,20 +215,22 @@
           <!-- gpu fixed-overhead floor guide -->
           <line id="gpu-floor" x1="56" y1="0" x2="724" y2="0" stroke="#63e6be" stroke-width="1" stroke-dasharray="3 4" opacity=".4"/>
           <text id="gpu-floor-lab" x="60" y="0" fill="#63e6be" font-size="9.5" opacity=".75">GPU fixed overhead ≈ dispatch + upload + 1 readback</text>
-          <!-- curves (paths filled by JS) -->
-          <path id="cpu-curve" fill="none" stroke="#ffa94d" stroke-width="2.4"/>
-          <path id="gpu-curve" fill="none" stroke="#63e6be" stroke-width="2.4"/>
-          <!-- crossover marker on the chart -->
-          <line id="x-cross" x1="0" y1="20" x2="0" y2="252" stroke="#7c9cff" stroke-width="1.3" stroke-dasharray="2 3" opacity=".7"/>
-          <circle id="x-dot" r="5" fill="#7c9cff" stroke="#0a0e16" stroke-width="2"/>
-          <text id="x-lab" fill="#7c9cff" font-size="10" text-anchor="middle"></text>
+          <!-- true curves drawn faint as a guide; the mark is NOT read off them -->
+          <path id="cpu-curve" fill="none" stroke="#ffa94d" stroke-width="2" opacity=".32"/>
+          <path id="gpu-curve" fill="none" stroke="#63e6be" stroke-width="2" opacity=".32"/>
+          <!-- raced-sample dots + bracket (filled by JS) -->
+          <g id="sample-dots"></g>
+          <line id="bracket-seg" x1="0" y1="0" x2="0" y2="0" stroke="#7c9cff" stroke-width="1.4" stroke-dasharray="4 3" opacity="0"/>
+          <line id="x-cross" x1="0" y1="20" x2="0" y2="252" stroke="#7c9cff" stroke-width="1.3" stroke-dasharray="2 3" opacity="0"/>
+          <circle id="x-dot" r="5" fill="#7c9cff" stroke="#0a0e16" stroke-width="2" opacity="0"/>
+          <text id="x-lab" fill="#7c9cff" font-size="10" text-anchor="middle" opacity="0"></text>
           <!-- the slider's current-n indicator -->
           <line id="now-line" x1="0" y1="20" x2="0" y2="252" stroke="#e6edf3" stroke-width="1.6"/>
           <circle id="now-cpu" r="4.5" fill="#ffa94d" stroke="#0a0e16" stroke-width="1.5"/>
           <circle id="now-gpu" r="4.5" fill="#63e6be" stroke="#0a0e16" stroke-width="1.5"/>
           <!-- curve labels -->
-          <text x="600" y="44" fill="#63e6be" font-size="11" font-weight="bold">GPU = a + b·n² (flat)</text>
-          <text x="120" y="120" fill="#ffa94d" font-size="11" font-weight="bold">CPU ≈ b·n²·d</text>
+          <text x="600" y="44" fill="#63e6be" font-size="11" font-weight="bold">GPU ≈ flat (fixed cost)</text>
+          <text x="120" y="120" fill="#ffa94d" font-size="11" font-weight="bold">CPU ∝ n²·d</text>
         </svg>
 
         <!-- the mini race readout: bars + timers re-running (AC#1) -->
@@ -232,29 +249,34 @@
           </div>
         </div>
 
+        <!-- raced-samples store (drives the bracket) -->
+        <div class="samples"><span class="slab">raced so far</span><span id="sample-list" style="font-family:var(--mono);font-size:.66rem;color:var(--fg-muted)">none yet — drag and release to race an n</span></div>
+
         <!-- the slider with the marked crossover (AC#3, AC#4) -->
         <div class="sliderbox">
           <div class="sliderlab">
             <span>n_samples</span>
-            <span><span class="nval" id="n-readout">2000</span> <span id="cap-hint"></span></span>
+            <span><span class="nval" id="n-readout">2,000</span> <span id="cap-hint"></span></span>
           </div>
           <div class="track-wrap">
+            <div class="hint left" id="hint-left">← smaller n: race a CPU-winning n</div>
+            <div class="hint right" id="hint-right">larger n: race a GPU-winning n →</div>
             <div class="xmark" id="xmark"><span class="xlab" id="xmark-lab">crossover</span></div>
             <input type="range" class="nslider" id="nslider" min="200" max="5000" step="50" value="2000"
-              aria-label="n samples, 200 to 5000, capped at 5000">
+              aria-label="n samples, 200 to 5000, capped at 5000" aria-describedby="crossover-caption">
           </div>
           <div class="zoneslab">
-            <span class="zc">◀ below crossover · CPU wins</span>
-            <span class="zg">above crossover · GPU wins ▶</span>
+            <span class="zc">◀ small n · CPU territory</span>
+            <span class="zg">large n · GPU territory ▶</span>
           </div>
         </div>
-        <div class="simnote">Illustrative model on this page (a + b·n² with anchor values from the harness); the live demo substitutes the visitor's own measured medians.</div>
+        <div class="simnote">Faint curves are an illustrative guide only — this widget marks the crossover the way the shipped page does: from the visitor's own raced points, never a fitted line.</div>
       </div>
-      <figcaption class="prose"><b>This is the proposed interaction, working.</b> Below the marked crossover the orange CPU lane wins and the caption reads <em>"CPU wins"</em>; above it the green GPU lane wins and it flips to <em>"GPU pulls ahead."</em> The blue diamond is the computed crossover <code>n</code>.</figcaption>
+      <figcaption class="prose"><b>This is the shipped interaction.</b> Releasing the slider races that <code>n</code>; the caption flips on the measured winner and a hollow dot records the point. The blue tick appears <b>only between two raced n's</b> — one CPU win, one GPU win; until then a hint points to the unraced side.</figcaption>
     </figure>
     <aside class="callout">
       <div class="k">What's really new here</div>
-      <p>55.4 already runs one race at the fixed default <code>n=2000</code> and already shows a CPU win as <b>"CPU is faster"</b>. 55.5 makes <code>n</code> a <b>live input</b>: a debounced, single-flight re-run, a flipping plain-language caption, and a computed crossover mark on the track.</p>
+      <p>55.4 already raced one fixed <code>n=2000</code> and showed a CPU win as "CPU is faster". 55.5 makes <code>n</code> a <b>live, debounced, single-flight input</b>, flips a plain-language caption, and marks the crossover <b>only where the visitor has empirically bracketed it</b>.</p>
     </aside>
   </section>
 
@@ -306,101 +328,114 @@
         <span><i style="background:#ffa94d"></i> CPU: ~0 fixed cost, n²·d slope</span>
         <span><i style="background:#7c9cff"></i> crossover: where they meet</span>
       </div>
-      <figcaption class="prose"><b>The crossover is forced by the two shapes.</b> The GPU pays a constant few-ms toll but barely more per element; the CPU starts near zero but its dense <code>O(n²·d)</code> affinity grows without bound — a flat-but-offset line and a steep parabola intersect exactly once for <code>n &gt; 0</code>.</figcaption>
+      <figcaption class="prose"><b>The crossover is forced by the two shapes.</b> The GPU pays a constant few-ms toll but barely more per element; the CPU starts near zero but its dense <code>O(n²·d)</code> affinity grows without bound — a flat-but-offset line and a steep parabola cross exactly once for <code>n &gt; 0</code>.</figcaption>
     </figure>
     <aside class="callout warn">
       <div class="k">Why the cap is n = 5000</div>
-      <p>The same <code>n²</code> grows the dense affinity matrix — 25M cells at <code>n=5000</code> — which risks OOM/jank on mobile, so the slider <b>hard-caps at 5000</b>; compute runs in workers, so a large-<code>n</code> run never freezes the main thread (AC#4).</p>
+      <p>The same <code>n²</code> grows the dense affinity matrix to 25M cells at <code>n=5000</code>, risking OOM/jank on mobile — so the slider <b>hard-caps at 5000</b> and the controller re-clamps <code>n</code>; compute runs in workers, so large <code>n</code> never freezes the main thread (AC#4).</p>
     </aside>
   </section>
 
-  <!-- ════ 3. DETECTION — how the mark is computed ════ -->
+  <!-- ════ 3. DETECTION — empirical sign-change bracketing ════ -->
   <section id="detection">
-    <div class="eyebrow">Comprehension job 3 · the detection · the mark is computed, never hard-coded</div>
-    <h2>Fit each lane to t(n) = a + b·n² from observed runs, then solve for where they meet</h2>
+    <div class="eyebrow">Comprehension job 3 · the detection · the page marks only what it measured</div>
+    <h2>No model fit — the mark comes from an observed CPU→GPU sign change between two raced n's</h2>
     <figure>
       <div class="flowwrap">
-        <svg viewBox="0 0 940 250" role="img" aria-label="As the user drags, each completed race adds an observed sample of n, cpu milliseconds and gpu milliseconds to a small store keyed by n. Each lane is fit to t of n equals a plus b times n squared by least squares over those samples. Setting the two fitted curves equal and solving gives the crossover n as the square root of the difference in intercepts over the difference in quadratic coefficients. That n is converted to a track position and the crossover mark is placed; it refines as more samples accumulate.">
+        <svg viewBox="0 0 940 270" role="img" aria-label="Each completed race adds a sample of n, cpu milliseconds and gpu milliseconds, keyed by n so re-racing the same n refines it. The estimator sorts samples ascending and scans for the first pair where delta, gpu minus cpu, goes from positive, meaning CPU wins, to non-positive, meaning GPU wins. That bracketing pair gives the crossover by linear interpolation: n equals lo dot n plus the span times delta lo over delta lo minus delta hi. If no sign change is observed, every raced n is on one side, so the estimator returns a directional state instead of a tick: above range when CPU still wins at the largest raced n, below range when GPU already wins everywhere raced.">
           <defs>
             <marker id="dx" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
           </defs>
-          <rect x="16" y="80" width="196" height="90" rx="12" fill="#11182a" stroke="#22304a"/>
-          <text x="114" y="104" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">observed samples</text>
-          <text x="114" y="124" text-anchor="middle" fill="#8b949e" font-size="9">each race → (n, cpu_ms, gpu_ms)</text>
-          <text x="114" y="139" text-anchor="middle" fill="#8b949e" font-size="9">stored keyed by n (deduped)</text>
-          <text x="114" y="156" text-anchor="middle" fill="#63e6be" font-size="9">read from RaceResult.median_ms</text>
+          <rect x="16" y="90" width="200" height="92" rx="12" fill="#11182a" stroke="#22304a"/>
+          <text x="116" y="114" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">add_sample(n, cpu, gpu)</text>
+          <text x="116" y="134" text-anchor="middle" fill="#8b949e" font-size="9">each completed race → one sample</text>
+          <text x="116" y="149" text-anchor="middle" fill="#8b949e" font-size="9">Map keyed by n · latest wins</text>
+          <text x="116" y="167" text-anchor="middle" fill="#63e6be" font-size="9">ms read from RaceResult.median_ms</text>
 
-          <rect x="252" y="60" width="216" height="130" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
-          <text x="360" y="84" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">least-squares fit per lane</text>
-          <text x="360" y="106" text-anchor="middle" fill="#8b949e" font-size="9.5">basis x = n²  (linear in a, b)</text>
-          <text x="360" y="122" text-anchor="middle" fill="#ffa94d" font-size="9.5">cpu: t = a_c + b_c·n²</text>
-          <text x="360" y="137" text-anchor="middle" fill="#63e6be" font-size="9.5">gpu: t = a_g + b_g·n²</text>
-          <text x="360" y="159" text-anchor="middle" fill="#8b949e" font-size="9">2-param OLS · closed form</text>
-          <text x="360" y="174" text-anchor="middle" fill="#8b949e" font-size="9">needs ≥ 2 distinct n per lane</text>
+          <rect x="256" y="66" width="222" height="142" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="367" y="90" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">scan ascending for sign change</text>
+          <text x="367" y="112" text-anchor="middle" fill="#8b949e" font-size="9.5">δ(s) = gpu_ms − cpu_ms</text>
+          <text x="367" y="127" text-anchor="middle" fill="#ffa94d" font-size="9.5">δ &gt; 0  →  CPU wins (small n)</text>
+          <text x="367" y="142" text-anchor="middle" fill="#63e6be" font-size="9.5">δ ≤ 0  →  GPU wins (large n)</text>
+          <text x="367" y="164" text-anchor="middle" fill="#e6edf3" font-size="9.5">first lo,hi with δ_lo&gt;0 ∧ δ_hi≤0</text>
+          <text x="367" y="179" text-anchor="middle" fill="#8b949e" font-size="9">lowest-n crossing wins (noise-safe)</text>
+          <text x="367" y="196" text-anchor="middle" fill="#8b949e" font-size="9">needs both sides raced (≥1 each)</text>
 
-          <rect x="508" y="60" width="216" height="130" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
-          <text x="616" y="84" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">solve a_c+b_c·n² = a_g+b_g·n²</text>
-          <text x="616" y="112" text-anchor="middle" fill="#e6edf3" font-size="13" font-weight="bold">n* = √((a_g − a_c)/(b_c − b_g))</text>
-          <text x="616" y="138" text-anchor="middle" fill="#8b949e" font-size="9">real & in [200,5000] → mark it</text>
-          <text x="616" y="153" text-anchor="middle" fill="#8b949e" font-size="9">else: no crossover in range</text>
-          <text x="616" y="172" text-anchor="middle" fill="#8b949e" font-size="9">(clamp / hide the mark)</text>
+          <rect x="518" y="40" width="216" height="92" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="626" y="62" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">bracketed → place tick</text>
+          <text x="626" y="84" text-anchor="middle" fill="#e6edf3" font-size="10.5" font-weight="bold">n = lo.n + span·δ_lo/(δ_lo−δ_hi)</text>
+          <text x="626" y="106" text-anchor="middle" fill="#8b949e" font-size="9">linear zero-crossing in [lo.n, hi.n]</text>
+          <text x="626" y="121" text-anchor="middle" fill="#8b949e" font-size="9">fraction (n−200)/4800 → track left</text>
 
-          <rect x="764" y="80" width="160" height="90" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
-          <text x="844" y="108" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">place mark</text>
-          <text x="844" y="130" text-anchor="middle" fill="#8b949e" font-size="9">pct = (n*−200)/4800</text>
-          <text x="844" y="145" text-anchor="middle" fill="#8b949e" font-size="9">→ left offset on track</text>
-          <text x="844" y="162" text-anchor="middle" fill="#e6edf3" font-size="9">refines as samples grow</text>
+          <rect x="518" y="148" width="216" height="92" rx="12" fill="#1a130c" stroke="#ffa94d" stroke-width="1.6"/>
+          <text x="626" y="170" text-anchor="middle" fill="#ffa94d" font-size="11" font-weight="bold">no sign change → hint only</text>
+          <text x="626" y="192" text-anchor="middle" fill="#8b949e" font-size="9">δ at largest raced n &gt; 0 → above_range</text>
+          <text x="626" y="207" text-anchor="middle" fill="#8b949e" font-size="9">(CPU still wins → drag right →)</text>
+          <text x="626" y="224" text-anchor="middle" fill="#8b949e" font-size="9">else below_range (← drag left)</text>
 
-          <line x1="212" y1="125" x2="248" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
-          <line x1="468" y1="125" x2="504" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
-          <line x1="724" y1="125" x2="760" y2="125" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <rect x="772" y="90" width="152" height="92" rx="12" fill="#11182a" stroke="#22304a"/>
+          <text x="848" y="118" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">four states</text>
+          <text x="848" y="139" text-anchor="middle" fill="#8b949e" font-size="9">unknown · bracketed</text>
+          <text x="848" y="154" text-anchor="middle" fill="#8b949e" font-size="9">below_range · above_range</text>
+          <text x="848" y="171" text-anchor="middle" fill="#63e6be" font-size="9">only bracketed draws a tick</text>
+
+          <line x1="216" y1="136" x2="252" y2="136" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <line x1="478" y1="110" x2="514" y2="86" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <line x1="478" y1="160" x2="514" y2="190" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#dx)"/>
+          <line x1="734" y1="86" x2="768" y2="120" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ar)"/>
+          <line x1="734" y1="194" x2="768" y2="150" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ar)"/>
         </svg>
       </div>
       <div class="code">
-        <div class="fl">crossover detection — fit t(n)=a+b·n² per lane, solve for n* (sketch, snake_case)</div>
-<pre><span class="cm">// One sample per completed race; key by n so a re-run at the same n replaces it.</span>
-<span class="kw">type</span> <span class="var">Sample</span> = { <span class="var">n</span>: number; <span class="var">cpu_ms</span>: number; <span class="var">gpu_ms</span>: number };
-
-<span class="cm">// 2-parameter ordinary least squares on basis x = n²  →  returns [a, b].</span>
-<span class="kw">function</span> <span class="fn">fit_a_plus_b_n2</span>(<span class="var">samples</span>: <span class="var">Sample</span>[], <span class="var">pick</span>: (<span class="var">s</span>: <span class="var">Sample</span>) =&gt; number): [number, number] {
-  <span class="kw">const</span> xs = samples.<span class="fn">map</span>((s) =&gt; s.n * s.n);   <span class="cm">// x = n²</span>
-  <span class="kw">const</span> ys = samples.<span class="fn">map</span>(pick);             <span class="cm">// y = observed ms</span>
-  <span class="kw">const</span> m = xs.length;
-  <span class="kw">const</span> sx = <span class="fn">sum</span>(xs), sy = <span class="fn">sum</span>(ys);
-  <span class="kw">const</span> sxx = <span class="fn">sum</span>(xs.<span class="fn">map</span>((x) =&gt; x * x)), sxy = <span class="fn">sum</span>(xs.<span class="fn">map</span>((x, i) =&gt; x * ys[i]));
-  <span class="kw">const</span> denom = m * sxx - sx * sx;       <span class="cm">// 0 when &lt; 2 distinct n</span>
-  <span class="kw">const</span> b = (m * sxy - sx * sy) / denom;  <span class="cm">// quadratic coefficient</span>
-  <span class="kw">const</span> a = (sy - b * sx) / m;            <span class="cm">// fixed overhead intercept</span>
-  <span class="kw">return</span> [a, b];
+        <div class="fl">site/src/crossover.ts — empirical sign-change bracketing (no model fit), snake_case</div>
+<pre><span class="cm">// δ = gpu_ms − cpu_ms: positive when GPU is slower (CPU wins, small-n regime),</span>
+<span class="cm">// negative when GPU is faster. The crossover is where δ passes through zero.</span>
+<span class="kw">function</span> <span class="fn">delta_gpu_minus_cpu</span>(<span class="var">sample</span>: <span class="var">RaceSample</span>): number {
+  <span class="kw">return</span> sample.gpu_ms - sample.cpu_ms;
 }
 
-<span class="kw">function</span> <span class="fn">crossover_n</span>(<span class="var">samples</span>: <span class="var">Sample</span>[]): number | <span class="kw">null</span> {
-  <span class="kw">if</span> (<span class="fn">distinct_n</span>(samples) &lt; <span class="hl">2</span>) <span class="kw">return</span> <span class="kw">null</span>;            <span class="cm">// not enough to fit</span>
-  <span class="kw">const</span> [a_c, b_c] = <span class="fn">fit_a_plus_b_n2</span>(samples, (s) =&gt; s.cpu_ms);
-  <span class="kw">const</span> [a_g, b_g] = <span class="fn">fit_a_plus_b_n2</span>(samples, (s) =&gt; s.gpu_ms);
-  <span class="kw">const</span> ratio = (a_g - a_c) / (b_c - b_g);            <span class="cm">// n*² = Δintercept / Δslope</span>
-  <span class="kw">if</span> (!<span class="fn">isFinite</span>(ratio) || ratio &lt;= <span class="hl">0</span>) <span class="kw">return</span> <span class="kw">null</span>;   <span class="cm">// no real crossover</span>
-  <span class="kw">return</span> Math.<span class="fn">sqrt</span>(ratio);                            <span class="cm">// the crossover n — refines as samples grow</span>
+<span class="kw">function</span> <span class="fn">estimate</span>(): <span class="var">CrossoverState</span> {
+  <span class="kw">if</span> (by_n.size === <span class="hl">0</span>) <span class="kw">return</span> { kind: <span class="str">"unknown"</span> };   <span class="cm">// nothing raced yet</span>
+  <span class="kw">const</span> samples = [...by_n.<span class="fn">values</span>()].<span class="fn">sort</span>((a, b) =&gt; a.n - b.n);
+
+  <span class="cm">// First CPU-wins → GPU-wins transition. The LOWEST-n crossing is the physical</span>
+  <span class="cm">// one; run-to-run noise at large n can fake a second flip, so we stop at the first.</span>
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="hl">0</span>; i &lt; samples.length - <span class="hl">1</span>; i++) {
+    <span class="kw">const</span> lo = samples[i], hi = samples[i + <span class="hl">1</span>];
+    <span class="kw">const</span> delta_lo = <span class="fn">delta_gpu_minus_cpu</span>(lo);
+    <span class="kw">const</span> delta_hi = <span class="fn">delta_gpu_minus_cpu</span>(hi);
+    <span class="kw">if</span> (delta_lo &gt; <span class="hl">0</span> &amp;&amp; delta_hi &lt;= <span class="hl">0</span>) {            <span class="cm">// a real, observed bracket</span>
+      <span class="kw">const</span> span = delta_lo - delta_hi;
+      <span class="kw">const</span> n = lo.n + ((hi.n - lo.n) * delta_lo) / span;  <span class="cm">// interpolate the zero crossing</span>
+      <span class="kw">return</span> { kind: <span class="str">"bracketed"</span>, n };
+    }
+  }
+
+  <span class="cm">// No sign change: every raced n is on one side, so the crossover lies past it.</span>
+  <span class="kw">const</span> largest = samples[samples.length - <span class="hl">1</span>];
+  <span class="kw">return</span> <span class="fn">delta_gpu_minus_cpu</span>(largest) &gt; <span class="hl">0</span>
+    ? { kind: <span class="str">"above_range"</span> }    <span class="cm">// CPU still wins at the largest raced n → drag right</span>
+    : { kind: <span class="str">"below_range"</span> };   <span class="cm">// GPU already wins everywhere raced → drag left</span>
 }</pre>
       </div>
-      <figcaption class="prose"><b>The mark is derived, not painted on.</b> Since <code>t(n)=a+b·n²</code> is linear in <code>x=n²</code>, a closed-form fit recovers each lane's overhead and slope; setting them equal gives <code>n* = √((a_g − a_c)/(b_c − b_g))</code>, sharpening as each drag adds a sample.</figcaption>
+      <figcaption class="prose"><b>The mark is observed, never predicted.</b> The estimator sorts the raced samples, takes the first <code>δ&gt;0 → δ≤0</code> pair, and interpolates the zero crossing in that bracket. One side raced returns a direction, not a tick — so it never publishes a crossover <code>n</code> nobody measured.</figcaption>
     </figure>
-    <aside class="callout">
-      <div class="k">Reading the formula</div>
-      <p><code>a_g − a_c</code> is the GPU's extra fixed overhead (positive — the few-ms dispatch); <code>b_c − b_g</code> is CPU's steeper per-<code>n²</code> growth (positive). Their ratio is <code>n*²</code>; a non-positive or non-finite ratio means the curves never cross in range, so no mark is drawn.</p>
+    <aside class="callout go">
+      <div class="k">Why bracketing, not a least-squares fit — the honesty contract</div>
+      <p>The page refuses numbers it did not measure — elapsed-only stopwatch, compile excluded, parity as a checksum. A curve fitted to a few noisy medians is an <b>unfalsifiable prediction</b>, so the crossover is marked only where the visitor empirically bracketed it.</p>
     </aside>
   </section>
 
   <!-- ════ 4. SINGLE-FLIGHT — re-entrancy on drag ════ -->
   <section id="singleflight">
     <div class="eyebrow">Comprehension job 4 · the hazard · dragging fires a flood of input events</div>
-    <h2>One drag = dozens of input events — debounce, then run latest-target-wins single-flight</h2>
+    <h2>One drag = dozens of input events — debounce 280ms, then run latest-n-wins single-flight</h2>
     <figure>
       <div class="flowwrap" style="display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center">
-        <!-- CURRENT -->
+        <!-- BEFORE -->
         <div>
-          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-3);margin-bottom:.5rem">Current — 55.4</div>
-          <svg viewBox="0 0 360 260" role="img" aria-label="Current control in task 55.4: a single Run button. Click disables the button, runs one race at the fixed default n of 2000, then re-enables the button when the race resolves. There is no slider and only one race can be in flight, gated by the disabled button.">
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-3);margin-bottom:.5rem">Before — 55.4</div>
+          <svg viewBox="0 0 360 260" role="img" aria-label="Before, in task 55.4: a single Run button. Click disables the button, runs one race at the fixed default n of 2000, then re-enables the button when the race resolves. No slider, only one race ever in flight, gated by the disabled button.">
             <rect x="20" y="20" width="320" height="46" rx="11" fill="#0f1626" stroke="#ffa94d" stroke-width="1.4"/>
             <text x="180" y="40" text-anchor="middle" fill="#ffa94d" font-size="11" font-weight="bold">click "Run the race"</text>
             <text x="180" y="56" text-anchor="middle" fill="#8b949e" font-size="9">one user gesture</text>
@@ -421,22 +456,22 @@
 
         <div style="font-family:var(--serif);font-size:1.8rem;color:var(--accent);text-align:center">→</div>
 
-        <!-- PLANNED -->
+        <!-- AS BUILT -->
         <div>
-          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-2);margin-bottom:.5rem">Planned — 55.5</div>
-          <svg viewBox="0 0 360 260" role="img" aria-label="Planned control in task 55.5: dragging the slider fires many input events. Each input updates n and the readout instantly, then schedules a debounced run after about 120 milliseconds of quiet. The debounced run is single-flight: if a race is already in flight it records the latest target n and returns; when the in-flight race finishes, if the latest target differs from what just ran, it runs once more for that latest n. So only one race runs at a time and the last value the user lands on always wins.">
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-2);margin-bottom:.5rem">As built — 55.5</div>
+          <svg viewBox="0 0 360 260" role="img" aria-label="As built in task 55.5: dragging the slider fires many input events. Each input updates n and the readout instantly, then schedules a debounced run after 280 milliseconds of quiet. The debounced run is single-flight: if a race is in flight it records the latest target n in pending_n and returns; when the in-flight race finishes, if a newer target arrived it drains once more for that latest n. So only one race runs at a time and the last value the user lands on always wins. The controller re-clamps n to 200 to 5000 as defence-in-depth on top of the input max.">
             <rect x="20" y="14" width="320" height="44" rx="11" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
             <text x="180" y="33" text-anchor="middle" fill="#7c9cff" font-size="10.5" font-weight="bold">drag → many 'input' events</text>
-            <text x="180" y="49" text-anchor="middle" fill="#8b949e" font-size="9">update n + readout instantly (cheap)</text>
+            <text x="180" y="49" text-anchor="middle" fill="#8b949e" font-size="9">update n + readout instantly · re-clamp</text>
             <line x1="180" y1="58" x2="180" y2="80" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
             <rect x="20" y="82" width="320" height="42" rx="11" fill="#11182a" stroke="#63e6be" stroke-width="1.4"/>
-            <text x="180" y="100" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">debounce ≈ 120 ms quiet</text>
+            <text x="180" y="100" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">debounce 280 ms quiet</text>
             <text x="180" y="116" text-anchor="middle" fill="#8b949e" font-size="9">collapse the flood to one trailing call</text>
             <line x1="180" y1="124" x2="180" y2="146" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
             <rect x="20" y="148" width="320" height="60" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.8"/>
-            <text x="180" y="168" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">single-flight: latest-target-wins</text>
-            <text x="180" y="184" text-anchor="middle" fill="#8b949e" font-size="9">in flight? store target_n, return</text>
-            <text x="180" y="198" text-anchor="middle" fill="#8b949e" font-size="9">on finish: target ≠ ran? run once more</text>
+            <text x="180" y="168" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">drain(): single-flight, latest-n-wins</text>
+            <text x="180" y="184" text-anchor="middle" fill="#8b949e" font-size="9">in_flight? store pending_n, return</text>
+            <text x="180" y="198" text-anchor="middle" fill="#8b949e" font-size="9">on finish: pending_n set? drain again</text>
             <line x1="180" y1="208" x2="180" y2="230" stroke="#8b949e" stroke-width="1.4" marker-end="url(#sb)"/>
             <rect x="20" y="232" width="320" height="24" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
             <text x="180" y="248" text-anchor="middle" fill="#e6edf3" font-size="9.5">exactly one race at a time · last value wins</text>
@@ -445,11 +480,11 @@
         </div>
       </div>
       <div class="legend">
-        <span><i style="background:#ffa94d"></i> current: button-gated single run, fixed n</span>
-        <span><i style="background:#63e6be"></i> added: debounce + single-flight loop</span>
+        <span><i style="background:#ffa94d"></i> before: button-gated single run, fixed n</span>
+        <span><i style="background:#63e6be"></i> added: debounce 280ms + single-flight drain</span>
         <span><i style="background:#7c9cff"></i> n is now a live input</span>
       </div>
-      <figcaption class="prose"><b>The control goes from "click once" to "drag continuously" without overlapping races.</b> Cheap per-event work updates instantly; the expensive race is debounced to fire once the slider settles, and a single-flight guard makes the landed value the one that races — intermediate targets are dropped, never queued.</figcaption>
+      <figcaption class="prose"><b>The control goes from "click once" to "drag continuously" without overlapping races.</b> Cheap per-event work (update <code>n</code>, move the readout, re-clamp) runs instantly; the expensive race is debounced, and a single-flight <code>drain()</code> coalesces intermediate targets into <code>pending_n</code> so the landed value is the one that races.</figcaption>
     </figure>
     <aside class="callout go">
       <div class="k">Why this stays smooth (AC#4)</div>
@@ -457,59 +492,57 @@
     </aside>
   </section>
 
-  <!-- ════ 5. WHAT GETS BUILT ════ -->
+  <!-- ════ 5. WHAT WAS BUILT ════ -->
   <section id="build">
-    <div class="eyebrow">To build · what 55.5 adds on top of the shipped 55.4 race UI</div>
-    <h2>Mostly controller logic; the harness and protocol are untouched</h2>
+    <div class="eyebrow">As built · what 55.5 added on top of the shipped 55.4 race UI</div>
+    <h2>One pure estimator module; the harness and protocol stayed untouched</h2>
     <figure>
       <div class="files">
-        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> <code>make_race_ui</code> gains the slider wiring: a debounced, single-flight <code>run(n)</code> that builds a per-<code>n</code> <code>RaceConfig</code> from <code>DEFAULT_RACE_CONFIG</code> (keeping <code>gamma = 1/n_features</code>), records each <code>(n, cpu_ms, gpu_ms)</code> sample, fits the curves, and places the crossover mark. The caption flips off <code>outcome.speedup</code>.</div></div>
-        <div class="fcard"><span class="fp new">site/src/crossover.ts</span><div class="role"><b>New.</b> Pure functions <code>fit_a_plus_b_n2</code> and <code>crossover_n(samples)</code> — closed-form 2-parameter least squares, no tfjs, no DOM. Trivially unit-testable.</div></div>
-        <div class="fcard"><span class="fp new">site/src/crossover.test.ts</span><div class="role"><b>New.</b> Colocated tests: known-curve recovery, &lt; 2 samples → <code>null</code>, no-real-crossover → <code>null</code>, monotone refinement as samples are added.</div></div>
-        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The <code>#race</code> section gains the <code>n</code> range input (200–5000, step), the <code>n</code> readout, the crossover mark element on the track, the zone labels, and the flipping caption node.</div></div>
-        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Slider thumb/track (zone-tinted from CPU-orange to GPU-green), the crossover-mark diamond + label, and the flipping-caption type — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> tokens.</div></div>
-        <div class="fcard"><span class="fp">site/src/race.ts · race_protocol.ts</span><div class="role"><b>Untouched.</b> <code>n_samples</code> is already a <code>RaceConfig</code> field and <code>run_race</code> already takes a config per call — 55.5 just calls it with a varying <code>n</code>. No worker or protocol change.</div></div>
+        <div class="fcard"><span class="fp new">site/src/crossover.ts</span><div class="role"><b>New.</b> Pure <code>make_crossover_estimator</code> — a <code>Map</code> keyed by <code>n</code>, the <code>δ = gpu_ms − cpu_ms</code> sign-change scan, linear bracket interpolation, and the four-state <code>CrossoverState</code> union. No tfjs, no DOM. Exports <code>N_MIN</code> / <code>N_MAX</code>.</div></div>
+        <div class="fcard"><span class="fp new">site/src/crossover.test.ts</span><div class="role"><b>New.</b> Colocated tests: <code>unknown</code> with no samples, <code>bracketed</code> interpolation, lowest-n crossing under large-n noise, and the <code>below_range</code> / <code>above_range</code> directional states.</div></div>
+        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> The debounced single-flight scheduler (<code>schedule_race</code> / <code>drain</code> / <code>pending_n</code>), <code>read_slider_n</code> re-clamp, <code>flip_caption</code> on the measured <code>outcome.speedup</code>, and <code>update_crossover_mark</code> placing the tick or hint.</div></div>
+        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The <code>#race</code> section gains the <code>n</code> range input (200–5000), the <code>#n-value</code> readout, the <code>#crossover-mark</code> element (tick + directional hint via <code>data-state</code>), and the <code>#crossover-caption</code> node.</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Slider thumb/track, the crossover-mark tick + label, the directional-hint pills, and the flipping-caption type — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> tokens.</div></div>
+        <div class="fcard"><span class="fp">site/src/main.ts</span><div class="role"><b>Touched.</b> Wires the slider input to the controller's scheduler at bootstrap. <code>race.ts</code> and <code>race_protocol.ts</code> are <b>untouched</b> — <code>n_samples</code> is already a <code>RaceConfig</code> field and <code>gamma = 1/n_features</code> stays (d fixed at 32).</div></div>
       </div>
-      <figcaption class="prose"><b>55.5 is controller + a pure math module.</b> It pulls the curve-fitting into its own testable <code>crossover.ts</code>, extends <code>race_ui.ts</code> with the debounced single-flight loop and the mark placement, and adds the slider markup/styles — while <code>run_race</code>, the workers, and the protocol stay exactly as 55.3 left them.</figcaption>
+      <figcaption class="prose"><b>55.5 is a pure math module plus controller wiring.</b> The bracketing estimator lives in its own testable <code>crossover.ts</code>; <code>race_ui.ts</code> gains the scheduler and the mark/caption logic; the markup and styles add the slider — while <code>run_race</code>, the workers, and the protocol stay exactly as 55.3 left them.</figcaption>
     </figure>
   </section>
 
   <!-- ════ 6. ACCEPTANCE CRITERIA ════ -->
   <section id="done">
-    <div class="eyebrow">What "done" means · status: to do</div>
-    <h2>Acceptance criteria — five, the slider above exercises 1–4</h2>
+    <div class="eyebrow">What "done" means · status: done &amp; reviewed</div>
+    <h2>Acceptance criteria — five, all met</h2>
     <div class="acs">
-      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">Dragging the slider <b>re-runs the race</b> and updates the bars and timers for the new <code>n</code>.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Below the crossover the <b>CPU lane wins</b> and the caption reflects it; above it the <b>GPU wins</b>.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">The crossover <code>n</code> is <b>computed</b> and <b>visibly marked</b> on the slider track.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt">The slider <b>cannot exceed <code>n=5000</code></b>; large-<code>n</code> runs do not freeze the main thread (compute stays in workers).</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit (Python-style <code>snake_case</code> on the new and extended <code>site/</code> sources).</span><span class="status">to do</span></div>
+      <div class="ac done"><span class="num">1</span><span class="box"></span><span class="txt">Dragging the slider <b>re-runs the race</b> and updates the bars and timers for the new <code>n</code>.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">2</span><span class="box"></span><span class="txt">Below the crossover the <b>CPU lane wins</b> and the caption reflects it; above it the <b>GPU wins</b> — both driven by the measured <code>outcome.speedup</code>.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt">The crossover <code>n</code> is <b>computed</b> (empirical sign-change bracket) and <b>visibly marked</b> on the track once both sides are raced.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">4</span><span class="box"></span><span class="txt">The slider <b>cannot exceed <code>n=5000</code></b> (input max + code re-clamp); large-<code>n</code> runs do not freeze the main thread (compute stays in workers).</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> (Python-style <code>snake_case</code> on the new <code>crossover.ts</code> and the extended <code>site/</code> sources).</span><span class="status">done</span></div>
     </div>
-    <figcaption class="prose"><b>The criterion carrying the "un-riggable" claim is #2:</b> the small-<code>n</code> CPU win is a first-class, captioned state, never hidden. #3 marks the computed crossover; #4 keeps the cap honest and the page responsive. Tap any row to mark it done.</figcaption>
+    <figcaption class="prose"><b>The criterion carrying the "un-riggable" claim is #2:</b> the small-<code>n</code> CPU win is a first-class, captioned state, never hidden. #3 marks only an empirically bracketed crossover; #4 keeps the cap honest and the page responsive. Tap a row to toggle it.</figcaption>
   </section>
 </main>
 
 <footer>
-  Companion for <b>task-55.5 — Crossover n-slider with marked crossover point and flipping caption (Milestone M3, to do)</b> ·
-  built against the shipped integration points: site/src/race.ts (run_race, RaceConfig, n_samples, gamma=1/n_features), site/src/race_ui.ts (make_race_ui), site/src/race_protocol.ts (RaceResult.median_ms), site/index.html #race · dark theme matches site/src/style.css · self-contained, no external assets.
+  Companion for <b>task-55.5 — Crossover n-slider with empirically-bracketed crossover mark and flipping caption (Milestone M3, done &amp; reviewed)</b> ·
+  reconciled to the shipped sources: site/src/crossover.ts (make_crossover_estimator, sign-change bracketing, four CrossoverState states), crossover.test.ts, the scheduler + caption + mark in race_ui.ts, site/src/main.ts, and index.html / style.css · race.ts and race_protocol.ts untouched · dark theme matches site/src/style.css · self-contained, no external assets.
 </footer>
 
 <script>
 (function(){
-  // ── illustrative cost model (anchored to the harness reference figures) ──
-  // GPU: a + b·n²  (large fixed overhead, near-flat).  CPU: b·n²·d (≈0 fixed).
-  // Tuned so CPU≈GPU near n≈1100 and CPU≈1412 / GPU≈59 at n=2000 (the 55.4 anchors).
+  // ── illustrative cost model (guide curves only; the MARK is empirical) ──
+  // GPU: a + b·n²  (large fixed overhead, near-flat).  CPU: a + b·n² (≈0 fixed).
+  // Tuned so the curves cross near n≈1100 and CPU≈1412 / GPU≈59 at n=2000.
   var N_MIN=200, N_MAX=5000;
-  var GPU_A=46, GPU_B=3.0e-6;            // GPU ms = GPU_A + GPU_B·n²
-  var CPU_A=2,  CPU_B=3.515e-4;          // CPU ms = CPU_A + CPU_B·n²
+  var GPU_A=46, GPU_B=3.0e-6;
+  var CPU_A=2,  CPU_B=3.515e-4;
   function cpu_ms(n){ return CPU_A + CPU_B*n*n; }
   function gpu_ms(n){ return GPU_A + GPU_B*n*n; }
-  // crossover: CPU_A+CPU_B·n² = GPU_A+GPU_B·n²  →  n² = (GPU_A−CPU_A)/(CPU_B−GPU_B)
-  var X_N = Math.sqrt((GPU_A-CPU_A)/(CPU_B-GPU_B));
 
   // ── chart geometry ──
   var X0=56, X1=724, Y0=20, Y1=252;
-  var Y_MAX=2400; // ms ceiling for the plot (CPU at 5000 ≈ 8790ms; clamp to keep both readable up to crossover region)
+  var Y_MAX=2400;
   function px(n){ return X0 + (n-N_MIN)/(N_MAX-N_MIN)*(X1-X0); }
   function py(ms){ var c=Math.min(ms,Y_MAX); return Y1 - c/Y_MAX*(Y1-Y0); }
 
@@ -520,18 +553,9 @@
   }
   document.getElementById('cpu-curve').setAttribute('d', build_path(cpu_ms));
   document.getElementById('gpu-curve').setAttribute('d', build_path(gpu_ms));
-
-  // GPU fixed-overhead floor guide line
   var floorY = py(GPU_A);
   var fl=document.getElementById('gpu-floor'); fl.setAttribute('y1',floorY); fl.setAttribute('y2',floorY);
   document.getElementById('gpu-floor-lab').setAttribute('y', (floorY-5).toFixed(1));
-
-  // chart crossover marker (static — the model's true crossover)
-  var xcx=px(X_N), xcy=py(cpu_ms(X_N));
-  var xl=document.getElementById('x-cross'); xl.setAttribute('x1',xcx); xl.setAttribute('x2',xcx);
-  var xd=document.getElementById('x-dot'); xd.setAttribute('cx',xcx); xd.setAttribute('cy',xcy);
-  var xlab=document.getElementById('x-lab'); xlab.setAttribute('x',xcx); xlab.setAttribute('y', Y0+12);
-  xlab.textContent='crossover n≈'+Math.round(X_N);
 
   // ── live elements ──
   var slider=document.getElementById('nslider');
@@ -543,72 +567,129 @@
   var lane_cpu=document.getElementById('lane-cpu'), lane_gpu=document.getElementById('lane-gpu');
   var now_line=document.getElementById('now-line');
   var now_cpu=document.getElementById('now-cpu'), now_gpu=document.getElementById('now-gpu');
-  var xmark=document.getElementById('xmark');
+  var xmark=document.getElementById('xmark'), xmark_lab=document.getElementById('xmark-lab');
+  var hint_left=document.getElementById('hint-left'), hint_right=document.getElementById('hint-right');
+  var sample_dots=document.getElementById('sample-dots');
+  var bracket_seg=document.getElementById('bracket-seg');
+  var x_cross=document.getElementById('x-cross'), x_dot=document.getElementById('x-dot'), x_lab=document.getElementById('x-lab');
+  var sample_list=document.getElementById('sample-list');
 
-  // place the crossover mark on the actual track (computed n → percent of range)
-  var xpct=(X_N-N_MIN)/(N_MAX-N_MIN);
-  function place_track_mark(){
+  // ── the EMPIRICAL estimator — mirrors site/src/crossover.ts ──
+  // raced samples keyed by n; latest measurement at an n wins.
+  var by_n = {};
+  function delta(s){ return s.gpu_ms - s.cpu_ms; }       // gpu − cpu; >0 = CPU wins
+  function estimate(){
+    var keys=Object.keys(by_n);
+    if(keys.length===0) return {kind:'unknown'};
+    var samples=keys.map(function(k){return by_n[k];}).sort(function(a,b){return a.n-b.n;});
+    for(var i=0;i<samples.length-1;i++){
+      var lo=samples[i], hi=samples[i+1];
+      var dlo=delta(lo), dhi=delta(hi);
+      if(dlo>0 && dhi<=0){
+        var span=dlo-dhi;
+        var n=lo.n + ((hi.n-lo.n)*dlo)/span;     // interpolate the zero crossing
+        return {kind:'bracketed', n:n, lo:lo, hi:hi};
+      }
+    }
+    var largest=samples[samples.length-1];
+    return delta(largest)>0 ? {kind:'above_range'} : {kind:'below_range'};
+  }
+
+  function render_samples(){
+    var keys=Object.keys(by_n).map(Number).sort(function(a,b){return a-b;});
+    var dots='';
+    keys.forEach(function(n){
+      var s=by_n[n];
+      dots+='<circle cx="'+px(n).toFixed(1)+'" cy="'+py(s.cpu_ms).toFixed(1)+'" r="3.5" fill="none" stroke="#ffa94d" stroke-width="1.6"/>';
+      dots+='<circle cx="'+px(n).toFixed(1)+'" cy="'+py(s.gpu_ms).toFixed(1)+'" r="3.5" fill="none" stroke="#63e6be" stroke-width="1.6"/>';
+    });
+    sample_dots.innerHTML=dots;
+    if(keys.length===0){ sample_list.textContent='none yet — drag and release to race an n'; return; }
+    sample_list.innerHTML=keys.map(function(n){
+      var s=by_n[n], cpu_win=s.cpu_ms<s.gpu_ms;
+      return '<span class="sdot '+(cpu_win?'cpu':'gpu')+'">n '+n.toLocaleString()+' · '+(cpu_win?'CPU':'GPU')+' wins</span>';
+    }).join(' ');
+  }
+
+  function track_left_px(n){
     var rect=slider.getBoundingClientRect();
     var wrap=slider.parentElement.getBoundingClientRect();
-    var left=(rect.left-wrap.left)+xpct*rect.width;
-    xmark.style.left=left.toFixed(1)+'px';
-    slider.style.setProperty('--xpct',(xpct*100).toFixed(1)+'%');
+    return (rect.left-wrap.left) + (n-N_MIN)/(N_MAX-N_MIN)*rect.width;
   }
-  document.getElementById('xmark-lab').textContent='crossover n≈'+Math.round(X_N);
 
-  function render(){
+  function update_mark(){
+    var st=estimate();
+    xmark.classList.remove('show'); hint_left.classList.remove('show'); hint_right.classList.remove('show');
+    bracket_seg.setAttribute('opacity','0'); x_cross.setAttribute('opacity','0'); x_dot.setAttribute('opacity','0'); x_lab.setAttribute('opacity','0');
+    if(st.kind==='bracketed'){
+      xmark.style.left=track_left_px(st.n).toFixed(1)+'px';
+      xmark.classList.add('show');
+      xmark_lab.textContent='crossover ≈ n '+Math.round(st.n).toLocaleString();
+      var x=px(st.n);
+      bracket_seg.setAttribute('x1',px(st.lo.n)); bracket_seg.setAttribute('y1',py((st.lo.cpu_ms+st.lo.gpu_ms)/2));
+      bracket_seg.setAttribute('x2',px(st.hi.n)); bracket_seg.setAttribute('y2',py((st.hi.cpu_ms+st.hi.gpu_ms)/2));
+      bracket_seg.setAttribute('opacity','.6');
+      x_cross.setAttribute('x1',x); x_cross.setAttribute('x2',x); x_cross.setAttribute('opacity','.7');
+      x_dot.setAttribute('cx',x); x_dot.setAttribute('cy',py(cpu_ms(st.n))); x_dot.setAttribute('opacity','1');
+      x_lab.setAttribute('x',x); x_lab.setAttribute('y',Y0+12); x_lab.setAttribute('opacity','1');
+      x_lab.textContent='bracketed n≈'+Math.round(st.n);
+    } else if(st.kind==='above_range'){
+      hint_right.classList.add('show');   // CPU still wins at largest raced n → drag right
+    } else if(st.kind==='below_range'){
+      hint_left.classList.add('show');    // GPU wins everywhere raced → drag left
+    }
+    // 'unknown' → no mark, no hint
+  }
+
+  // race the CURRENT n (commit a sample) — fired on release/change, like the
+  // debounced single-flight scheduler committing one landed value.
+  function race_current(){
+    var n=parseInt(slider.value,10);
+    by_n[n]={n:n, cpu_ms:cpu_ms(n), gpu_ms:gpu_ms(n)};
+    render_samples();
+    update_mark();
+  }
+
+  // live readout + bars while dragging (cheap, every input event)
+  function render_live(){
     var n=parseInt(slider.value,10);
     n_readout.textContent=n.toLocaleString();
     cap_hint.innerHTML = n>=N_MAX ? '<span class="cap5000">· hard cap</span>' : '';
-
     var c=cpu_ms(n), g=gpu_ms(n);
-    cpu_ms_el.textContent=c.toFixed(0);
-    gpu_ms_el.textContent=g.toFixed(0);
-
-    // bars: faster lane fills less; scale to the slower of the two
+    cpu_ms_el.textContent=c.toFixed(0); gpu_ms_el.textContent=g.toFixed(0);
     var slow=Math.max(c,g);
     cpu_fill.style.width=(c/slow*100).toFixed(1)+'%';
     gpu_fill.style.width=(g/slow*100).toFixed(1)+'%';
-
-    var cpu_wins = c < g;
+    var cpu_wins=c<g;
     lane_cpu.classList.toggle('win', cpu_wins);
     lane_gpu.classList.toggle('win', !cpu_wins);
-
-    // the flipping caption (AC#2) — plain-language, with the "why"
     if(cpu_wins){
       flipcap.className='flipcap cpu';
       flipcap.innerHTML='At small n, CPU wins.<span class="why">GPU transfer + dispatch cost more than the math at this size.</span>';
     } else {
       flipcap.className='flipcap gpu';
-      var x=(c/g).toFixed(1);
-      flipcap.innerHTML='GPU pulls ahead — '+x+'× faster.<span class="why">n²·d compute now dwarfs the GPU\'s fixed overhead.</span>';
+      flipcap.innerHTML='GPU pulls ahead — '+(c/g).toFixed(1)+'× faster.<span class="why">The O(n²·d) affinity compute now dwarfs the GPU\'s fixed overhead.</span>';
     }
-
-    // chart "now" indicators
     var nx=px(n);
     now_line.setAttribute('x1',nx); now_line.setAttribute('x2',nx);
     now_cpu.setAttribute('cx',nx); now_cpu.setAttribute('cy',py(c));
     now_gpu.setAttribute('cx',nx); now_gpu.setAttribute('cy',py(g));
   }
 
-  slider.addEventListener('input', render);
-  window.addEventListener('resize', place_track_mark);
-  place_track_mark();
-  render();
-  // re-place after layout settles (fonts/reflow)
-  setTimeout(place_track_mark, 60);
+  slider.addEventListener('input', render_live);
+  slider.addEventListener('change', race_current);   // "release" commits a raced sample
+  window.addEventListener('resize', update_mark);
+
+  // seed the default n=2000 as a first raced sample (GPU wins) → hint points left
+  render_live();
+  race_current();
+  setTimeout(update_mark, 60);
 
   // ── checklist toggle (progressive enhancement) ──
   document.querySelectorAll('.ac').forEach(function(ac){
-    ac.style.cursor='pointer';
     ac.addEventListener('click',function(){
       ac.classList.toggle('done');
-      var st=ac.querySelector('.status');
-      var done=ac.classList.contains('done');
-      st.textContent=done?'done':'to do';
-      ac.querySelector('.box').style.background=done?'var(--accent-2)':'';
-      ac.querySelector('.box').style.borderColor=done?'var(--accent-2)':'';
-      st.style.background=done?'var(--accent-2)':''; st.style.color=done?'var(--bg)':'';
+      ac.querySelector('.status').textContent=ac.classList.contains('done')?'done':'to do';
     });
   });
 
