@@ -76,11 +76,14 @@
     "serve:examples": "npx http-server examples/observable -p 8080 -o"
   },
   "peerDependencies": {
-    "@tensorflow/tfjs": "^4.20.0",
-    "@tensorflow/tfjs-backend-wasm": "^4.20.0",
-    "@tensorflow/tfjs-core": "^4.20.0",
-    "@tensorflow/tfjs-node": "^4.20.0",
-    "@tensorflow/tfjs-node-gpu": "^4.20.0"
+    "@tensorflow/tfjs": "^4.22.0",
+    "@tensorflow/tfjs-backend-cpu": "4.22.0",
+    "@tensorflow/tfjs-backend-wasm": "^4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "4.22.0",
+    "@tensorflow/tfjs-backend-webgpu": "4.22.0",
+    "@tensorflow/tfjs-core": "4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
+    "@tensorflow/tfjs-node-gpu": "^4.22.0"
   },
   "peerDependenciesMeta": {
     "@tensorflow/tfjs-core": {
@@ -89,7 +92,16 @@
     "@tensorflow/tfjs": {
       "optional": true
     },
+    "@tensorflow/tfjs-backend-cpu": {
+      "optional": true
+    },
     "@tensorflow/tfjs-backend-wasm": {
+      "optional": true
+    },
+    "@tensorflow/tfjs-backend-webgl": {
+      "optional": true
+    },
+    "@tensorflow/tfjs-backend-webgpu": {
       "optional": true
     },
     "@tensorflow/tfjs-node": {
@@ -100,8 +112,11 @@
     }
   },
   "devDependencies": {
-    "@tensorflow/tfjs-core": "^4.20.0",
-    "@tensorflow/tfjs-node": "^4.20.0",
+    "@tensorflow/tfjs-backend-cpu": "4.22.0",
+    "@tensorflow/tfjs-backend-webgl": "4.22.0",
+    "@tensorflow/tfjs-backend-webgpu": "4.22.0",
+    "@tensorflow/tfjs-core": "4.22.0",
+    "@tensorflow/tfjs-node": "^4.22.0",
     "@types/jest": "^29.5.0",
     "@types/js-yaml": "^4.0.9",
     "eslint": "^9.0.0",
