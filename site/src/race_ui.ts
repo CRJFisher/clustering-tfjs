@@ -145,7 +145,16 @@ function make_lane_view(lane: "cpu" | "gpu"): LaneView {
   };
 }
 
-export function make_race_ui(): void {
+// What main.ts drives to restore a shared n and to read the current n when the
+// visitor shares a result. The race never auto-runs on load; restore explicitly
+// calls run() after set_n.
+export interface RaceController {
+  set_n: (n: number) => void;
+  get_n: () => number;
+  run: () => void;
+}
+
+export function make_race_ui(): RaceController {
   const run_button = require_el<HTMLButtonElement>("#run-race");
   const slider = require_el<HTMLInputElement>("#n-slider");
   const slider_value = require_el<HTMLElement>("#n-value");
@@ -460,18 +469,35 @@ export function make_race_ui(): void {
     }, RACE_DEBOUNCE_MS);
   }
 
-  slider.addEventListener("input", () => {
-    const n = read_slider_n();
-    // The readout updates synchronously on every event so the number tracks the
-    // thumb instantly; the race itself is debounced behind it.
+  // Reflect n into the readout, the config panel, and the slider's accessible
+  // value — everything except actually racing. Shared by the live input handler
+  // (which then debounces a race) and set_n (which does not).
+  function apply_n(n: number): void {
     const formatted = format_count(n);
     slider_value.textContent = formatted;
     update_config_n(n);
     // Screen readers otherwise announce a bare number; name the unit so the value
     // is meaningful when dragging without sight of the readout.
     slider.setAttribute("aria-valuetext", `${formatted} samples`);
+  }
+
+  slider.addEventListener("input", () => {
+    const n = read_slider_n();
+    // The readout updates synchronously on every event so the number tracks the
+    // thumb instantly; the race itself is debounced behind it.
+    apply_n(n);
     schedule_race(n);
   });
 
   run_button.addEventListener("click", () => schedule_race(read_slider_n()));
+
+  return {
+    set_n: (n: number): void => {
+      const clamped = Math.min(N_MAX, Math.max(N_MIN, Math.round(n)));
+      slider.value = String(clamped);
+      apply_n(clamped);
+    },
+    get_n: () => read_slider_n(),
+    run: () => schedule_race(read_slider_n()),
+  };
 }

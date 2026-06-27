@@ -28,6 +28,33 @@
       </h1>
       <p class="subhook">No Python. No install.</p>
 
+      <div class="hero-cta" id="hero-cta">
+        <div class="hero-cta__install">
+          <code class="hero-cta__cmd" id="hero-install-cmd"
+            >npm install clustering-tfjs</code
+          >
+          <button
+            type="button"
+            class="hero-cta__copy"
+            id="hero-install-copy"
+            aria-label="Copy install command"
+          >
+            Copy
+          </button>
+        </div>
+        <a
+          class="hero-cta__star"
+          id="hero-star-link"
+          href="https://github.com/CRJFisher/clustering-tfjs"
+          target="_blank"
+          rel="noopener"
+        >
+          ★ Star on GitHub
+        </a>
+        <span class="sr-only" id="hero-cta-live" role="status" aria-live="polite"
+        ></span>
+      </div>
+
       <section id="race" class="race" aria-label="WebGPU vs CPU clustering race">
         <p
           class="race__banner"
@@ -303,6 +330,80 @@
         <div class="demo-grid" id="demo-grid"></div>
 
         <p class="grid-section__footnote" id="grid-footnote"></p>
+      </section>
+
+      <section
+        id="code"
+        class="code-section"
+        aria-label="Runnable code for the selected cell"
+      >
+        <h2 class="code-section__title">
+          Run this exact result in your own code
+        </h2>
+        <p class="code-section__intro">
+          Click any cell in the grid above (or focus one and use the arrow keys,
+          Enter to select) to see the real, runnable code — the same constructor
+          calls and parameters this page just ran, on the backend it's using now.
+        </p>
+
+        <div class="code-panel" id="code-panel">
+          <header class="code-panel__head">
+            <span class="code-panel__caption" id="code-panel-caption"
+              >Blobs · Spectral</span
+            >
+            <button
+              type="button"
+              class="code-panel__copy"
+              id="code-panel-copy"
+              aria-label="Copy code snippet"
+            >
+              Copy
+            </button>
+          </header>
+          <pre
+            class="code-panel__pre"
+          ><code class="code-panel__code" id="code-panel-code"></code></pre>
+          <span
+            class="sr-only"
+            id="code-panel-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+
+        <div class="code-cta" id="code-cta">
+          <div class="code-cta__install">
+            <code class="code-cta__cmd" id="code-install-cmd"
+              >npm install clustering-tfjs</code
+            >
+            <button
+              type="button"
+              class="code-cta__copy"
+              id="code-install-copy"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </div>
+          <a
+            class="code-cta__star"
+            id="code-star-link"
+            href="https://github.com/CRJFisher/clustering-tfjs"
+            target="_blank"
+            rel="noopener"
+          >
+            ★ Star on GitHub
+          </a>
+          <button type="button" class="code-cta__share" id="code-share-btn">
+            Share this result
+          </button>
+          <span
+            class="sr-only"
+            id="code-cta-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
       </section>
 
       <a class="repo-link" href="https://github.com/CRJFisher/clustering-tfjs"

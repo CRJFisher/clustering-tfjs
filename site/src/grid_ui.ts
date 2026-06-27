@@ -10,6 +10,7 @@ import {
 import type { GridCell, GridParams, ParityTier } from "./grid_config";
 import type { GridJob } from "./grid_protocol";
 import { params_equal, resolve_all } from "./grid_controls";
+import type { ControlOverrides } from "./grid_controls";
 import { make_grid_controls } from "./grid_controls_ui";
 import type { ToyDataset } from "./make_toy_datasets";
 import { render_scatter } from "./scatter_canvas";
@@ -125,12 +126,22 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
       const cell = cell_by_id.get(cell_id);
       if (!cell) throw new Error(`Missing grid cell config for ${cell_id}`);
 
+      const aria_base = `${dataset.label} clustered by ${algorithm.label}`;
+
+      // Each cell is a button: clicking or keyboard-activating it selects the cell
+      // and drives the code panel to its runnable source. aria-pressed carries the
+      // single-selection state; the figure's own label names the cell so the button
+      // announces "Two moons clustered by Spectral, not pressed".
       const figure = document.createElement("figure");
       figure.className = "demo-grid__cell";
       figure.dataset.state = "pending";
       figure.dataset.parity = cell.parity;
+      figure.dataset.cellId = cell_id;
+      figure.setAttribute("role", "button");
+      figure.tabIndex = 0;
+      figure.setAttribute("aria-pressed", "false");
+      figure.setAttribute("aria-label", aria_base);
 
-      const aria_base = `${dataset.label} clustered by ${algorithm.label}`;
       const canvas = document.createElement("canvas");
       canvas.className = "demo-grid__scatter";
       canvas.width = 150;
@@ -193,7 +204,31 @@ function backend_is_live(actual_backend: string): boolean {
   );
 }
 
-export function make_grid_ui(): void {
+// Arrow-key steps through the row-major grid: ±1 within a row, ±column-count
+// between rows. Selection follows EXPLICIT activation (Enter/Space), not focus, so
+// arrowing across cells doesn't fire a re-render per cell.
+const GRID_COLUMNS = GRID_ALGORITHMS.length;
+const ARROW_STEPS: Record<string, number> = {
+  ArrowLeft: -1,
+  ArrowRight: 1,
+  ArrowUp: -GRID_COLUMNS,
+  ArrowDown: GRID_COLUMNS,
+};
+
+// What main.ts drives to mirror the grid in the code panel and the permalink: read
+// the live overrides + selected cell, subscribe to their changes and to the live
+// backend, and restore a shared selection/overrides.
+export interface GridSection {
+  get_overrides: () => ControlOverrides;
+  get_selected_cell: () => string | null;
+  on_selection_change: (cb: (cell_id: string) => void) => void;
+  on_overrides_change: (cb: (overrides: ControlOverrides) => void) => void;
+  on_backend: (cb: (actual_backend: string, live: boolean) => void) => void;
+  select_cell: (cell_id: string) => void;
+  apply_overrides: (overrides: ControlOverrides) => void;
+}
+
+export function make_grid_ui(): GridSection {
   const container = require_el<HTMLElement>("#demo-grid");
   const status = require_el<HTMLElement>("#grid-status");
   const backend = require_el<HTMLElement>("#grid-backend");
@@ -202,6 +237,63 @@ export function make_grid_ui(): void {
 
   const views = build_grid(container);
   let datasets: GridDatasets | undefined;
+
+  // Single-callback sinks (main.ts is the only consumer); genuinely absent until
+  // registered, so null is the honest empty state.
+  let selection_listener: ((cell_id: string) => void) | null = null;
+  let overrides_listener: ((overrides: ControlOverrides) => void) | null = null;
+  let backend_listener:
+    | ((actual_backend: string, live: boolean) => void)
+    | null = null;
+  let selected_cell_id: string | null = null;
+  const ordered_cell_ids = GRID_CELLS.map((cell) => cell.cell_id);
+
+  // Move the selection to a cell, updating aria-pressed on the outgoing and
+  // incoming figures and announcing the change. Focus is left untouched — a
+  // programmatic restore must not yank focus or scroll the grid into view.
+  function set_selected(cell_id: string): void {
+    if (cell_id === selected_cell_id) return;
+    const next = views.get(cell_id);
+    if (!next) return;
+    if (selected_cell_id) {
+      views.get(selected_cell_id)?.figure.setAttribute("aria-pressed", "false");
+    }
+    next.figure.setAttribute("aria-pressed", "true");
+    selected_cell_id = cell_id;
+    selection_listener?.(cell_id);
+  }
+
+  // One delegated click handler instead of 25: resolve the activated cell from the
+  // event target's nearest figure.
+  container.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const figure = target.closest<HTMLElement>(".demo-grid__cell");
+    const cell_id = figure?.dataset.cellId;
+    if (cell_id) set_selected(cell_id);
+  });
+
+  container.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    const figure = target.closest<HTMLElement>(".demo-grid__cell");
+    const cell_id = figure?.dataset.cellId;
+    if (!cell_id) return;
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      set_selected(cell_id);
+      return;
+    }
+    const step = ARROW_STEPS[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const index = ordered_cell_ids.indexOf(cell_id);
+    const next_index = Math.min(
+      ordered_cell_ids.length - 1,
+      Math.max(0, index + step),
+    );
+    views.get(ordered_cell_ids[next_index])?.figure.focus();
+  });
 
   // The params each cell was last fit with — seeded from curated (Auto). Diffing
   // the resolved params against this is what tells us which cells a control change
@@ -241,7 +333,13 @@ export function make_grid_ui(): void {
       : PARITY_COPY[view.cell.parity].title;
   }
 
-  const panel = make_grid_controls(controls_mount, () => schedule_recluster());
+  const panel = make_grid_controls(controls_mount, () => {
+    schedule_recluster();
+    // Notify on every settled control change so the code panel re-renders the
+    // selected cell against the live params (even when the selected cell itself
+    // didn't move, its resolved params may have).
+    overrides_listener?.(panel.get_overrides());
+  });
 
   const controller = run_grid({
     on_datasets: (generated) => {
@@ -289,6 +387,10 @@ export function make_grid_ui(): void {
     },
     on_done: (actual_backend) => {
       backend.textContent = actual_backend.toUpperCase();
+      // Surface the raw backend label (and whether it's live) so the code panel can
+      // show the real init arg and main can run a deferred permalink restore once
+      // the controls are warm.
+      backend_listener?.(actual_backend, backend_is_live(actual_backend));
       // Terminal sweep. A mid-stream timeout or worker crash terminates the worker
       // with cells still unreported, so any cell left "pending" would sit dimmed
       // and "computing" forever and the status line would freeze. Mark every
@@ -381,4 +483,20 @@ export function make_grid_ui(): void {
       flush_recluster();
     }, RECLUSTER_DEBOUNCE_MS);
   }
+
+  return {
+    get_overrides: () => panel.get_overrides(),
+    get_selected_cell: () => selected_cell_id,
+    on_selection_change: (cb) => {
+      selection_listener = cb;
+    },
+    on_overrides_change: (cb) => {
+      overrides_listener = cb;
+    },
+    on_backend: (cb) => {
+      backend_listener = cb;
+    },
+    select_cell: (cell_id) => set_selected(cell_id),
+    apply_overrides: (overrides) => panel.apply_overrides(overrides),
+  };
 }

@@ -834,8 +834,210 @@ body {
   }
 }
 
+/* Visually-hidden live regions: announced by screen readers, invisible on screen.
+   The motion-independent feedback channel for the copy/share affordances. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hero conversion bar: the install one-liner and a persistent Star button, kept
+   above the fold so the path to install/star is visible without scrolling. */
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0;
+}
+
+.hero-cta__install,
+.code-cta__install {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+}
+
+.hero-cta__cmd,
+.code-cta__cmd {
+  font-size: 0.88rem;
+  color: var(--accent-2);
+}
+
+/* Subtle pill copy buttons; the "copied" tint is a color swap (no motion), paired
+   with the live-region announcement. */
+.hero-cta__copy,
+.code-cta__copy,
+.code-panel__copy {
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-cta__copy:hover,
+.code-cta__copy:hover,
+.code-panel__copy:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.hero-cta__copy[data-copied="true"],
+.code-cta__copy[data-copied="true"],
+.code-panel__copy[data-copied="true"] {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* Star links read as buttons; the share button is the filled primary call. */
+.hero-cta__star,
+.code-cta__star {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--fg);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.hero-cta__star:hover,
+.code-cta__star:hover {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.code-cta__share {
+  padding: 0.45rem 1.1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.code-cta__share:hover {
+  opacity: 0.88;
+}
+
+/* Section 3 — the runnable code mirror for the selected grid cell. */
+.code-section {
+  margin-top: 4rem;
+}
+
+.code-section__title {
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+.code-section__intro {
+  max-width: 44rem;
+  margin: 0 auto 1.5rem;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.code-panel {
+  max-width: 44rem;
+  margin: 0 auto;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.code-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.code-panel__caption {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.code-panel__pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.code-panel__code {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--accent-2);
+  white-space: pre;
+}
+
+.code-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 44rem;
+  margin: 1.25rem auto 0;
+}
+
+/* A grid cell is a selectable button: a pointer cursor, a focus ring for keyboard
+   navigation, and an accent halo on the selected cell that mirrors into the code
+   panel. The halo is a box-shadow so it never fights the parity/explore borders. */
+.demo-grid__cell {
+  cursor: pointer;
+}
+
+.demo-grid__cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.demo-grid__cell[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--accent-2);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .race-panel__bar {
+    transition: none;
+  }
+
+  .hero-cta__copy,
+  .code-cta__copy,
+  .code-panel__copy,
+  .hero-cta__star,
+  .code-cta__star,
+  .code-cta__share {
     transition: none;
   }
 }

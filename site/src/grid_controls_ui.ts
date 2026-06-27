@@ -70,14 +70,30 @@ const LINKAGE_CAPTION =
 export interface GridControlsPanel {
   get_overrides: () => ControlOverrides;
   set_enabled: (enabled: boolean) => void;
+  // Drive every control to match the given overrides (a restored permalink),
+  // re-clustering once. The programmatic inverse of the user moving the controls.
+  apply_overrides: (overrides: ControlOverrides) => void;
 }
 
-// One numeric control's interactive elements, kept so enable/disable and reset can
-// honour each slider's own Auto state without re-querying the DOM.
+// One numeric control's interactive elements plus an `apply` that sets it to a
+// target value (or back to Auto) WITHOUT firing on_change — kept so enable/disable,
+// reset, and a restored permalink can all drive it without re-querying the DOM and
+// without fighting the per-control input listeners.
 interface NumericHandle {
+  id: NumericControlId;
   auto: HTMLInputElement;
   slider: HTMLInputElement;
   value: HTMLElement;
+  apply: (next: number | undefined) => void;
+}
+
+// One select's element, its typed string→override mapper, and how to read its
+// target value out of an overrides record — so apply_overrides can set both
+// selects through the same narrowing the change listeners use.
+interface SelectHandle {
+  select: HTMLSelectElement;
+  set: (raw: string) => void;
+  read_target: (overrides: ControlOverrides) => string;
 }
 
 const ALL_OVERRIDE_KEYS: (keyof ControlOverrides)[] = [
@@ -99,7 +115,7 @@ export function make_grid_controls(
 ): GridControlsPanel {
   const overrides: ControlOverrides = {};
   const numeric_handles: NumericHandle[] = [];
-  const selects: HTMLSelectElement[] = [];
+  const select_handles: SelectHandle[] = [];
   let enabled = false;
 
   // The panel starts inert until the grid's worker backend is warm; announce that
@@ -122,7 +138,7 @@ export function make_grid_controls(
       handle.auto.disabled = !enabled;
       handle.slider.disabled = !enabled || handle.auto.checked;
     }
-    for (const select of selects) select.disabled = !enabled;
+    for (const handle of select_handles) handle.select.disabled = !enabled;
   }
 
   function changed(): void {
@@ -215,7 +231,25 @@ export function make_grid_controls(
       changed();
     });
 
-    numeric_handles.push({ auto, slider, value });
+    // Set the control to a target value (or back to Auto when undefined) writing
+    // exactly the state the listeners above write, but WITHOUT calling changed() —
+    // the batch caller fires one changed() for the whole apply.
+    function apply(next: number | undefined): void {
+      if (next === undefined) {
+        auto.checked = true;
+        overrides[spec.id] = undefined;
+        value.textContent = "Auto";
+        slider.setAttribute("aria-valuetext", "Auto (per-dataset)");
+      } else {
+        const n = clamp_numeric(spec.id, next);
+        auto.checked = false;
+        slider.value = String(n);
+        overrides[spec.id] = n;
+        show_override(n);
+      }
+    }
+
+    numeric_handles.push({ id: spec.id, auto, slider, value, apply });
     return control;
   }
 
@@ -225,6 +259,7 @@ export function make_grid_controls(
     caption_text: string,
     options: { value: string; label: string }[],
     on_select: (raw: string) => void,
+    read_target: (overrides: ControlOverrides) => string,
   ): HTMLElement {
     const select_id = `ctl-${id}`;
     const caption_id = `${select_id}-caption`;
@@ -271,7 +306,7 @@ export function make_grid_controls(
       changed();
     });
 
-    selects.push(select);
+    select_handles.push({ select, set: on_select, read_target });
     return control;
   }
 
@@ -308,6 +343,7 @@ export function make_grid_controls(
         { value: "rbf", label: "RBF kernel" },
       ],
       set_affinity,
+      (o) => o.spectral_affinity ?? "",
     ),
   );
   mount.append(build_numeric(NUMERIC_SPECS[1]));
@@ -323,6 +359,7 @@ export function make_grid_controls(
         { value: "single", label: "Single" },
       ],
       set_linkage,
+      (o) => o.agglomerative_linkage ?? "",
     ),
   );
   mount.append(build_numeric(NUMERIC_SPECS[2]));
@@ -335,7 +372,7 @@ export function make_grid_controls(
       handle.value.textContent = "Auto";
       handle.slider.setAttribute("aria-valuetext", "Auto (per-dataset)");
     }
-    for (const select of selects) select.value = "";
+    for (const handle of select_handles) handle.select.value = "";
     changed();
   });
 
@@ -347,6 +384,17 @@ export function make_grid_controls(
       enabled = next;
       mount.setAttribute("aria-busy", next ? "false" : "true");
       refresh_disabled();
+    },
+    apply_overrides: (next: ControlOverrides) => {
+      for (const handle of numeric_handles) handle.apply(next[handle.id]);
+      for (const handle of select_handles) {
+        const raw = handle.read_target(next);
+        handle.select.value = raw;
+        handle.set(raw);
+      }
+      // One changed() for the whole batch: a single refresh_disabled() + a single
+      // on_change(), so the restore re-clusters once like any settled user move.
+      changed();
     },
   };
 }
