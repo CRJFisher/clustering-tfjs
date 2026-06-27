@@ -38,7 +38,8 @@ const NUMERIC_SPECS: NumericSpec[] = [
     label: "Spectral · RBF γ",
     caption:
       "RBF kernel width: a higher γ makes similarity fall off faster, so only very " +
-      "close points group together. Only affects the RBF affinity.",
+      "close points group together. Only affects cells using the RBF affinity — " +
+      "switch the affinity control to apply it across the column.",
     decimals: 1,
   },
   {
@@ -101,10 +102,16 @@ export function make_grid_controls(
   const selects: HTMLSelectElement[] = [];
   let enabled = false;
 
+  // The panel starts inert until the grid's worker backend is warm; announce that
+  // busy state so the disabled controls aren't a silent dead zone for AT.
+  mount.setAttribute("aria-busy", "true");
+
   const reset_button = document.createElement("button");
   reset_button.type = "button";
   reset_button.className = "grid-controls__reset";
-  reset_button.textContent = "Reset to scikit-learn defaults";
+  // "Auto" is the curated per-dataset grid, NOT scikit-learn's library defaults —
+  // name what reset actually restores (the verified grid), matching the intro copy.
+  reset_button.textContent = "Reset to the verified grid";
   reset_button.disabled = true;
 
   // The reset button is live only when something is off Auto and the panel is
@@ -150,6 +157,9 @@ export function make_grid_controls(
     const auto = document.createElement("input");
     auto.type = "checkbox";
     auto.checked = true;
+    // The bare " Auto" text reads without context when tabbed to; name the
+    // parameter so a screen reader announces which control this Auto governs.
+    auto.setAttribute("aria-label", `Auto for ${spec.label}`);
     auto_label.append(auto, document.createTextNode(" Auto"));
 
     const slider = document.createElement("input");
@@ -335,6 +345,7 @@ export function make_grid_controls(
     get_overrides: () => overrides,
     set_enabled: (next: boolean) => {
       enabled = next;
+      mount.setAttribute("aria-busy", next ? "false" : "true");
       refresh_disabled();
     },
   };

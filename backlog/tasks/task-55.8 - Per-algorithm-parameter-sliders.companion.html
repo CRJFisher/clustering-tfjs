@@ -29,7 +29,7 @@
   .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
   .crossnav a{color:var(--fg);background:var(--panel)}
   .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
-  .crossnav span.cur{background:var(--accent-3);color:var(--bg);border-color:var(--accent-3);font-weight:600}
+  .crossnav span.cur{background:var(--accent-2);color:var(--bg);border-color:var(--accent-2);font-weight:600}
 
   /* ── section outline ── */
   .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
@@ -44,7 +44,7 @@
   .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
   .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
   .chip strong{color:var(--accent-2)}
-  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-3);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
   figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
   figcaption b{color:var(--fg)}
 
@@ -176,11 +176,13 @@
   /* ── checklist ── */
   .acs{display:grid;gap:.5rem;margin-top:.6rem}
   .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
-  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-3);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-2);background:var(--accent-2);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac .box.inv{background:var(--warn);border-color:var(--warn)}
   .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
   .ac .txt{font-size:.9rem;color:var(--fg)}
   .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
-  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:rgba(255,169,77,.14);color:var(--accent-3)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--accent-2);color:var(--bg)}
 
   footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
   footer b{color:var(--fg-muted)}
@@ -202,7 +204,7 @@
   <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html">55.5 · Crossover slider</a>
   <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html">55.6 · Fallback + methodology</a>
   <a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html">55.7 · scikit-learn grid</a>
-  <span class="cur" aria-current="page">55.8 · Param sliders</span>
+  <span class="cur" aria-current="page">55.8 · Param sliders ✓</span>
 </nav>
 
 <nav class="outline" aria-label="On this page">
@@ -217,15 +219,16 @@
 
 <main>
   <header>
-    <div class="eyebrow">Task 55.8 · Milestone M4 · the explainer fold on the parity grid · <span class="todopill">To do</span></div>
+    <div class="eyebrow">Task 55.8 · Milestone M4 · the explainer fold on the parity grid · <span class="todopill">Done</span></div>
     <h1 class="prose">Live per-algorithm parameter controls that drive the 5×5 grid — without ever faking a scikit-learn match the demo did not verify</h1>
-    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Every control starts in <b style="color:var(--accent-2)">Auto</b> — the exact curated 55.7 value, where each cell keeps its honest parity badge. Set an explicit value and the affected column re-clusters live and switches to a neutral <code style="font-family:var(--mono);color:var(--warn)">exploratory · your params</code> annotation.</p>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Every control starts in <b style="color:var(--accent-2)">Auto</b> — the exact curated 55.7 value, where each cell keeps its honest parity badge. Set an explicit value and the affected column re-clusters live and switches to your params: those cells stop claiming scikit-learn parity, because that exact combination was never checked against it.</p>
     <div class="meta">
       <span class="chip">controls <strong>n_clusters · affinity+gamma · min_cluster_size · linkage · SOM grid</strong></span>
       <span class="chip">default <strong>Auto = curated per-dataset</strong></span>
       <span class="chip">override <strong>global · parity-drop</strong></span>
       <span class="chip">re-cluster <strong>debounced · single-flight</strong></span>
       <span class="chip">builds on <strong>55.7 grid · grid_config.ts</strong></span>
+      <span class="chip">verified <strong>59 tests green · typecheck · lint · build</strong></span>
     </div>
   </header>
 
@@ -237,7 +240,7 @@
       <div class="mock">
         <div class="mock-eyebrow">clustering-tfjs · per-algorithm parameter explainer · live</div>
         <div class="mock-title">Tune the real library parameters — <span class="grad">the grid never claims a parity it didn't measure.</span></div>
-        <div class="mock-sub">controls start in <b>Auto</b> (the curated 55.7 values) · the moment you override one, its column drops the ✓/≈/◇/∅ badge for <span style="color:var(--warn)">exploratory</span></div>
+        <div class="mock-sub">controls start in <b>Auto</b> (the curated 55.7 values) · the moment you override one, its column drops the ✓/≈/◇/∅ badge for <span style="color:var(--warn)">your params</span></div>
 
         <div class="demo-grid">
           <!-- control strip -->
@@ -245,12 +248,12 @@
 
           <!-- mini grid -->
           <div class="gwrap">
-            <div class="gridmock" id="gridmock" role="img" aria-label="A 5 by 5 grid: rows are the datasets moons, circles, blobs, anisotropic and no-structure; columns are K-Means, Spectral, Agglomerative, HDBSCAN and SOM. In Auto, each cell shows its parity badge — a green check for matches, an orange approximately-equals for float32 drift, a blue diamond for SOM with no reference, a gray empty set for no-truth uniform data. When you override a control, every cell in the affected columns re-colors with the new clustering and replaces its badge with a red exploratory marker."></div>
+            <div class="gridmock" id="gridmock" role="img" aria-label="A 5 by 5 grid: rows are the datasets moons, circles, blobs, anisotropic and no-structure; columns are K-Means, Spectral, Agglomerative, HDBSCAN and SOM. In Auto, each cell shows its parity badge — a green check for matches, an orange approximately-equals for float32 drift, a blue diamond for SOM with no reference, a gray empty set for no-truth uniform data. When you override a control, every cell in the affected columns re-colors with the new clustering and replaces its badge with a red pencil 'not checked vs sklearn' marker."></div>
             <div class="badge-now" id="badge-now"></div>
           </div>
         </div>
       </div>
-      <figcaption class="prose"><b>This is the shipped interaction.</b> In <span style="color:var(--accent-2)">Auto</span> the grid is bit-for-bit the 55.7 parity grid. Set <code>n_clusters</code> to 4, or flip Spectral to <code>rbf</code>, and only the affected columns re-cluster — and only those cells drop their badge. <b>Reset to scikit-learn defaults</b> returns every control to Auto and restores the badges.</figcaption>
+      <figcaption class="prose"><b>This is the shipped interaction.</b> In <span style="color:var(--accent-2)">Auto</span> the grid is bit-for-bit the 55.7 parity grid. Set <code>n_clusters</code> to 4, or flip Spectral to <code>rbf</code>, and only the affected columns re-cluster — and only those cells drop their badge. <b>Reset to the verified grid</b> returns every control to Auto and restores the badges.</figcaption>
     </figure>
     <aside class="callout warn">
       <div class="k">Why a single global slider would have been a lie</div>
@@ -292,39 +295,40 @@
         <div class="arrow">→<small>set affinity = rbf globally</small></div>
         <div class="pane after">
           <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block"></span>Overridden — one explicit value applied to the whole column</div>
-          <svg viewBox="0 0 320 188" role="img" aria-label="Overridden state: the same Spectral column, but affinity is now forced to rbf on every row. The three curved-row cells that previously used nearest_neighbors are now a different, untested combination, so all four cells show a red exploratory marker and the footnote changes to 'not verified vs scikit-learn · your params'.">
+          <svg viewBox="0 0 320 188" role="img" aria-label="Overridden state: the same Spectral column, but affinity is now forced to rbf on every row. The three curved-row cells that previously used nearest_neighbors are now a different, untested combination, so all four cells show a red pencil 'your params' marker and the footnote changes to 'not checked vs sklearn · your params'.">
             <text x="160" y="18" text-anchor="middle" fill="#ff8585" font-size="10" font-weight="bold">Spectral column · affinity = rbf (forced)</text>
             <g font-family="ui-monospace,monospace">
               <rect x="22" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
-              <text x="54" y="49" text-anchor="middle" fill="#ff8585" font-size="11" font-weight="bold">exp</text>
+              <text x="54" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
               <text x="54" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">moons · rbf</text>
               <rect x="92" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
-              <text x="124" y="49" text-anchor="middle" fill="#ff8585" font-size="11" font-weight="bold">exp</text>
+              <text x="124" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
               <text x="124" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">circles · rbf</text>
               <rect x="162" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
-              <text x="194" y="49" text-anchor="middle" fill="#ff8585" font-size="11" font-weight="bold">exp</text>
+              <text x="194" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
               <text x="194" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">blobs · rbf</text>
               <rect x="232" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
-              <text x="264" y="49" text-anchor="middle" fill="#ff8585" font-size="11" font-weight="bold">exp</text>
+              <text x="264" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
               <text x="264" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">aniso · rbf</text>
             </g>
             <text x="160" y="100" text-anchor="middle" fill="#e6edf3" font-size="9">all four re-cluster live with the forced affinity</text>
             <rect x="40" y="120" width="240" height="44" rx="8" fill="#1d1216" stroke="#ff8585" stroke-width="1.3"/>
             <text x="160" y="140" text-anchor="middle" fill="#ff8585" font-size="9" font-weight="bold">parity claim dropped</text>
-            <text x="160" y="155" text-anchor="middle" fill="#8b949e" font-size="8">not verified vs scikit-learn · your params</text>
+            <text x="160" y="155" text-anchor="middle" fill="#8b949e" font-size="8">not checked vs sklearn · your params</text>
           </svg>
         </div>
       </div>
       <div class="legend">
         <span><i style="background:var(--accent-2)"></i> Auto: curated per-dataset value · keeps ✓ ≈ ◇ ∅ badge</span>
-        <span><i style="background:var(--warn)"></i> overridden: explicit value forced on the column · neutral exploratory marker</span>
+        <span><i style="background:var(--warn)"></i> overridden: explicit value forced on the column · neutral ✎ your-params marker</span>
         <span><i style="background:var(--accent-3)"></i> Reset restores Auto + the badges</span>
       </div>
-      <figcaption class="prose"><b>The parity badge is a claim, so it shows only where it was earned.</b> Auto replays the curated <code>grid_config.ts</code> value and keeps each cell's verified tier; an explicit value is forced on the whole column — a combination nobody ran against scikit-learn — so those cells switch to the neutral <code>exploratory · your params</code> marker.</figcaption>
+      <figcaption class="prose"><b>The parity badge is a claim, so it shows only where it was earned.</b> Auto replays the curated <code>grid_config.ts</code> value and keeps each cell's verified tier; an explicit value is forced on the whole column — a combination nobody ran against scikit-learn — so those cells switch to the neutral <code>✎ k=N · not checked vs sklearn</code> marker.</figcaption>
     </figure>
     <aside class="callout go">
       <div class="k">Why this model and not the rejected alternative</div>
       <p>Never advertising a parity you didn't verify is the grid's load-bearing AC. Auto preserves that contract <b>and</b> adds exploration; one flat global default would force a wrong param onto the curated rows and wear a badge it no longer deserves. Simpler, yes — but it would lie.</p>
+      <p style="margin-top:.55rem"><b>The badge is snapshotted per dispatched re-cluster job</b>, not recomputed against the live controls at render time — so a control moving while a fit is in flight can never paint a verified ✓ over labels computed with different params; the badge always matches the labels actually rendered.</p>
     </aside>
   </section>
 
@@ -386,7 +390,7 @@
     <h2>One unit-tested module turns a control into a per-cell effective-params set and the list of cells it touches</h2>
     <figure>
       <div class="code">
-        <div class="fl">site/src/grid_controls.ts — pure resolver, no DOM, no tfjs, snake_case (unit-tested in grid_controls.test.ts)</div>
+        <div class="fl">site/src/grid_controls.ts — pure resolver (resolve_params · is_overridden · params_equal), no DOM, no tfjs, snake_case</div>
 <pre><span class="cm">// The active overrides: only params the user has explicitly set. An absent key</span>
 <span class="cm">// means "Auto" — fall through to the curated grid_config.ts value for that cell.</span>
 <span class="kw">interface</span> <span class="var">ControlOverrides</span> {
@@ -400,7 +404,7 @@
 
 <span class="cm">// For one cell: start from its curated params, then layer on any override that</span>
 <span class="cm">// applies to that algorithm. n_clusters is skipped for HDBSCAN (density-driven).</span>
-<span class="kw">function</span> <span class="fn">effective_params</span>(cell: <span class="var">GridCell</span>, ov: <span class="var">ControlOverrides</span>): <span class="var">GridParams</span> {
+<span class="kw">function</span> <span class="fn">resolve_params</span>(cell: <span class="var">GridCell</span>, ov: <span class="var">ControlOverrides</span>): <span class="var">GridParams</span> {
   <span class="kw">const</span> p = cell.params;
   <span class="kw">switch</span> (p.algorithm_id) {
     <span class="kw">case</span> <span class="str">"kmeans"</span>:
@@ -422,7 +426,7 @@
 }
 
 <span class="cm">// A cell shows its verified parity badge ONLY while every param it consumes is</span>
-<span class="cm">// still Auto. Any applicable override drops the claim to "exploratory".</span>
+<span class="cm">// still Auto. Any applicable override drops the claim to "not checked".</span>
 <span class="kw">function</span> <span class="fn">is_overridden</span>(cell: <span class="var">GridCell</span>, ov: <span class="var">ControlOverrides</span>): boolean {
   <span class="kw">const</span> a = cell.algorithm_id;
   <span class="kw">if</span> (a !== <span class="str">"hdbscan"</span> &amp;&amp; ov.n_clusters !== undefined) <span class="kw">return</span> <span class="kw">true</span>;
@@ -433,13 +437,14 @@
   <span class="kw">return</span> <span class="kw">false</span>;
 }
 
-<span class="cm">// Which cells a control change re-clusters — the worker only re-fits these.</span>
-<span class="kw">function</span> <span class="fn">cells_to_recluster</span>(prev: <span class="var">ControlOverrides</span>, next: <span class="var">ControlOverrides</span>): <span class="var">GridCell</span>[] {
-  <span class="kw">return</span> GRID_CELLS.<span class="fn">filter</span>((c) =&gt;
-    !params_equal(<span class="fn">effective_params</span>(c, prev), <span class="fn">effective_params</span>(c, next)));
-}</pre>
+<span class="cm">// params_equal lets grid_ui find exactly which cells a control change re-clusters,</span>
+<span class="cm">// so its single-flight scheduler dispatches a recluster(jobs) for only those cells.</span>
+<span class="kw">function</span> <span class="fn">params_equal</span>(a: <span class="var">GridParams</span>, b: <span class="var">GridParams</span>): boolean { <span class="cm">/* deep field compare */</span> }
+<span class="kw">const</span> changed = GRID_CELLS.<span class="fn">filter</span>(
+  (c) =&gt; !<span class="fn">params_equal</span>(<span class="fn">resolve_params</span>(c, prev), <span class="fn">resolve_params</span>(c, next)),
+);</pre>
       </div>
-      <figcaption class="prose"><b><code>grid_controls.ts</code> is pure and unit-tested</b> — no DOM, no worker, no tfjs. It answers three things: what each cell runs (<code>effective_params</code>), whether a cell keeps its badge (<code>is_overridden</code>), and which cells a change re-clusters (<code>cells_to_recluster</code>) — the last drives the worker, never re-fitting the whole grid.</figcaption>
+      <figcaption class="prose"><b><code>grid_controls.ts</code> is pure and unit-tested</b> — no DOM, no worker, no tfjs. It answers two things: what each cell runs (<code>resolve_params</code>) and whether a cell keeps its badge (<code>is_overridden</code>); <code>params_equal</code> lets <code>grid_ui.ts</code> dispatch a <code>recluster</code> for only the changed cells, never re-fitting the whole grid.</figcaption>
     </figure>
   </section>
 
@@ -508,8 +513,8 @@
       <figcaption class="prose"><b>Backend init and dataset generation happen once.</b> The worker no longer terminates after the sweep; it caches the five datasets and accepts a <code>recluster</code> message holding just the affected <code>cell_id</code>s and their effective params. At 300 points per dataset a column re-fits in milliseconds; debounced single-flight input (the 55.5 pattern) never overlaps fits.</figcaption>
     </figure>
     <aside class="callout">
-      <div class="k">The protocol gains a recluster verb — the rest is unchanged</div>
-      <p><code>grid_protocol.ts</code> adds a <code>recluster</code> request (cell ids + effective params, no payloads) alongside the existing <code>run</code>; the worker keeps its <code>cell_result</code> / <code>cell_error</code> / <code>progress</code> outbound union exactly as 55.7 left it. The datasets are sent once with the first <code>run</code> and cached worker-side, so a re-cluster never re-ships the points.</p>
+      <div class="k">The protocol gains a recluster request — the rest is unchanged</div>
+      <p><code>grid_protocol.ts</code> adds a <code>recluster</code> request — the jobs <code>GridController.recluster(jobs)</code> dispatches (cell ids + resolved params, no payloads) — alongside the existing <code>run</code>; the worker keeps its <code>cell_result</code> / <code>cell_error</code> / <code>progress</code> outbound union exactly as 55.7 left it. The datasets are sent once with the first <code>run</code> and cached worker-side, so a re-cluster never re-ships the points.</p>
     </aside>
   </section>
 
@@ -519,15 +524,15 @@
     <h2>One pure resolver, a kept-alive worker, a control strip — the curated config untouched</h2>
     <figure>
       <div class="files">
-        <div class="fcard"><span class="fp new">site/src/grid_controls.ts</span><div class="role"><b>New · the pure core.</b> <code>effective_params</code> (curated ⊕ override per cell), <code>is_overridden</code> (does a cell keep its badge), and <code>cells_to_recluster</code>. No DOM, no tfjs — fully unit-tested.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_controls.ts</span><div class="role"><b>New · the pure resolver.</b> <code>resolve_params</code> (curated ⊕ override per cell), <code>is_overridden</code> (does a cell keep its badge), and <code>params_equal</code>. No DOM, no tfjs — fully unit-tested.</div></div>
         <div class="fcard"><span class="fp new">site/src/grid_controls.test.ts</span><div class="role"><b>New.</b> Colocated tests: Auto resolves to the exact <code>grid_config.ts</code> value, <code>n_clusters</code> skips HDBSCAN, <code>gamma</code> only under <code>rbf</code>, overridden cells drop parity, and the affected-cell set per control.</div></div>
-        <div class="fcard"><span class="fp new">site/src/grid_controls_ui.ts</span><div class="role"><b>New.</b> Builds the control strip from a declarative control list, shows each plain-English caption, debounces + single-flights input, posts <code>recluster</code>, and swaps the per-cell badge for the neutral exploratory annotation.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_controls_ui.ts</span><div class="role"><b>New · the widgets.</b> Builds the control strip from a declarative control list, owns the live <code>ControlOverrides</code>, shows each plain-English caption, and reports the new overrides on every change.</div></div>
         <div class="fcard"><span class="fp">site/src/grid_worker.ts</span><div class="role"><b>Extended.</b> Stays alive after the sweep, caches the five datasets, and handles the new <code>recluster</code> message — re-fitting only the requested cells over the warm engine.</div></div>
         <div class="fcard"><span class="fp">site/src/grid_protocol.ts</span><div class="role"><b>Extended.</b> Adds the <code>recluster</code> request (cell ids + effective params, no payloads) beside <code>run</code>; the <code>cell_result</code> / <code>cell_error</code> / <code>progress</code> outbound union is unchanged.</div></div>
-        <div class="fcard"><span class="fp">site/src/grid.ts</span><div class="role"><b>Extended.</b> Keeps the worker handle for the page's life, mounts the control strip, and on each control change runs the resolver and posts the recluster instead of re-running the whole grid.</div></div>
-        <div class="fcard"><span class="fp">site/src/grid_ui.ts</span><div class="role"><b>Extended.</b> Re-renders only the cells named in a <code>cell_result</code> and toggles each cell's annotation between the verified parity badge and the neutral <code>exploratory · your params</code> marker.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid.ts</span><div class="role"><b>Extended · the controller.</b> A <code>GridController</code> that keeps the worker alive for the page's life and exposes <code>recluster(jobs)</code> — no <code>dispose</code> (the worker simply outlives the page).</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_ui.ts</span><div class="role"><b>Extended · orchestration.</b> The single-flight scheduler that turns an override into a <code>recluster(jobs)</code>, the per-cell re-render, and the parity-drop visuals — toggling each cell between its verified badge and the neutral <code>✎ k=N · not checked vs sklearn</code> marker. The parity decision is snapshotted per dispatched job.</div></div>
         <div class="fcard"><span class="fp">site/src/grid_config.ts</span><div class="role"><b>Untouched.</b> Still the single source of truth for the curated 25-cell param table and parity tiers — Auto reads exactly these values, so the verified grid is reproduced precisely.</div></div>
-        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> The control strip, segmented affinity/linkage toggles, the overridden-cell ring, and the neutral exploratory marker — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> / <code>--warn</code> tokens.</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> The control strip, segmented affinity/linkage toggles, the overridden-cell ring, and the neutral <code>✎</code> your-params marker — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> / <code>--warn</code> tokens.</div></div>
       </div>
       <figcaption class="prose"><b>The fold is a pure module plus controller wiring — the curated config never changes.</b> <code>grid_controls.ts</code> resolves params and answers what re-clusters; the worker and protocol gain a <code>recluster</code> verb and a dataset cache; the control strip adds the live UI. <code>grid_config.ts</code> stays the verified source of truth, so Auto is bit-for-bit the 55.7 grid.</figcaption>
     </figure>
@@ -535,23 +540,23 @@
 
   <!-- ════ 7. ACCEPTANCE CRITERIA ════ -->
   <section id="done">
-    <div class="eyebrow">What "done" will mean · status: to do</div>
-    <h2>Acceptance criteria — four, plus the honesty invariant that ties them together</h2>
+    <div class="eyebrow">What "done" means · status: done &amp; reviewed</div>
+    <h2>Acceptance criteria — four, all met, plus the honesty invariant that ties them together</h2>
     <div class="acs">
-      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">Each listed algorithm exposes its <b>key parameter(s)</b> as a live control with a <b>one-line plain-English caption</b> — <code>n_clusters</code>, Spectral <code>affinity</code>/<code>gamma</code>, HDBSCAN <code>min_cluster_size</code>, Agglomerative <code>linkage</code>, SOM grid size.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Adjusting a control <b>re-clusters and re-renders the relevant grid cells in real time</b> — debounced, single-flight, over a kept-alive worker with cached datasets.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Controls <b>map to the real library parameter names</b> (the <code>GridParams</code> fields) and produce <b>correct clusterings</b>, so the 55.9 copy-paste code panel stays truthful.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit — Python-style <code>snake_case</code>, the typed <code>GridParams</code> union with no casts.</span><span class="status">to do</span></div>
-      <div class="ac"><span class="num">★</span><span class="box" style="border-color:var(--warn)"></span><span class="txt"><b>Honesty invariant</b> (the model's reason to exist): a cell shows its scikit-learn parity badge <b>only</b> while every param it consumes is Auto; any override drops the claim to the neutral <code>exploratory · your params</code> marker, and Reset restores it.</span><span class="status" style="background:rgba(255,133,133,.16);color:var(--warn)">invariant</span></div>
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">Each listed algorithm exposes its <b>key parameter(s)</b> as a live control with a <b>one-line plain-English caption</b> — <code>n_clusters</code>, Spectral <code>affinity</code>/<code>gamma</code>, HDBSCAN <code>min_cluster_size</code>, Agglomerative <code>linkage</code>, SOM grid size.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Adjusting a control <b>re-clusters and re-renders the relevant grid cells in real time</b> — debounced, single-flight, over a kept-alive worker with cached datasets.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Controls <b>map to the real library parameter names</b> (the <code>GridParams</code> fields) and produce <b>correct clusterings</b>, so the 55.9 copy-paste code panel stays truthful.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit — Python-style <code>snake_case</code>, the typed <code>GridParams</code> union with no casts.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">★</span><span class="box inv"></span><span class="txt"><b>Honesty invariant</b> (the model's reason to exist): a cell shows its scikit-learn parity badge <b>only</b> while every param it consumes is Auto; any override drops the claim to the neutral <code>✎ k=N · not checked vs sklearn</code> marker, and the snapshot per re-cluster job keeps the badge matched to the rendered labels.</span><span class="status" style="background:rgba(255,133,133,.16);color:var(--warn)">invariant</span></div>
     </div>
     <figcaption class="prose"><b>AC #2 carries the kept-alive-worker architecture and AC #3 keeps the parameter names real.</b> The starred invariant is the spine of the whole task: it is what lets the page add free exploration on top of the verified 55.7 grid without ever publishing a parity it did not measure.</figcaption>
   </section>
 </main>
 
 <footer>
-  Companion for <b>task-55.8 — Per-algorithm parameter sliders with plain-English captions (Milestone M4, to do)</b> ·
-  grounded in the as-built 55.7 sources under site/src: grid_config.ts (the curated 25-cell param table read verbatim by Auto), grid_protocol.ts (the worker contract gaining a recluster verb), grid_worker.ts / grid.ts / grid_ui.ts (the kept-alive worker + per-cell re-render) ·
-  the Auto / override / parity-drop model, the control set, and the effective-params resolver describe the planned 55.8 fold ·
+  Companion for <b>task-55.8 — Per-algorithm parameter sliders with plain-English captions (Milestone M4, done &amp; reviewed)</b> ·
+  grounded in the as-built 55.7 sources under site/src: grid_config.ts (the curated 25-cell param table read verbatim by Auto), grid_protocol.ts (the worker contract gaining a recluster request), grid_worker.ts / grid.ts / grid_ui.ts (the kept-alive worker + per-cell re-render) ·
+  reconciled to the shipped sources: grid_controls.ts (resolve_params · is_overridden · params_equal), grid_controls_ui.ts (the widgets + ControlOverrides), grid_ui.ts (single-flight scheduler + parity-drop visuals), and the kept-alive GridController.recluster(jobs) in grid.ts / grid_worker.ts / grid_protocol.ts · 59 colocated tests green, typecheck / lint / build pass ·
   dark theme matches site/src/style.css · self-contained, no external assets.
 </footer>
 
@@ -590,7 +595,7 @@
             drift:{g:'≈',t:'cores match · boundary points drift under float32'},
             ref:{g:'◇',t:'SOM — no scikit-learn reference'},
             truth:{g:'∅',t:'uniform data — no true clusters'},
-            exp:{g:'exp',t:'exploratory · your params · not verified vs scikit-learn'}};
+            exp:{g:'\u270e',t:'not checked vs sklearn · your params'}};
 
   // ── overrides (the live state) — undefined key = Auto ──
   var ov={n_clusters:undefined,spectral_affinity:undefined,spectral_gamma:undefined,
@@ -700,11 +705,13 @@
         }
         svg+='</svg>';
         var over=overridden(d,a);
+        var e_cell=eff(d,a);
+        var e_k=(a==='hdbscan')?undefined:e_cell.n_clusters;
         var tr=over?'exp':tier_auto(d,a);
         var f=FLAG[tr];
         var cls='cell'+(over?' overridden':'');
         var reclu=(reclustered&&reclustered.indexOf(key)>=0)?'<div class="reclust on"><span>re-fit</span></div>':'<div class="reclust"></div>';
-        html+='<div class="'+cls+'" title="'+(over?'exploratory · your params':FLAG[tier_auto(d,a)].t)+'">'+svg+'<span class="flag '+tr+'">'+f.g+'</span>'+reclu+'</div>';
+        var ktxt=(typeof e_k==='number'?(' k='+e_k):'');html+='<div class="'+cls+'" title="'+(over?('\u270e'+ktxt+' \u00b7 not checked vs sklearn'):FLAG[tier_auto(d,a)].t)+'">'+svg+'<span class="flag '+tr+'">'+f.g+'</span>'+reclu+'</div>';
       }
     }
     gridmock.innerHTML=html;
@@ -730,7 +737,7 @@
     if(n===0){
       badge.innerHTML='<b>All Auto.</b> Every cell shows its <span class="auto-pill">verified scikit-learn parity badge</span> — this is the exact 55.7 grid.';
     } else {
-      badge.innerHTML='<b>'+n+' cell'+(n===1?'':'s')+' overridden.</b> The affected columns re-clustered with your params and now show the neutral <span class="exp-pill">exploratory · your params</span> marker — no parity is claimed for what was not verified.';
+      badge.innerHTML='<b>'+n+' cell'+(n===1?'':'s')+' overridden.</b> The affected columns re-clustered with your params and now read <span class="exp-pill">\u270e k=N \u00b7 not checked vs sklearn</span> — no parity is claimed for what was not verified.';
     }
   }
 
@@ -785,8 +792,8 @@
       +'<div class="seg"><button data-c="som_grid" data-v="__auto" class="autoval'+(ov.som_grid===undefined?' on':'')+'">reset to Auto</button></div></div>';
     // reset bar
     var on=any_override();
-    h+='<div class="resetbar"><span class="ovcount">'+(on?'<b>'+affected_cells().length+'</b> cells exploratory':'all Auto · verified')+'</span>'
-      +'<button class="resetbtn" id="reset"'+(on?'':' disabled')+'>Reset to scikit-learn defaults</button></div>';
+    h+='<div class="resetbar"><span class="ovcount">'+(on?'<b>'+affected_cells().length+'</b> cells not checked':'all Auto · verified')+'</span>'
+      +'<button class="resetbtn" id="reset"'+(on?'':' disabled')+'>Reset to the verified grid</button></div>';
     ctrls.innerHTML=h;
     bind_controls();
   }

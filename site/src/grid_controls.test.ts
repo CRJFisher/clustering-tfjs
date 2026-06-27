@@ -4,6 +4,7 @@ import {
   any_override_active,
   clamp_numeric,
   is_overridden,
+  params_equal,
   resolve_params,
 } from "./grid_controls";
 
@@ -128,6 +129,71 @@ describe("SOM grid size override", () => {
     const params = resolve_params(grid_cell, { som_grid_size: 10 });
     expect(params).toMatchObject({ grid_width: 10, grid_height: 10 });
     expect(is_overridden(grid_cell, { som_grid_size: 10 })).toBe(true);
+  });
+});
+
+describe("Spectral affinity + gamma together", () => {
+  test("an explicit gamma wins over the default when switching to rbf", () => {
+    const grid_cell = cell("moons:spectral");
+    const params = resolve_params(grid_cell, {
+      spectral_affinity: "rbf",
+      spectral_gamma: 3,
+    });
+    expect(params).toMatchObject({ affinity: "rbf", gamma: 3 });
+  });
+
+  test("switching a curated rbf cell to rbf is a no-op — keeps its badge", () => {
+    // blobs Spectral is curated rbf; redundantly selecting rbf must resolve to the
+    // curated params (curated gamma preserved) and stay non-overridden.
+    const grid_cell = cell("blobs:spectral");
+    expect(resolve_params(grid_cell, { spectral_affinity: "rbf" })).toEqual(
+      grid_cell.params,
+    );
+    expect(is_overridden(grid_cell, { spectral_affinity: "rbf" })).toBe(false);
+  });
+});
+
+describe("setting a control back to its curated value is not an override", () => {
+  test("HDBSCAN min_cluster_size at the curated floor", () => {
+    // moons HDBSCAN curates min_cluster_size=10.
+    const grid_cell = cell("moons:hdbscan");
+    expect(is_overridden(grid_cell, { hdbscan_min_cluster_size: 10 })).toBe(
+      false,
+    );
+  });
+
+  test("SOM grid size at the curated lattice", () => {
+    // blobs SOM curates a 6×6 lattice.
+    const grid_cell = cell("blobs:som");
+    expect(is_overridden(grid_cell, { som_grid_size: 6 })).toBe(false);
+  });
+});
+
+describe("params_equal", () => {
+  test("every cell's params equal themselves", () => {
+    for (const grid_cell of GRID_CELLS) {
+      expect(params_equal(grid_cell.params, grid_cell.params)).toBe(true);
+    }
+  });
+
+  test("detects a single changed field", () => {
+    const grid_cell = cell("blobs:som");
+    const bigger = resolve_params(grid_cell, { som_grid_size: 10 });
+    expect(params_equal(grid_cell.params, bigger)).toBe(false);
+  });
+
+  test("a switched Spectral affinity is unequal even at the same k", () => {
+    const grid_cell = cell("moons:spectral");
+    const as_rbf = resolve_params(grid_cell, { spectral_affinity: "rbf" });
+    expect(params_equal(grid_cell.params, as_rbf)).toBe(false);
+  });
+});
+
+describe("any_override_active", () => {
+  test("is true once any field is set, ignoring undefined fields", () => {
+    expect(any_override_active({ n_clusters: 4, spectral_gamma: undefined })).toBe(
+      true,
+    );
   });
 });
 

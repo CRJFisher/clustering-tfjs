@@ -9,11 +9,7 @@ import {
 } from "./grid_config";
 import type { GridCell, GridParams, ParityTier } from "./grid_config";
 import type { GridJob } from "./grid_protocol";
-import {
-  is_overridden,
-  params_equal,
-  resolve_all,
-} from "./grid_controls";
+import { params_equal, resolve_all } from "./grid_controls";
 import { make_grid_controls } from "./grid_controls_ui";
 import type { ToyDataset } from "./make_toy_datasets";
 import { render_scatter } from "./scatter_canvas";
@@ -63,6 +59,13 @@ const PARITY_COPY: Record<
   },
 };
 
+// The hover explanation for an exploratory (off-Auto) cell, which replaces the
+// parity tier's title so the tooltip can never assert a scikit-learn parity the
+// overridden params were never checked for.
+const OVERRIDDEN_TITLE =
+  "Your parameters — this exact combination was never checked against " +
+  "scikit-learn, so no parity is claimed.";
+
 function require_el<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
   if (!element) throw new Error(`Missing required element ${selector}`);
@@ -86,6 +89,10 @@ interface CellView {
   canvas: HTMLCanvasElement;
   annotation: HTMLElement;
   cell: GridCell;
+  // "Two moons clustered by Spectral" — the canvas aria-label's stable prefix,
+  // extended on each result with the live state so screen readers hear the
+  // parity/override outcome, not a label frozen at build time.
+  aria_base: string;
 }
 
 // Build the grid DOM from config: a corner, five algorithm column headers, then
@@ -123,15 +130,13 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
       figure.dataset.state = "pending";
       figure.dataset.parity = cell.parity;
 
+      const aria_base = `${dataset.label} clustered by ${algorithm.label}`;
       const canvas = document.createElement("canvas");
       canvas.className = "demo-grid__scatter";
       canvas.width = 150;
       canvas.height = 150;
       canvas.setAttribute("role", "img");
-      canvas.setAttribute(
-        "aria-label",
-        `${dataset.label} clustered by ${algorithm.label}`,
-      );
+      canvas.setAttribute("aria-label", aria_base);
 
       const annotation = document.createElement("figcaption");
       annotation.className = "demo-grid__annotation";
@@ -140,7 +145,7 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
 
       figure.append(canvas, annotation);
       container.append(figure);
-      views.set(cell_id, { figure, canvas, annotation, cell });
+      views.set(cell_id, { figure, canvas, annotation, cell, aria_base });
     }
   }
 
@@ -168,7 +173,7 @@ function annotation_text(
   overridden: boolean,
 ): string {
   const found = found_text(cell, n_clusters_found, noise_count);
-  if (overridden) return `✎ ${found} · your params`;
+  if (overridden) return `✎ ${found} · not checked vs sklearn`;
   return `${PARITY_COPY[cell.parity].glyph} ${found} · ${PARITY_COPY[cell.parity].short}`;
 }
 
@@ -218,8 +223,22 @@ export function make_grid_ui(): void {
     `points under float32, annotated rather than tuned away. SOM has no scikit-learn ` +
     `counterpart. Fixed seeds make every visitor's grid identical.`;
 
+  // The parity decision each cell's IN-FLIGHT result was dispatched under. The
+  // rendered labels come from the job's params (snapshotted at dispatch), so the
+  // badge must too — recomputing it against live overrides could paint a ✓ over
+  // labels fit with different params if a control moved between request and result.
+  const dispatched_overridden = new Map<string, boolean>(
+    GRID_CELLS.map((cell) => [cell.cell_id, false]),
+  );
+
+  // The CSS state AND the hover tooltip both follow the override flag, so an
+  // exploratory cell can never keep a parity tooltip that asserts a scikit-learn
+  // match its params were never checked for.
   function set_cell_explore(view: CellView, overridden: boolean): void {
     view.figure.dataset.explore = overridden ? "true" : "false";
+    view.annotation.title = overridden
+      ? OVERRIDDEN_TITLE
+      : PARITY_COPY[view.cell.parity].title;
   }
 
   const panel = make_grid_controls(controls_mount, () => schedule_recluster());
@@ -239,7 +258,9 @@ export function make_grid_ui(): void {
       if (!view || !datasets) return;
       const dataset = datasets.by_id.get(view.cell.dataset_id);
       if (!dataset) return;
-      const overridden = is_overridden(view.cell, panel.get_overrides());
+      // The state these labels were computed under, not whatever the controls read
+      // right now (which may have moved on while the fit was in flight).
+      const overridden = dispatched_overridden.get(cell_id) ?? false;
       render_scatter(view.canvas, projection_of(dataset), labels, {
         point_radius: GRID_CELL_RADIUS,
       });
@@ -249,6 +270,14 @@ export function make_grid_ui(): void {
         n_clusters_found,
         noise_count,
         overridden,
+      );
+      // Re-state the live outcome on the canvas itself so a screen reader hears the
+      // parity/override result, not the label frozen at build time.
+      view.canvas.setAttribute(
+        "aria-label",
+        overridden
+          ? `${view.aria_base} — your params, k=${n_clusters_found}`
+          : `${view.aria_base} — ${PARITY_COPY[view.cell.parity].short}, k=${n_clusters_found}`,
       );
       view.figure.dataset.state = "done";
     },
@@ -282,9 +311,17 @@ export function make_grid_ui(): void {
         failed === 0
           ? `${done} / ${GRID_CELLS.length} cells computed`
           : `${done} / ${GRID_CELLS.length} cells computed · ${failed} failed`;
-      // The live controls only make sense once a backend is warm and holding the
-      // datasets; a failed init leaves them disabled so no re-cluster is attempted.
-      if (backend_is_live(actual_backend)) panel.set_enabled(true);
+      // The live controls only make sense while a backend is warm and holding the
+      // datasets. A live backend enables them; a failed init OR a later worker
+      // crash (on_done fires again with a non-live label) disables them and clears
+      // any stuck in-flight latch, so the controls never sit enabled over a dead
+      // worker silently swallowing every re-cluster.
+      if (backend_is_live(actual_backend)) {
+        panel.set_enabled(true);
+      } else {
+        panel.set_enabled(false);
+        recluster_in_flight = false;
+      }
     },
     on_recluster_done: () => {
       recluster_in_flight = false;
@@ -319,6 +356,8 @@ export function make_grid_ui(): void {
       const prev = last_params.get(resolved.cell.cell_id);
       if (prev && params_equal(prev, resolved.params)) continue;
       last_params.set(resolved.cell.cell_id, resolved.params);
+      // Snapshot the parity decision for the result this job will produce.
+      dispatched_overridden.set(resolved.cell.cell_id, resolved.overridden);
       if (view) {
         view.figure.dataset.state = "pending";
         view.annotation.textContent = "…";

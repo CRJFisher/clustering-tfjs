@@ -43,7 +43,6 @@ export interface GridController {
   // Re-fit the given cells with new params. Results stream back through the same
   // on_cell_result / on_cell_error callbacks, ending with on_recluster_done.
   recluster: (jobs: GridJob[]) => void;
-  dispose: () => void;
 }
 
 // A wedged worker (a backend that hangs on init, an algorithm that never returns)
@@ -80,12 +79,15 @@ export function run_grid(callbacks: GridCallbacks): GridController {
   }));
 
   const worker = spawn_worker();
+  // Set once the worker can no longer serve re-clusters — an init timeout or a
+  // crash both terminate it. `recluster` becomes a no-op afterwards, and the UI
+  // disables its controls (it keys off the non-live backend label in `on_done`).
+  let worker_dead = false;
   // Watchdog for the INITIAL sweep only: a backend that wedges on init would
   // otherwise hang the grid forever. Cleared the instant the first `done` lands,
   // after which the worker lives on to serve re-clusters with no timeout.
-  let timed_out = false;
   const timer = setTimeout(() => {
-    timed_out = true;
+    worker_dead = true;
     worker.terminate();
     callbacks.on_done("timed out", "");
   }, GRID_TIMEOUT_MS);
@@ -123,6 +125,7 @@ export function run_grid(callbacks: GridCallbacks): GridController {
   };
 
   worker.onerror = (event) => {
+    worker_dead = true;
     clearTimeout(timer);
     worker.terminate();
     callbacks.on_done(`worker error: ${event.message}`, "");
@@ -132,14 +135,10 @@ export function run_grid(callbacks: GridCallbacks): GridController {
 
   return {
     recluster: (recluster_jobs: GridJob[]): void => {
-      // After an init timeout the worker is dead; the UI keeps its controls
-      // disabled in that state, but guard so a stray call is a no-op, not a throw.
-      if (timed_out) return;
+      // A dead worker (init timeout or crash) can't re-cluster; the UI disables its
+      // controls in that state, but guard so a stray call is a no-op, not a throw.
+      if (worker_dead) return;
       worker.postMessage({ type: "recluster", jobs: recluster_jobs });
-    },
-    dispose: (): void => {
-      clearTimeout(timer);
-      worker.terminate();
     },
   };
 }

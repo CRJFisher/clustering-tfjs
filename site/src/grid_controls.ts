@@ -1,9 +1,5 @@
 import { GRID_CELLS } from "./grid_config";
-import type {
-  GridAlgorithmId,
-  GridCell,
-  GridParams,
-} from "./grid_config";
+import type { GridCell, GridParams } from "./grid_config";
 
 // Resolves the live parameter controls against the grid's curated per-cell params.
 //
@@ -37,20 +33,6 @@ export interface ControlOverrides {
   agglomerative_linkage?: AgglomerativeLinkage;
   som_grid_size?: number;
 }
-
-export type ControlId = keyof ControlOverrides;
-
-// Which algorithm columns each control re-clusters when moved off Auto. n_clusters
-// drives all four partitioning columns; HDBSCAN discovers its own count from
-// density, so it is deliberately absent.
-export const CONTROL_ALGORITHMS: Record<ControlId, GridAlgorithmId[]> = {
-  n_clusters: ["kmeans", "spectral", "agglomerative", "som"],
-  spectral_affinity: ["spectral"],
-  spectral_gamma: ["spectral"],
-  hdbscan_min_cluster_size: ["hdbscan"],
-  agglomerative_linkage: ["agglomerative"],
-  som_grid_size: ["som"],
-};
 
 export interface NumericControlBounds {
   min: number;
