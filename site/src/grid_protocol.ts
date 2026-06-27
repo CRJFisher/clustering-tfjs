@@ -31,6 +31,17 @@ export interface GridRequest {
   jobs: GridJob[];
 }
 
+// main → worker: re-fit a subset of cells with new params (a parameter control
+// moved off Auto). The worker stays alive after the initial run holding the
+// already-uploaded datasets and the warm backend, so a re-cluster pays neither
+// dataset transfer nor backend init — just the milliseconds of the fits.
+export interface GridRecluster {
+  type: "recluster";
+  jobs: GridJob[];
+}
+
+export type GridInbound = GridRequest | GridRecluster;
+
 // worker → main: how far through the matrix the worker is, so the UI can show a
 // live "N / 25 computed" readout without waiting for the whole grid.
 export interface GridProgress {
@@ -67,8 +78,16 @@ export interface GridDone {
   tfjs_version: string;
 }
 
+// worker → main: a re-cluster batch finished streaming its cell results, so the UI
+// can re-enable the controls. Carries no backend label — a re-cluster reuses the
+// same warm backend the `done` message already reported.
+export interface GridReclusterDone {
+  type: "recluster_done";
+}
+
 export type GridOutbound =
   | GridProgress
   | GridCellResult
   | GridCellError
-  | GridDone;
+  | GridDone
+  | GridReclusterDone;

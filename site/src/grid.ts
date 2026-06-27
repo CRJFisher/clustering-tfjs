@@ -12,6 +12,10 @@ import type {
 // per-cell results back to the UI. Like the race orchestrator it never
 // initializes tfjs — all compute is off the main thread so the page never freezes
 // while 25 cells fit.
+//
+// The worker is LONG-LIVED: after the initial sweep it stays up holding the warm
+// backend and uploaded datasets, and `run_grid` returns a controller the UI drives
+// to re-cluster affected cells whenever a parameter control moves off Auto.
 
 export interface GridDatasets {
   by_id: Map<GridDatasetId, ToyDataset>;
@@ -30,6 +34,16 @@ export interface GridCallbacks {
   ) => void;
   on_cell_error: (cell_id: string, message: string) => void;
   on_done: (actual_backend: string, tfjs_version: string) => void;
+  // Fires when a re-cluster batch (a control change) has finished streaming its
+  // cell results, so the UI can re-enable the controls.
+  on_recluster_done: () => void;
+}
+
+export interface GridController {
+  // Re-fit the given cells with new params. Results stream back through the same
+  // on_cell_result / on_cell_error callbacks, ending with on_recluster_done.
+  recluster: (jobs: GridJob[]) => void;
+  dispose: () => void;
 }
 
 // A wedged worker (a backend that hangs on init, an algorithm that never returns)
@@ -43,7 +57,7 @@ function spawn_worker(): Worker {
   });
 }
 
-export function run_grid(callbacks: GridCallbacks): void {
+export function run_grid(callbacks: GridCallbacks): GridController {
   const by_id = new Map<GridDatasetId, ToyDataset>();
   const payloads: GridDatasetPayload[] = GRID_DATASETS.map((spec) => {
     const dataset = make_toy_dataset(spec.id);
@@ -66,7 +80,12 @@ export function run_grid(callbacks: GridCallbacks): void {
   }));
 
   const worker = spawn_worker();
+  // Watchdog for the INITIAL sweep only: a backend that wedges on init would
+  // otherwise hang the grid forever. Cleared the instant the first `done` lands,
+  // after which the worker lives on to serve re-clusters with no timeout.
+  let timed_out = false;
   const timer = setTimeout(() => {
+    timed_out = true;
     worker.terminate();
     callbacks.on_done("timed out", "");
   }, GRID_TIMEOUT_MS);
@@ -89,9 +108,12 @@ export function run_grid(callbacks: GridCallbacks): void {
         callbacks.on_cell_error(message.cell_id, message.message);
         return;
       case "done":
+        // Keep the worker alive for re-clusters; just retire the init watchdog.
         clearTimeout(timer);
-        worker.terminate();
         callbacks.on_done(message.actual_backend, message.tfjs_version);
+        return;
+      case "recluster_done":
+        callbacks.on_recluster_done();
         return;
       default: {
         const unreachable: never = message;
@@ -107,4 +129,17 @@ export function run_grid(callbacks: GridCallbacks): void {
   };
 
   worker.postMessage({ type: "run", datasets: payloads, jobs });
+
+  return {
+    recluster: (recluster_jobs: GridJob[]): void => {
+      // After an init timeout the worker is dead; the UI keeps its controls
+      // disabled in that state, but guard so a stray call is a no-op, not a throw.
+      if (timed_out) return;
+      worker.postMessage({ type: "recluster", jobs: recluster_jobs });
+    },
+    dispose: (): void => {
+      clearTimeout(timer);
+      worker.terminate();
+    },
+  };
 }

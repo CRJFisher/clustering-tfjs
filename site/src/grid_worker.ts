@@ -19,17 +19,21 @@ import {
 import type { GridDatasetId, GridParams } from "./grid_config";
 import type {
   GridDatasetPayload,
+  GridInbound,
+  GridJob,
   GridOutbound,
-  GridRequest,
 } from "./grid_protocol";
 
-// One worker computes the whole parity grid. The grid is about parity, not speed,
-// so there is no race: the worker initializes ONE backend, keeps the tfjs engine
-// warm, and fits all 25 cells in sequence, streaming each cell's labels the
-// instant they land. The page never freezes because every fit is off the main
-// thread (AC#2); a single sequential worker is the cheapest way to do it — a pool
-// would re-pay backend init per worker for tiny toy data that fits in
-// milliseconds.
+// One long-lived worker computes the whole parity grid and every subsequent live
+// re-cluster. The grid is about parity, not speed, so there is no race: the worker
+// initializes ONE backend, keeps the tfjs engine warm, and fits all 25 cells in
+// sequence, streaming each cell's labels the instant they land. The page never
+// freezes because every fit is off the main thread (AC#2).
+//
+// It then STAYS ALIVE, holding the uploaded datasets and the warm backend, so when
+// a parameter control moves off Auto the main thread posts a `recluster` for just
+// the affected cells and the worker re-fits them with neither dataset transfer nor
+// backend re-init — the fits themselves are milliseconds on 300-point toy data.
 
 const worker_self = self as DedicatedWorkerGlobalScope;
 
@@ -125,16 +129,56 @@ function summarize(labels: number[]): {
   return { n_clusters_found: distinct.size, noise_count };
 }
 
-worker_self.onmessage = async (event: MessageEvent<GridRequest>) => {
-  const request = event.data;
-  if (request.type !== "run") return;
+// Datasets persist across the initial run and every later re-cluster: they are
+// uploaded once with the `run` request and reused, so a re-cluster never re-sends
+// the points. Null until the first run lands.
+let cached_datasets: Map<GridDatasetId, number[][]> | null = null;
+// Gates re-cluster: only true once a backend initialized successfully, so a
+// re-cluster can never run against a backend that failed to come up.
+let backend_ready = false;
 
-  const datasets = new Map<GridDatasetId, number[][]>();
-  for (const payload of request.datasets) {
-    datasets.set(payload.id, to_rows(payload));
+// Fit one cell against the cached datasets, streaming its result or a per-cell
+// error. Isolated so the initial sweep and every re-cluster share identical
+// per-cell semantics — one failing cell never takes down its siblings.
+async function fit_cell(job: GridJob): Promise<void> {
+  const data = cached_datasets?.get(job.dataset_id);
+  if (!data) {
+    post({
+      type: "cell_error",
+      cell_id: job.cell_id,
+      message: `No dataset payload for ${job.dataset_id}`,
+    });
+    return;
+  }
+  try {
+    const labels = await fit_labels(job.params, data);
+    const { n_clusters_found, noise_count } = summarize(labels);
+    post({
+      type: "cell_result",
+      cell_id: job.cell_id,
+      labels: Int32Array.from(labels),
+      n_clusters_found,
+      noise_count,
+    });
+  } catch (error) {
+    post({
+      type: "cell_error",
+      cell_id: job.cell_id,
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+async function handle_run(
+  datasets: GridDatasetPayload[],
+  jobs: GridJob[],
+): Promise<void> {
+  cached_datasets = new Map<GridDatasetId, number[][]>();
+  for (const payload of datasets) {
+    cached_datasets.set(payload.id, to_rows(payload));
   }
 
-  const total = request.jobs.length;
+  const total = jobs.length;
   post({ type: "progress", completed: 0, total });
 
   let actual_backend: string;
@@ -142,50 +186,60 @@ worker_self.onmessage = async (event: MessageEvent<GridRequest>) => {
     actual_backend = await init_backend();
   } catch (error) {
     // Init failure is fatal for the whole grid: report every cell as failed so no
-    // canvas is left in a permanent "computing" state, then stop.
+    // canvas is left in a permanent "computing" state, then stop. backend_ready
+    // stays false, so the UI's controls remain disabled and no re-cluster is run.
     const message = error instanceof Error ? error.message : String(error);
-    for (const job of request.jobs) {
+    for (const job of jobs) {
       post({ type: "cell_error", cell_id: job.cell_id, message });
     }
     post({ type: "done", actual_backend: "none", tfjs_version: tf.version_core });
     return;
   }
+  backend_ready = true;
 
   let completed = 0;
-  for (const job of request.jobs) {
-    const data = datasets.get(job.dataset_id);
-    if (!data) {
-      post({
-        type: "cell_error",
-        cell_id: job.cell_id,
-        message: `No dataset payload for ${job.dataset_id}`,
-      });
-    } else {
-      try {
-        const labels = await fit_labels(job.params, data);
-        const { n_clusters_found, noise_count } = summarize(labels);
-        post({
-          type: "cell_result",
-          cell_id: job.cell_id,
-          labels: Int32Array.from(labels),
-          n_clusters_found,
-          noise_count,
-        });
-      } catch (error) {
-        post({
-          type: "cell_error",
-          cell_id: job.cell_id,
-          message: error instanceof Error ? error.message : String(error),
-        });
-      }
-    }
+  for (const job of jobs) {
+    await fit_cell(job);
     completed += 1;
     post({ type: "progress", completed, total });
   }
 
-  post({
-    type: "done",
-    actual_backend,
-    tfjs_version: tf.version_core,
-  });
+  post({ type: "done", actual_backend, tfjs_version: tf.version_core });
+}
+
+async function handle_recluster(jobs: GridJob[]): Promise<void> {
+  // A recluster only arrives after the UI saw `done` and enabled the controls, so
+  // the backend is warm and datasets are cached. The guard is defensive: if it is
+  // somehow not, fail the batch's cells rather than fit against a cold engine.
+  if (!backend_ready || !cached_datasets) {
+    for (const job of jobs) {
+      post({
+        type: "cell_error",
+        cell_id: job.cell_id,
+        message: "Backend not ready for re-cluster",
+      });
+    }
+    post({ type: "recluster_done" });
+    return;
+  }
+  for (const job of jobs) {
+    await fit_cell(job);
+  }
+  post({ type: "recluster_done" });
+}
+
+worker_self.onmessage = (event: MessageEvent<GridInbound>) => {
+  const message = event.data;
+  switch (message.type) {
+    case "run":
+      void handle_run(message.datasets, message.jobs);
+      return;
+    case "recluster":
+      void handle_recluster(message.jobs);
+      return;
+    default: {
+      const unreachable: never = message;
+      throw new Error(`Unhandled worker message: ${JSON.stringify(unreachable)}`);
+    }
+  }
 };

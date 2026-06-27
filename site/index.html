@@ -285,6 +285,21 @@
           >
         </p>
 
+        <div class="grid-controls-panel">
+          <p class="grid-controls-panel__intro">
+            Adjust a parameter to re-cluster the grid live. Every control starts at
+            <b>Auto</b> — the scikit-learn-tuned default chosen per dataset. Move
+            one and the affected cells switch to <b>your</b> params; their parity
+            badge drops, because that exact combination was never checked against
+            scikit-learn. Reset to restore the verified grid.
+          </p>
+          <form
+            id="grid-controls"
+            class="grid-controls"
+            aria-label="Live clustering parameters"
+          ></form>
+        </div>
+
         <div class="demo-grid" id="demo-grid"></div>
 
         <p class="grid-section__footnote" id="grid-footnote"></p>

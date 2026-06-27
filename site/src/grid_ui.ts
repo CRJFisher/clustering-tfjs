@@ -7,7 +7,14 @@ import {
   cell_id_of,
   count_parity,
 } from "./grid_config";
-import type { GridCell, ParityTier } from "./grid_config";
+import type { GridCell, GridParams, ParityTier } from "./grid_config";
+import type { GridJob } from "./grid_protocol";
+import {
+  is_overridden,
+  params_equal,
+  resolve_all,
+} from "./grid_controls";
+import { make_grid_controls } from "./grid_controls_ui";
 import type { ToyDataset } from "./make_toy_datasets";
 import { render_scatter } from "./scatter_canvas";
 import type { Projection2d } from "./project_2d";
@@ -140,19 +147,45 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
   return views;
 }
 
-function annotation_text(
+function found_text(
   cell: GridCell,
   n_clusters_found: number,
   noise_count: number,
 ): string {
-  const parity = PARITY_COPY[cell.parity];
-  const found =
-    cell.parity === "no-truth" && cell.algorithm_id === "hdbscan"
-      ? noise_count > 0
-        ? `${noise_count} noise`
-        : `k=${n_clusters_found}`
-      : `k=${n_clusters_found}${noise_count > 0 ? ` · ${noise_count} noise` : ""}`;
-  return `${parity.glyph} ${found} · ${parity.short}`;
+  if (cell.algorithm_id === "hdbscan" && cell.parity === "no-truth") {
+    return noise_count > 0 ? `${noise_count} noise` : `k=${n_clusters_found}`;
+  }
+  return `k=${n_clusters_found}${noise_count > 0 ? ` · ${noise_count} noise` : ""}`;
+}
+
+// In Auto a cell wears its scikit-learn parity glyph + claim. Off Auto its params
+// were never checked against scikit-learn, so the claim is replaced by a neutral
+// "your params" — the page never asserts a parity it did not verify.
+function annotation_text(
+  cell: GridCell,
+  n_clusters_found: number,
+  noise_count: number,
+  overridden: boolean,
+): string {
+  const found = found_text(cell, n_clusters_found, noise_count);
+  if (overridden) return `✎ ${found} · your params`;
+  return `${PARITY_COPY[cell.parity].glyph} ${found} · ${PARITY_COPY[cell.parity].short}`;
+}
+
+// A drag streams control changes; each re-cluster is fast but re-fitting on every
+// pixel of travel would still flood the worker, so changes settle for this long
+// before the resting params are fit. Combined with single-flight below, the worker
+// never has more than one batch in flight.
+const RECLUSTER_DEBOUNCE_MS = 140;
+
+// Only a backend that actually came up may drive live controls. The init failure
+// labels (`grid.ts`) are the sentinels to exclude.
+function backend_is_live(actual_backend: string): boolean {
+  return (
+    actual_backend !== "none" &&
+    actual_backend !== "timed out" &&
+    !actual_backend.startsWith("worker error")
+  );
 }
 
 export function make_grid_ui(): void {
@@ -160,9 +193,17 @@ export function make_grid_ui(): void {
   const status = require_el<HTMLElement>("#grid-status");
   const backend = require_el<HTMLElement>("#grid-backend");
   const footnote = require_el<HTMLElement>("#grid-footnote");
+  const controls_mount = require_el<HTMLElement>("#grid-controls");
 
   const views = build_grid(container);
   let datasets: GridDatasets | undefined;
+
+  // The params each cell was last fit with — seeded from curated (Auto). Diffing
+  // the resolved params against this is what tells us which cells a control change
+  // actually moved, so a re-cluster only re-fits cells whose params really changed.
+  const last_params = new Map<string, GridParams>(
+    GRID_CELLS.map((cell) => [cell.cell_id, cell.params]),
+  );
 
   // The footnote count is computed from config, never hand-typed, so it can never
   // claim more matching cells than the grid actually advertises.
@@ -177,7 +218,13 @@ export function make_grid_ui(): void {
     `points under float32, annotated rather than tuned away. SOM has no scikit-learn ` +
     `counterpart. Fixed seeds make every visitor's grid identical.`;
 
-  run_grid({
+  function set_cell_explore(view: CellView, overridden: boolean): void {
+    view.figure.dataset.explore = overridden ? "true" : "false";
+  }
+
+  const panel = make_grid_controls(controls_mount, () => schedule_recluster());
+
+  const controller = run_grid({
     on_datasets: (generated) => {
       datasets = generated;
     },
@@ -192,13 +239,16 @@ export function make_grid_ui(): void {
       if (!view || !datasets) return;
       const dataset = datasets.by_id.get(view.cell.dataset_id);
       if (!dataset) return;
+      const overridden = is_overridden(view.cell, panel.get_overrides());
       render_scatter(view.canvas, projection_of(dataset), labels, {
         point_radius: GRID_CELL_RADIUS,
       });
+      set_cell_explore(view, overridden);
       view.annotation.textContent = annotation_text(
         view.cell,
         n_clusters_found,
         noise_count,
+        overridden,
       );
       view.figure.dataset.state = "done";
     },
@@ -232,6 +282,64 @@ export function make_grid_ui(): void {
         failed === 0
           ? `${done} / ${GRID_CELLS.length} cells computed`
           : `${done} / ${GRID_CELLS.length} cells computed · ${failed} failed`;
+      // The live controls only make sense once a backend is warm and holding the
+      // datasets; a failed init leaves them disabled so no re-cluster is attempted.
+      if (backend_is_live(actual_backend)) panel.set_enabled(true);
+    },
+    on_recluster_done: () => {
+      recluster_in_flight = false;
+      // A newer control position arrived mid-fit; fit the latest now.
+      if (recluster_dirty) {
+        recluster_dirty = false;
+        flush_recluster();
+      }
     },
   });
+
+  // Single-flight re-cluster scheduler. A control change updates each cell's
+  // parity-drop badge immediately, diffs resolved-vs-last params to find the moved
+  // cells, and re-fits only those — never more than one batch in flight, the rest
+  // coalesced into the latest resting position.
+  let recluster_in_flight = false;
+  let recluster_dirty = false;
+  let debounce_handle: ReturnType<typeof setTimeout> | undefined;
+
+  function flush_recluster(): void {
+    if (recluster_in_flight) {
+      recluster_dirty = true;
+      return;
+    }
+    const overrides = panel.get_overrides();
+    const jobs: GridJob[] = [];
+    for (const resolved of resolve_all(overrides)) {
+      const view = views.get(resolved.cell.cell_id);
+      // Drop or restore the parity badge the instant the control moves, before the
+      // fit even starts, so the grid never shows a stale ✓ over your params.
+      if (view) set_cell_explore(view, resolved.overridden);
+      const prev = last_params.get(resolved.cell.cell_id);
+      if (prev && params_equal(prev, resolved.params)) continue;
+      last_params.set(resolved.cell.cell_id, resolved.params);
+      if (view) {
+        view.figure.dataset.state = "pending";
+        view.annotation.textContent = "…";
+      }
+      jobs.push({
+        cell_id: resolved.cell.cell_id,
+        dataset_id: resolved.cell.dataset_id,
+        algorithm_id: resolved.cell.algorithm_id,
+        params: resolved.params,
+      });
+    }
+    if (jobs.length === 0) return;
+    recluster_in_flight = true;
+    controller.recluster(jobs);
+  }
+
+  function schedule_recluster(): void {
+    if (debounce_handle !== undefined) clearTimeout(debounce_handle);
+    debounce_handle = setTimeout(() => {
+      debounce_handle = undefined;
+      flush_recluster();
+    }, RECLUSTER_DEBOUNCE_MS);
+  }
 }

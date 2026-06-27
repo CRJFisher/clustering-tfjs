@@ -580,6 +580,134 @@ body {
   color: var(--fg);
 }
 
+/* Live parameter controls that drive the grid. Each control starts in Auto (the
+   curated per-dataset value); moving it off Auto re-clusters the affected cells and
+   drops their scikit-learn parity badge. */
+.grid-controls-panel {
+  max-width: 44rem;
+  margin: 0 auto 1.75rem;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.grid-controls-panel__intro {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.grid-controls-panel__intro b {
+  color: var(--fg);
+}
+
+.grid-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.grid-controls__control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.grid-controls__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.grid-controls__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.grid-controls__value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-controls__widget {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.grid-controls__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.grid-controls__slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.grid-controls__select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.grid-controls__slider:disabled,
+.grid-controls__select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.grid-controls__caption {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.grid-controls__reset {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.grid-controls__reset:enabled:hover {
+  border-color: var(--accent-2);
+}
+
+.grid-controls__reset:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 /* One label column plus five algorithm columns. The cells flow row-major after
    the header row, so the markup order in grid_ui matches the visual order. */
 .demo-grid {
@@ -651,6 +779,19 @@ body {
   font-style: italic;
 }
 
+/* An exploratory cell (a control moved off Auto) has dropped its scikit-learn
+   parity claim. Override every parity-tier annotation style with one neutral
+   "your params" look, and accent the cell border so the edited column reads as a
+   live sandbox distinct from the verified grid. */
+.demo-grid__cell[data-explore="true"] {
+  border-color: var(--accent);
+}
+
+.demo-grid__cell[data-explore="true"] .demo-grid__annotation {
+  color: var(--accent);
+  font-style: normal;
+}
+
 .grid-section__footnote {
   max-width: 44rem;
   margin: 1.5rem auto 0;
@@ -669,6 +810,10 @@ body {
   }
 
   .race__config {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-controls {
     grid-template-columns: 1fr;
   }
 
