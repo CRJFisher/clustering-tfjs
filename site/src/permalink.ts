@@ -93,12 +93,15 @@ export function encode_state(state: PermalinkState): string {
 // Out-of-range → clamp to the nearest bound (an extreme but meaningful intent);
 // non-numeric → undefined (drop, keep the caller's default). The two failure modes
 // are deliberately distinct.
+// `Number("")` and `Number("   ")` are 0, not NaN — so an empty/blank value (a
+// `n=` with nothing after it) must be rejected explicitly, or it would clamp to a
+// bound instead of dropping the field.
 function decode_clamped_int(
   raw: string | null,
   min: number,
   max: number,
 ): number | undefined {
-  if (raw === null) return undefined;
+  if (raw === null || raw.trim() === "") return undefined;
   const value = Number(raw);
   if (Number.isNaN(value)) return undefined;
   return Math.min(max, Math.max(min, Math.round(value)));
@@ -109,7 +112,7 @@ function decode_override(
   control: keyof typeof NUMERIC_CONTROL_BOUNDS,
   integer: boolean,
 ): number | undefined {
-  if (raw === null) return undefined;
+  if (raw === null || raw.trim() === "") return undefined;
   const value = Number(raw);
   if (Number.isNaN(value)) return undefined;
   return clamp_numeric(control, integer ? Math.round(value) : value);

@@ -130,15 +130,18 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
 
       // Each cell is a button: clicking or keyboard-activating it selects the cell
       // and drives the code panel to its runnable source. aria-pressed carries the
-      // single-selection state; the figure's own label names the cell so the button
-      // announces "Two moons clustered by Spectral, not pressed".
+      // single-selection state, and the figure is the SOLE accessible-name carrier
+      // (live-updated with the result), so the inner canvas stays presentational —
+      // no nested img role or duplicate label to confuse a screen reader. tabIndex
+      // starts at -1; one cell is made tabbable (roving tabindex) so the grid is a
+      // single tab stop, with arrow keys moving focus within it.
       const figure = document.createElement("figure");
       figure.className = "demo-grid__cell";
       figure.dataset.state = "pending";
       figure.dataset.parity = cell.parity;
       figure.dataset.cellId = cell_id;
       figure.setAttribute("role", "button");
-      figure.tabIndex = 0;
+      figure.tabIndex = -1;
       figure.setAttribute("aria-pressed", "false");
       figure.setAttribute("aria-label", aria_base);
 
@@ -146,8 +149,6 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
       canvas.className = "demo-grid__scatter";
       canvas.width = 150;
       canvas.height = 150;
-      canvas.setAttribute("role", "img");
-      canvas.setAttribute("aria-label", aria_base);
 
       const annotation = document.createElement("figcaption");
       annotation.className = "demo-grid__annotation";
@@ -217,7 +218,8 @@ const ARROW_STEPS: Record<string, number> = {
 
 // What main.ts drives to mirror the grid in the code panel and the permalink: read
 // the live overrides + selected cell, subscribe to their changes and to the live
-// backend, and restore a shared selection/overrides.
+// backend, and restore a shared selection/overrides. The on_* sinks hold a SINGLE
+// callback (main is the only consumer); a second consumer would need an emitter.
 export interface GridSection {
   get_overrides: () => ControlOverrides;
   get_selected_cell: () => string | null;
@@ -248,9 +250,25 @@ export function make_grid_ui(): GridSection {
   let selected_cell_id: string | null = null;
   const ordered_cell_ids = GRID_CELLS.map((cell) => cell.cell_id);
 
+  // Roving tabindex: exactly one cell is in the tab order at a time, so the whole
+  // grid is a single Tab stop. The first cell starts tabbable; selecting or
+  // arrowing moves the tabbable one so Tab always lands back on the last cell used.
+  let tabbable_cell_id = ordered_cell_ids[0];
+  views.get(tabbable_cell_id)?.figure.setAttribute("tabindex", "0");
+
+  function set_tabbable(cell_id: string): void {
+    if (cell_id === tabbable_cell_id) return;
+    const next = views.get(cell_id);
+    if (!next) return;
+    views.get(tabbable_cell_id)?.figure.setAttribute("tabindex", "-1");
+    next.figure.setAttribute("tabindex", "0");
+    tabbable_cell_id = cell_id;
+  }
+
   // Move the selection to a cell, updating aria-pressed on the outgoing and
   // incoming figures and announcing the change. Focus is left untouched — a
-  // programmatic restore must not yank focus or scroll the grid into view.
+  // programmatic restore must not yank focus or scroll the grid into view — but the
+  // selected cell becomes the tab stop so a later Tab lands on it.
   function set_selected(cell_id: string): void {
     if (cell_id === selected_cell_id) return;
     const next = views.get(cell_id);
@@ -260,6 +278,7 @@ export function make_grid_ui(): GridSection {
     }
     next.figure.setAttribute("aria-pressed", "true");
     selected_cell_id = cell_id;
+    set_tabbable(cell_id);
     selection_listener?.(cell_id);
   }
 
@@ -292,7 +311,10 @@ export function make_grid_ui(): GridSection {
       ordered_cell_ids.length - 1,
       Math.max(0, index + step),
     );
-    views.get(ordered_cell_ids[next_index])?.figure.focus();
+    const next_id = ordered_cell_ids[next_index];
+    // Roving: the cell we move to becomes the tab stop, then takes focus.
+    set_tabbable(next_id);
+    views.get(next_id)?.figure.focus();
   });
 
   // The params each cell was last fit with — seeded from curated (Auto). Diffing
@@ -369,9 +391,9 @@ export function make_grid_ui(): GridSection {
         noise_count,
         overridden,
       );
-      // Re-state the live outcome on the canvas itself so a screen reader hears the
+      // Re-state the live outcome on the cell button so a screen reader hears the
       // parity/override result, not the label frozen at build time.
-      view.canvas.setAttribute(
+      view.figure.setAttribute(
         "aria-label",
         overridden
           ? `${view.aria_base} — your params, k=${n_clusters_found}`

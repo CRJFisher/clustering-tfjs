@@ -8,18 +8,13 @@ import { to_backend_arg } from "./generate_code";
 import { build_repo_url, REPO_URL } from "./repo_links";
 import { read_url_state, write_url_state } from "./permalink";
 import type { PermalinkState } from "./permalink";
-import { GRID_CELLS, cell_id_of } from "./grid_config";
-import type { GridCell } from "./grid_config";
+import { cell_id_of, get_grid_cell } from "./grid_config";
 
 const INSTALL_CMD = "npm install clustering-tfjs";
 // The hero algorithm shown until a cell is chosen or a permalink restores one —
 // Spectral on blobs gives the rbf example.
 const DEFAULT_CELL_ID = cell_id_of("blobs", "spectral");
 const SHARE_RESET_MS = 1400;
-
-const CELLS_BY_ID = new Map<string, GridCell>(
-  GRID_CELLS.map((cell) => [cell.cell_id, cell]),
-);
 
 function require_el<T extends HTMLElement>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -108,11 +103,13 @@ function init(): void {
   // reload, no history entry, no re-restore), and copy the full URL. Clipboard is
   // reached only here, behind the click gesture.
   const share_button = require_el<HTMLButtonElement>("#code-share-btn");
-  const share_live = require_el("#code-cta-live");
+  // Its own live region, not the install-copy one: a Share right after a Copy must
+  // not clobber the copy announcement (or be clobbered by it).
+  const share_live = require_el("#code-share-live");
   let share_reset: ReturnType<typeof setTimeout> | undefined;
   share_button.addEventListener("click", () => {
     const selected = grid.get_selected_cell();
-    const cell = selected ? CELLS_BY_ID.get(selected) : undefined;
+    const cell = selected ? get_grid_cell(selected) : undefined;
     const state: PermalinkState = {
       n: race.get_n(),
       dataset_id: cell ? cell.dataset_id : "blobs",

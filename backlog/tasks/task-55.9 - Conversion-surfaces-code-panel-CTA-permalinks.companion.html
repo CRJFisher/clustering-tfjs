@@ -28,7 +28,7 @@
   .crossnav a,.crossnav span.cur,.crossnav span.pending{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
   .crossnav a{color:var(--fg);background:var(--panel)}
   .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
-  .crossnav span.cur{background:var(--accent-3);color:var(--bg);border-color:var(--accent-3);font-weight:600}
+  .crossnav span.cur{background:var(--accent-2);color:var(--bg);border-color:var(--accent-2);font-weight:600}
   .crossnav span.pending{color:var(--fg-muted);background:transparent;border-style:dashed}
 
   /* ── section outline ── */
@@ -44,7 +44,7 @@
   .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
   .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
   .chip strong{color:var(--accent-2)}
-  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-3);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  .donepill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
   figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
   figcaption b{color:var(--fg)}
 
@@ -73,7 +73,7 @@
 
   /* ════════ THE HERO — Section 3 mock: clickable grid → code panel + CTA rail ════════ */
   .mock{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.3rem clamp(.8rem,1.6vw,1.5rem);margin-top:.6rem;
-    box-shadow:0 0 0 1px rgba(255,169,77,.08), 0 20px 60px -30px #000;position:relative;overflow:hidden}
+    box-shadow:0 0 0 1px rgba(99,230,190,.08), 0 20px 60px -30px #000;position:relative;overflow:hidden}
   .mock::before{content:'Section 3 — Code + CTA · live in-browser';position:absolute;top:.7rem;right:.9rem;font-family:var(--mono);font-size:.6rem;color:var(--fg-muted);letter-spacing:.06em;opacity:.7}
   .mock-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent-3)}
   .mock-title{font-family:var(--serif);font-weight:800;font-size:clamp(1.3rem,2.6vw,2rem);line-height:1.08;margin:.35rem 0 .3rem;letter-spacing:-.02em}
@@ -102,7 +102,7 @@
   .gh{font-family:var(--mono);font-size:.54rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--accent-3);text-align:center;padding:.2rem .05rem;align-self:end;line-height:1.1}
   .corner{font-family:var(--mono);font-size:.5rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em;align-self:end;line-height:1.25;padding-bottom:.15rem}
   .rl{font-family:var(--mono);font-size:.56rem;font-weight:700;color:var(--accent-2);display:flex;align-items:center;padding-right:.2rem}
-  .cell{position:relative;background:radial-gradient(circle at 50% 42%,#0e1626,#080c14);border:1px solid var(--line);border-radius:7px;aspect-ratio:1/1;overflow:hidden;transition:box-shadow .18s,border-color .18s,transform .1s;cursor:pointer;outline:none}
+  .cell{position:relative;background:radial-gradient(circle at 50% 42%,#0e1626,#080c14);border:1px solid var(--line);border-radius:7px;aspect-ratio:1/1;overflow:hidden;transition:box-shadow .18s,border-color .18s,transform .1s;cursor:pointer;outline:none;padding:0;font:inherit;color:inherit;width:100%}
   .cell svg{width:100%;height:100%;display:block}
   .cell:hover{border-color:var(--accent)}
   .cell:focus-visible{box-shadow:0 0 0 3px rgba(124,156,255,.5)}
@@ -163,13 +163,12 @@
   /* ── checklist ── */
   .acs{display:grid;gap:.5rem;margin-top:.6rem}
   .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
-  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-3);border-radius:5px;margin-top:.1rem;position:relative;flex:none;background:transparent}
-  .ac .box::after{content:'';position:absolute;left:7px;top:2px;width:5px;height:10px;border:solid var(--accent-3);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-2);border-radius:5px;margin-top:.1rem;position:relative;flex:none;background:rgba(99,230,190,.12)}
+  .ac .box::after{content:'';position:absolute;left:7px;top:2px;width:5px;height:10px;border:solid var(--accent-2);border-width:0 2px 2px 0;transform:rotate(40deg)}
   .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
   .ac .txt{font-size:.9rem;color:var(--fg)}
   .ac .where{font-family:var(--mono);font-size:.62rem;color:var(--accent-2);margin-top:.35rem;display:block}
-  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--accent-3);color:var(--bg)}
-  .ac .status.plan{background:rgba(255,169,77,.16);color:var(--accent-3)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--accent-2);color:var(--bg);font-weight:700}
 
   footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
   footer b{color:var(--fg-muted)}
@@ -189,7 +188,7 @@
   <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html">55.6 · Fallback + methodology</a>
   <a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html">55.7 · scikit-learn grid</a>
   <a href="task-55.8 - Per-algorithm-parameter-sliders.companion.html">55.8 · Param sliders</a>
-  <span class="cur" aria-current="page">55.9 · Conversion surfaces ◐</span>
+  <span class="cur" aria-current="page">55.9 · Conversion surfaces ✓</span>
 </nav>
 
 <nav class="outline" aria-label="On this page">
@@ -204,9 +203,9 @@
 
 <main>
   <header>
-    <div class="eyebrow">Task 55.9 · Milestone M5 · Section 3 — Code + CTA · <span class="todopill">In progress</span></div>
-    <h1 class="prose">Turn the demo into installs and shares: a code panel driven by the selected grid cell, an install + star CTA at the hero, and a versioned shareable permalink</h1>
-    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Every grid cell becomes selectable. Clicking one renders the exact runnable ~5 lines for <b style="color:var(--accent-3)">that</b> algorithm at the grid's live backend, generated from the same <code style="font-family:var(--mono);color:var(--accent-2)">resolve_params(cell, overrides)</code> the demo already fits with — so the copy-paste code can never disagree with the picture. "Share this result" encodes the cell, the race <code style="font-family:var(--mono);color:var(--accent-2)">n</code>, and the live overrides into the URL hash; opening that link restores all three.</p>
+    <div class="eyebrow">Task 55.9 · Milestone M5 · Section 3 — Code + CTA · <span class="donepill">Done</span></div>
+    <h1 class="prose">The demo turns installs and shares: a code panel driven by the selected grid cell, an install + star CTA at the hero, and a versioned shareable permalink</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Every grid cell is a selectable button. Selecting one renders the exact runnable ~5 lines for <b style="color:var(--accent-3)">that</b> algorithm at the grid's live backend, generated from the same <code style="font-family:var(--mono);color:var(--accent-2)">resolve_params(cell, overrides)</code> the demo fits with — so the copy-paste code can never disagree with the picture. "Share this result" encodes the selected cell, the race <code style="font-family:var(--mono);color:var(--accent-2)">n</code>, and any non-Auto overrides into the URL hash; opening that link restores all three.</p>
     <div class="meta">
       <span class="chip">code panel <strong>per-cell · live backend · Copy</strong></span>
       <span class="chip">CTA <strong>npm install · ★ star · share</strong></span>
@@ -238,7 +237,7 @@
         <div class="demo-grid">
           <!-- selectable mini grid -->
           <div class="gwrap">
-            <div class="gridmock" id="gridmock" role="grid" aria-label="A 5 by 5 grid of clustering results: rows are the datasets moons, circles, blobs, anisotropic and no-structure; columns are K-Means, Spectral, Agglomerative, HDBSCAN and SOM. Each cell is selectable by click or keyboard; selecting a cell renders the runnable code for that algorithm in the panel beside the grid. Blobs by Spectral is selected on load."></div>
+            <div class="gridmock" id="gridmock" role="grid" aria-label="A 5 by 5 grid of clustering results: rows are the datasets moons, circles, blobs, anisotropic and no-structure; columns are K-Means, Spectral, Agglomerative, HDBSCAN and SOM. Each cell is a button selectable by click or by arrow keys then Enter or Space; the grid is one Tab stop via a roving tabindex. Selecting a cell renders the runnable code for that algorithm in the panel beside the grid. Blobs by Spectral is selected on load."></div>
             <div class="selnote" id="selnote"></div>
           </div>
 
@@ -258,11 +257,11 @@
           </div>
         </div>
       </div>
-      <figcaption class="prose"><b>This is the shipped Section 3 interaction.</b> 55.9 makes each existing grid cell <i>selectable</i> and binds a code panel + CTA rail to it; the five lines are generated from <code>resolve_params(cell, overrides)</code> + the live backend, never hand-written. On load the URL hash is decoded — here selecting <code>blobs × Spectral</code>, the rbf example.</figcaption>
+      <figcaption class="prose"><b>This is the shipped Section 3 interaction.</b> 55.9 makes each existing grid cell a selectable <i>button</i> and binds a code panel + CTA rail to it; the five lines are generated from <code>resolve_params(cell, overrides)</code> + the live backend, never hand-written. On load the URL hash is decoded — here selecting <code>blobs × Spectral</code>, the rbf example.</figcaption>
     </figure>
     <aside class="callout warn">
       <div class="k">Why the panel reads resolve_params, not a hand-written snippet</div>
-      <p>55.8 already resolves each cell's effective params with <code>resolve_params(cell, overrides)</code> — the exact <code>GridParams</code> the worker fits. The panel emits from that same function, so the copy-paste code is the <b>literal</b> call the demo just ran; a hand-typed snippet would silently drift from the picture and break the grid's trust.</p>
+      <p>55.8 already resolves each cell's effective params with <code>resolve_params(cell, overrides)</code> — the exact <code>GridParams</code> the worker fits. The panel emits from that same function (via the pure, unit-tested <code>generate_code.ts</code>) so the copy-paste code is the <b>literal</b> call <code>grid_worker.ts</code> just ran; a hand-typed snippet would silently drift from the picture and break the grid's trust.</p>
     </aside>
   </section>
 
@@ -285,7 +284,7 @@
             <tr>
               <td class="a">Spectral</td>
               <td class="g"><span class="kw">new</span> <span class="fn">SpectralClustering</span>({ n_clusters: <span class="num">3</span>, affinity: <span class="str">'rbf'</span>, gamma: <span class="num">1</span> })<br><span class="kw">await</span> model.<span class="fn">fit_predict</span>(X)</td>
-              <td class="note">the default cell. Under nearest_neighbors it emits <span style="font-family:var(--mono);color:var(--accent-2)">n_neighbors</span> instead of gamma.</td>
+              <td class="note">the default cell. Emits <span style="font-family:var(--mono);color:var(--accent-2)">gamma</span> only for rbf and <span style="font-family:var(--mono);color:var(--accent-2)">n_neighbors</span> only for nearest-neighbors — never an <span style="font-family:var(--mono)">undefined</span> literal.</td>
             </tr>
             <tr>
               <td class="a">Agglomerative</td>
@@ -305,7 +304,7 @@
           </tbody>
         </table>
       </div>
-      <figcaption class="prose"><b>The generator is a small per-algorithm switch over the resolved <code>GridParams</code> union.</b> The shared head is always <code>import { Clustering, &lt;Estimator&gt; } from 'clustering-tfjs'</code> then <code>await Clustering.init({ backend })</code> with the grid worker's live backend (<code>webgl</code>/<code>wasm</code>/<code>cpu</code>). The body is the one estimator line plus the run. SOM alone splits the run into <code>fit</code> + <code>cluster</code>, mirroring exactly how <code>grid_worker.ts</code> already drives it.</figcaption>
+      <figcaption class="prose"><b>The generator is a small per-algorithm switch over the resolved <code>GridParams</code> union, isolated in the pure <code>generate_code.ts</code>.</b> The shared head is always <code>import { Clustering, &lt;Estimator&gt; } from 'clustering-tfjs'</code> then <code>await Clustering.init({ backend })</code> with the grid worker's live backend (<code>webgpu</code>/<code>webgl</code>/<code>wasm</code>/<code>cpu</code>). The body is the one estimator line plus the run. SOM alone splits the run into <code>fit</code> + <code>cluster</code>, mirroring exactly how <code>grid_worker.ts</code> drives it.</figcaption>
     </figure>
   </section>
 
@@ -315,7 +314,7 @@
     <h2>"Share this result" encodes the state into the hash; on load that hash is decoded and applied — garbage degrades to defaults</h2>
     <figure>
       <div class="flowwrap">
-        <svg viewBox="0 0 940 300" role="img" aria-label="The permalink round-trip. Encode path: the live demo state — race n, the selected cell, and the active grid overrides — is read, serialized with a schema version v=1, and written to the URL hash; the share button copies that full URL. Decode path on page load: the hash is read and parsed; a version check branches — a known v=1 hash decodes into n, cell and overrides which are applied to set the race slider and run it, apply the overrides to the controls panel, and select the cell; an unknown or garbage version is discarded and the demo opens at its defaults.">
+        <svg viewBox="0 0 940 300" role="img" aria-label="The permalink round-trip. Encode path: the live demo state — race n, the selected cell, and the non-Auto grid overrides — is read, serialized with a schema version v=1, and written to the URL hash with history.replaceState so there is no reload and no history entry; the share button copies that full URL. Decode path on page load: the hash is read and parsed once; a version check branches — a known v=1 hash decodes into n, cell and overrides which are applied (selection and n restore immediately and the race runs once; overrides are deferred to the grid's on_backend live callback under a latch); an unknown or garbage version is dropped wholesale and the demo opens at its defaults, and per-field invalid values clamp or drop rather than throwing.">
           <defs>
             <marker id="ag" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#63e6be"/></marker>
             <marker id="ab" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#7c9cff"/></marker>
@@ -330,19 +329,19 @@
           <text x="115" y="71" text-anchor="middle" fill="#8b949e" font-size="8">n · cell · overrides</text>
           <line x1="200" y1="61" x2="246" y2="61" stroke="#63e6be" stroke-width="1.5" marker-end="url(#ag)"/>
           <rect x="248" y="36" width="180" height="50" rx="10" fill="#10221c" stroke="#63e6be" stroke-width="1.4"/>
-          <text x="338" y="56" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">encode → hash string</text>
+          <text x="338" y="56" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">encode_state → hash</text>
           <text x="338" y="71" text-anchor="middle" fill="#8b949e" font-size="8">stamp v=1 · only non-Auto fields</text>
           <line x1="428" y1="61" x2="474" y2="61" stroke="#63e6be" stroke-width="1.5" marker-end="url(#ag)"/>
           <rect x="476" y="36" width="180" height="50" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
-          <text x="566" y="56" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">window.location.hash</text>
-          <text x="566" y="71" text-anchor="middle" fill="#8b949e" font-size="8">+ copy full URL to clipboard</text>
+          <text x="566" y="56" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">history.replaceState</text>
+          <text x="566" y="71" text-anchor="middle" fill="#8b949e" font-size="8">no reload · no history entry</text>
           <line x1="656" y1="61" x2="702" y2="61" stroke="#7c9cff" stroke-width="1.5" marker-end="url(#ab)"/>
           <rect x="704" y="36" width="200" height="50" rx="10" fill="#11182a" stroke="#22304a"/>
-          <text x="804" y="56" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">shareable link</text>
+          <text x="804" y="56" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">copy shareable link</text>
           <text x="804" y="71" text-anchor="middle" fill="#8b949e" font-size="8">tweet / paste · UTM-tagged</text>
 
           <!-- DECODE lane -->
-          <text x="30" y="142" fill="#7c9cff" font-size="11" font-weight="bold">DECODE · on page load</text>
+          <text x="30" y="142" fill="#7c9cff" font-size="11" font-weight="bold">DECODE · on page load (once)</text>
           <rect x="30" y="152" width="170" height="50" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
           <text x="115" y="172" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">read hash</text>
           <text x="115" y="187" text-anchor="middle" fill="#8b949e" font-size="8">parse key=value pairs</text>
@@ -357,17 +356,17 @@
           <line x1="398" y1="192" x2="446" y2="192" stroke="#63e6be" stroke-width="1.5" marker-end="url(#ag)"/>
           <text x="410" y="184" fill="#63e6be" font-size="8.5">known</text>
           <rect x="448" y="152" width="200" height="100" rx="10" fill="#10221c" stroke="#63e6be" stroke-width="1.4"/>
-          <text x="548" y="172" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">apply decoded state</text>
-          <text x="548" y="190" text-anchor="middle" fill="#cdd9e5" font-size="8.5">set race n-slider → run race</text>
-          <text x="548" y="205" text-anchor="middle" fill="#cdd9e5" font-size="8.5">apply_overrides() on controls</text>
-          <text x="548" y="220" text-anchor="middle" fill="#cdd9e5" font-size="8.5">select the cell → render code</text>
-          <text x="548" y="238" text-anchor="middle" fill="#8b949e" font-size="8">missing keys fall back to default</text>
+          <text x="548" y="170" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">apply decoded state</text>
+          <text x="548" y="187" text-anchor="middle" fill="#cdd9e5" font-size="8.5">select cell + set n → race runs once</text>
+          <text x="548" y="201" text-anchor="middle" fill="#cdd9e5" font-size="8.5">overrides → on_backend(live), latched</text>
+          <text x="548" y="215" text-anchor="middle" fill="#cdd9e5" font-size="8.5">apply_overrides() on the controls</text>
+          <text x="548" y="238" text-anchor="middle" fill="#8b949e" font-size="8">bad enum dropped · out-of-range clamps</text>
 
           <!-- garbage path -->
           <line x1="338" y1="238" x2="338" y2="270" stroke="#ff8585" stroke-width="1.5" marker-end="url(#ar)"/>
           <text x="346" y="262" fill="#ff8585" font-size="8.5">unknown / garbage</text>
-          <rect x="180" y="270" width="316" height="26" rx="9" fill="#1d1216" stroke="#ff8585" stroke-width="1.4"/>
-          <text x="338" y="287" text-anchor="middle" fill="#ff8585" font-size="9.5" font-weight="bold">discard hash → open at defaults (never throws)</text>
+          <rect x="160" y="270" width="356" height="26" rx="9" fill="#1d1216" stroke="#ff8585" stroke-width="1.4"/>
+          <text x="338" y="287" text-anchor="middle" fill="#ff8585" font-size="9.5" font-weight="bold">drop hash wholesale → open at defaults (never throws)</text>
 
           <!-- known path arrow into the demo -->
           <line x1="648" y1="192" x2="702" y2="192" stroke="#63e6be" stroke-width="1.5" marker-end="url(#ag)"/>
@@ -383,17 +382,17 @@
         <span><i style="background:#ffa94d"></i> schema version gate</span>
         <span><i style="background:#ff8585"></i> unknown / garbage degrades to defaults</span>
       </div>
-      <figcaption class="prose"><b>Hash-based because GitHub Pages is static</b> — the fragment never reaches a server, so state is reconstructed client-side with no round-trip, the only encoding Pages allows. <b>Versioned because shared links must outlive the demo</b> — stamping <code>v=1</code> lets a future <code>v=2</code> change the format while old links stay recognized; an unknown version is discarded, never misapplied, so a stale tweet never breaks.</figcaption>
+      <figcaption class="prose"><b>Hash-based because GitHub Pages is static</b> — the fragment never reaches a server, so state is reconstructed client-side with no round-trip, the only encoding Pages allows, and <code>history.replaceState</code> writes the share URL without a reload or history entry, so sharing can never retrigger restore. <b>Versioned because shared links must outlive the demo</b> — stamping <code>v=1</code> lets a future <code>v=2</code> change the format while old links stay recognized; an unknown version is dropped wholesale rather than guessed, and every field is independently validated (out-of-range clamps, bogus enums and empty values drop), so a hand-mangled link can only ever lose state, never break the page.</figcaption>
     </figure>
-    <aside class="callout">
-      <div class="k">Open question this resolves: how much state, and whether to version it</div>
-      <p>The task left the schema open. The decision: encode <b>only</b> what reproduces the visible result — race <code>n</code>, the selected cell, and the non-Auto <code>ControlOverrides</code> — and version it. Omitting Auto fields keeps a default link short, and a future demo can extend <code>v=2</code> without breaking <code>v=1</code> links.</p>
+    <aside class="callout go">
+      <div class="k">Open question resolved: how much state, and whether to version it</div>
+      <p>The task left the delivery schema open. The shipped decision: encode <b>only</b> what reproduces the visible result — race <code>n</code>, the selected cell, and the non-Auto <code>ControlOverrides</code> — and version it. Omitting Auto fields keeps a default link short; a future demo can extend <code>v=2</code> without breaking <code>v=1</code> links.</p>
     </aside>
   </section>
 
   <!-- ════ 4. THE SCHEMA ════ -->
   <section id="schema">
-    <div class="eyebrow">The wire format · the exact hash fields and the central UTM helper</div>
+    <div class="eyebrow">The wire format · the exact hash fields, plus where the UTM helper lives</div>
     <h2>One versioned schema and one link-tagging helper — the minimal state, the minimal diff</h2>
     <figure>
       <div class="schwrap">
@@ -402,22 +401,23 @@
             <tr><th>hash key</th><th>example</th><th>encodes</th></tr>
           </thead>
           <tbody>
-            <tr><td class="key">v</td><td class="ex">1</td><td class="cd"><b>schema version</b> — the gate that lets old links survive future changes; unknown values are ignored.</td></tr>
-            <tr><td class="key">n</td><td class="ex">1500</td><td class="cd">the race <b>samples slider</b> position — restored, then the race is re-run at that n.</td></tr>
+            <tr><td class="key">v</td><td class="ex">1</td><td class="cd"><b>schema version</b> — the gate that lets old links survive future changes; an unknown value drops the whole hash.</td></tr>
+            <tr><td class="key">n</td><td class="ex">1500</td><td class="cd">the race <b>samples slider</b> position — restored immediately, then the race re-runs once at that n. An empty value drops (it does not coerce to a bound).</td></tr>
             <tr><td class="key">cell</td><td class="ex">blobs:spectral</td><td class="cd">the <b>selected grid cell</b> (dataset + algorithm) — selected on load, driving the code panel.</td></tr>
-            <tr><td class="key">k</td><td class="ex">4</td><td class="cd">n_clusters override — written only if set (off Auto).</td></tr>
-            <tr><td class="key">aff</td><td class="ex">rbf</td><td class="cd">spectral_affinity override — only if set.</td></tr>
+            <tr><td class="key">k</td><td class="ex">4</td><td class="cd">n_clusters override — written only if set (off Auto); out-of-range clamps to the control's bounds.</td></tr>
+            <tr><td class="key">aff</td><td class="ex">rbf</td><td class="cd">spectral_affinity override — only if set; a bogus enum is dropped.</td></tr>
             <tr><td class="key">g</td><td class="ex">2.5</td><td class="cd">spectral_gamma override — only if set.</td></tr>
             <tr><td class="key">mcs</td><td class="ex">25</td><td class="cd">hdbscan_min_cluster_size override — only if set.</td></tr>
-            <tr><td class="key">link</td><td class="ex">average</td><td class="cd">agglomerative_linkage override — only if set.</td></tr>
+            <tr><td class="key">link</td><td class="ex">average</td><td class="cd">agglomerative_linkage override — only if set; a bogus enum is dropped.</td></tr>
             <tr><td class="key">som</td><td class="ex">8</td><td class="cd">som_grid_size override — only if set.</td></tr>
           </tbody>
         </table>
       </div>
       <div class="code">
-        <div class="fl">site/src/permalink.ts — versioned encode/decode + the one UTM helper (no DOM, no tfjs, snake_case)</div>
-<pre><span class="cm">// The single shape encoded into the URL hash. Bump SCHEMA_VERSION when this</span>
-<span class="cm">// changes; decode() recognizes only known versions and ignores the rest.</span>
+        <div class="fl">site/src/permalink.ts (versioned, defensive codec) + site/src/repo_links.ts (the one UTM builder) — pure, no DOM, no tfjs, snake_case</div>
+<pre><span class="cm">// permalink.ts — pure encode_state/decode_state, plus thin read/write</span>
+<span class="cm">// adapters over the URL hash. Bump SCHEMA_VERSION when the shape changes;</span>
+<span class="cm">// decode recognizes only known versions and drops the rest wholesale.</span>
 <span class="kw">const</span> SCHEMA_VERSION = <span class="num">1</span>;
 
 <span class="kw">interface</span> <span class="var">PermalinkState</span> {
@@ -426,18 +426,28 @@
   overrides: <span class="var">ControlOverrides</span>;     <span class="cm">// only non-Auto fields are written</span>
 }
 
-<span class="cm">// state → "#v=1&n=1500&cell=blobs:spectral&k=4". Absent override = Auto = omitted.</span>
-<span class="kw">export function</span> <span class="fn">encode_permalink</span>(s: <span class="var">PermalinkState</span>): <span class="var">string</span> { <span class="cm">/* build key=value pairs */</span> }
+<span class="cm">// state → "v=1&n=1500&cell=blobs:spectral&k=4". Absent override = Auto = omitted.</span>
+<span class="kw">export function</span> <span class="fn">encode_state</span>(s: <span class="var">PermalinkState</span>): <span class="var">string</span> { <span class="cm">/* build key=value pairs */</span> }
 
-<span class="cm">// hash → state, or null when the version is unknown/garbage (caller opens defaults).</span>
-<span class="kw">export function</span> <span class="fn">decode_permalink</span>(hash: <span class="var">string</span>): <span class="var">PermalinkState</span> | <span class="kw">null</span> {
-  <span class="kw">const</span> params = <span class="kw">new</span> <span class="fn">URLSearchParams</span>(hash.<span class="fn">replace</span>(<span class="str">/^#/</span>, <span class="str">""</span>));
+<span class="cm">// hash → state, or null when v is unknown/garbage (caller opens defaults).</span>
+<span class="cm">// Per-field: out-of-range numbers clamp, bogus enums and empty values drop;</span>
+<span class="cm">// never throws — a mangled link can only lose state, not break the page.</span>
+<span class="kw">export function</span> <span class="fn">decode_state</span>(raw: <span class="var">string</span>): <span class="var">PermalinkState</span> | <span class="kw">null</span> {
+  <span class="kw">const</span> params = <span class="kw">new</span> <span class="fn">URLSearchParams</span>(raw.<span class="fn">replace</span>(<span class="str">/^#/</span>, <span class="str">""</span>));
   <span class="kw">if</span> (<span class="fn">Number</span>(params.<span class="fn">get</span>(<span class="str">"v"</span>)) !== SCHEMA_VERSION) <span class="kw">return</span> <span class="kw">null</span>;   <span class="hl">// degrade gracefully</span>
-  <span class="cm">/* parse n, cell_id, and each present override field */</span>
+  <span class="cm">/* validate n, cell_id, and each present override field independently */</span>
 }
 
-<span class="cm">// One helper tags EVERY outbound repo/demo link, so conversion is attributable</span>
-<span class="cm">// per surface (hero-star, code-panel, share, install, methodology...).</span>
+<span class="cm">// read() decodes location.hash once; write() serializes via history.replaceState</span>
+<span class="cm">// (no reload, no history entry, no hashchange — sharing never retriggers restore).</span>
+<span class="kw">export function</span> <span class="fn">read</span>(): <span class="var">PermalinkState</span> | <span class="kw">null</span> { <span class="kw">return</span> <span class="fn">decode_state</span>(location.hash); }
+<span class="kw">export function</span> <span class="fn">write</span>(s: <span class="var">PermalinkState</span>): <span class="var">void</span> {
+  history.<span class="fn">replaceState</span>(<span class="kw">null</span>, <span class="str">""</span>, <span class="str">"#"</span> + <span class="fn">encode_state</span>(s));
+}
+
+<span class="cm">// repo_links.ts — the ONE helper that tags every outbound repo/demo link,</span>
+<span class="cm">// so no surface can ship an untagged link at runtime (hero-star, code-panel,</span>
+<span class="cm">// share, install, methodology...). utm_medium identifies the surface.</span>
 <span class="kw">export function</span> <span class="fn">with_utm</span>(url: <span class="var">string</span>, surface: <span class="var">string</span>): <span class="var">string</span> {
   <span class="kw">const</span> u = <span class="kw">new</span> <span class="fn">URL</span>(url);
   u.searchParams.<span class="fn">set</span>(<span class="str">"utm_source"</span>, <span class="str">"demo"</span>);
@@ -446,19 +456,19 @@
   <span class="kw">return</span> u.<span class="fn">toString</span>();
 }</pre>
       </div>
-      <figcaption class="prose"><b><code>permalink.ts</code> is pure and unit-testable</b> — no DOM, no tfjs. <code>decode_permalink</code> returns <code>null</code> on any version it doesn't know, and the caller opens at defaults; <code>encode_permalink</code> writes only the fields that are off Auto. <code>with_utm(url, surface)</code> is the one place repo/demo links are tagged, so every star/install/share button carries <code>?utm_source=demo&amp;utm_medium=&lt;surface&gt;&amp;utm_campaign=clustering_demo</code> without each call site repeating it.</figcaption>
+      <figcaption class="prose"><b><code>permalink.ts</code> is pure and unit-tested</b> — no DOM, no tfjs. <code>decode_state</code> drops the hash on any version it doesn't know and validates each field independently (out-of-range clamps, bogus enums and empty values drop), so the caller opens at defaults; <code>encode_state</code> writes only the fields that are off Auto; <code>write</code> uses <code>history.replaceState</code> so the share URL lands with no reload. <code>with_utm(url, surface)</code> lives in <code>repo_links.ts</code> — the one place repo/demo links are tagged, so every star/install/share button carries <code>?utm_source=demo&amp;utm_medium=&lt;surface&gt;&amp;utm_campaign=clustering_demo</code> without each call site repeating it.</figcaption>
     </figure>
   </section>
 
   <!-- ════ 5. THE INTEGRATION TOUCH — void → controllers ════ -->
   <section id="integration">
-    <div class="eyebrow">The wiring · the UI factories stop returning void so main can orchestrate</div>
-    <h2>make_race_ui and make_grid_ui return small controllers, and main.ts becomes the orchestrator that wires restore + share + the code panel</h2>
+    <div class="eyebrow">The wiring · the UI factories return small controllers so main can orchestrate</div>
+    <h2>make_race_ui and make_grid_ui return small controllers, and main.ts is the orchestrator that wires restore + share + the code panel</h2>
     <figure>
       <div class="ba">
         <div class="pane before">
-          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent-3);display:inline-block"></span>Today — 55.8</div>
-          <svg viewBox="0 0 320 220" role="img" aria-label="Today: main.ts calls make_race_ui() and make_grid_ui(), both returning void. Each section owns itself entirely; main has no handle on either, so it cannot read the race n, apply shared overrides to the controls, or know which cell is selected. There is no place to orchestrate a permalink restore.">
+          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent-3);display:inline-block"></span>Before — 55.8</div>
+          <svg viewBox="0 0 320 220" role="img" aria-label="Before: main.ts calls make_race_ui() and make_grid_ui(), both returning void. Each section owns itself entirely; main has no handle on either, so it cannot read the race n, apply shared overrides to the controls, or know which cell is selected. There is no place to orchestrate a permalink restore.">
             <rect x="60" y="20" width="200" height="40" rx="9" fill="#11182a" stroke="#7c9cff" stroke-width="1.4"/>
             <text x="160" y="38" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">main.ts · init()</text>
             <text x="160" y="52" text-anchor="middle" fill="#8b949e" font-size="8">mounts the two folds</text>
@@ -478,21 +488,22 @@
         </div>
         <div class="arrow">→<small>return controllers; main orchestrates</small></div>
         <div class="pane after">
-          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent-2);display:inline-block"></span>As planned — 55.9</div>
-          <svg viewBox="0 0 320 220" role="img" aria-label="As planned: make_race_ui returns a RaceController exposing get_n, set_n and run; make_grid_ui returns a GridUiController exposing the selected cell, an on-select callback, and an apply_overrides method to restore shared state to the controls panel. main.ts becomes the orchestrator: it decodes the permalink, applies n to the race controller and overrides plus cell to the grid controller, binds the code panel to the selected cell, and wires the share button to encode the live state.">
+          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent-2);display:inline-block"></span>As built — 55.9</div>
+          <svg viewBox="0 0 320 220" role="img" aria-label="As built: make_race_ui returns a RaceController exposing get_n, set_n and run; make_grid_ui returns a GridSection exposing get_selected_cell, get_overrides, on_selection_change, on_overrides_change, on_backend, select_cell and apply_overrides. main.ts is the orchestrator: it decodes the permalink once, restores selection and n immediately and runs the race once, defers override restore to the grid's on_backend live callback under a latch, binds the code panel to the selected cell, and wires the share button to encode the live state with replaceState.">
             <rect x="50" y="16" width="220" height="46" rx="9" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
             <text x="160" y="34" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">main.ts · orchestrator</text>
-            <text x="160" y="49" text-anchor="middle" fill="#8b949e" font-size="8">decode hash → drive both controllers → code panel + share</text>
+            <text x="160" y="49" text-anchor="middle" fill="#8b949e" font-size="8">decode hash once → drive both controllers → code panel + share</text>
             <line x1="110" y1="62" x2="85" y2="88" stroke="#63e6be" stroke-width="1.3" marker-end="url(#ig)"/>
             <line x1="210" y1="62" x2="235" y2="88" stroke="#63e6be" stroke-width="1.3" marker-end="url(#ig)"/>
             <rect x="14" y="90" width="150" height="56" rx="9" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
             <text x="89" y="108" text-anchor="middle" fill="#7c9cff" font-size="9.5" font-weight="bold">RaceController</text>
             <text x="89" y="123" text-anchor="middle" fill="#cdd9e5" font-size="8">get_n · set_n(n)</text>
-            <text x="89" y="135" text-anchor="middle" fill="#cdd9e5" font-size="8">run() · get_backend()</text>
+            <text x="89" y="135" text-anchor="middle" fill="#cdd9e5" font-size="8">run()</text>
             <rect x="170" y="90" width="150" height="56" rx="9" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
-            <text x="245" y="108" text-anchor="middle" fill="#7c9cff" font-size="9.5" font-weight="bold">GridUiController</text>
-            <text x="245" y="123" text-anchor="middle" fill="#cdd9e5" font-size="8">selected_cell · on_select</text>
-            <text x="245" y="135" text-anchor="middle" fill="#cdd9e5" font-size="8">apply_overrides()</text>
+            <text x="245" y="106" text-anchor="middle" fill="#7c9cff" font-size="9.5" font-weight="bold">GridSection</text>
+            <text x="245" y="119" text-anchor="middle" fill="#cdd9e5" font-size="7.5">get_selected_cell · select_cell</text>
+            <text x="245" y="130" text-anchor="middle" fill="#cdd9e5" font-size="7.5">on_selection_change · on_backend</text>
+            <text x="245" y="141" text-anchor="middle" fill="#cdd9e5" font-size="7.5">get_overrides · apply_overrides</text>
             <line x1="160" y1="146" x2="160" y2="168" stroke="#63e6be" stroke-width="1.3" marker-end="url(#ig)"/>
             <rect x="36" y="170" width="248" height="42" rx="9" fill="#10221c" stroke="#63e6be" stroke-width="1.5"/>
             <text x="160" y="189" text-anchor="middle" fill="#63e6be" font-size="9.5" font-weight="bold">code panel + share + permalink restore</text>
@@ -502,57 +513,63 @@
         </div>
       </div>
       <div class="legend">
-        <span><i style="background:#ff8585"></i> today: both factories return void · main can't see in</span>
-        <span><i style="background:#7c9cff"></i> planned: each returns a small controller object</span>
-        <span><i style="background:#63e6be"></i> main becomes the orchestrator: restore · code panel · share</span>
+        <span><i style="background:#ff8585"></i> before: both factories return void · main can't see in</span>
+        <span><i style="background:#7c9cff"></i> as built: each returns a small controller object</span>
+        <span><i style="background:#63e6be"></i> main is the orchestrator: restore · code panel · share</span>
       </div>
-      <figcaption class="prose"><b>The smallest change that lets one place coordinate three folds.</b> Each factory returns a small controller — <code>RaceController</code> (the <code>n</code>, <code>run()</code>, live backend) and <code>GridUiController</code> (selected cell, on-select hook, <code>apply_overrides()</code>). <code>main.ts</code> becomes the orchestrator: decode the hash, drive both controllers, bind the code panel, and wire "share".</figcaption>
+      <figcaption class="prose"><b>The smallest change that lets one place coordinate three folds.</b> Each factory returns a small controller — <code>RaceController</code> (<code>get_n</code>, <code>set_n</code>, <code>run</code>) and <code>GridSection</code> (<code>get_selected_cell</code>, <code>select_cell</code>, <code>on_selection_change</code>, <code>on_overrides_change</code>, <code>on_backend</code>, <code>get_overrides</code>, <code>apply_overrides</code>). <code>main.ts</code> is the orchestrator: decode the hash once, restore selection + n immediately (race runs once), defer override restore to <code>on_backend(live)</code> under a latch, bind the code panel, and wire "share".</figcaption>
     </figure>
     <aside class="callout go">
-      <div class="k">Why controllers and not a global event bus</div>
-      <p>Only <code>main.ts</code> needs cross-fold coordination — a narrow typed return per factory is the minimal surface (YAGNI). The 55.8 controls panel gains one method, <code>apply_overrides()</code>: a decoded permalink sets the controls exactly as a user drag would, so the restored grid re-clusters through the existing single-flight path.</p>
+      <div class="k">Why controllers and not a global event bus, and why override restore is deferred</div>
+      <p>Only <code>main.ts</code> needs cross-fold coordination — a narrow typed return per factory is the minimal surface (YAGNI). The 55.8 controls panel gained <code>GridControlsPanel.apply_overrides</code>: it drives every numeric and select control through the same paths a user interaction writes, firing exactly one re-cluster. Override restore is deferred to the grid's <code>on_backend(live)</code> callback — only then are the controls enabled and the worker warm — guarded by a latch so a re-fired callback (a later worker crash) cannot re-apply over a dead worker.</p>
     </aside>
   </section>
 
   <!-- ════ 6. WHAT IT BUILDS ════ -->
   <section id="build">
-    <div class="eyebrow">The surface area · one pure module, a code generator, controller returns, a CTA fold</div>
-    <h2>A pure permalink module, a per-cell code generator, two controllers, and the Section 3 CTA DOM</h2>
+    <div class="eyebrow">The surface area · two pure modules, a code panel, controller returns, a CTA fold</div>
+    <h2>A pure permalink codec, a pure code generator, the panel, two controllers, a UTM builder, and the Section 3 CTA DOM</h2>
     <figure>
       <div class="files">
-        <div class="fcard"><span class="fp new">site/src/permalink.ts</span><div class="role"><b>New · pure.</b> <code>encode_permalink</code> / <code>decode_permalink</code> (versioned <code>v=1</code>, non-Auto fields only, garbage → <code>null</code>) and the central <code>with_utm(url, surface)</code> helper. No DOM, no tfjs — unit-tested.</div></div>
-        <div class="fcard"><span class="fp new">site/src/permalink.test.ts</span><div class="role"><b>New.</b> Round-trip: encode then decode is identity; Auto fields are omitted; an unknown <code>v</code>, a missing <code>v</code>, and garbage all decode to <code>null</code>; <code>with_utm</code> tags every surface.</div></div>
-        <div class="fcard"><span class="fp new">site/src/code_panel.ts</span><div class="role"><b>New · the generator.</b> Turns a selected cell's <code>resolve_params</code> output + the live backend into the runnable ~5 lines (SOM the two-call exception), renders the panel, and wires Copy.</div></div>
-        <div class="fcard"><span class="fp">site/src/grid_ui.ts</span><div class="role"><b>Extended.</b> Cells become selectable (click + keyboard, <code>role=grid</code>); tracks the selected cell; <code>make_grid_ui()</code> returns a <code>GridUiController</code> (selected cell, on-select hook, <code>apply_overrides()</code>).</div></div>
-        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> <code>make_race_ui()</code> returns a <code>RaceController</code> exposing the race <code>n</code> (get/set), <code>run()</code>, and the live backend the code panel reports.</div></div>
-        <div class="fcard"><span class="fp">site/src/main.ts</span><div class="role"><b>Extended · the orchestrator.</b> Decodes the hash on load, drives both controllers to restore <code>n</code> + overrides + cell, binds the code panel to the selection, and wires the share button to encode live state.</div></div>
-        <div class="fcard"><span class="fp">site/src/grid_controls_ui.ts</span><div class="role"><b>Extended.</b> Gains <code>apply_overrides()</code> so a decoded permalink sets the controls exactly as a user drag would — driving the existing single-flight re-cluster.</div></div>
-        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The sticky hero header gains the persistent install one-liner + ★ star button (no scroll), and Section 3 gets the code panel + CTA + share DOM the controllers mount into.</div></div>
-        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Selected-cell ring, the CTA rail, install pill, star/share buttons, and the code panel — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> tokens.</div></div>
+        <div class="fcard"><span class="fp new">site/src/generate_code.ts</span><div class="role"><b>New · pure.</b> The per-algorithm generator: turns a resolved <code>GridParams</code> + the live backend into the runnable ~5 lines, matching <code>grid_worker.ts</code> (SOM the two-call <code>fit</code>→<code>cluster</code> exception; Spectral emits <code>gamma</code>/<code>n_neighbors</code> per affinity, never <code>undefined</code>). No DOM — unit-tested.</div></div>
+        <div class="fcard"><span class="fp new">site/src/code_panel.ts</span><div class="role"><b>New.</b> Renders the generated code into the Section 3 panel for the selected cell + live backend and wires Copy via the shared copy helper.</div></div>
+        <div class="fcard"><span class="fp new">site/src/permalink.ts</span><div class="role"><b>New · pure.</b> Versioned (<code>v=1</code>) hash codec: <code>encode_state</code>/<code>decode_state</code> (non-Auto fields only, unknown version dropped wholesale, per-field clamp/drop, never throws) + thin <code>read</code>/<code>write</code> adapters using <code>history.replaceState</code>. No DOM dependency in the codec — unit-tested.</div></div>
+        <div class="fcard"><span class="fp new">site/src/repo_links.ts</span><div class="role"><b>New.</b> The one <code>with_utm(url, surface)</code> builder — every repo/demo link is tagged here, so no surface can ship an untagged link at runtime.</div></div>
+        <div class="fcard"><span class="fp new">site/src/copy_button.ts</span><div class="role"><b>New.</b> A shared copy helper with a live-region announcement — Share has its own region so a Share right after a Copy does not clobber the install-copy announcement.</div></div>
+        <div class="fcard"><span class="fp new">site/src/clipboard.ts</span><div class="role"><b>New.</b> The clipboard write behind the Copy/Share gesture, with the file://-safe textarea fallback.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_ui.ts</span><div class="role"><b>Extended.</b> Each cell is a <code>role="button"</code> with <code>aria-pressed</code>, delegated click/keydown, arrow-key navigation and a <b>roving tabindex</b> (the grid is one Tab stop). The button is the sole live-updated accessible-name carrier; the inner canvas is presentational. <code>make_grid_ui()</code> returns a <code>GridSection</code>.</div></div>
+        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> <code>make_race_ui()</code> returns a <code>RaceController</code> exposing the race <code>n</code> (<code>get_n</code>/<code>set_n</code>) and <code>run()</code>; the live backend it reports narrows to the code panel's <code>Clustering.init({ backend })</code> arg.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_controls_ui.ts</span><div class="role"><b>Extended.</b> <code>GridControlsPanel.apply_overrides</code> drives every numeric and select control to a target state through the user-interaction paths, firing exactly one re-cluster — so a decoded permalink restores like a real drag.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_config.ts</span><div class="role"><b>Extended.</b> A shared <code>get_grid_cell()</code> lookup replaces the duplicated cell maps, used by selection, the code panel and restore.</div></div>
+        <div class="fcard"><span class="fp">site/src/main.ts</span><div class="role"><b>Extended · the orchestrator.</b> Decodes the hash once on load, restores selection + n immediately and runs the race once, defers override restore to <code>on_backend(live)</code> under a latch, binds the code panel, and wires share to encode live state.</div></div>
+        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The hero gains the persistent install one-liner + ★ star (no scroll); Section 3 gets the code panel + CTA + share DOM with separate live regions, and external links say "(opens in a new tab)". Static <code>href</code>s stay as a no-JS fallback (JS UTM-tags them before any interaction).</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Selected-cell ring, the CTA rail, install pill, star/share buttons, and the code panel — reusing the existing <code>--accent</code> tokens; new transitions are covered by reduced-motion.</div></div>
       </div>
-      <figcaption class="prose"><b>The conversion fold is a pure module plus a generator plus controller wiring — the 55.7 worker and 55.8 resolver are untouched.</b> <code>permalink.ts</code> owns the URL contract and UTM tagging; <code>code_panel.ts</code> generates the runnable lines from the resolver the demo already fits with; the two factories return controllers so <code>main.ts</code> can restore a shared link and drive the code panel from one place.</figcaption>
+      <figcaption class="prose"><b>The conversion fold is two pure modules plus the panel plus controller wiring — the 55.7 worker and 55.8 resolver are untouched.</b> <code>permalink.ts</code> owns the URL contract, <code>repo_links.ts</code> the UTM tagging, and <code>generate_code.ts</code> the runnable lines from the resolver the demo fits with; the two factories return controllers so <code>main.ts</code> can restore a shared link and drive the code panel from one place.</figcaption>
     </figure>
   </section>
 
   <!-- ════ 7. ACCEPTANCE CRITERIA ════ -->
   <section id="done">
-    <div class="eyebrow">What "done" means · five criteria, each mapped to where it is satisfied</div>
+    <div class="eyebrow">What "done" means · five criteria, all met, each mapped to where it is satisfied</div>
     <h2>Acceptance criteria → the surface that satisfies each</h2>
     <div class="acs">
-      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">The code panel <b>updates to match the selected algorithm/backend and copies valid runnable code</b>.<span class="where">→ grid_ui.ts (selectable cells) · code_panel.ts (generate from resolve_params + live backend, SOM two-call) · Copy button</span></span><span class="status plan">plan</span></div>
-      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">The <b>install one-liner and a persistent GitHub star button are visible without scrolling</b> away from the hero.<span class="where">→ index.html sticky hero header · npm install pill + ★ Star button · also repeated in the Section 3 CTA rail</span></span><span class="status plan">plan</span></div>
-      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">"Share this result" <b>copies a URL that, when opened, restores the same dataset + params + <code>n</code></b>.<span class="where">→ permalink.ts encode/decode (v=1) · main.ts orchestration · race RaceController.set_n + run · grid apply_overrides + select cell</span></span><span class="status plan">plan</span></div>
-      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><b>All repo/demo links are UTM-tagged</b> for conversion tracking.<span class="where">→ permalink.ts with_utm(url, surface) · one helper tags every star / install / share / repo link per surface</span></span><span class="status plan">plan</span></div>
-      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit — Python-style <code>snake_case</code>, no <code>as any</code> casts, typed over the <code>GridParams</code> union.<span class="where">→ run lint before push (CLAUDE.local.md) · pure typed permalink + code_panel modules</span></span><span class="status plan">plan</span></div>
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">The code panel <b>updates to match the selected algorithm/backend and copies valid runnable code</b>.<span class="where">→ grid_ui.ts (selectable button cells) · generate_code.ts + code_panel.ts (generate from resolve_params + live backend, SOM two-call) · Copy via copy_button.ts / clipboard.ts</span></span><span class="status">met</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">The <b>install one-liner and a persistent GitHub star button are visible without scrolling</b> away from the hero.<span class="where">→ index.html hero header · npm install one-liner + ★ Star button · also repeated in the Section 3 Code + CTA block</span></span><span class="status">met</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">"Share this result" <b>copies a URL that, when opened, restores the same dataset + params + <code>n</code></b>.<span class="where">→ permalink.ts encode_state/decode_state (v=1, defensive) + read/write via replaceState · main.ts orchestration · RaceController.set_n + run · GridSection.select_cell + apply_overrides</span></span><span class="status">met</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><b>All repo/demo links are UTM-tagged</b> for conversion tracking.<span class="where">→ repo_links.ts with_utm(url, surface) · one builder tags every star / install / share / repo link (utm_source=demo, utm_medium=&lt;surface&gt;, utm_campaign=clustering_demo)</span></span><span class="status">met</span></div>
+      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit — Python-style <code>snake_case</code>, no <code>as any</code> casts, typed over the <code>GridParams</code> union.<span class="where">→ pure typed permalink + generate_code modules · ESLint clean · guarded site build clean · 99 site tests pass</span></span><span class="status">met</span></div>
     </div>
-      <figcaption class="prose"><b>AC #1 carries the code generator (off the same <code>resolve_params</code> the grid fits with), AC #3 carries the versioned permalink round-trip, and AC #4 the one UTM helper.</b> The parent-task AC #6 — "a code panel mirroring the selected algorithm/backend, an npm install one-liner, a persistent star button, and shareable permalinks encoding dataset+params+n" — is satisfied in full by this milestone.</figcaption>
+      <figcaption class="prose"><b>All five acceptance criteria are met.</b> AC #1 carries the code generator (off the same <code>resolve_params</code> the grid fits with), AC #3 the versioned permalink round-trip, and AC #4 the one UTM builder. A multi-lens review (correctness, a11y, spec-completeness, quality, IA) confirmed each, with 99 site tests passing and ESLint plus the guarded build clean. The parent-task AC #6 — "a code panel mirroring the selected algorithm/backend, an npm install one-liner, a persistent star button, and shareable permalinks encoding dataset+params+n" — is satisfied in full.</figcaption>
   </section>
 </main>
 
 <footer>
-  Companion for <b>task-55.9 — Conversion surfaces: code panel, install CTA, star button, shareable permalinks (Milestone M5, in progress)</b> ·
-  grounded in the shipped 55.7/55.8 sources under site/src: grid_config.ts (the curated 25-cell GridParams + cell_id_of), grid_controls.ts (resolve_params · ControlOverrides · is_overridden — the generator's source of truth), grid_ui.ts / grid_controls_ui.ts (the grid + controls the cells and apply_overrides extend), race_ui.ts (the race n + backend), main.ts (the two void factories that become controllers) ·
-  the plan: permalink.ts (versioned v=1 encode/decode + with_utm), code_panel.ts (per-cell runnable code, SOM two-call), controller returns from make_race_ui / make_grid_ui ·
+  Companion for <b>task-55.9 — Conversion surfaces: code panel, install CTA, star button, shareable permalinks (Milestone M5 · Done)</b> ·
+  reflects the shipped commit on branch docs/task-55-interactive-demo-plan ·
+  grounded in site/src: grid_config.ts (the curated 25-cell GridParams + cell_id_of + get_grid_cell), grid_controls.ts (resolve_params · ControlOverrides · is_overridden — the generator's source of truth), grid_ui.ts / grid_controls_ui.ts (selectable button cells + apply_overrides), race_ui.ts (the race n + backend), main.ts (the orchestrator) ·
+  shipped here: permalink.ts (versioned v=1 encode_state/decode_state + read/write via replaceState), repo_links.ts (with_utm), generate_code.ts (pure per-cell runnable code, SOM two-call) + code_panel.ts, copy_button.ts + clipboard.ts ·
+  tests: 99 site tests pass · ESLint + guarded build clean ·
   dark theme matches site/src/style.css · self-contained, no external assets.
 </footer>
 
@@ -593,8 +610,9 @@
   }
 
   // ── the code generator: resolved params + live backend → runnable ~5 lines ──
+  // (mirrors the shipped pure generate_code.ts: SOM two-call; Spectral emits
+  //  gamma only for rbf, n_neighbors only for nearest_neighbors)
   var ESTIMATOR={kmeans:'KMeans',spectral:'SpectralClustering',agglomerative:'AgglomerativeClustering',hdbscan:'HDBSCAN',som:'SOM'};
-  function tok(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function gen_code(d,a,backend){
     var p=curated(d,a);
     var Est=ESTIMATOR[a];
@@ -648,7 +666,9 @@
     return '<svg viewBox="0 0 100 100" aria-hidden="true">'+pts.join('')+'</svg>';
   }
 
-  // ── build the selectable grid ──
+  // ── build the selectable grid: each cell is a role=button with aria-pressed and
+  //    a roving tabindex (the grid is one Tab stop). The canvas is presentational
+  //    (aria-hidden); the button is the sole live-updated accessible-name carrier. ──
   var grid=document.getElementById('gridmock');
   var html='<div class="corner">dataset ↓<br>algo →</div>';
   ALGOS.forEach(function(al){html+='<div class="gh">'+al.k+'</div>';});
@@ -656,12 +676,15 @@
     html+='<div class="rl">'+ds.label+'</div>';
     ALGOS.forEach(function(al){
       var cid=ds.id+':'+al.id;
-      html+='<div class="cell" role="gridcell" tabindex="0" data-d="'+ds.id+'" data-a="'+al.id+'" data-cid="'+cid+'" aria-label="'+ds.label+' clustered by '+al.k+'. Select to see its code.">'+scatter(ds.id,al.id)+'<span class="pin">●</span></div>';
+      // tabindex set after build (roving): only the selected cell is -1→0
+      html+='<button type="button" class="cell" role="button" aria-pressed="false" tabindex="-1" data-d="'+ds.id+'" data-a="'+al.id+'" data-cid="'+cid+'" aria-label="'+ds.label+' clustered by '+al.k+'. Select to see its runnable code.">'+scatter(ds.id,al.id)+'<span class="pin" aria-hidden="true">●</span></button>';
     });
   });
   grid.innerHTML=html;
+  var cells=Array.prototype.slice.call(grid.querySelectorAll('.cell'));
 
-  // ── live backend the race fold would report (mock; the real panel reads RaceController.get_backend) ──
+  // ── live backend the race fold reports (mock; the real panel reads the
+  //    RaceController's live backend, narrowed to the Clustering.init arg) ──
   var BACKEND='webgl';
   var SHORT={kmeans:'K-Means',spectral:'Spectral',agglomerative:'Agglomerative',hdbscan:'HDBSCAN',som:'SOM'};
   var codeBody=document.getElementById('code-body');
@@ -671,33 +694,54 @@
   var copybtn=document.getElementById('copybtn');
   var current={d:'blobs',a:'spectral'};
 
-  function override_for(d,a){
-    // mock: the default cell carries no overrides; nothing is encoded beyond n + cell
-    return '';
-  }
-  function select(d,a){
+  function select(d,a,focus){
     current={d:d,a:a};
-    Array.prototype.forEach.call(grid.querySelectorAll('.cell'),function(c){
-      c.classList.toggle('sel',c.getAttribute('data-cid')===d+':'+a);
+    var sel_cid=d+':'+a;
+    cells.forEach(function(c){
+      var on=c.getAttribute('data-cid')===sel_cid;
+      c.classList.toggle('sel',on);
+      c.setAttribute('aria-pressed',on?'true':'false');
+      c.tabIndex=on?0:-1;                 // roving tabindex: only the selected cell is tabbable
     });
     codeBody.innerHTML=gen_code(d,a,BACKEND);
     codeFl.textContent='selected: '+DATASETS.filter(function(x){return x.id===d;})[0].label+' × '+SHORT[a]+' · backend '+BACKEND+' · runnable today';
     var two=(a==='som')?' · SOM uses fit + cluster (two calls)':'';
-    selnote.innerHTML='<b>selected:</b> '+d+' × '+SHORT[a]+two+' — the code panel reads <code style="font-family:var(--mono)">resolve_params({ '+d+' : '+a+' }, overrides)</code>';
-    urlbar.innerHTML='<span class="h">#</span>v<span class="k">=</span>1<span class="h">&amp;</span>n<span class="k">=</span>1500<span class="h">&amp;</span>cell<span class="k">=</span>'+d+':'+a+'<span style="color:#5a6b82"> &nbsp;← "share" copies this URL, UTM-tagged</span>';
+    selnote.innerHTML='<b>selected:</b> '+d+' × '+SHORT[a]+two+' — the code panel reads <code style="font-family:var(--mono)">resolve_params(get_grid_cell(\''+sel_cid+'\'), overrides)</code>';
+    urlbar.innerHTML='<span class="h">#</span>v<span class="k">=</span>1<span class="h">&amp;</span>n<span class="k">=</span>1500<span class="h">&amp;</span>cell<span class="k">=</span>'+sel_cid+'<span style="color:#5a6b82"> &nbsp;← "share" writes this via history.replaceState, UTM-tagged</span>';
+    if(focus){var t=cells.filter(function(c){return c.getAttribute('data-cid')===sel_cid;})[0];if(t)t.focus();}
   }
 
-  // click + keyboard selection
+  // click selection (delegated)
   grid.addEventListener('click',function(e){
     var cell=e.target.closest('.cell');if(!cell)return;
-    select(cell.getAttribute('data-d'),cell.getAttribute('data-a'));
-  });
-  grid.addEventListener('keydown',function(e){
-    var cell=e.target.closest('.cell');if(!cell)return;
-    if(e.key==='Enter'||e.key===' '){e.preventDefault();select(cell.getAttribute('data-d'),cell.getAttribute('data-a'));}
+    select(cell.getAttribute('data-d'),cell.getAttribute('data-a'),false);
   });
 
-  // Copy button (file:// safe fallback)
+  // keyboard: Enter/Space selects; arrow keys rove the focus across the 5×5 grid
+  var COLS=ALGOS.length;
+  grid.addEventListener('keydown',function(e){
+    var cell=e.target.closest('.cell');if(!cell)return;
+    if(e.key==='Enter'||e.key===' '){
+      e.preventDefault();select(cell.getAttribute('data-d'),cell.getAttribute('data-a'),true);return;
+    }
+    var i=cells.indexOf(cell);if(i<0)return;
+    var ni=-1;
+    if(e.key==='ArrowRight') ni=(i+1)%cells.length;
+    else if(e.key==='ArrowLeft') ni=(i-1+cells.length)%cells.length;
+    else if(e.key==='ArrowDown') ni=(i+COLS)%cells.length;
+    else if(e.key==='ArrowUp') ni=(i-COLS+cells.length)%cells.length;
+    if(ni>=0){
+      e.preventDefault();
+      // roving focus without changing selection
+      cells.forEach(function(c){c.tabIndex=-1;});
+      cells[ni].tabIndex=0;cells[ni].focus();
+      // keep the currently selected cell tabbable as the resting stop
+      var selc=cells.filter(function(c){return c.classList.contains('sel');})[0];
+      if(selc&&selc!==cells[ni])selc.tabIndex=0;
+    }
+  });
+
+  // Copy button (file:// safe fallback — mirrors copy_button.ts / clipboard.ts)
   copybtn.addEventListener('click',function(){
     var text=plain_code(current.d,current.a,BACKEND);
     function flash(){copybtn.textContent='Copied ✓';copybtn.style.background='#10221c';copybtn.style.color='#63e6be';copybtn.style.borderColor='#63e6be';setTimeout(function(){copybtn.textContent='Copy';copybtn.style.background='';copybtn.style.color='';copybtn.style.borderColor='';},1200);}
@@ -712,7 +756,7 @@
   });
 
   // default-selected cell on load: blobs × Spectral (the rbf example)
-  select('blobs','spectral');
+  select('blobs','spectral',false);
 
   // section-outline active link
   var links=Array.prototype.slice.call(document.querySelectorAll('.outline a'));

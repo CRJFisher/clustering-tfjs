@@ -175,6 +175,12 @@ describe("non-numeric numeric fields are dropped, not clamped", () => {
   test("k=xyz is omitted (stays Auto)", () => {
     expect(decode_state("v=1&k=xyz").overrides.n_clusters).toBeUndefined();
   });
+
+  test("an empty value is dropped, not coerced to a bound", () => {
+    expect(decode_state("v=1&n=").n).toBeUndefined();
+    expect(decode_state("v=1&k=").overrides.n_clusters).toBeUndefined();
+    expect(decode_state("v=1&sg=%20").overrides.spectral_gamma).toBeUndefined();
+  });
 });
 
 describe("empty, partial, and leading-hash hashes", () => {

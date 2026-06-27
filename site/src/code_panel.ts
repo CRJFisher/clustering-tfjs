@@ -2,8 +2,8 @@ import {
   GRID_ALGORITHMS,
   GRID_CELLS,
   GRID_DATASETS,
+  get_grid_cell,
 } from "./grid_config";
-import type { GridCell } from "./grid_config";
 import { resolve_params } from "./grid_controls";
 import type { ControlOverrides } from "./grid_controls";
 import {
@@ -39,9 +39,6 @@ const DATASET_LABELS = new Map(
 const ALGORITHM_LABELS = new Map(
   GRID_ALGORITHMS.map((algorithm) => [algorithm.id, algorithm.label]),
 );
-const CELLS_BY_ID = new Map<string, GridCell>(
-  GRID_CELLS.map((cell) => [cell.cell_id, cell]),
-);
 
 export function make_code_panel(elements: CodePanelElements): CodePanel {
   let current_cell = GRID_CELLS[0];
@@ -71,7 +68,7 @@ export function make_code_panel(elements: CodePanelElements): CodePanel {
 
   return {
     set_selection: (cell_id: string): void => {
-      const cell = CELLS_BY_ID.get(cell_id);
+      const cell = get_grid_cell(cell_id);
       if (!cell) return;
       current_cell = cell;
       render();

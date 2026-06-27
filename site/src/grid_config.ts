@@ -247,3 +247,14 @@ export const GRID_CELLS: GridCell[] = GRID_DATASETS.flatMap((dataset) =>
 export function count_parity(tier: ParityTier): number {
   return GRID_CELLS.filter((cell) => cell.parity === tier).length;
 }
+
+const CELL_BY_ID = new Map<string, GridCell>(
+  GRID_CELLS.map((cell) => [cell.cell_id, cell]),
+);
+
+// The single lookup from a cell_id to its config — shared by every surface that
+// mirrors a cell (the code panel, the share-state assembly) so none of them
+// rebuilds its own index.
+export function get_grid_cell(cell_id: string): GridCell | undefined {
+  return CELL_BY_ID.get(cell_id);
+}
