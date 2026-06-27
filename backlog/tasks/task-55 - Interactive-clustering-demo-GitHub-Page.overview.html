@@ -96,7 +96,7 @@
     <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html"><span class="dot" style="background:var(--olive)"></span>55.4 Race UI <span class="ng" style="color:var(--olive)">done</span></a>
     <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 Crossover slider <span class="ng" style="color:var(--olive)">done</span></a>
     <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html"><span class="dot" style="background:var(--olive)"></span>55.6 Fallback + methodology <span class="ng" style="color:var(--olive)">done</span></a>
-    <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.7 sklearn grid <span class="ng">soon</span></span>
+    <a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html"><span class="dot" style="background:var(--olive)"></span>55.7 scikit-learn grid <span class="ng" style="color:var(--olive)">done</span></a>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.8 Param sliders <span class="ng">soon</span></span>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.9 Conversion surfaces <span class="ng">soon</span></span>
     <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.10 Launch assets <span class="ng">soon</span></span>
@@ -113,14 +113,14 @@
       <span class="chip">headline workload <strong>Spectral RBF affinity O(n²·d)</strong></span>
       <span class="chip">measured <strong>~26× @ 10000×100</strong></span>
       <span class="chip">5 algorithms</span>
-      <span class="chip">progress <strong>M0–M3 done · M4 next</strong></span>
+      <span class="chip">progress <strong>M0–M4 (55.7) done · 55.8 next</strong></span>
     </div>
   </header>
 
   <!-- hero: how the pieces fit -->
   <section id="shape">
     <div class="eyebrow">How the ten sub-tasks compose</div>
-    <h2>The shape of the demo — M0–M3 done through the crossover slider + fallback, the sklearn grid next</h2>
+    <h2>The shape of the demo — M0–M3 plus the scikit-learn grid (55.7) done, per-algorithm sliders (55.8) next</h2>
     <figure>
       <div class="hero">
         <svg viewBox="0 0 920 330" role="img" aria-label="Architecture: task 55.1 (done) wires WebGPU into the library, which feeds a worker-per-backend race harness, a race UI, a crossover slider, the sklearn grid, and conversion surfaces. Task 55.2 (done) stands up the Vite site and GitHub Pages deploy that hosts all of it. The worker race harness in 55.3 is next.">
@@ -154,10 +154,11 @@
           <text x="325" y="210" text-anchor="middle" fill="#384021" font-weight="bold">55.5 / 55.6 · M3 ✓ done</text>
           <text x="325" y="226" text-anchor="middle" fill="#384021" font-size="9">crossover + fallback</text>
 
-          <!-- 55.7 + 55.8 grid (NEXT) -->
-          <rect x="250" y="268" width="150" height="50" rx="10" fill="#f1e3d6" stroke="#b5673f" stroke-width="2"/>
-          <text x="325" y="288" text-anchor="middle" fill="#7a3f20" font-weight="bold">55.7 / 55.8 · M4 ◐ next</text>
-          <text x="325" y="304" text-anchor="middle" fill="#7a3f20" font-size="9">sklearn grid + sliders</text>
+          <!-- 55.7 grid (DONE) + 55.8 sliders (NEXT) -->
+          <rect x="250" y="262" width="150" height="28" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="280" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">55.7 · M4 ✓ scikit-learn grid</text>
+          <rect x="250" y="296" width="150" height="26" rx="9" fill="#f1e3d6" stroke="#b5673f" stroke-width="2"/>
+          <text x="325" y="313" text-anchor="middle" fill="#7a3f20" font-size="9.5" font-weight="bold">55.8 · M4 ◐ param sliders next</text>
 
           <!-- 55.9 conversion -->
           <rect x="460" y="120" width="160" height="92" rx="11" fill="#fff" stroke="#bdb6a3"/>
@@ -176,7 +177,7 @@
           <line x1="190" y1="150" x2="246" y2="125" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
           <line x1="190" y1="166" x2="246" y2="206" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
           <line x1="190" y1="135" x2="246" y2="50" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#mo)"/>
-          <line x1="190" y1="180" x2="246" y2="288" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#mo)"/>
+          <line x1="190" y1="180" x2="246" y2="290" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#mo)"/>
           <!-- 55.2 hosts the race core (olive done, hosts the active dependency) -->
           <line x1="325" y1="76" x2="325" y2="96" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
           <text x="392" y="90" fill="#384021" font-size="9">hosts ↓</text>
@@ -189,10 +190,10 @@
       </div>
       <div class="legend">
         <span><i style="background:#6f7a46"></i> M0–M3 done — library change, deploy, the race, crossover + fallback</span>
-        <span><i style="background:#b5673f"></i> 55.7 / 55.8 next — the sklearn toy-dataset grid</span>
+        <span><i style="background:#b5673f"></i> 55.8 next — per-algorithm param sliders</span>
         <span><i style="background:#2b2a26"></i> launch</span>
       </div>
-      <figcaption class="prose"><b>The race core is live: one global TF.js engine per JS context forces one Web Worker per backend</b>, so WebGPU and CPU race fairly off the main thread (55.3 / 55.4). The <code>n</code>-slider flips CPU-wins-small to GPU-wins-large (55.5); a <code>webgpu → webgl → wasm → cpu</code> fallback chain and an always-on methodology expander keep it honest on any browser (55.6). <b>55.7 / 55.8 (M4)</b> is next — the scikit-learn grid.</figcaption>
+      <figcaption class="prose"><b>The race core is live: one global TF.js engine per JS context forces one Web Worker per backend</b>, so WebGPU and CPU race fairly off the main thread (55.3 / 55.4). The <code>n</code>-slider flips CPU-wins-small to GPU-wins-large (55.5); a <code>webgpu → webgl → wasm → cpu</code> fallback chain and an always-on methodology expander keep it honest on any browser (55.6). <b>55.7 (M4) is done</b> — the scikit-learn toy-dataset grid renders 25 live cells over a <code>webgl → wasm → cpu</code> worker, with honest parity tiers (9 match, 7 drift); <b>55.8</b>, the per-algorithm param sliders, is next.</figcaption>
     </figure>
   </section>
 
@@ -236,9 +237,9 @@
       <div class="ms now">
         <div class="when">M4</div><div class="spine"><div class="d"></div><div class="line"></div></div>
         <div class="body">
-          <h3>The scikit-learn toy-dataset grid + per-algorithm sliders <span class="pill">next</span></h3>
-          <div class="sub prose">Moons / circles / blobs / anisotropic / no-structure, live across K-Means, Spectral, Agglomerative, HDBSCAN, SOM — the trust signal.</div>
-          <div class="tasks"><span><span class="dot" style="background:var(--g300)"></span>55.7 · not yet generated</span><span><span class="dot" style="background:var(--g300)"></span>55.8 · not yet generated</span></div>
+          <h3>The scikit-learn toy-dataset grid (55.7 done) + per-algorithm sliders <span class="pill">in progress</span></h3>
+          <div class="sub prose">Moons / circles / blobs / anisotropic / no-structure, live across K-Means, Spectral, Agglomerative, HDBSCAN, SOM — the trust signal. The grid (55.7) ships: 25 cells stream from one <code>webgl → wasm → cpu</code> worker with honest parity tiers (9 ✓ match, 7 ≈ drift, 5 ◇ SOM, 4 ∅ no-truth). Per-algorithm param sliders (55.8) are next.</div>
+          <div class="tasks"><a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html"><span class="dot" style="background:var(--olive)"></span>55.7 · companion · done</a><span><span class="dot" style="background:var(--g300)"></span>55.8 · not yet generated</span></div>
         </div>
       </div>
       <div class="ms">
@@ -268,7 +269,7 @@
 
 <footer>
   Overview for <b style="color:var(--g500)">task-55 — Interactive clustering demo GitHub Page (WebGPU vs CPU race)</b> ·
-  sub-task companions re-scanned from this directory · 55.1–55.6 done (companions present), 55.7–55.10 not yet generated ·
+  sub-task companions re-scanned from this directory · 55.1–55.7 done (companions present), 55.8–55.10 not yet generated ·
   self-contained, no external assets.
 </footer>
 </body>

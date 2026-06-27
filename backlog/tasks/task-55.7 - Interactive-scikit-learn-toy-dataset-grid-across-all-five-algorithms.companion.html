@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.7 — Interactive scikit-learn toy-dataset grid across all five algorithms</title>
+<style>
+  :root{
+    /* site theme — matches site/src/style.css */
+    --bg:#0d1117; --bg-glow:#161b2e; --panel:#11182a; --panel-2:#0f1626;
+    --fg:#e6edf3; --fg-muted:#8b949e; --line:#22304a;
+    --accent:#7c9cff; --accent-2:#63e6be; --accent-3:#ffa94d; --warn:#ff8585;
+    /* cluster palette — mirrors scatter_canvas.ts CLUSTER_COLORS + NOISE_COLOR */
+    --c0:#7c9cff; --c1:#63e6be; --c2:#ffa94d; --c3:#ff8787; --noise:#6b7280;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 50% -10%,var(--bg-glow),transparent 55%),var(--bg)}
+  .prose{max-width:70ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
+  .crossnav a{color:var(--fg);background:var(--panel)}
+  .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .crossnav span.cur{background:var(--accent-2);color:var(--bg);border-color:var(--accent-2);font-weight:600}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--fg-muted);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--accent);color:var(--bg)}
+
+  main{width:92%;max-width:1640px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.4rem;scroll-margin-top:98px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  h1{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1.12;margin:.3rem 0 .5rem;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
+  .chip strong{color:var(--accent-2)}
+  .donepill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
+  figcaption b{color:var(--fg)}
+
+  .flowwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.9rem;font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 12px 12px 0;padding:.95rem 1.1rem;margin-top:1.1rem}
+  aside.callout.go{border-left-color:var(--accent-2)}
+  aside.callout.warn{border-left-color:var(--accent-3)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  aside.callout.go .k{color:var(--accent-2)}
+  aside.callout.warn .k{color:var(--accent-3)}
+  aside.callout p{margin:.4rem 0 0;font-size:.92rem;color:var(--fg)}
+  aside.callout code,figcaption code,.outline code{font-family:var(--mono);font-size:.82rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .32rem;border-radius:4px;border:1px solid var(--line)}
+
+  /* ── code panel ── */
+  .code{background:#0a0f1a;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid var(--line)}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);background:#0c1322;padding:.45rem .9rem;border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.7;color:#cdd9e5;white-space:pre}
+  .code .kw{color:#ff9d76}.code .str{color:var(--accent-2)}.code .fn{color:var(--accent-3)}.code .cm{color:#5a6b82}.code .var{color:var(--accent)}.code .hl{background:rgba(255,133,133,.16);border-radius:3px;padding:0 2px}
+
+  /* ════════ THE HERO — the live 5×5 grid, as built ════════ */
+  .mock{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.3rem clamp(.8rem,1.6vw,1.5rem);margin-top:.6rem;
+    box-shadow:0 0 0 1px rgba(124,156,255,.08), 0 20px 60px -30px #000;position:relative;overflow:hidden}
+  .mock::before{content:'the trust signal · live in-browser';position:absolute;top:.7rem;right:.9rem;font-family:var(--mono);font-size:.6rem;color:var(--fg-muted);letter-spacing:.06em;opacity:.7}
+  .mock-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .mock-title{font-family:var(--serif);font-weight:800;font-size:clamp(1.4rem,2.8vw,2.1rem);line-height:1.08;margin:.35rem 0 .3rem;letter-spacing:-.02em}
+  .mock-title .grad{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .mock-sub{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);margin-bottom:1rem}
+  .mock-sub b{color:var(--accent-2)}
+
+  /* the grid itself: 1 corner + 5 algo headers, then 5 rows of (label + 5 cells) */
+  .gridmock{display:grid;grid-template-columns:var(--rowlabel,7.5rem) repeat(5,1fr);gap:.4rem;align-items:stretch}
+  .gh{font-family:var(--mono);font-size:.66rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--accent);text-align:center;padding:.35rem .1rem;align-self:end}
+  .gh small{display:block;font-weight:400;text-transform:none;letter-spacing:0;color:var(--fg-muted);font-size:.58rem;margin-top:.12rem}
+  .corner{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.05em;align-self:end;text-align:left;line-height:1.3;padding-bottom:.2rem}
+  .rl{font-family:var(--mono);font-size:.7rem;font-weight:700;color:var(--accent-2);display:flex;flex-direction:column;justify-content:center;padding-right:.3rem}
+  .rl small{font-weight:400;color:var(--fg-muted);font-size:.58rem;margin-top:.15rem}
+  .cell{position:relative;background:radial-gradient(circle at 50% 42%,#0e1626,#080c14);border:1px solid var(--line);border-radius:8px;aspect-ratio:1/1;overflow:hidden}
+  .cell svg{width:100%;height:100%;display:block}
+  .cell .flag{position:absolute;top:3px;right:3px;min-width:11px;height:13px;padding:0 2px;border-radius:5px;display:grid;place-items:center;font-family:var(--mono);font-size:8px;font-weight:700;line-height:1}
+  .cell .flag.ok{background:rgba(99,230,190,.18);border:1px solid var(--accent-2);color:var(--accent-2)}
+  .cell .flag.drift{background:rgba(255,169,77,.2);border:1px solid var(--accent-3);color:var(--accent-3)}
+  .cell .flag.ref{background:rgba(124,156,255,.18);border:1px solid var(--accent);color:var(--accent)}
+  .cell .flag.truth{background:rgba(107,114,128,.28);border:1px solid #8b94a6;color:#c2c9d6}
+  .cell.spotlight{outline:2px solid var(--accent-3);outline-offset:-1px}
+
+  .mock-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.7rem;margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--line)}
+  .same{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.74rem;font-weight:600;color:var(--accent-2);
+    background:rgba(99,230,190,.08);border:1px solid rgba(99,230,190,.35);border-radius:999px;padding:.35rem .8rem}
+  .same .pip{width:9px;height:9px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 8px var(--accent-2)}
+  .palrow{display:inline-flex;align-items:center;gap:.4rem;font-family:var(--mono);font-size:.66rem;color:var(--fg-muted)}
+  .palrow i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  .annos{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:1rem}
+  .anno{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;display:grid;grid-template-columns:1.5rem 1fr;gap:.55rem;align-items:start}
+  .anno .pn{width:1.3rem;height:1.3rem;border-radius:50%;background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:.66rem;font-weight:700;display:grid;place-items:center;flex:none}
+  .anno .at{font-size:.78rem;color:var(--fg)}
+  .anno .at b{color:var(--accent)}
+
+  /* ── parity matrix (feature-matrix-grid) ── */
+  .pmwrap{overflow-x:auto;margin-top:.6rem}
+  table.pm{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-family:var(--mono)}
+  table.pm th,table.pm td{border-bottom:1px solid var(--line);padding:.5rem .55rem;text-align:center;font-size:.72rem}
+  table.pm thead th{color:var(--accent);font-size:.68rem;text-transform:uppercase;letter-spacing:.03em;background:var(--panel-2);position:sticky;top:0}
+  table.pm thead th small{display:block;color:var(--fg-muted);font-weight:400;text-transform:none;letter-spacing:0;font-size:.6rem;margin-top:.15rem}
+  table.pm td.rl,table.pm th.rl{text-align:left;color:var(--accent-2);font-weight:700;white-space:nowrap}
+  table.pm td.rl small{display:block;color:var(--fg-muted);font-weight:400;font-size:.62rem;margin-top:.1rem}
+  table.pm td .disc{width:13px;height:13px;border-radius:50%;display:inline-block;vertical-align:-2px}
+  table.pm td.ok .disc{background:var(--accent-2)}
+  table.pm td.drift .disc{background:transparent;border:2px solid var(--accent-3);box-sizing:border-box}
+  table.pm td.ref .disc{background:transparent;border:2px solid var(--accent);box-sizing:border-box;border-radius:3px;transform:rotate(45deg)}
+  table.pm td.truth .disc{background:transparent;border:2px dashed #8b94a6;box-sizing:border-box}
+  table.pm td.drift{color:var(--accent-3)}
+  table.pm td.ok{color:var(--accent-2)}
+  table.pm td.ref{color:var(--accent)}
+  table.pm td.truth{color:#c2c9d6}
+  table.pm td .px{display:block;font-size:.6rem;color:var(--fg-muted);margin-top:.2rem;font-weight:400}
+  table.pm td.drift .px{color:var(--accent-3)}
+  table.pm td.ref .px{color:var(--accent)}
+  table.pm td.truth .px{color:#c2c9d6}
+
+  .tiers{display:grid;grid-template-columns:repeat(4,1fr);gap:.7rem;margin-top:1rem}
+  .tier{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.75rem .9rem}
+  .tier .n{font-family:var(--serif);font-size:1.9rem;font-weight:800;line-height:1}
+  .tier .gl{font-family:var(--mono);font-size:.9rem;margin-left:.35rem;font-weight:700}
+  .tier .lb{font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.05em;color:var(--fg-muted);margin-top:.4rem}
+  .tier .ds{font-size:.78rem;color:var(--fg-muted);margin-top:.35rem}
+  .tier.ok{border-color:rgba(99,230,190,.45)} .tier.ok .n,.tier.ok .gl{color:var(--accent-2)}
+  .tier.drift{border-color:rgba(255,169,77,.45)} .tier.drift .n,.tier.drift .gl{color:var(--accent-3)}
+  .tier.ref{border-color:rgba(124,156,255,.45)} .tier.ref .n,.tier.ref .gl{color:var(--accent)}
+  .tier.truth{border-color:rgba(139,148,166,.5)} .tier.truth .n,.tier.truth .gl{color:#c2c9d6}
+
+  /* ── files grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.74rem;color:var(--accent-2);background:#0a0f1a;border:1px solid var(--line);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .fp.new{color:var(--accent)}
+  .fcard .role{font-size:.8rem;color:var(--fg-muted);margin-top:.45rem}
+  .fcard .role b{color:var(--fg)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-2);background:var(--accent-2);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
+  .ac .txt{font-size:.9rem;color:var(--fg)}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--accent-2);color:var(--bg)}
+
+  footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
+  footer b{color:var(--fg-muted)}
+
+  @media(max-width:920px){
+    .gridmock{--rowlabel:5.2rem}
+    .annos{grid-template-columns:1fr}
+    .tiers{grid-template-columns:1fr 1fr}
+    .files{grid-template-columns:1fr}
+  }
+  @media(max-width:620px){
+    .gridmock .gh small,.rl small{display:none}
+    .mock::before{display:none}
+    .tiers{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html">55.3 · Race harness</a>
+  <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html">55.4 · Race UI</a>
+  <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html">55.6 · Fallback + methodology</a>
+  <span class="cur" aria-current="page">55.7 · scikit-learn grid ✓</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#grid">The 5×5 grid</a>
+  <a href="#dataflow">Main → worker → cell</a>
+  <a href="#parity">The four parity tiers</a>
+  <a href="#bug">The bundling bug</a>
+  <a href="#build">What was built</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.7 · Milestone M4 · the trust signal · <span class="donepill">Done</span></div>
+    <h1 class="prose">scikit-learn's clustering grid you already know — live, in the browser, from the real library</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Twenty-five live canvas scatters — each colored by the labels <code style="font-family:var(--mono);color:var(--accent-2)">clustering-tfjs</code> computes in one Web Worker over a <code style="font-family:var(--mono);color:var(--accent-2)">webgl → wasm → cpu</code> chain. A headless-browser run confirmed all 25 cells compute, 0 errors on WebGL.</p>
+    <div class="meta">
+      <span class="chip">rows <strong>moons · circles · blobs · aniso · no-structure</strong></span>
+      <span class="chip">cols <strong>KMeans · Spectral · Agglomerative · HDBSCAN · SOM</strong></span>
+      <span class="chip">25 cells <strong>one render_scatter each</strong></span>
+      <span class="chip">parity <strong>9 ✓ · 7 ≈ · 5 ◇ · 4 ∅</strong></span>
+      <span class="chip">verified <strong>headless · 0 errors</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. THE GRID — live render ════ -->
+  <section id="grid">
+    <div class="eyebrow">The crux · the grid as it now renders</div>
+    <h2>The shipped grid — 25 real colored clusterings, one fit_predict per cell</h2>
+    <figure>
+      <div class="mock" role="img" aria-label="The shipped 5 by 5 scikit-learn toy-dataset grid. Five rows of dataset shapes: two moons, concentric circles, blobs, anisotropic, no-structure, each standardized to zero mean and unit variance. Five columns of algorithms: K-Means, Spectral, Agglomerative, HDBSCAN, SOM. Each of the 25 cells is a small scatter colored by the integer labels the library computes. A green check marks the 9 cells whose float32 labels match scikit-learn; an orange approximately-equals marks the 7 cells whose cores match but boundary points drift under float32; a blue diamond marks the 5 SOM cells that have no scikit-learn reference; a gray empty-set marks the 4 no-structure non-SOM cells that have no true clusters. The no-structure HDBSCAN cell is all gray noise.">
+        <div class="mock-eyebrow">clustering-tfjs · comparing clustering algorithms on toy datasets</div>
+        <div class="mock-title">The scikit-learn grid you know — <span class="grad">computed by the real library, live.</span></div>
+        <div class="mock-sub">25 cells · each colored by the labels <b>fit_predict</b> streams back from one worker · the page never freezes while they fill in</div>
+
+        <div class="gridmock" id="gridmock"><!-- built by JS --></div>
+
+        <div class="mock-foot">
+          <span class="same"><span class="pip"></span>9 of 25 cells match scikit-learn exactly — the other 16 are honestly tiered, never tuned to hide drift</span>
+          <span class="palrow">cluster colors
+            <i style="background:var(--c0)"></i><i style="background:var(--c1)"></i><i style="background:var(--c2)"></i><i style="background:var(--c3)"></i>
+            <span style="margin-left:.3rem">noise <i style="background:var(--noise)"></i></span>
+          </span>
+        </div>
+      </div>
+
+      <div class="annos">
+        <div class="anno"><span class="pn">A</span><span class="at"><b>One cell = one fit_predict</b> — each scatter is colored by the integer labels the algorithm returns, drawn once by <code style="font-family:var(--mono);color:var(--accent-2)">render_scatter</code> with no animation loop (SOM uses the two-phase <code style="font-family:var(--mono);color:var(--accent-2)">fit</code> + <code style="font-family:var(--mono);color:var(--accent-2)">cluster(n)</code> path).</span></div>
+        <div class="anno"><span class="pn">B</span><span class="at"><b>Four honest tiers</b> — ✓ matches sklearn, ≈ cores match but float32 drift, ◇ SOM has no sklearn reference, ∅ uniform data has no true clusters; the badge is read straight from <code style="font-family:var(--mono);color:var(--accent-2)">grid_config.ts</code>.</span></div>
+        <div class="anno"><span class="pn">C</span><span class="at"><b>No-structure row is honest</b> — partition methods are forced to split it, and HDBSCAN correctly reports all 300 points as noise (gray), not a single invented cluster.</span></div>
+      </div>
+      <figcaption class="prose"><b>The scatters above are illustrative SVG point clouds in the site's own dark theme</b> — same <code>--c0 #7c9cff</code> / <code>--c1 #63e6be</code> / <code>--c2 #ffa94d</code> / <code>--c3 #ff8787</code> colorblind-safe palette and gray noise as <code>scatter_canvas.ts</code>. The shipped grid renders live <code>fit_predict</code> output on a 2-D canvas; the layout, the four-tier badges, and the legibility are what they reproduce.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">The badge is data, not a sales claim</div>
+      <p>Every cell's tier comes from <code>parity_for()</code> in <code>grid_config.ts</code> and the footnote from <code>count_parity()</code>, so the "9 of 25 match exactly" line can never drift from the badges. Where float32 moves a few boundary points, the cell is marked <b>≈</b>, never re-tuned to fake a match.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 2. DATA FLOW (as built) ════ -->
+  <section id="dataflow">
+    <div class="eyebrow">The wiring · why the page never freezes</div>
+    <h2>Main thread generates the datasets; one worker clusters; each cell renders once</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 940 392" role="img" aria-label="As-built data flow. On the main thread, make_toy_datasets.ts generates the five deterministic seeded 2-D datasets, standardized to zero mean and unit variance, and grid.ts (the orchestrator) reads grid_config.ts to build the 25 dataset-by-algorithm jobs and post them, with the dataset payloads, into one Web Worker. grid_config.ts is the single source of truth for the 25-cell param table and parity tier. Inside grid_worker.ts the real clustering-tfjs library initializes one backend over a webgl then wasm then cpu chain — never webgpu, whose synchronous tensor readback inside fit_predict is unsupported — and fits all 25 cells in sequence, streaming each cell's integer labels back the instant they land, HDBSCAN using minus one for noise. As each result arrives, grid_ui.ts calls render_scatter once on that cell's 2-D canvas via scatter_canvas.ts, coloring points by label and noise gray. The main thread never initializes tfjs.">
+          <defs>
+            <marker id="da" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#8b949e"/></marker>
+            <marker id="db" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
+            <marker id="dg" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#63e6be"/></marker>
+          </defs>
+
+          <!-- main thread band -->
+          <rect x="14" y="14" width="912" height="154" rx="12" fill="none" stroke="#22304a" stroke-dasharray="4 4"/>
+          <text x="28" y="34" fill="#7c9cff" font-size="10" font-weight="bold">MAIN THREAD — pure JS, no tfjs engine ever initialized</text>
+
+          <!-- generators -->
+          <rect x="28" y="50" width="244" height="100" rx="11" fill="#0f1626" stroke="#7c9cff" stroke-width="1.6"/>
+          <text x="150" y="72" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">make_toy_datasets.ts</text>
+          <text x="150" y="90" text-anchor="middle" fill="#8b949e" font-size="9">moons · circles · blobs</text>
+          <text x="150" y="104" text-anchor="middle" fill="#8b949e" font-size="9">aniso · no-structure</text>
+          <text x="150" y="122" text-anchor="middle" fill="#63e6be" font-size="9">mulberry32 seeds → Float32Array</text>
+          <text x="150" y="138" text-anchor="middle" fill="#63e6be" font-size="9">standardized: 0-mean / unit-var</text>
+
+          <!-- orchestrator / config -->
+          <rect x="312" y="56" width="206" height="88" rx="11" fill="#11182a" stroke="#22304a"/>
+          <text x="415" y="78" text-anchor="middle" fill="#e6edf3" font-size="10.5" font-weight="bold">grid.ts orchestrator</text>
+          <text x="415" y="96" text-anchor="middle" fill="#8b949e" font-size="9">reads grid_config.ts (SoT)</text>
+          <text x="415" y="110" text-anchor="middle" fill="#8b949e" font-size="9">25 jobs = 5 datasets × 5 algos</text>
+          <text x="415" y="126" text-anchor="middle" fill="#8b949e" font-size="9">120 s watchdog · posts to worker</text>
+
+          <line x1="272" y1="100" x2="308" y2="100" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#db)"/>
+
+          <!-- worker band -->
+          <rect x="14" y="188" width="640" height="190" rx="12" fill="none" stroke="#63e6be" stroke-dasharray="4 4"/>
+          <text x="28" y="208" fill="#63e6be" font-size="10" font-weight="bold">grid_worker.ts — the only place tfjs is initialized</text>
+
+          <rect x="28" y="224" width="600" height="140" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="328" y="246" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">init backend: webgl → wasm → cpu  ·  fit all 25 in sequence</text>
+          <text x="120" y="274" text-anchor="middle" fill="#e6edf3" font-size="9.5">KMeans.fit_predict</text>
+          <text x="120" y="290" text-anchor="middle" fill="#e6edf3" font-size="9.5">Spectral.fit_predict</text>
+          <text x="328" y="274" text-anchor="middle" fill="#e6edf3" font-size="9.5">Agglomerative.fit_predict</text>
+          <text x="328" y="290" text-anchor="middle" fill="#e6edf3" font-size="9.5">HDBSCAN.fit_predict</text>
+          <text x="538" y="274" text-anchor="middle" fill="#e6edf3" font-size="9.5">SOM.fit()</text>
+          <text x="538" y="290" text-anchor="middle" fill="#e6edf3" font-size="9.5">+ .cluster(n)</text>
+          <text x="328" y="320" text-anchor="middle" fill="#ffa94d" font-size="9">never webgpu — sync fit_predict readback unsupported there</text>
+          <text x="328" y="338" text-anchor="middle" fill="#8b949e" font-size="9">labels stream back one Int32Array per cell as each finishes (−1 = noise)</text>
+
+          <line x1="415" y1="144" x2="415" y2="220" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#db)"/>
+
+          <!-- render -->
+          <rect x="690" y="224" width="236" height="140" rx="11" fill="#0f1626" stroke="#63e6be" stroke-width="1.8"/>
+          <text x="808" y="248" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">grid_ui.ts → render_scatter</text>
+          <text x="808" y="270" text-anchor="middle" fill="#8b949e" font-size="9">once per cell, O(1) by cell_id</text>
+          <text x="808" y="284" text-anchor="middle" fill="#8b949e" font-size="9">2-D canvas dot per point</text>
+          <text x="808" y="298" text-anchor="middle" fill="#8b949e" font-size="9">colored by returned label</text>
+          <text x="808" y="316" text-anchor="middle" fill="#e6edf3" font-size="9">noise (−1) → muted gray</text>
+          <text x="808" y="332" text-anchor="middle" fill="#e6edf3" font-size="9">no animation loop · no freeze</text>
+          <text x="808" y="350" text-anchor="middle" fill="#8b949e" font-size="9">terminal sweep marks any stragglers</text>
+
+          <line x1="628" y1="294" x2="686" y2="294" stroke="#63e6be" stroke-width="1.6" marker-end="url(#dg)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#7c9cff"></i> main-thread generation + orchestration (no tfjs)</span>
+        <span><i style="background:#63e6be"></i> worker compute + per-cell render</span>
+        <span><i style="background:#10221c;border:1px solid #63e6be"></i> the one place the library runs</span>
+      </div>
+      <figcaption class="prose"><b>The page stays responsive because compute never touches the main thread.</b> <code>make_toy_datasets.ts</code> builds the five standardized <code>Float32Array</code> point clouds; one <code>grid_worker.ts</code> over a <code>webgl → wasm → cpu</code> chain fits all 25 cells and streams <code>Int32Array</code> labels back one at a time; each result triggers a single <code>render_scatter</code> draw, with a 120 s watchdog and a terminal sweep so a crash never leaves the grid frozen on "Computing N / 25" (AC #2).</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">One sequential worker, not a pool</div>
+      <p>The toy data is tiny (300 points per dataset) and the tfjs engine stays warm across the 25 fits, so a single sequential worker beats a pool — which would re-pay backend init for data that fits in milliseconds.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. PARITY TIERS ════ -->
+  <section id="parity">
+    <div class="eyebrow">The parity story · read it by scanning a column</div>
+    <h2>The four honest tiers — computed from config, never hand-typed</h2>
+    <figure>
+      <div class="pmwrap">
+        <table class="pm" aria-label="Parity matrix of all 25 cells. Rows are datasets, columns are algorithms. Each cell shows its tier: a filled green disc for matches, a hollow orange ring for float32 drift, a blue rotated square for SOM no-reference, and a dashed gray ring for no-truth uniform data.">
+          <thead>
+            <tr>
+              <th class="rl">dataset \ algorithm</th>
+              <th>K-Means<small>n_clusters</small></th>
+              <th>Spectral<small>affinity</small></th>
+              <th>Agglomerative<small>linkage</small></th>
+              <th>HDBSCAN<small>min_cluster_size</small></th>
+              <th>SOM<small>grid + cluster(n)</small></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="rl">moons<small>2 interleaving</small></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ k=2</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ kNN n=10</span></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ single</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ mcs=10</span></td>
+              <td class="ref"><span class="disc"></span><span class="px">◇ 8×8</span></td>
+            </tr>
+            <tr>
+              <td class="rl">circles<small>concentric</small></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ k=2</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ kNN n=10</span></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ single</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ mcs=10</span></td>
+              <td class="ref"><span class="disc"></span><span class="px">◇ 8×8</span></td>
+            </tr>
+            <tr>
+              <td class="rl">blobs<small>well-separated</small></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ k=3</span></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ rbf γ=1</span></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ ward</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ mcs=15</span></td>
+              <td class="ref"><span class="disc"></span><span class="px">◇ 6×6</span></td>
+            </tr>
+            <tr>
+              <td class="rl">anisotropic<small>sheared blobs</small></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ k=3</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ kNN n=10</span></td>
+              <td class="ok"><span class="disc"></span><span class="px">✓ ward</span></td>
+              <td class="drift"><span class="disc"></span><span class="px">≈ mcs=15</span></td>
+              <td class="ref"><span class="disc"></span><span class="px">◇ 6×6</span></td>
+            </tr>
+            <tr>
+              <td class="rl">no-structure<small>uniform field</small></td>
+              <td class="truth"><span class="disc"></span><span class="px">∅ arb. split</span></td>
+              <td class="truth"><span class="disc"></span><span class="px">∅ arb. split</span></td>
+              <td class="truth"><span class="disc"></span><span class="px">∅ arb. split</span></td>
+              <td class="truth"><span class="disc"></span><span class="px">∅ 300 noise</span></td>
+              <td class="ref"><span class="disc"></span><span class="px">◇ 6×6</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="tiers">
+        <div class="tier ok"><span class="n">9</span><span class="gl">✓</span><div class="lb">matches</div><div class="ds">float32 labels reproduce scikit-learn's result — including where K-Means is <i>meant</i> to cut straight through moons / circles.</div></div>
+        <div class="tier drift"><span class="n">7</span><span class="gl">≈</span><div class="lb">drifts</div><div class="ds">Spectral on moons / circles / aniso, plus all four non-uniform HDBSCAN cells: cores match, a few boundary points move under float32.</div></div>
+        <div class="tier ref"><span class="n">5</span><span class="gl">◇</span><div class="lb">no-reference</div><div class="ds">The whole SOM column — there is no scikit-learn counterpart in this comparison.</div></div>
+        <div class="tier truth"><span class="n">4</span><span class="gl">∅</span><div class="lb">no-truth</div><div class="ds">The no-structure row's non-SOM cells: uniform data has no real clusters; HDBSCAN reports all-noise, partition methods invent a split.</div></div>
+      </div>
+      <figcaption class="prose"><b>The blobs row is the safe anchor — every partition algorithm matches there.</b> The 7 ≈ cells are exactly where the task predicted: Spectral on the curved and anisotropic rows and every non-uniform HDBSCAN cell. The pre-build open question — which dataset+param combos hold parity under float32 — is now resolved in <code>grid_config.ts</code> and validated by a headless run (25/25 compute, 0 errors on WebGL).</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">The open delivery question is resolved</div>
+      <p>The exact 25-cell parameter table — <code>n_clusters</code>, Spectral's <code>nearest_neighbors</code> vs <code>rbf</code> affinity, Agglomerative's <code>single</code> vs <code>ward</code> linkage, per-row <code>min_cluster_size</code>, and the SOM grid + <code>cluster(n)</code> linkage — lives in <code>grid_config.ts</code> behind a fully-typed discriminated union (no casts). One curated set serves every row because every dataset is standardized to zero-mean / unit-variance first.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 4. THE INTEGRATION BUG ════ -->
+  <section id="bug">
+    <div class="eyebrow">The one real integration bug · found and fixed</div>
+    <h2>tfjs chained ops get tree-shaken out of the worker bundle</h2>
+    <figure>
+      <div class="code">
+        <div class="fl">site/src/grid_worker.ts — the one-line fix that makes the bundled algorithms work</div>
+<pre><span class="cm">// The library's algorithms call chained tensor methods internally —</span>
+<span class="cm">// x.square(), x.sub(), x.min(), … — registered as a side effect by</span>
+<span class="cm">// tfjs-core's index. The production bundler tree-shakes that registration</span>
+<span class="cm">// out of the worker chunk, because grid_worker NEVER calls a chained op</span>
+<span class="cm">// directly, so the library's bundled-in calls hit an unregistered prototype.</span>
+<span class="kw">import</span> <span class="str">"@tensorflow/tfjs-core/dist/public/chained_ops/register_all_chained_ops"</span><span class="hl">;</span>
+
+<span class="cm">// The race worker did NOT need this — its affinity workload uses only</span>
+<span class="cm">// functional ops, so its chained-op registration was never tree-shaken.</span></pre>
+      </div>
+      <figcaption class="prose"><b>The symptom is invisible in dev and only bites the production bundle.</b> Because the worker itself never types <code>x.square()</code>, the bundler had no reference to keep the chained-op prototype patches, so the library's internal calls failed once minified. A bare side-effect import pins the registration into the worker chunk — the same class of fix the dev build never needs.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">Why the race worker was immune</div>
+      <p>The race worker only awaits a functional affinity matrix, never a chained op, so its registration survived tree-shaking. The grid worker runs full <code>fit_predict</code> across all five estimators, every one of which leans on chained tensor methods — so only it needs the explicit import.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 5. WHAT WAS BUILT ════ -->
+  <section id="build">
+    <div class="eyebrow">As built · the parity-grid fold on top of the finished race UI</div>
+    <h2>One config source of truth, one streaming worker, four new generators</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp new">site/src/make_toy_datasets.ts</span><div class="role"><b>New.</b> Deterministic seeded 2-D generators for moons / circles / iso blobs / aniso / no-structure, every dataset standardized to 0-mean / unit-var. Colocated test asserts shape, determinism, standardization, label domains, and the aniso shear.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_config.ts</span><div class="role"><b>New · source of truth.</b> The five datasets, five algorithms, the typed 25-cell param table, and each cell's parity tier. Exports <code>GRID_CELLS</code>, <code>cell_id_of</code>, <code>count_parity</code> — so headers, compute, and footnote can never disagree.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_worker.ts</span><div class="role"><b>New.</b> One worker, one backend over <code>webgl → wasm → cpu</code> (never webgpu), fits all 25 cells in sequence and streams each result. Carries the chained-op side-effect import.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid.ts</span><div class="role"><b>New.</b> Main-thread orchestrator: generates the five datasets once, posts payloads + 25 jobs, streams results to the UI, and arms a 120 s watchdog. Never initializes tfjs.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_ui.ts</span><div class="role"><b>New.</b> Builds the 5×5 DOM from config, renders each cell once via <code>render_scatter</code> as labels arrive, writes the per-cell tier annotation + config-computed footnote, and runs a terminal sweep so the grid never hangs.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_protocol.ts</span><div class="role"><b>New.</b> The typed worker message contract — run request with dataset payloads + jobs, and the <code>progress</code> / <code>cell_result</code> / <code>cell_error</code> / <code>done</code> outbound union.</div></div>
+        <div class="fcard"><span class="fp">site/src/scatter_canvas.ts</span><div class="role"><b>Extended.</b> <code>render_scatter</code> now draws label <code>&lt; 0</code> (HDBSCAN noise) in muted gray under the cluster colors, so the no-structure HDBSCAN cell reads as all-noise rather than blank.</div></div>
+        <div class="fcard"><span class="fp">site/src/make_blobs_js.ts</span><div class="role"><b>Extended.</b> Now exports the shared <code>mulberry32</code> / <code>next_gaussian</code> PRNG so the whole site draws from one seeded stream.</div></div>
+        <div class="fcard"><span class="fp">site/src/main.ts</span><div class="role"><b>Extended.</b> Mounts <code>make_grid_ui()</code> alongside the race UI; each controller owns its own section.</div></div>
+      </div>
+      <figcaption class="prose"><b>The fold mirrors the established race pattern</b> (<code>*_protocol</code> / <code>*_worker</code> / orchestrator / <code>*_ui</code>) and adds <code>grid_config.ts</code> as the single source of truth. The library computes the labels unchanged and <code>scatter_canvas.ts</code> draws them; the new surface is the four deterministic generators and the curated 25-cell param table.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. ACCEPTANCE CRITERIA ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means · status: done</div>
+    <h2>Acceptance criteria — five, all met (headless-verified)</h2>
+    <div class="acs">
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">All five algorithms produce <b>live cluster colorings</b> across all five dataset rows — 25/25 cells compute, 0 errors on WebGL.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Compute runs <b>off the main thread</b> in <code>grid_worker.ts</code> and re-renders <b>without freezing</b> — incremental per-cell draw, 120 s watchdog, terminal sweep.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Datasets/params are <b>curated</b> in <code>grid_config.ts</code> so float32 labels match the parity story, and the HDBSCAN / Spectral drift is <b>annotated (≈)</b>, never hidden.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt">The grid is visually <b>legible</b> with the high-contrast, <b>colorblind-safe</b> palette; noise renders gray.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> — Python-style <code>snake_case</code> on every new <code>site/src</code> source, typed param union with no casts.</span><span class="status">done</span></div>
+    </div>
+    <figcaption class="prose"><b>AC #3 is the load-bearing one</b> — it keeps the trust signal honest. The footnote count is derived by <code>count_parity()</code>, so the "9 of 25 match exactly" claim is tied to the same config the badges read; every ≈ cell is annotated, not tuned to bit-parity.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Companion for <b>task-55.7 — Interactive scikit-learn toy-dataset grid across all five algorithms (Milestone M4, done)</b> ·
+  grounded in the as-built sources under site/src: grid_config.ts (the 25-cell param table + parity tiers), make_toy_datasets.ts (the five seeded generators), grid_worker.ts (the streaming worker over webgl→wasm→cpu), grid.ts / grid_ui.ts (orchestration + render), scatter_canvas.ts (palette + noise gray) ·
+  dark theme matches site/src/style.css · self-contained, no external assets.
+</footer>
+
+<script>
+  // ── build the 25 hero scatter cells (illustrative colored clusters; the four
+  //    parity tiers, the per-cell params, and the no-structure all-noise cell
+  //    mirror grid_config.ts / make_toy_datasets.ts) ──
+  (function(){
+    var COLORS = ['#7c9cff','#63e6be','#ffa94d','#ff8787'];
+    var NOISE = '#6b7280';
+    var ALGOS = [
+      {k:'KMeans',  p:'n_clusters'},
+      {k:'Spectral',p:'affinity'},
+      {k:'Agglom.', p:'linkage'},
+      {k:'HDBSCAN', p:'mcs'},
+      {k:'SOM',     p:'grid+cluster'}
+    ];
+    var W=46,H=46,PAD=5; // svg viewbox coords
+    function rng(seed){var a=seed>>>0;return function(){a=(a+0x6d2b79f5)>>>0;var t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+    function gauss(r){var u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+    function sx(x){return PAD+(x*0.5+0.5)*(W-2*PAD);}
+    function sy(y){return PAD+(0.5-y*0.5)*(H-2*PAD);}
+    var N=42;
+    var DATASETS=[
+      {label:'moons',sub:'2 arcs',gen:function(seed){var r=rng(seed),p=[];for(var i=0;i<N;i++){var t=(i/N),up=i%2===0;var ang=Math.PI*(up?t:1-t);var cx=up?-0.25:0.25,cy=up?-0.12:0.12;p.push({x:cx+Math.cos(ang)*0.7+gauss(r)*0.05,y:cy+(up?Math.sin(ang):-Math.sin(ang))*0.55+gauss(r)*0.05,t:up?0:1});}return p;}},
+      {label:'circles',sub:'concentric',gen:function(seed){var r=rng(seed),p=[];for(var i=0;i<N;i++){var inner=i%2===0;var ang=2*Math.PI*(i/N);var rad=inner?0.32:0.78;p.push({x:Math.cos(ang)*rad+gauss(r)*0.04,y:Math.sin(ang)*rad+gauss(r)*0.04,t:inner?0:1});}return p;}},
+      {label:'blobs',sub:'separated',gen:function(seed){var r=rng(seed),p=[];var ctr=[[-0.5,-0.45],[0.55,-0.4],[0.0,0.55]];for(var i=0;i<N;i++){var c=i%3;p.push({x:ctr[c][0]+gauss(r)*0.13,y:ctr[c][1]+gauss(r)*0.13,t:c});}return p;}},
+      {label:'aniso',sub:'sheared',gen:function(seed){var r=rng(seed),p=[];var ctr=[[-0.45,-0.3],[0.5,-0.2],[0.1,0.5]];for(var i=0;i<N;i++){var c=i%3;var bx=gauss(r)*0.13,by=gauss(r)*0.07;var x=bx*0.9+by*0.9,y=-bx*0.45+by*0.9;p.push({x:ctr[c][0]+x,y:ctr[c][1]+y,t:c});}return p;}},
+      {label:'no-structure',sub:'uniform',gen:function(seed){var r=rng(seed),p=[];for(var i=0;i<N;i++){p.push({x:(r()-0.5)*1.7,y:(r()-0.5)*1.7,t:0});}return p;}}
+    ];
+    // per-cell labeling: how each algorithm colors that dataset's points (truth-aware illustration)
+    function labeler(dsi,algi){
+      var ds=DATASETS[dsi].label;
+      // no-structure row: partition methods split arbitrarily; HDBSCAN = all noise
+      if(ds==='no-structure'){
+        if(algi===3) return function(){return -1;};
+        return function(p){return p.x<0?0:1;};
+      }
+      if(ds==='blobs') return function(p){return p.t;};
+      if(ds==='aniso'){
+        if(algi===3) return function(p,i){return i%14===0?-1:p.t;}; // HDBSCAN noise edge
+        return function(p){return p.t;};
+      }
+      // moons / circles: density/connectivity methods recover the shape;
+      // KMeans cuts straight through (matches sklearn — it is meant to fail this way)
+      var shape_aware = (algi===1||algi===2||algi===3||algi===4);
+      if(ds==='moons'){
+        if(shape_aware) return function(p){return p.t;};
+        return function(p){return p.y<0?0:1;}; // KMeans horizontal cut
+      }
+      if(shape_aware) return function(p){return p.t;};
+      return function(p){var ang=Math.atan2(p.y,p.x);return ang<0?0:1;}; // KMeans pie cut
+    }
+    // parity tier per cell, exactly mirroring parity_for() in grid_config.ts:
+    //   som → 'ref'(◇) ; no-structure non-SOM → 'truth'(∅) ;
+    //   hdbscan → 'drift'(≈) ; spectral on moons/circles/aniso → 'drift'(≈) ;
+    //   else → 'ok'(✓)
+    function tier(dsi,algi){
+      var ds=DATASETS[dsi].label;
+      if(algi===4) return 'ref';
+      if(ds==='no-structure') return 'truth';
+      if(algi===3) return 'drift';
+      if(algi===1 && (ds==='moons'||ds==='circles'||ds==='aniso')) return 'drift';
+      return 'ok';
+    }
+    var FLAG={ok:{cls:'ok',g:'✓',t:'matches scikit-learn under float32'},
+              drift:{cls:'drift',g:'≈',t:'cores match · a few boundary points drift under float32'},
+              ref:{cls:'ref',g:'◇',t:'SOM — no scikit-learn reference'},
+              truth:{cls:'truth',g:'∅',t:'uniform data — no true clusters'}};
+    function buildCell(dsi,algi){
+      var pts=DATASETS[dsi].gen(1000+dsi*7+algi);
+      var lab=labeler(dsi,algi);
+      var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+      for(var i=0;i<pts.length;i++){
+        var ci=lab(pts[i],i);
+        var col=ci===-1?NOISE:COLORS[ci%COLORS.length];
+        svg+='<circle cx="'+sx(pts[i].x).toFixed(1)+'" cy="'+sy(pts[i].y).toFixed(1)+'" r="1.4" fill="'+col+'" opacity="'+(ci===-1?0.6:0.92)+'"/>';
+      }
+      svg+='</svg>';
+      var tr=tier(dsi,algi), f=FLAG[tr];
+      var ds=DATASETS[dsi].label;
+      var spot=(ds==='moons'&&algi===0)?' spotlight':''; // KMeans-cuts-moons: matches sklearn, meant to fail
+      var flag='<span class="flag '+f.cls+'" title="'+f.t+'">'+f.g+'</span>';
+      return '<div class="cell'+spot+'">'+svg+flag+'</div>';
+    }
+    var html='<div class="corner">dataset ↓<br>algorithm →</div>';
+    for(var a=0;a<ALGOS.length;a++){
+      html+='<div class="gh">'+ALGOS[a].k+'<small>'+ALGOS[a].p+'</small></div>';
+    }
+    for(var d=0;d<DATASETS.length;d++){
+      html+='<div class="rl">'+DATASETS[d].label+'<small>'+DATASETS[d].sub+'</small></div>';
+      for(var al=0;al<ALGOS.length;al++){ html+=buildCell(d,al); }
+    }
+    document.getElementById('gridmock').innerHTML=html;
+  })();
+
+  // ── outline active-state via IntersectionObserver ──
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+</script>
+</body>
+</html>

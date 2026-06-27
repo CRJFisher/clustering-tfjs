@@ -4,6 +4,7 @@ import {
   GRID_ALGORITHMS,
   GRID_CELLS,
   GRID_DATASETS,
+  cell_id_of,
   count_parity,
 } from "./grid_config";
 import type { GridCell, ParityTier } from "./grid_config";
@@ -28,7 +29,10 @@ const PARITY_COPY: Record<
   matches: {
     glyph: "✓",
     short: "matches sklearn",
-    title: "Labels reproduce scikit-learn's result for this algorithm and shape.",
+    title:
+      "These labels match scikit-learn's for this algorithm and shape — parity, " +
+      "including the shapes where the algorithm is meant to fail (K-Means cuts " +
+      "straight through moons and circles, exactly as scikit-learn's does).",
   },
   drifts: {
     glyph: "≈",
@@ -71,6 +75,7 @@ function projection_of(dataset: ToyDataset): Projection2d {
 }
 
 interface CellView {
+  figure: HTMLElement;
   canvas: HTMLCanvasElement;
   annotation: HTMLElement;
   cell: GridCell;
@@ -89,7 +94,6 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
   for (const algorithm of GRID_ALGORITHMS) {
     const head = document.createElement("div");
     head.className = "demo-grid__col-head";
-    head.setAttribute("role", "columnheader");
     head.textContent = algorithm.label;
     container.append(head);
   }
@@ -99,12 +103,11 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
   for (const dataset of GRID_DATASETS) {
     const row_head = document.createElement("div");
     row_head.className = "demo-grid__row-head";
-    row_head.setAttribute("role", "rowheader");
     row_head.textContent = dataset.label;
     container.append(row_head);
 
     for (const algorithm of GRID_ALGORITHMS) {
-      const cell_id = `${dataset.id}:${algorithm.id}`;
+      const cell_id = cell_id_of(dataset.id, algorithm.id);
       const cell = cell_by_id.get(cell_id);
       if (!cell) throw new Error(`Missing grid cell config for ${cell_id}`);
 
@@ -130,7 +133,7 @@ function build_grid(container: HTMLElement): Map<string, CellView> {
 
       figure.append(canvas, annotation);
       container.append(figure);
-      views.set(cell_id, { canvas, annotation, cell });
+      views.set(cell_id, { figure, canvas, annotation, cell });
     }
   }
 
@@ -166,10 +169,13 @@ export function make_grid_ui(): void {
   const matches = count_parity("matches");
   const drifts = count_parity("drifts");
   footnote.textContent =
-    `${matches} of ${GRID_CELLS.length} cells reproduce scikit-learn's result. ` +
-    `The ${drifts} cells marked ≈ (Spectral, HDBSCAN) match the cluster cores but can ` +
-    `disagree on a handful of boundary points under float32 — annotated, not tuned away. ` +
-    `SOM has no scikit-learn counterpart. Fixed seeds make every visitor's grid identical.`;
+    `${matches} of ${GRID_CELLS.length} cells match scikit-learn's labels exactly — ` +
+    `including where K-Means is meant to fail (the same straight cut scikit-learn makes ` +
+    `through moons and circles): matching scikit-learn is the claim, not getting every ` +
+    `shape "right". The ${drifts} cells marked ≈ — Spectral on the curved and anisotropic ` +
+    `rows, plus HDBSCAN — match the cluster cores but can disagree on a handful of boundary ` +
+    `points under float32, annotated rather than tuned away. SOM has no scikit-learn ` +
+    `counterpart. Fixed seeds make every visitor's grid identical.`;
 
   run_grid({
     on_datasets: (generated) => {
@@ -194,18 +200,38 @@ export function make_grid_ui(): void {
         n_clusters_found,
         noise_count,
       );
-      const figure = view.canvas.closest<HTMLElement>(".demo-grid__cell");
-      if (figure) figure.dataset.state = "done";
+      view.figure.dataset.state = "done";
     },
     on_cell_error: (cell_id, message) => {
       const view = views.get(cell_id);
       if (!view) return;
       view.annotation.textContent = `failed: ${message}`;
-      const figure = view.canvas.closest<HTMLElement>(".demo-grid__cell");
-      if (figure) figure.dataset.state = "error";
+      view.figure.dataset.state = "error";
     },
     on_done: (actual_backend) => {
       backend.textContent = actual_backend.toUpperCase();
+      // Terminal sweep. A mid-stream timeout or worker crash terminates the worker
+      // with cells still unreported, so any cell left "pending" would sit dimmed
+      // and "computing" forever and the status line would freeze. Mark every
+      // still-pending cell failed and make the status reflect what actually
+      // finished — never a frozen "Computing N / 25" over a half-dimmed grid.
+      let done = 0;
+      let failed = 0;
+      for (const view of views.values()) {
+        if (view.figure.dataset.state === "done") {
+          done += 1;
+          continue;
+        }
+        failed += 1;
+        if (view.figure.dataset.state === "pending") {
+          view.figure.dataset.state = "error";
+          view.annotation.textContent = "didn't finish";
+        }
+      }
+      status.textContent =
+        failed === 0
+          ? `${done} / ${GRID_CELLS.length} cells computed`
+          : `${done} / ${GRID_CELLS.length} cells computed · ${failed} failed`;
     },
   });
 }
