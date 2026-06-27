@@ -547,6 +547,118 @@ body {
   color: var(--accent);
 }
 
+/* The sklearn-parity grid: 5 datasets × 5 algorithms, each cell a live scatter
+   coloured by the library's own labels. Sells "the clustering you know, in your
+   browser" — about parity, not speed, so it has no timers or bars. */
+.grid-section {
+  margin-top: 4rem;
+}
+
+.grid-section__title {
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+.grid-section__intro {
+  max-width: 44rem;
+  margin: 0 auto 1rem;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.grid-section__meta {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.grid-section__backend b {
+  color: var(--fg);
+}
+
+/* One label column plus five algorithm columns. The cells flow row-major after
+   the header row, so the markup order in grid_ui matches the visual order. */
+.demo-grid {
+  display: grid;
+  grid-template-columns: auto repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.demo-grid__col-head {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--fg);
+  padding-bottom: 0.25rem;
+}
+
+.demo-grid__row-head {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: right;
+  padding-right: 0.6rem;
+  color: var(--fg);
+}
+
+.demo-grid__cell {
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: opacity 0.2s ease;
+}
+
+/* A cell waiting for its fit is dimmed; it brightens the instant labels land. */
+.demo-grid__cell[data-state="pending"] {
+  opacity: 0.4;
+}
+
+.demo-grid__cell[data-state="error"] {
+  border-color: rgba(255, 135, 135, 0.5);
+}
+
+.demo-grid__scatter {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  display: block;
+  border-radius: 6px;
+}
+
+.demo-grid__annotation {
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--fg-muted);
+}
+
+/* The drift tier is the honest one to make legible: tint its caption warm so the
+   "boundary points differ under float32" cells stand out from the quiet matches. */
+.demo-grid__cell[data-parity="drifts"] .demo-grid__annotation {
+  color: var(--warn);
+}
+
+.demo-grid__cell[data-parity="no-truth"] .demo-grid__annotation,
+.demo-grid__cell[data-parity="no-reference"] .demo-grid__annotation {
+  font-style: italic;
+}
+
+.grid-section__footnote {
+  max-width: 44rem;
+  margin: 1.5rem auto 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
 @media (max-width: 720px) {
   .race__panels {
     grid-template-columns: 1fr;
@@ -558,6 +670,22 @@ body {
 
   .race__config {
     grid-template-columns: 1fr;
+  }
+
+  /* Drop the dataset row labels and tighten the gap so five cells still fit on a
+     phone; each cell's aria-label and column header keep it identifiable. */
+  .demo-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .demo-grid__corner,
+  .demo-grid__row-head {
+    display: none;
+  }
+
+  .demo-grid__annotation {
+    font-size: 0.55rem;
   }
 }
 

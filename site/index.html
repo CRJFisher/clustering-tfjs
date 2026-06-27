@@ -263,6 +263,33 @@
         </p>
       </section>
 
+      <section
+        id="grid"
+        class="grid-section"
+        aria-label="scikit-learn toy-dataset clustering grid"
+      >
+        <h2 class="grid-section__title">
+          The scikit-learn clustering you know — live in your browser
+        </h2>
+        <p class="grid-section__intro">
+          Five toy datasets (rows) × five algorithms (columns). Every cell is
+          coloured by the labels the real library computes off the main thread,
+          using a colorblind-safe palette. Noise points are gray.
+        </p>
+        <p class="grid-section__meta">
+          <span class="grid-section__status" id="grid-status" aria-live="polite"
+            >Computing 0 / 25 cells…</span
+          >
+          <span class="grid-section__backend"
+            >Backend: <b id="grid-backend">—</b></span
+          >
+        </p>
+
+        <div class="demo-grid" id="demo-grid" role="table"></div>
+
+        <p class="grid-section__footnote" id="grid-footnote"></p>
+      </section>
+
       <a class="repo-link" href="https://github.com/CRJFisher/clustering-tfjs"
         >View the library on GitHub →</a
       >

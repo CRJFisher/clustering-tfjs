@@ -6,6 +6,11 @@ import type { Projection2d } from "./project_2d";
 // sync with the stylesheet by intent.
 const CLUSTER_COLORS = ["#7c9cff", "#63e6be", "#ffa94d", "#ff8787"] as const;
 
+// Noise points (label < 0, emitted by HDBSCAN) are drawn in a muted gray so
+// "belongs to no cluster" reads as visually distinct from every cluster colour —
+// the grid's no-structure cell depends on this to show all-noise honestly.
+const NOISE_COLOR = "#6b7280";
+
 const DEFAULT_POINT_RADIUS = 2.2;
 const DEFAULT_PADDING = 12;
 
@@ -26,6 +31,9 @@ export function render_scatter(
 ): void {
   const context = canvas.getContext("2d");
   if (!context) return;
+  // Bound to a non-null const so the draw_group closure below keeps the narrowing
+  // (TS drops control-flow narrowing for variables captured in nested functions).
+  const ctx = context;
 
   const point_radius = options.point_radius ?? DEFAULT_POINT_RADIUS;
   const padding = options.padding ?? DEFAULT_PADDING;
@@ -39,8 +47,8 @@ export function render_scatter(
   const css_h = rect.height || canvas.clientHeight || canvas.height;
   canvas.width = Math.round(css_w * dpr);
   canvas.height = Math.round(css_h * dpr);
-  context.setTransform(dpr, 0, 0, dpr, 0, 0);
-  context.clearRect(0, 0, css_w, css_h);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, css_w, css_h);
 
   const { x, y } = projection;
   let x_min = Infinity;
@@ -58,21 +66,28 @@ export function render_scatter(
   const plot_w = css_w - 2 * padding;
   const plot_h = css_h - 2 * padding;
 
-  // Group draws by color so fillStyle is set once per cluster, not once per
-  // point. The axes are meaningless (axis-free styling), so x and y fit the box
-  // independently to maximize the visible separation.
-  context.globalAlpha = 0.85;
-  for (let c = 0; c < CLUSTER_COLORS.length; c++) {
-    context.fillStyle = CLUSTER_COLORS[c];
+  function draw_group(matches: (label: number) => boolean): void {
     for (let i = 0; i < x.length; i++) {
-      if (labels[i] % CLUSTER_COLORS.length !== c) continue;
+      if (!matches(labels[i])) continue;
       const px = padding + ((x[i] - x_min) / x_span) * plot_w;
       // Flip y so a larger projected value draws higher on screen.
       const py = padding + (1 - (y[i] - y_min) / y_span) * plot_h;
-      context.beginPath();
-      context.arc(px, py, point_radius, 0, Math.PI * 2);
-      context.fill();
+      ctx.beginPath();
+      ctx.arc(px, py, point_radius, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
-  context.globalAlpha = 1;
+
+  // Group draws by color so fillStyle is set once per cluster, not once per
+  // point. The axes are meaningless (axis-free styling), so x and y fit the box
+  // independently to maximize the visible separation. Noise is drawn first, under
+  // the clusters, so a stray noise point never sits on top of cluster structure.
+  ctx.globalAlpha = 0.85;
+  ctx.fillStyle = NOISE_COLOR;
+  draw_group((label) => label < 0);
+  for (let c = 0; c < CLUSTER_COLORS.length; c++) {
+    ctx.fillStyle = CLUSTER_COLORS[c];
+    draw_group((label) => label >= 0 && label % CLUSTER_COLORS.length === c);
+  }
+  ctx.globalAlpha = 1;
 }

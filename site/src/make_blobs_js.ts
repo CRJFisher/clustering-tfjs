@@ -23,7 +23,9 @@ export interface MakeBlobsResult {
 
 // mulberry32: a tiny, fast, well-distributed 32-bit PRNG. Deterministic from a
 // single integer seed so every visitor with the same n/seed sees the same race.
-function mulberry32(seed: number): () => number {
+// Exported so the toy-dataset generators draw from the identical PRNG character
+// as the blobs here — one seeded stream, no forked randomness across the site.
+export function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -35,7 +37,7 @@ function mulberry32(seed: number): () => number {
 }
 
 // Box–Muller transforms two uniforms into a standard-normal sample.
-function next_gaussian(rand: () => number): number {
+export function next_gaussian(rand: () => number): number {
   let u = 0;
   let v = 0;
   // Avoid log(0): resample the (vanishingly rare) exact-zero draw.
