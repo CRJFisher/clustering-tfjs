@@ -7,9 +7,9 @@
 
 **scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install.**
 
-[![WebGPU races CPU on the same seeded dataset; the GPU lane finishes far ahead on Spectral RBF affinity at n = 10,000.](https://CRJFisher.github.io/clustering-tfjs/race-reference.svg)](https://CRJFisher.github.io/clustering-tfjs/)
+[![Schematic of the WebGPU-vs-CPU race: on Spectral RBF affinity the GPU lane finishes far ahead of the CPU lane. The live demo measures your own hardware.](https://CRJFisher.github.io/clustering-tfjs/race-reference.svg)](https://CRJFisher.github.io/clustering-tfjs/)
 
-## ▶ [Open the live demo (no install) →](https://CRJFisher.github.io/clustering-tfjs/)
+**▶ [Open the live demo (no install) →](https://CRJFisher.github.io/clustering-tfjs/)**
 
 Watch WebGPU race CPU on the same dataset, then recreate the scikit-learn toy-dataset grid across all five algorithms — live, on **your** hardware.
 
@@ -43,7 +43,7 @@ console.log(labels); // [0, 0, 1, 1, 0, 2]
 3. [Installation](#installation)
 4. [Algorithms](#algorithms)
 5. [Validation Metrics](#validation-metrics)
-6. [Backend Selection](#backend-selection)
+6. [Backend Selection](#platform-detection--backend-selection)
 7. [API Reference](#api-reference)
 8. [Examples](#examples)
 9. [Performance](#performance)
@@ -101,13 +101,13 @@ npm install clustering-tfjs
 #### Node.js
 
 ```typescript
-import { Clustering } from 'clustering-tfjs';
+import { Clustering, KMeans } from 'clustering-tfjs';
 
 // Initialize (optional - auto-detects best backend)
 await Clustering.init();
 
 // Use algorithms
-const kmeans = new Clustering.KMeans({ n_clusters: 3 });
+const kmeans = new KMeans({ n_clusters: 3 });
 const data = [
   [1, 2],
   [1.5, 1.8],

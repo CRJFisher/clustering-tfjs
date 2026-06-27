@@ -204,6 +204,24 @@ is O(n²·d), so the GPU advantage grows with n.
 
 ---
 
+## Awesome-list seeding
+
+Open PRs adding the demo to the curated lists where its audience already looks.
+Lead each entry with the live-demo link and the one-line hook.
+
+- **Awesome TensorFlow.js** (`tensorflow/tfjs` community lists / `aaronhma/awesome-tensorflow-js`) — under a clustering / ML entry.
+- **awesome-webgpu** (`mikbry/awesome-webgpu`) — under demos / applications, framing the WebGPU-vs-CPU race.
+
+Suggested entry text:
+
+```
+[clustering-tfjs](https://github.com/CRJFisher/clustering-tfjs) — scikit-learn
+clustering (K-Means, Spectral, Agglomerative, HDBSCAN, SOM) in the browser on
+TensorFlow.js, with a live WebGPU-vs-CPU race. [Demo](https://CRJFisher.github.io/clustering-tfjs/)
+```
+
+---
+
 ## Race clip (deferred — record on WebGPU hardware before posting)
 
 AC#3 calls for a real ≤6s looping race clip. This must be captured on actual WebGPU
