@@ -143,5 +143,11 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "overrides": {
+    "tar": "^7.5.19",
+    "@istanbuljs/load-nyc-config": {
+      "js-yaml": "^4.2.0"
+    }
   }
 }
