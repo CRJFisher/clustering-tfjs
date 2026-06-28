@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.8 — Per-algorithm parameter sliders with plain-English captions</title>
+<style>
+  :root{
+    /* site theme — matches site/src/style.css */
+    --bg:#0d1117; --bg-glow:#161b2e; --panel:#11182a; --panel-2:#0f1626;
+    --fg:#e6edf3; --fg-muted:#8b949e; --line:#22304a;
+    --accent:#7c9cff; --accent-2:#63e6be; --accent-3:#ffa94d; --warn:#ff8585;
+    /* cluster palette — mirrors scatter_canvas.ts CLUSTER_COLORS + NOISE_COLOR */
+    --c0:#7c9cff; --c1:#63e6be; --c2:#ffa94d; --c3:#ff8787; --noise:#6b7280;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 50% -10%,var(--bg-glow),transparent 55%),var(--bg)}
+  .prose{max-width:70ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
+  .crossnav a{color:var(--fg);background:var(--panel)}
+  .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .crossnav span.cur{background:var(--accent-2);color:var(--bg);border-color:var(--accent-2);font-weight:600}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--fg-muted);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--accent);color:var(--bg)}
+
+  main{width:92%;max-width:1640px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.4rem;scroll-margin-top:98px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  h1{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1.12;margin:.3rem 0 .5rem;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
+  .chip strong{color:var(--accent-2)}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
+  figcaption b{color:var(--fg)}
+
+  .flowwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.9rem;font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 12px 12px 0;padding:.95rem 1.1rem;margin-top:1.1rem}
+  aside.callout.go{border-left-color:var(--accent-2)}
+  aside.callout.warn{border-left-color:var(--accent-3)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  aside.callout.go .k{color:var(--accent-2)}
+  aside.callout.warn .k{color:var(--accent-3)}
+  aside.callout p{margin:.4rem 0 0;font-size:.92rem;color:var(--fg)}
+  aside.callout code,figcaption code,.outline code{font-family:var(--mono);font-size:.82rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .32rem;border-radius:4px;border:1px solid var(--line)}
+
+  /* ── code panel ── */
+  .code{background:#0a0f1a;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid var(--line)}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);background:#0c1322;padding:.45rem .9rem;border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.7;color:#cdd9e5;white-space:pre}
+  .code .kw{color:#ff9d76}.code .str{color:var(--accent-2)}.code .fn{color:var(--accent-3)}.code .cm{color:#5a6b82}.code .var{color:var(--accent)}.code .hl{background:rgba(124,156,255,.18);border-radius:3px;padding:0 2px}
+
+  /* ════════ THE HERO — live control strip + mini grid with parity-drop ════════ */
+  .mock{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.3rem clamp(.8rem,1.6vw,1.5rem);margin-top:.6rem;
+    box-shadow:0 0 0 1px rgba(124,156,255,.08), 0 20px 60px -30px #000;position:relative;overflow:hidden}
+  .mock::before{content:'the explainer surface · live in-browser';position:absolute;top:.7rem;right:.9rem;font-family:var(--mono);font-size:.6rem;color:var(--fg-muted);letter-spacing:.06em;opacity:.7}
+  .mock-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .mock-title{font-family:var(--serif);font-weight:800;font-size:clamp(1.3rem,2.6vw,2rem);line-height:1.08;margin:.35rem 0 .3rem;letter-spacing:-.02em}
+  .mock-title .grad{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .mock-sub{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);margin-bottom:1rem}
+  .mock-sub b{color:var(--accent-2)}
+
+  .demo-grid{display:grid;grid-template-columns:minmax(280px,360px) 1fr;gap:1.1rem;align-items:start}
+
+  /* control strip */
+  .ctrls{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:.85rem .9rem;display:grid;gap:.7rem}
+  .ctrl{display:grid;gap:.3rem}
+  .ctrl .top{display:flex;justify-content:space-between;align-items:baseline;gap:.5rem}
+  .ctrl .nm{font-family:var(--mono);font-size:.74rem;font-weight:700;color:var(--accent-2)}
+  .ctrl .nm small{font-weight:400;color:var(--fg-muted);font-size:.62rem;margin-left:.25rem}
+  .ctrl .st{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.05em;border-radius:999px;padding:.1rem .45rem;white-space:nowrap}
+  .ctrl .st.auto{color:var(--accent-2);border:1px solid rgba(99,230,190,.4);background:rgba(99,230,190,.07)}
+  .ctrl .st.over{color:var(--accent-3);border:1px solid rgba(255,169,77,.45);background:rgba(255,169,77,.1)}
+  .ctrl .cap{font-family:var(--sans);font-size:.7rem;color:var(--fg-muted);line-height:1.35}
+  .ctrl .cap b{color:var(--fg)}
+  /* segmented radio */
+  .seg{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.1rem}
+  .seg button{font-family:var(--mono);font-size:.62rem;background:#0a0f1a;color:var(--fg-muted);border:1px solid var(--line);border-radius:7px;padding:.22rem .5rem;cursor:pointer;transition:all .12s}
+  .seg button:hover{border-color:var(--accent)}
+  .seg button.on{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:700}
+  .seg button.autoval.on{background:var(--accent-2);border-color:var(--accent-2)}
+  .seg button[disabled]{opacity:.32;cursor:not-allowed}
+  /* range */
+  input[type=range].pslider{-webkit-appearance:none;appearance:none;width:100%;height:7px;border-radius:6px;
+    background:linear-gradient(90deg,rgba(124,156,255,.4),rgba(99,230,190,.4));border:1px solid var(--line);outline:none;cursor:pointer}
+  input[type=range].pslider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent),0 2px 6px #000;cursor:grab}
+  input[type=range].pslider::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--fg);border:3px solid var(--bg);box-shadow:0 0 0 1px var(--accent);cursor:grab}
+  input[type=range].pslider:focus-visible{box-shadow:0 0 0 3px rgba(124,156,255,.4)}
+  .ctrl .val{font-family:var(--mono);font-size:.72rem;color:var(--fg);font-weight:700}
+  .ctrl.disabled{opacity:.45;pointer-events:none}
+  .resetbar{display:flex;align-items:center;justify-content:space-between;gap:.6rem;margin-top:.2rem;padding-top:.65rem;border-top:1px solid var(--line)}
+  .resetbtn{font-family:var(--mono);font-size:.66rem;background:var(--accent-2);color:var(--bg);border:none;border-radius:8px;padding:.4rem .7rem;cursor:pointer;font-weight:700}
+  .resetbtn[disabled]{background:var(--panel);color:var(--fg-muted);cursor:default}
+  .ovcount{font-family:var(--mono);font-size:.62rem;color:var(--fg-muted)}
+  .ovcount b{color:var(--accent-3)}
+
+  /* mini grid */
+  .gwrap{min-width:0}
+  .gridmock{display:grid;grid-template-columns:4.6rem repeat(5,1fr);gap:.32rem;align-items:stretch}
+  .gh{font-family:var(--mono);font-size:.58rem;font-weight:700;text-transform:uppercase;letter-spacing:.02em;color:var(--accent);text-align:center;padding:.2rem .05rem;align-self:end;line-height:1.1}
+  .corner{font-family:var(--mono);font-size:.52rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em;align-self:end;line-height:1.25;padding-bottom:.15rem}
+  .rl{font-family:var(--mono);font-size:.6rem;font-weight:700;color:var(--accent-2);display:flex;align-items:center;padding-right:.2rem}
+  .cell{position:relative;background:radial-gradient(circle at 50% 42%,#0e1626,#080c14);border:1px solid var(--line);border-radius:7px;aspect-ratio:1/1;overflow:hidden;transition:box-shadow .2s,border-color .2s}
+  .cell svg{width:100%;height:100%;display:block}
+  .cell .flag{position:absolute;top:2px;right:2px;min-width:10px;height:12px;padding:0 2px;border-radius:4px;display:grid;place-items:center;font-family:var(--mono);font-size:7.5px;font-weight:700;line-height:1}
+  .cell .flag.ok{background:rgba(99,230,190,.18);border:1px solid var(--accent-2);color:var(--accent-2)}
+  .cell .flag.drift{background:rgba(255,169,77,.2);border:1px solid var(--accent-3);color:var(--accent-3)}
+  .cell .flag.ref{background:rgba(124,156,255,.18);border:1px solid var(--accent);color:var(--accent)}
+  .cell .flag.truth{background:rgba(107,114,128,.28);border:1px solid #8b94a6;color:#c2c9d6}
+  .cell .flag.exp{background:rgba(255,133,133,.16);border:1px solid var(--warn);color:var(--warn)}
+  .cell.overridden{border-color:var(--warn);box-shadow:0 0 0 1px rgba(255,133,133,.4),0 0 14px -6px var(--warn)}
+  .cell .reclust{position:absolute;inset:0;background:rgba(124,156,255,.14);display:grid;place-items:center;opacity:0;pointer-events:none}
+  .cell .reclust.on{opacity:1}
+  .cell .reclust span{font-family:var(--mono);font-size:7px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em}
+
+  .badge-now{font-family:var(--mono);font-size:.64rem;margin-top:.7rem;padding:.5rem .7rem;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--fg-muted);line-height:1.5}
+  .badge-now b{color:var(--fg)}
+  .badge-now .auto-pill{color:var(--accent-2)}
+  .badge-now .exp-pill{color:var(--warn)}
+
+  /* ── before/after parity-state ── */
+  .ba{display:grid;grid-template-columns:1fr auto 1fr;gap:.9rem;align-items:stretch;margin-top:.6rem}
+  .ba .pane{background:var(--panel-2);border:1px solid var(--line);border-radius:13px;padding:1rem}
+  .ba .pane.before{border-color:rgba(99,230,190,.4)}
+  .ba .pane.after{border-color:rgba(255,133,133,.4)}
+  .ba .ptitle{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem;display:flex;align-items:center;gap:.4rem}
+  .ba .pane.before .ptitle{color:var(--accent-2)}
+  .ba .pane.after .ptitle{color:var(--warn)}
+  .ba .arrow{display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--serif);font-size:1.8rem;color:var(--accent-3)}
+  .ba .arrow small{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.05em;margin-top:.3rem;max-width:8rem;text-align:center;line-height:1.3}
+  .ba svg{width:100%;height:auto;display:block}
+  @media(max-width:880px){.ba{grid-template-columns:1fr}.ba .arrow{flex-direction:row;gap:.6rem;padding:.3rem 0}.ba .arrow small{max-width:none}}
+
+  /* ── control set table ── */
+  .cswrap{overflow-x:auto;margin-top:.6rem}
+  table.cs{border-collapse:separate;border-spacing:0;width:100%;min-width:760px;font-family:var(--sans)}
+  table.cs th,table.cs td{border-bottom:1px solid var(--line);padding:.6rem .65rem;text-align:left;vertical-align:top;font-size:.82rem}
+  table.cs thead th{font-family:var(--mono);color:var(--accent);font-size:.66rem;text-transform:uppercase;letter-spacing:.04em;background:var(--panel-2);position:sticky;top:98px}
+  table.cs td.p{font-family:var(--mono);color:var(--accent-2);font-size:.76rem;white-space:nowrap}
+  table.cs td.p small{display:block;color:var(--fg-muted);font-size:.62rem;margin-top:.2rem}
+  table.cs td.cap{color:var(--fg)}
+  table.cs td.cols{font-family:var(--mono);font-size:.66rem;color:var(--fg-muted)}
+  .colchip{display:inline-block;border-radius:5px;padding:.06rem .35rem;margin:.08rem .12rem .08rem 0;border:1px solid var(--line);background:#0a0f1a}
+  .colchip.on2{color:var(--accent);border-color:rgba(124,156,255,.4)}
+  .colchip.off2{color:var(--fg-muted);opacity:.55;text-decoration:line-through}
+
+  /* ── files grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.74rem;color:var(--accent-2);background:#0a0f1a;border:1px solid var(--line);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .fp.new{color:var(--accent)}
+  .fcard .role{font-size:.8rem;color:var(--fg-muted);margin-top:.45rem}
+  .fcard .role b{color:var(--fg)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--accent-2);background:var(--accent-2);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac .box.inv{background:var(--warn);border-color:var(--warn)}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
+  .ac .txt{font-size:.9rem;color:var(--fg)}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--accent-2);color:var(--bg)}
+
+  footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
+  footer b{color:var(--fg-muted)}
+
+  @media(max-width:980px){
+    .demo-grid{grid-template-columns:1fr}
+    .files{grid-template-columns:1fr}
+  }
+  @media(max-width:620px){
+    .mock::before{display:none}
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html">55.5 · Crossover slider</a>
+  <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html">55.6 · Fallback + methodology</a>
+  <a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html">55.7 · scikit-learn grid</a>
+  <span class="cur" aria-current="page">55.8 · Param sliders ✓</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#demo">Drag a control</a>
+  <a href="#model">Auto → override → parity-drop</a>
+  <a href="#controls">The control set</a>
+  <a href="#resolver">The effective-params resolver</a>
+  <a href="#worker">The kept-alive worker</a>
+  <a href="#build">What it builds</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.8 · Milestone M4 · the explainer fold on the parity grid · <span class="todopill">Done</span></div>
+    <h1 class="prose">Live per-algorithm parameter controls that drive the 5×5 grid — without ever faking a scikit-learn match the demo did not verify</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">Every control starts in <b style="color:var(--accent-2)">Auto</b> — the exact curated 55.7 value, where each cell keeps its honest parity badge. Set an explicit value and the affected column re-clusters live and switches to your params: those cells stop claiming scikit-learn parity, because that exact combination was never checked against it.</p>
+    <div class="meta">
+      <span class="chip">controls <strong>n_clusters · affinity+gamma · min_cluster_size · linkage · SOM grid</strong></span>
+      <span class="chip">default <strong>Auto = curated per-dataset</strong></span>
+      <span class="chip">override <strong>global · parity-drop</strong></span>
+      <span class="chip">re-cluster <strong>debounced · single-flight</strong></span>
+      <span class="chip">builds on <strong>55.7 grid · grid_config.ts</strong></span>
+      <span class="chip">verified <strong>59 tests green · typecheck · lint · build</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. THE LIVE DEMO — the crux, made felt ════ -->
+  <section id="demo">
+    <div class="eyebrow">The crux · feel the Auto → override → parity-drop flip before reading it</div>
+    <h2>Drag a control: the affected column re-clusters, and its honest badge is replaced by a neutral one</h2>
+    <figure>
+      <div class="mock">
+        <div class="mock-eyebrow">clustering-tfjs · per-algorithm parameter explainer · live</div>
+        <div class="mock-title">Tune the real library parameters — <span class="grad">the grid never claims a parity it didn't measure.</span></div>
+        <div class="mock-sub">controls start in <b>Auto</b> (the curated 55.7 values) · the moment you override one, its column drops the ✓/≈/◇/∅ badge for <span style="color:var(--warn)">your params</span></div>
+
+        <div class="demo-grid">
+          <!-- control strip -->
+          <div class="ctrls" id="ctrls" aria-label="Parameter control strip"></div>
+
+          <!-- mini grid -->
+          <div class="gwrap">
+            <div class="gridmock" id="gridmock" role="img" aria-label="A 5 by 5 grid: rows are the datasets moons, circles, blobs, anisotropic and no-structure; columns are K-Means, Spectral, Agglomerative, HDBSCAN and SOM. In Auto, each cell shows its parity badge — a green check for matches, an orange approximately-equals for float32 drift, a blue diamond for SOM with no reference, a gray empty set for no-truth uniform data. When you override a control, every cell in the affected columns re-colors with the new clustering and replaces its badge with a red pencil 'not checked vs sklearn' marker."></div>
+            <div class="badge-now" id="badge-now"></div>
+          </div>
+        </div>
+      </div>
+      <figcaption class="prose"><b>This is the shipped interaction.</b> In <span style="color:var(--accent-2)">Auto</span> the grid is bit-for-bit the 55.7 parity grid. Set <code>n_clusters</code> to 4, or flip Spectral to <code>rbf</code>, and only the affected columns re-cluster — and only those cells drop their badge. <b>Reset to the verified grid</b> returns every control to Auto and restores the badges.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">Why a single global slider would have been a lie</div>
+      <p>The 55.7 grid curates <b>different</b> params per cell: Spectral is <code>nearest_neighbors</code> on the curves but <code>rbf</code> on blobs; Agglomerative is <code>single</code> on thin manifolds but <code>ward</code> on blobs; <code>n_clusters</code> is 2 for moons/circles, 3 elsewhere. One flat global default would force a wrong param onto half the grid and break the parity story.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 2. THE MODEL — Auto / override / parity-drop, before & after ════ -->
+  <section id="model">
+    <div class="eyebrow">The one decision · how exploration is added without lying</div>
+    <h2>Auto keeps the verified badge; the first explicit value overrides globally and drops the parity claim</h2>
+    <figure>
+      <div class="ba">
+        <div class="pane before">
+          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--accent-2);display:inline-block"></span>Auto — every control at its curated value</div>
+          <svg viewBox="0 0 320 188" role="img" aria-label="Auto state: a Spectral column of four cells over moons, circles, blobs and aniso. Each cell shows its 55.7 badge — orange approximately-equals on the three curved rows where nearest_neighbors is used, a green check on blobs where rbf is used. A footnote reads 'reads grid_config.ts · verified vs scikit-learn'.">
+            <text x="160" y="18" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">Spectral column · affinity = Auto</text>
+            <!-- 4 cells -->
+            <g font-family="ui-monospace,monospace">
+              <rect x="22" y="30" width="64" height="44" rx="7" fill="#0e1626" stroke="#ffa94d" stroke-width="1.4"/>
+              <text x="54" y="49" text-anchor="middle" fill="#ffa94d" font-size="14" font-weight="bold">≈</text>
+              <text x="54" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">moons · kNN</text>
+              <rect x="92" y="30" width="64" height="44" rx="7" fill="#0e1626" stroke="#ffa94d" stroke-width="1.4"/>
+              <text x="124" y="49" text-anchor="middle" fill="#ffa94d" font-size="14" font-weight="bold">≈</text>
+              <text x="124" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">circles · kNN</text>
+              <rect x="162" y="30" width="64" height="44" rx="7" fill="#0e1626" stroke="#63e6be" stroke-width="1.4"/>
+              <text x="194" y="49" text-anchor="middle" fill="#63e6be" font-size="14" font-weight="bold">✓</text>
+              <text x="194" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">blobs · rbf</text>
+              <rect x="232" y="30" width="64" height="44" rx="7" fill="#0e1626" stroke="#ffa94d" stroke-width="1.4"/>
+              <text x="264" y="49" text-anchor="middle" fill="#ffa94d" font-size="14" font-weight="bold">≈</text>
+              <text x="264" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">aniso · kNN</text>
+            </g>
+            <text x="160" y="100" text-anchor="middle" fill="#e6edf3" font-size="9">each cell's affinity differs — kNN on curves, rbf on blobs</text>
+            <rect x="40" y="120" width="240" height="44" rx="8" fill="#10221c" stroke="#63e6be" stroke-width="1.3"/>
+            <text x="160" y="140" text-anchor="middle" fill="#63e6be" font-size="9" font-weight="bold">badge read from grid_config.ts</text>
+            <text x="160" y="155" text-anchor="middle" fill="#8b949e" font-size="8">verified vs scikit-learn under float32</text>
+          </svg>
+        </div>
+        <div class="arrow">→<small>set affinity = rbf globally</small></div>
+        <div class="pane after">
+          <div class="ptitle"><span style="width:9px;height:9px;border-radius:50%;background:var(--warn);display:inline-block"></span>Overridden — one explicit value applied to the whole column</div>
+          <svg viewBox="0 0 320 188" role="img" aria-label="Overridden state: the same Spectral column, but affinity is now forced to rbf on every row. The three curved-row cells that previously used nearest_neighbors are now a different, untested combination, so all four cells show a red pencil 'your params' marker and the footnote changes to 'not checked vs sklearn · your params'.">
+            <text x="160" y="18" text-anchor="middle" fill="#ff8585" font-size="10" font-weight="bold">Spectral column · affinity = rbf (forced)</text>
+            <g font-family="ui-monospace,monospace">
+              <rect x="22" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
+              <text x="54" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
+              <text x="54" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">moons · rbf</text>
+              <rect x="92" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
+              <text x="124" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
+              <text x="124" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">circles · rbf</text>
+              <rect x="162" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
+              <text x="194" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
+              <text x="194" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">blobs · rbf</text>
+              <rect x="232" y="30" width="64" height="44" rx="7" fill="#160e14" stroke="#ff8585" stroke-width="1.5"/>
+              <text x="264" y="49" text-anchor="middle" fill="#ff8585" font-size="13" font-weight="bold">✎</text>
+              <text x="264" y="66" text-anchor="middle" fill="#8b949e" font-size="7.5">aniso · rbf</text>
+            </g>
+            <text x="160" y="100" text-anchor="middle" fill="#e6edf3" font-size="9">all four re-cluster live with the forced affinity</text>
+            <rect x="40" y="120" width="240" height="44" rx="8" fill="#1d1216" stroke="#ff8585" stroke-width="1.3"/>
+            <text x="160" y="140" text-anchor="middle" fill="#ff8585" font-size="9" font-weight="bold">parity claim dropped</text>
+            <text x="160" y="155" text-anchor="middle" fill="#8b949e" font-size="8">not checked vs sklearn · your params</text>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:var(--accent-2)"></i> Auto: curated per-dataset value · keeps ✓ ≈ ◇ ∅ badge</span>
+        <span><i style="background:var(--warn)"></i> overridden: explicit value forced on the column · neutral ✎ your-params marker</span>
+        <span><i style="background:var(--accent-3)"></i> Reset restores Auto + the badges</span>
+      </div>
+      <figcaption class="prose"><b>The parity badge is a claim, so it shows only where it was earned.</b> Auto replays the curated <code>grid_config.ts</code> value and keeps each cell's verified tier; an explicit value is forced on the whole column — a combination nobody ran against scikit-learn — so those cells switch to the neutral <code>✎ k=N · not checked vs sklearn</code> marker.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">Why this model and not the rejected alternative</div>
+      <p>Never advertising a parity you didn't verify is the grid's load-bearing AC. Auto preserves that contract <b>and</b> adds exploration; one flat global default would force a wrong param onto the curated rows and wear a badge it no longer deserves. Simpler, yes — but it would lie.</p>
+      <p style="margin-top:.55rem"><b>The badge is snapshotted per dispatched re-cluster job</b>, not recomputed against the live controls at render time — so a control moving while a fit is in flight can never paint a verified ✓ over labels computed with different params; the badge always matches the labels actually rendered.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. THE CONTROL SET ════ -->
+  <section id="controls">
+    <div class="eyebrow">The surface · one live control per algorithm, each with a plain-English caption</div>
+    <h2>Six controls, mapped to the real library parameter names, each scoped to the columns it touches</h2>
+    <figure>
+      <div class="cswrap">
+        <table class="cs" aria-label="The control set. Each row is a control: its library parameter name and type, the plain-English caption shown beside it, and which of the five algorithm columns it re-clusters.">
+          <thead>
+            <tr>
+              <th>library parameter</th>
+              <th>plain-English caption (shown on the page)</th>
+              <th>columns it re-clusters</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="p">n_clusters<small>integer · 2–6</small></td>
+              <td class="cap">"How many groups to carve the data into. Density methods ignore it — HDBSCAN discovers the count from the data itself."</td>
+              <td class="cols"><span class="colchip on2">K-Means</span><span class="colchip on2">Spectral</span><span class="colchip on2">Agglomerative</span><span class="colchip on2">SOM</span><span class="colchip off2">HDBSCAN</span></td>
+            </tr>
+            <tr>
+              <td class="p">affinity<small>rbf · nearest_neighbors</small></td>
+              <td class="cap">"How Spectral measures point-to-point similarity. nearest_neighbors follows curved manifolds; rbf suits compact blobs."</td>
+              <td class="cols"><span class="colchip on2">Spectral</span></td>
+            </tr>
+            <tr>
+              <td class="p">gamma<small>float · only when rbf</small></td>
+              <td class="cap">"How fast the rbf similarity falls off with distance — higher gamma = tighter, more local neighborhoods. Disabled under nearest_neighbors."</td>
+              <td class="cols"><span class="colchip on2">Spectral</span></td>
+            </tr>
+            <tr>
+              <td class="p">min_cluster_size<small>integer · 5–60</small></td>
+              <td class="cap">"The smallest group HDBSCAN will call a cluster. Raise it and small bumps fall back to noise; lower it to split finer."</td>
+              <td class="cols"><span class="colchip on2">HDBSCAN</span></td>
+            </tr>
+            <tr>
+              <td class="p">linkage<small>ward · complete · average · single</small></td>
+              <td class="cap">"How Agglomerative decides which clusters to merge. single traces thin shapes; ward keeps clusters compact and round."</td>
+              <td class="cols"><span class="colchip on2">Agglomerative</span></td>
+            </tr>
+            <tr>
+              <td class="p">grid_width / grid_height<small>integer · square lattice 4–10</small></td>
+              <td class="cap">"The side of the square SOM lattice. A bigger map captures more detail before the cells are merged into n_clusters groups."</td>
+              <td class="cols"><span class="colchip on2">SOM</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption class="prose"><b>Every control name is the real <code>GridParams</code> field from <code>grid_config.ts</code></b> — <code>n_clusters</code>, <code>affinity</code>, <code>gamma</code>, <code>min_cluster_size</code>, <code>linkage</code>, <code>grid_width</code>/<code>grid_height</code> — so the copy-paste code panel (55.9) stays truthful. <code>gamma</code> is only meaningful under <code>rbf</code>, so its control is disabled while Spectral's affinity is <code>nearest_neighbors</code>; <code>n_clusters</code> is the one shared control, skipping HDBSCAN entirely.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 4. THE RESOLVER ════ -->
+  <section id="resolver">
+    <div class="eyebrow">The pure core · curated params ⊕ overrides → effective params per cell</div>
+    <h2>One unit-tested module turns a control into a per-cell effective-params set and the list of cells it touches</h2>
+    <figure>
+      <div class="code">
+        <div class="fl">site/src/grid_controls.ts — pure resolver (resolve_params · is_overridden · params_equal), no DOM, no tfjs, snake_case</div>
+<pre><span class="cm">// The active overrides: only params the user has explicitly set. An absent key</span>
+<span class="cm">// means "Auto" — fall through to the curated grid_config.ts value for that cell.</span>
+<span class="kw">interface</span> <span class="var">ControlOverrides</span> {
+  n_clusters?: number;
+  spectral_affinity?: <span class="str">"rbf"</span> | <span class="str">"nearest_neighbors"</span>;
+  spectral_gamma?: number;
+  hdbscan_min_cluster_size?: number;
+  agglomerative_linkage?: <span class="str">"ward"</span> | <span class="str">"complete"</span> | <span class="str">"average"</span> | <span class="str">"single"</span>;
+  som_grid?: number;
+}
+
+<span class="cm">// For one cell: start from its curated params, then layer on any override that</span>
+<span class="cm">// applies to that algorithm. n_clusters is skipped for HDBSCAN (density-driven).</span>
+<span class="kw">function</span> <span class="fn">resolve_params</span>(cell: <span class="var">GridCell</span>, ov: <span class="var">ControlOverrides</span>): <span class="var">GridParams</span> {
+  <span class="kw">const</span> p = cell.params;
+  <span class="kw">switch</span> (p.algorithm_id) {
+    <span class="kw">case</span> <span class="str">"kmeans"</span>:
+      <span class="kw">return</span> { ...p, n_clusters: ov.n_clusters ?? p.n_clusters };
+    <span class="kw">case</span> <span class="str">"spectral"</span>: {
+      <span class="kw">const</span> affinity = ov.spectral_affinity ?? p.affinity;
+      <span class="kw">return</span> { ...p, n_clusters: ov.n_clusters ?? p.n_clusters, affinity,
+        gamma: affinity === <span class="str">"rbf"</span> ? (ov.spectral_gamma ?? p.gamma ?? <span class="hl">1.0</span>) : undefined };
+    }
+    <span class="kw">case</span> <span class="str">"agglomerative"</span>:
+      <span class="kw">return</span> { ...p, n_clusters: ov.n_clusters ?? p.n_clusters,
+        linkage: ov.agglomerative_linkage ?? p.linkage };
+    <span class="kw">case</span> <span class="str">"hdbscan"</span>:                                <span class="cm">// n_clusters never applies</span>
+      <span class="kw">return</span> { ...p, min_cluster_size: ov.hdbscan_min_cluster_size ?? p.min_cluster_size };
+    <span class="kw">case</span> <span class="str">"som"</span>:
+      <span class="kw">return</span> { ...p, n_clusters: ov.n_clusters ?? p.n_clusters,
+        grid_width: ov.som_grid ?? p.grid_width, grid_height: ov.som_grid ?? p.grid_height };
+  }
+}
+
+<span class="cm">// A cell shows its verified parity badge ONLY while every param it consumes is</span>
+<span class="cm">// still Auto. Any applicable override drops the claim to "not checked".</span>
+<span class="kw">function</span> <span class="fn">is_overridden</span>(cell: <span class="var">GridCell</span>, ov: <span class="var">ControlOverrides</span>): boolean {
+  <span class="kw">const</span> a = cell.algorithm_id;
+  <span class="kw">if</span> (a !== <span class="str">"hdbscan"</span> &amp;&amp; ov.n_clusters !== undefined) <span class="kw">return</span> <span class="kw">true</span>;
+  <span class="kw">if</span> (a === <span class="str">"spectral"</span> &amp;&amp; (ov.spectral_affinity !== undefined || ov.spectral_gamma !== undefined)) <span class="kw">return</span> <span class="kw">true</span>;
+  <span class="kw">if</span> (a === <span class="str">"hdbscan"</span> &amp;&amp; ov.hdbscan_min_cluster_size !== undefined) <span class="kw">return</span> <span class="kw">true</span>;
+  <span class="kw">if</span> (a === <span class="str">"agglomerative"</span> &amp;&amp; ov.agglomerative_linkage !== undefined) <span class="kw">return</span> <span class="kw">true</span>;
+  <span class="kw">if</span> (a === <span class="str">"som"</span> &amp;&amp; ov.som_grid !== undefined) <span class="kw">return</span> <span class="kw">true</span>;
+  <span class="kw">return</span> <span class="kw">false</span>;
+}
+
+<span class="cm">// params_equal lets grid_ui find exactly which cells a control change re-clusters,</span>
+<span class="cm">// so its single-flight scheduler dispatches a recluster(jobs) for only those cells.</span>
+<span class="kw">function</span> <span class="fn">params_equal</span>(a: <span class="var">GridParams</span>, b: <span class="var">GridParams</span>): boolean { <span class="cm">/* deep field compare */</span> }
+<span class="kw">const</span> changed = GRID_CELLS.<span class="fn">filter</span>(
+  (c) =&gt; !<span class="fn">params_equal</span>(<span class="fn">resolve_params</span>(c, prev), <span class="fn">resolve_params</span>(c, next)),
+);</pre>
+      </div>
+      <figcaption class="prose"><b><code>grid_controls.ts</code> is pure and unit-tested</b> — no DOM, no worker, no tfjs. It answers two things: what each cell runs (<code>resolve_params</code>) and whether a cell keeps its badge (<code>is_overridden</code>); <code>params_equal</code> lets <code>grid_ui.ts</code> dispatch a <code>recluster</code> for only the changed cells, never re-fitting the whole grid.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 5. THE KEPT-ALIVE WORKER ════ -->
+  <section id="worker">
+    <div class="eyebrow">The wiring · the worker must outlive the initial sweep</div>
+    <h2>The grid worker stays alive and caches the datasets, so a re-cluster is a lightweight message — not a fresh page load</h2>
+    <figure>
+      <div class="flowwrap" style="display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center">
+        <!-- BEFORE -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-3);margin-bottom:.5rem">Today — 55.7</div>
+          <svg viewBox="0 0 360 240" role="img" aria-label="Today in 55.7: the orchestrator posts one run request with the five dataset payloads and 25 jobs, the worker initializes the backend, fits all 25 cells streaming labels back, posts done, and then terminates. A later parameter change would have to spin up a brand-new worker and re-initialize the backend and re-send the datasets.">
+            <rect x="20" y="16" width="320" height="40" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="33" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">post run: 5 datasets + 25 jobs</text>
+            <text x="180" y="48" text-anchor="middle" fill="#8b949e" font-size="8.5">one-shot request</text>
+            <line x1="180" y1="56" x2="180" y2="78" stroke="#8b949e" stroke-width="1.4" marker-end="url(#wa)"/>
+            <rect x="20" y="80" width="320" height="40" rx="10" fill="#10221c" stroke="#63e6be" stroke-width="1.4"/>
+            <text x="180" y="97" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">init backend · fit all 25 · stream labels</text>
+            <text x="180" y="112" text-anchor="middle" fill="#8b949e" font-size="8.5">webgl → wasm → cpu</text>
+            <line x1="180" y1="120" x2="180" y2="142" stroke="#8b949e" stroke-width="1.4" marker-end="url(#wa)"/>
+            <rect x="20" y="144" width="320" height="34" rx="10" fill="#11182a" stroke="#22304a"/>
+            <text x="180" y="165" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">post done</text>
+            <line x1="180" y1="178" x2="180" y2="198" stroke="#ff8585" stroke-width="1.4" marker-end="url(#wr)"/>
+            <rect x="20" y="200" width="320" height="34" rx="10" fill="#1d1216" stroke="#ff8585" stroke-width="1.5"/>
+            <text x="180" y="221" text-anchor="middle" fill="#ff8585" font-size="10" font-weight="bold">worker.terminate() — engine gone</text>
+            <defs>
+              <marker id="wa" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker>
+              <marker id="wr" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#ff8585"/></marker>
+            </defs>
+          </svg>
+        </div>
+
+        <div style="font-family:var(--serif);font-size:1.8rem;color:var(--accent);text-align:center">→</div>
+
+        <!-- AS BUILT -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-2);margin-bottom:.5rem">As built — 55.8</div>
+          <svg viewBox="0 0 360 240" role="img" aria-label="As built in 55.8: the same initial sweep, but the worker stays alive and keeps the five generated datasets cached in its own memory. When a control changes, the main thread runs the resolver to find the affected cells and posts a lightweight recluster message carrying only the cell ids and their new effective params — no dataset payloads. The warm engine re-fits just those cells over the cached data in milliseconds and streams updated labels back. The worker is only terminated when the page unloads.">
+            <rect x="20" y="14" width="320" height="40" rx="10" fill="#10221c" stroke="#63e6be" stroke-width="1.4"/>
+            <text x="180" y="31" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">initial sweep · then STAY ALIVE</text>
+            <text x="180" y="46" text-anchor="middle" fill="#8b949e" font-size="8.5">engine warm · 5 datasets cached in worker</text>
+            <line x1="180" y1="54" x2="180" y2="74" stroke="#63e6be" stroke-width="1.4" marker-end="url(#wg)"/>
+            <rect x="20" y="76" width="320" height="44" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="93" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">control change → resolver picks cells</text>
+            <text x="180" y="108" text-anchor="middle" fill="#8b949e" font-size="8.5">post recluster: cell_ids + effective params only</text>
+            <line x1="180" y1="120" x2="180" y2="140" stroke="#7c9cff" stroke-width="1.4" marker-end="url(#wb)"/>
+            <rect x="20" y="142" width="320" height="44" rx="10" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+            <text x="180" y="159" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">re-fit only those cells · cached data</text>
+            <text x="180" y="174" text-anchor="middle" fill="#8b949e" font-size="8.5">300 pts/dataset → a column refits in ms</text>
+            <line x1="180" y1="186" x2="180" y2="206" stroke="#63e6be" stroke-width="1.4" marker-end="url(#wg)"/>
+            <rect x="20" y="208" width="320" height="26" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+            <text x="180" y="225" text-anchor="middle" fill="#e6edf3" font-size="9.5">stream updated labels → re-render those cells</text>
+            <defs>
+              <marker id="wg" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#63e6be"/></marker>
+              <marker id="wb" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#7c9cff"/></marker>
+            </defs>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#ff8585"></i> today: worker terminates after the sweep</span>
+        <span><i style="background:#63e6be"></i> kept alive: warm engine + cached datasets</span>
+        <span><i style="background:#7c9cff"></i> recluster message carries params only, no data</span>
+      </div>
+      <figcaption class="prose"><b>Backend init and dataset generation happen once.</b> The worker no longer terminates after the sweep; it caches the five datasets and accepts a <code>recluster</code> message holding just the affected <code>cell_id</code>s and their effective params. At 300 points per dataset a column re-fits in milliseconds; debounced single-flight input (the 55.5 pattern) never overlaps fits.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">The protocol gains a recluster request — the rest is unchanged</div>
+      <p><code>grid_protocol.ts</code> adds a <code>recluster</code> request — the jobs <code>GridController.recluster(jobs)</code> dispatches (cell ids + resolved params, no payloads) — alongside the existing <code>run</code>; the worker keeps its <code>cell_result</code> / <code>cell_error</code> / <code>progress</code> outbound union exactly as 55.7 left it. The datasets are sent once with the first <code>run</code> and cached worker-side, so a re-cluster never re-ships the points.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 6. WHAT IT BUILDS ════ -->
+  <section id="build">
+    <div class="eyebrow">As built · the explainer fold on top of the finished 55.7 grid</div>
+    <h2>One pure resolver, a kept-alive worker, a control strip — the curated config untouched</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp new">site/src/grid_controls.ts</span><div class="role"><b>New · the pure resolver.</b> <code>resolve_params</code> (curated ⊕ override per cell), <code>is_overridden</code> (does a cell keep its badge), and <code>params_equal</code>. No DOM, no tfjs — fully unit-tested.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_controls.test.ts</span><div class="role"><b>New.</b> Colocated tests: Auto resolves to the exact <code>grid_config.ts</code> value, <code>n_clusters</code> skips HDBSCAN, <code>gamma</code> only under <code>rbf</code>, overridden cells drop parity, and the affected-cell set per control.</div></div>
+        <div class="fcard"><span class="fp new">site/src/grid_controls_ui.ts</span><div class="role"><b>New · the widgets.</b> Builds the control strip from a declarative control list, owns the live <code>ControlOverrides</code>, shows each plain-English caption, and reports the new overrides on every change.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_worker.ts</span><div class="role"><b>Extended.</b> Stays alive after the sweep, caches the five datasets, and handles the new <code>recluster</code> message — re-fitting only the requested cells over the warm engine.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_protocol.ts</span><div class="role"><b>Extended.</b> Adds the <code>recluster</code> request (cell ids + effective params, no payloads) beside <code>run</code>; the <code>cell_result</code> / <code>cell_error</code> / <code>progress</code> outbound union is unchanged.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid.ts</span><div class="role"><b>Extended · the controller.</b> A <code>GridController</code> that keeps the worker alive for the page's life and exposes <code>recluster(jobs)</code> — no <code>dispose</code> (the worker simply outlives the page).</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_ui.ts</span><div class="role"><b>Extended · orchestration.</b> The single-flight scheduler that turns an override into a <code>recluster(jobs)</code>, the per-cell re-render, and the parity-drop visuals — toggling each cell between its verified badge and the neutral <code>✎ k=N · not checked vs sklearn</code> marker. The parity decision is snapshotted per dispatched job.</div></div>
+        <div class="fcard"><span class="fp">site/src/grid_config.ts</span><div class="role"><b>Untouched.</b> Still the single source of truth for the curated 25-cell param table and parity tiers — Auto reads exactly these values, so the verified grid is reproduced precisely.</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> The control strip, segmented affinity/linkage toggles, the overridden-cell ring, and the neutral <code>✎</code> your-params marker — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> / <code>--warn</code> tokens.</div></div>
+      </div>
+      <figcaption class="prose"><b>The fold is a pure module plus controller wiring — the curated config never changes.</b> <code>grid_controls.ts</code> resolves params and answers what re-clusters; the worker and protocol gain a <code>recluster</code> verb and a dataset cache; the control strip adds the live UI. <code>grid_config.ts</code> stays the verified source of truth, so Auto is bit-for-bit the 55.7 grid.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 7. ACCEPTANCE CRITERIA ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means · status: done &amp; reviewed</div>
+    <h2>Acceptance criteria — four, all met, plus the honesty invariant that ties them together</h2>
+    <div class="acs">
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">Each listed algorithm exposes its <b>key parameter(s)</b> as a live control with a <b>one-line plain-English caption</b> — <code>n_clusters</code>, Spectral <code>affinity</code>/<code>gamma</code>, HDBSCAN <code>min_cluster_size</code>, Agglomerative <code>linkage</code>, SOM grid size.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">2</span><span class="box"></span><span class="txt">Adjusting a control <b>re-clusters and re-renders the relevant grid cells in real time</b> — debounced, single-flight, over a kept-alive worker with cached datasets.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">3</span><span class="box"></span><span class="txt">Controls <b>map to the real library parameter names</b> (the <code>GridParams</code> fields) and produce <b>correct clusterings</b>, so the 55.9 copy-paste code panel stays truthful.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">4</span><span class="box"></span><span class="txt"><b>ESLint passes</b> before commit — Python-style <code>snake_case</code>, the typed <code>GridParams</code> union with no casts.</span><span class="status">done</span></div>
+      <div class="ac"><span class="num">★</span><span class="box inv"></span><span class="txt"><b>Honesty invariant</b> (the model's reason to exist): a cell shows its scikit-learn parity badge <b>only</b> while every param it consumes is Auto; any override drops the claim to the neutral <code>✎ k=N · not checked vs sklearn</code> marker, and the snapshot per re-cluster job keeps the badge matched to the rendered labels.</span><span class="status" style="background:rgba(255,133,133,.16);color:var(--warn)">invariant</span></div>
+    </div>
+    <figcaption class="prose"><b>AC #2 carries the kept-alive-worker architecture and AC #3 keeps the parameter names real.</b> The starred invariant is the spine of the whole task: it is what lets the page add free exploration on top of the verified 55.7 grid without ever publishing a parity it did not measure.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Companion for <b>task-55.8 — Per-algorithm parameter sliders with plain-English captions (Milestone M4, done &amp; reviewed)</b> ·
+  grounded in the as-built 55.7 sources under site/src: grid_config.ts (the curated 25-cell param table read verbatim by Auto), grid_protocol.ts (the worker contract gaining a recluster request), grid_worker.ts / grid.ts / grid_ui.ts (the kept-alive worker + per-cell re-render) ·
+  reconciled to the shipped sources: grid_controls.ts (resolve_params · is_overridden · params_equal), grid_controls_ui.ts (the widgets + ControlOverrides), grid_ui.ts (single-flight scheduler + parity-drop visuals), and the kept-alive GridController.recluster(jobs) in grid.ts / grid_worker.ts / grid_protocol.ts · 59 colocated tests green, typecheck / lint / build pass ·
+  dark theme matches site/src/style.css · self-contained, no external assets.
+</footer>
+
+<script>
+(function(){
+  // ── palette ──
+  var COLORS=['#7c9cff','#63e6be','#ffa94d','#ff8787'];
+  var NOISE='#6b7280';
+  // ── datasets (rows) and algorithms (cols), mirroring grid_config.ts order ──
+  var DATASETS=['moons','circles','blobs','aniso','none'];
+  var DS_SUB={moons:'2 arcs',circles:'concentric',blobs:'separated',aniso:'sheared',none:'uniform'};
+  var ALGOS=[{id:'kmeans',k:'K-Means'},{id:'spectral',k:'Spectral'},{id:'agglomerative',k:'Agglom.'},{id:'hdbscan',k:'HDBSCAN'},{id:'som',k:'SOM'}];
+
+  // ── curated per-(dataset,algorithm) params — exactly grid_config.ts ──
+  function two_shape(d){return d==='moons'||d==='circles';}
+  var N_CLUSTERS={moons:2,circles:2,blobs:3,aniso:3,none:3};
+  function curated(d,a){
+    if(a==='kmeans') return {n_clusters:N_CLUSTERS[d]};
+    if(a==='spectral'){
+      if(d==='moons'||d==='circles'||d==='aniso') return {n_clusters:N_CLUSTERS[d],affinity:'nearest_neighbors',n_neighbors:10};
+      return {n_clusters:N_CLUSTERS[d],affinity:'rbf',gamma:1.0};
+    }
+    if(a==='agglomerative') return {n_clusters:N_CLUSTERS[d],linkage:two_shape(d)?'single':'ward'};
+    if(a==='hdbscan'){ if(two_shape(d)) return {min_cluster_size:10}; if(d==='none') return {min_cluster_size:40}; return {min_cluster_size:15}; }
+    return {n_clusters:N_CLUSTERS[d],grid_width:two_shape(d)?8:6,grid_height:two_shape(d)?8:6}; // som
+  }
+  // curated parity tier — exactly parity_for()
+  function tier_auto(d,a){
+    if(a==='som') return 'ref';
+    if(d==='none') return 'truth';
+    if(a==='hdbscan') return 'drift';
+    if(a==='spectral'&&(d==='moons'||d==='circles'||d==='aniso')) return 'drift';
+    return 'ok';
+  }
+  var FLAG={ok:{g:'✓',t:'matches scikit-learn under float32'},
+            drift:{g:'≈',t:'cores match · boundary points drift under float32'},
+            ref:{g:'◇',t:'SOM — no scikit-learn reference'},
+            truth:{g:'∅',t:'uniform data — no true clusters'},
+            exp:{g:'\u270e',t:'not checked vs sklearn · your params'}};
+
+  // ── overrides (the live state) — undefined key = Auto ──
+  var ov={n_clusters:undefined,spectral_affinity:undefined,spectral_gamma:undefined,
+          hdbscan_min_cluster_size:undefined,agglomerative_linkage:undefined,som_grid:undefined};
+
+  // effective n_clusters / affinity / etc. used by the illustrative labeler
+  function eff(d,a){
+    var c=curated(d,a),e={};for(var k in c)e[k]=c[k];
+    if(a!=='hdbscan'&&ov.n_clusters!==undefined) e.n_clusters=ov.n_clusters;
+    if(a==='spectral'){ if(ov.spectral_affinity!==undefined) e.affinity=ov.spectral_affinity;
+      if(e.affinity==='rbf'&&ov.spectral_gamma!==undefined) e.gamma=ov.spectral_gamma; }
+    if(a==='hdbscan'&&ov.hdbscan_min_cluster_size!==undefined) e.min_cluster_size=ov.hdbscan_min_cluster_size;
+    if(a==='agglomerative'&&ov.agglomerative_linkage!==undefined) e.linkage=ov.agglomerative_linkage;
+    if(a==='som'&&ov.som_grid!==undefined){e.grid_width=ov.som_grid;e.grid_height=ov.som_grid;}
+    return e;
+  }
+  function overridden(d,a){
+    if(a!=='hdbscan'&&ov.n_clusters!==undefined) return true;
+    if(a==='spectral'&&(ov.spectral_affinity!==undefined||ov.spectral_gamma!==undefined)) return true;
+    if(a==='hdbscan'&&ov.hdbscan_min_cluster_size!==undefined) return true;
+    if(a==='agglomerative'&&ov.agglomerative_linkage!==undefined) return true;
+    if(a==='som'&&ov.som_grid!==undefined) return true;
+    return false;
+  }
+  function any_override(){ for(var k in ov) if(ov[k]!==undefined) return true; return false; }
+
+  // ── illustrative point clouds + labeler (truth-aware, like 55.7) ──
+  var N=40,W=46,H=46,PAD=5;
+  function rng(s){var a=s>>>0;return function(){a=(a+0x6d2b79f5)>>>0;var t=a;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+  function gauss(r){var u=0,v=0;while(u===0)u=r();while(v===0)v=r();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+  function sx(x){return PAD+(x*0.5+0.5)*(W-2*PAD);}
+  function sy(y){return PAD+(0.5-y*0.5)*(H-2*PAD);}
+  function gen(d,seed){var r=rng(seed),p=[],i;
+    if(d==='moons'){for(i=0;i<N;i++){var up=i%2===0,t=i/N,ang=Math.PI*(up?t:1-t),cx=up?-0.25:0.25,cy=up?-0.12:0.12;p.push({x:cx+Math.cos(ang)*0.7+gauss(r)*0.05,y:cy+(up?Math.sin(ang):-Math.sin(ang))*0.55+gauss(r)*0.05,t:up?0:1});}return p;}
+    if(d==='circles'){for(i=0;i<N;i++){var inner=i%2===0,a2=2*Math.PI*(i/N),rad=inner?0.32:0.78;p.push({x:Math.cos(a2)*rad+gauss(r)*0.04,y:Math.sin(a2)*rad+gauss(r)*0.04,t:inner?0:1});}return p;}
+    if(d==='blobs'){var cb=[[-0.5,-0.45],[0.55,-0.4],[0.0,0.55]];for(i=0;i<N;i++){var c=i%3;p.push({x:cb[c][0]+gauss(r)*0.13,y:cb[c][1]+gauss(r)*0.13,t:c});}return p;}
+    if(d==='aniso'){var ca=[[-0.45,-0.3],[0.5,-0.2],[0.1,0.5]];for(i=0;i<N;i++){var c2=i%3,bx=gauss(r)*0.13,by=gauss(r)*0.07,x=bx*0.9+by*0.9,y=-bx*0.45+by*0.9;p.push({x:ca[c2][0]+x,y:ca[c2][1]+y,t:c2});}return p;}
+    for(i=0;i<N;i++){p.push({x:(r()-0.5)*1.7,y:(r()-0.5)*1.7,t:0});}return p;}
+
+  // assign colors given effective params — illustrative: respects k, affinity, linkage, mcs
+  function assign(d,a,pts){
+    var e=eff(d,a);
+    var k=e.n_clusters||2;
+    var shape_aware=(a==='spectral'||a==='agglomerative'||a==='hdbscan'||a==='som');
+    // density methods: HDBSCAN ignores k entirely
+    if(a==='hdbscan'){
+      var mcs=e.min_cluster_size||10;
+      if(d==='none') return pts.map(function(){return -1;});
+      // higher mcs → more noise; below threshold the small group dissolves
+      var noise_frac=Math.max(0,Math.min(.85,(mcs-10)/45));
+      return pts.map(function(p,i){ return (i/pts.length)<noise_frac?-1:p.t; });
+    }
+    // spectral affinity matters: rbf can't follow curves (folds to a cut)
+    if(a==='spectral'){
+      var rbf=(e.affinity==='rbf');
+      if((d==='moons'||d==='circles'||d==='aniso')&&rbf){
+        // forced rbf on a curve → geometric cut into k pieces
+        return cut_k(pts,k);
+      }
+      if(shape_aware&&(d==='moons'||d==='circles'||d==='aniso')) return pts.map(function(p){return p.t%k;});
+      return pts.map(function(p){return p.t%k;});
+    }
+    // agglomerative linkage matters on thin shapes
+    if(a==='agglomerative'){
+      var lk=e.linkage||'ward';
+      if((d==='moons'||d==='circles')&&lk!=='single') return cut_k(pts,k); // ward/complete/avg break the manifold
+      if(d==='moons'||d==='circles') return pts.map(function(p){return p.t%k;});
+      return pts.map(function(p){return p.t%k;});
+    }
+    // kmeans + som: geometric / k-respecting
+    if(a==='kmeans'){
+      if(d==='moons'||d==='circles'||d==='none') return cut_k(pts,k);
+      return pts.map(function(p){return p.t%k;});
+    }
+    // som
+    if(shape_aware&&(d==='moons'||d==='circles'||d==='aniso')&&k<=2) return pts.map(function(p){return p.t%k;});
+    return pts.map(function(p){return p.t%k;});
+  }
+  // split points into k geometric slices (angular) — illustrates a "cut through" failure
+  function cut_k(pts,k){
+    return pts.map(function(p){
+      var ang=Math.atan2(p.y,p.x)+Math.PI; // 0..2pi
+      return Math.min(k-1,Math.floor(ang/(2*Math.PI)*k));
+    });
+  }
+
+  // ── build the grid ──
+  var gridmock=document.getElementById('gridmock');
+  var seeds={};
+  function build_grid(reclustered){
+    var html='<div class="corner">ds ↓<br>algo →</div>';
+    for(var ai=0;ai<ALGOS.length;ai++) html+='<div class="gh">'+ALGOS[ai].k+'</div>';
+    for(var di=0;di<DATASETS.length;di++){
+      var d=DATASETS[di];
+      html+='<div class="rl">'+d+'</div>';
+      for(var aj=0;aj<ALGOS.length;aj++){
+        var a=ALGOS[aj].id;
+        var key=d+':'+a;
+        if(!seeds[key]) seeds[key]=1000+di*7+aj;
+        var pts=gen(d,seeds[key]);
+        var labels=assign(d,a,pts);
+        var svg='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="xMidYMid meet" aria-hidden="true">';
+        for(var i=0;i<pts.length;i++){
+          var ci=labels[i];
+          var col=ci===-1?NOISE:COLORS[((ci%COLORS.length)+COLORS.length)%COLORS.length];
+          svg+='<circle cx="'+sx(pts[i].x).toFixed(1)+'" cy="'+sy(pts[i].y).toFixed(1)+'" r="1.4" fill="'+col+'" opacity="'+(ci===-1?0.55:0.92)+'"/>';
+        }
+        svg+='</svg>';
+        var over=overridden(d,a);
+        var e_cell=eff(d,a);
+        var e_k=(a==='hdbscan')?undefined:e_cell.n_clusters;
+        var tr=over?'exp':tier_auto(d,a);
+        var f=FLAG[tr];
+        var cls='cell'+(over?' overridden':'');
+        var reclu=(reclustered&&reclustered.indexOf(key)>=0)?'<div class="reclust on"><span>re-fit</span></div>':'<div class="reclust"></div>';
+        var ktxt=(typeof e_k==='number'?(' k='+e_k):'');html+='<div class="'+cls+'" title="'+(over?('\u270e'+ktxt+' \u00b7 not checked vs sklearn'):FLAG[tier_auto(d,a)].t)+'">'+svg+'<span class="flag '+tr+'">'+f.g+'</span>'+reclu+'</div>';
+      }
+    }
+    gridmock.innerHTML=html;
+    // pulse the re-fit overlay off
+    if(reclustered&&reclustered.length){
+      setTimeout(function(){gridmock.querySelectorAll('.reclust.on').forEach(function(el){el.classList.remove('on');});},420);
+    }
+    update_badge();
+  }
+
+  function affected_cells(){
+    var out=[];
+    for(var di=0;di<DATASETS.length;di++) for(var aj=0;aj<ALGOS.length;aj++){
+      var d=DATASETS[di],a=ALGOS[aj].id;
+      if(overridden(d,a)) out.push(d+':'+a);
+    }
+    return out;
+  }
+
+  var badge=document.getElementById('badge-now');
+  function update_badge(){
+    var n=affected_cells().length;
+    if(n===0){
+      badge.innerHTML='<b>All Auto.</b> Every cell shows its <span class="auto-pill">verified scikit-learn parity badge</span> — this is the exact 55.7 grid.';
+    } else {
+      badge.innerHTML='<b>'+n+' cell'+(n===1?'':'s')+' overridden.</b> The affected columns re-clustered with your params and now read <span class="exp-pill">\u270e k=N \u00b7 not checked vs sklearn</span> — no parity is claimed for what was not verified.';
+    }
+  }
+
+  // ── control strip ──
+  var ctrls=document.getElementById('ctrls');
+  function seg(name,vals,cur,auto_label){
+    var h='<div class="seg">';
+    h+='<button data-c="'+name+'" data-v="__auto" class="autoval'+(cur===undefined?' on':'')+'">Auto'+(auto_label?' ('+auto_label+')':'')+'</button>';
+    vals.forEach(function(v){ h+='<button data-c="'+name+'" data-v="'+v+'"'+(cur===v?' class="on"':'')+'>'+v+'</button>'; });
+    return h+'</div>';
+  }
+  function ctrl_html(){
+    var spectral_rbf=(ov.spectral_affinity==='rbf'); // gamma only meaningful under rbf
+    var h='';
+    // n_clusters
+    h+='<div class="ctrl"><div class="top"><span class="nm">n_clusters <small>K-Means · Spectral · Agglom · SOM</small></span>'
+      +'<span class="st '+(ov.n_clusters===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap">How many groups to carve into. <b>HDBSCAN ignores it</b> — it discovers the count from density.</div>'
+      +'<div style="display:flex;align-items:center;gap:.6rem"><input type="range" class="pslider" id="nc" min="2" max="6" step="1" value="'+(ov.n_clusters===undefined?3:ov.n_clusters)+'" aria-label="n_clusters">'
+      +'<span class="val" id="nc-val">'+(ov.n_clusters===undefined?'Auto (2 or 3)':ov.n_clusters)+'</span></div>'
+      +'<div class="seg"><button data-c="n_clusters" data-v="__auto" class="autoval'+(ov.n_clusters===undefined?' on':'')+'">reset to Auto</button></div></div>';
+    // spectral affinity
+    h+='<div class="ctrl"><div class="top"><span class="nm">affinity <small>Spectral</small></span>'
+      +'<span class="st '+(ov.spectral_affinity===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap">How Spectral measures similarity. <b>nearest_neighbors</b> follows curves; <b>rbf</b> suits blobs.</div>'
+      +seg('spectral_affinity',['nearest_neighbors','rbf'],ov.spectral_affinity,'per-dataset')+'</div>';
+    // gamma (only under rbf)
+    var gdis=spectral_rbf?'':' disabled';
+    h+='<div class="ctrl'+gdis+'"><div class="top"><span class="nm">gamma <small>Spectral · rbf only</small></span>'
+      +'<span class="st '+(ov.spectral_gamma===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap">How fast rbf similarity falls off. '+(spectral_rbf?'Higher = tighter neighborhoods.':'<b>Disabled while affinity is nearest_neighbors.</b>')+'</div>'
+      +'<div style="display:flex;align-items:center;gap:.6rem"><input type="range" class="pslider" id="gm" min="0.1" max="5" step="0.1" value="'+(ov.spectral_gamma===undefined?1:ov.spectral_gamma)+'"'+(spectral_rbf?'':' disabled')+' aria-label="gamma">'
+      +'<span class="val" id="gm-val">'+(ov.spectral_gamma===undefined?'Auto (1.0)':ov.spectral_gamma)+'</span></div></div>';
+    // hdbscan min_cluster_size
+    h+='<div class="ctrl"><div class="top"><span class="nm">min_cluster_size <small>HDBSCAN</small></span>'
+      +'<span class="st '+(ov.hdbscan_min_cluster_size===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap">Smallest group HDBSCAN calls a cluster. Raise it → small bumps become <b>noise</b>.</div>'
+      +'<div style="display:flex;align-items:center;gap:.6rem"><input type="range" class="pslider" id="mcs" min="5" max="60" step="5" value="'+(ov.hdbscan_min_cluster_size===undefined?15:ov.hdbscan_min_cluster_size)+'" aria-label="min_cluster_size">'
+      +'<span class="val" id="mcs-val">'+(ov.hdbscan_min_cluster_size===undefined?'Auto (10–40)':ov.hdbscan_min_cluster_size)+'</span></div>'
+      +'<div class="seg"><button data-c="hdbscan_min_cluster_size" data-v="__auto" class="autoval'+(ov.hdbscan_min_cluster_size===undefined?' on':'')+'">reset to Auto</button></div></div>';
+    // agglomerative linkage
+    h+='<div class="ctrl"><div class="top"><span class="nm">linkage <small>Agglomerative</small></span>'
+      +'<span class="st '+(ov.agglomerative_linkage===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap"><b>single</b> traces thin shapes; <b>ward</b> keeps clusters compact and round.</div>'
+      +seg('agglomerative_linkage',['ward','complete','average','single'],ov.agglomerative_linkage,'per-dataset')+'</div>';
+    // som grid
+    h+='<div class="ctrl"><div class="top"><span class="nm">grid size <small>SOM · square lattice</small></span>'
+      +'<span class="st '+(ov.som_grid===undefined?'auto">Auto':'over">override')+'</span></div>'
+      +'<div class="cap">Side of the square SOM map. Bigger = more detail before merging into n_clusters.</div>'
+      +'<div style="display:flex;align-items:center;gap:.6rem"><input type="range" class="pslider" id="som" min="4" max="10" step="1" value="'+(ov.som_grid===undefined?6:ov.som_grid)+'" aria-label="SOM grid size">'
+      +'<span class="val" id="som-val">'+(ov.som_grid===undefined?'Auto (6 or 8)':ov.som_grid+'×'+ov.som_grid)+'</span></div>'
+      +'<div class="seg"><button data-c="som_grid" data-v="__auto" class="autoval'+(ov.som_grid===undefined?' on':'')+'">reset to Auto</button></div></div>';
+    // reset bar
+    var on=any_override();
+    h+='<div class="resetbar"><span class="ovcount">'+(on?'<b>'+affected_cells().length+'</b> cells not checked':'all Auto · verified')+'</span>'
+      +'<button class="resetbtn" id="reset"'+(on?'':' disabled')+'>Reset to the verified grid</button></div>';
+    ctrls.innerHTML=h;
+    bind_controls();
+  }
+
+  // debounced single-flight recluster (mirrors 55.5 pattern, illustrative)
+  var debounce_t=null, in_flight=false, pending=null;
+  function schedule_recluster(cells){
+    pending=cells;
+    if(debounce_t) clearTimeout(debounce_t);
+    debounce_t=setTimeout(drain,180);
+  }
+  function drain(){
+    if(in_flight){ return; }            // single-flight: latest pending wins on finish
+    if(!pending){ return; }
+    in_flight=true;
+    var cells=pending; pending=null;
+    build_grid(cells);                  // "re-fit" pulse on those cells
+    setTimeout(function(){ in_flight=false; if(pending) drain(); },430);
+  }
+
+  function set_override(name,raw){
+    var before=affected_cells();
+    if(raw==='__auto'){ ov[name]=undefined; }
+    else if(name==='n_clusters'||name==='hdbscan_min_cluster_size'||name==='som_grid'){ ov[name]=parseInt(raw,10); }
+    else if(name==='spectral_gamma'){ ov[name]=parseFloat(raw); }
+    else { ov[name]=raw; }
+    // affinity → nearest_neighbors clears gamma (meaningless)
+    if(name==='spectral_affinity'&&ov.spectral_affinity!=='rbf') ov.spectral_gamma=undefined;
+    ctrl_html();
+    var after=affected_cells();
+    // recluster the union of cells whose override-state or value changed
+    var union={};
+    before.concat(after).forEach(function(c){union[c]=1;});
+    schedule_recluster(Object.keys(union));
+  }
+
+  function bind_controls(){
+    ctrls.querySelectorAll('.seg button[data-c]').forEach(function(b){
+      b.onclick=function(){ var v=b.getAttribute('data-v'); set_override(b.getAttribute('data-c'), v==='__auto'?'__auto':v); };
+    });
+    var nc=document.getElementById('nc'); if(nc){ nc.oninput=function(){document.getElementById('nc-val').textContent=nc.value;}; nc.onchange=function(){set_override('n_clusters',nc.value);}; }
+    var gm=document.getElementById('gm'); if(gm&&!gm.disabled){ gm.oninput=function(){document.getElementById('gm-val').textContent=gm.value;}; gm.onchange=function(){set_override('spectral_gamma',gm.value);}; }
+    var mcs=document.getElementById('mcs'); if(mcs){ mcs.oninput=function(){document.getElementById('mcs-val').textContent=mcs.value;}; mcs.onchange=function(){set_override('hdbscan_min_cluster_size',mcs.value);}; }
+    var som=document.getElementById('som'); if(som){ som.oninput=function(){document.getElementById('som-val').textContent=som.value+'×'+som.value;}; som.onchange=function(){set_override('som_grid',som.value);}; }
+    var rst=document.getElementById('reset'); if(rst){ rst.onclick=function(){ var was=affected_cells(); for(var k in ov) ov[k]=undefined; ctrl_html(); schedule_recluster(was); }; }
+  }
+
+  ctrl_html();
+  build_grid(null);
+
+  // ── outline active-state via IntersectionObserver ──
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+})();
+</script>
+</body>
+</html>

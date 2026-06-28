@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.4 — Race UI: dual scatter panels, live timers, racing bars, speedup tiles</title>
+<style>
+  :root{
+    /* site theme — matches site/src/style.css */
+    --bg:#0d1117; --bg-glow:#161b2e; --panel:#11182a; --panel-2:#0f1626;
+    --fg:#e6edf3; --fg-muted:#8b949e; --line:#22304a;
+    --accent:#7c9cff; --accent-2:#63e6be; --accent-3:#ffa94d; --warn:#ff8585;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 50% -10%,var(--bg-glow),transparent 55%),var(--bg)}
+  .prose{max-width:70ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
+  .crossnav a{color:var(--fg);background:var(--panel)}
+  .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .crossnav span.cur{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--fg-muted);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--accent);color:var(--bg)}
+
+  main{width:92%;max-width:1640px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.4rem;scroll-margin-top:98px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  h1{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1.12;margin:.3rem 0 .5rem;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
+  .chip strong{color:var(--accent-2)}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-3);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
+  figcaption b{color:var(--fg)}
+
+  .flowwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.9rem;font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 12px 12px 0;padding:.95rem 1.1rem;margin-top:1.1rem}
+  aside.callout.go{border-left-color:var(--accent-2)}
+  aside.callout.warn{border-left-color:var(--accent-3)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  aside.callout.go .k{color:var(--accent-2)}
+  aside.callout.warn .k{color:var(--accent-3)}
+  aside.callout p{margin:.4rem 0 0;font-size:.92rem;color:var(--fg)}
+  aside.callout code,figcaption code,.outline code{font-family:var(--mono);font-size:.82rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .32rem;border-radius:4px;border:1px solid var(--line)}
+
+  /* ── code panel ── */
+  .code{background:#0a0f1a;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid var(--line)}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);background:#0c1322;padding:.45rem .9rem;border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.7;color:#cdd9e5;white-space:pre}
+  .code .kw{color:#ff9d76}.code .str{color:var(--accent-2)}.code .fn{color:var(--accent-3)}.code .cm{color:#5a6b82}.code .var{color:var(--accent)}.code .hl{background:rgba(124,156,255,.18);border-radius:3px;padding:0 2px}
+
+  /* ════════ HERO MOCKUP — the actual proposed UI ════════ */
+  .mock{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.4rem clamp(1rem,2vw,1.8rem);margin-top:.6rem;
+    box-shadow:0 0 0 1px rgba(124,156,255,.08), 0 20px 60px -30px #000;position:relative;overflow:hidden}
+  .mock::before{content:'og:image · 1200×630 fold';position:absolute;top:.7rem;right:.9rem;font-family:var(--mono);font-size:.6rem;color:var(--fg-muted);letter-spacing:.06em;opacity:.7}
+  .mock-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  .mock-title{font-family:var(--serif);font-weight:800;font-size:clamp(1.5rem,3vw,2.3rem);line-height:1.08;margin:.35rem 0 1.1rem;letter-spacing:-.02em}
+  .mock-title .grad{background:linear-gradient(90deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+  .panels{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+  .rpanel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem;position:relative}
+  .rpanel.cpu{box-shadow:inset 0 0 0 1px rgba(255,169,77,.12)}
+  .rpanel.gpu{box-shadow:inset 0 0 0 1px rgba(99,230,190,.16)}
+  .rphead{display:flex;align-items:center;justify-content:space-between;margin-bottom:.7rem}
+  .rphead .name{font-family:var(--mono);font-size:.82rem;font-weight:600;letter-spacing:.04em}
+  .rpanel.cpu .name{color:var(--accent-3)}
+  .rpanel.gpu .name{color:var(--accent-2)}
+  .rphead .badge{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;padding:.15rem .45rem;border-radius:999px;border:1px solid var(--line);color:var(--fg-muted)}
+  .scatter{width:100%;aspect-ratio:16/10;background:radial-gradient(circle at 50% 40%,#0e1626,#080c14);border:1px solid var(--line);border-radius:10px;display:block}
+  .scatter-note{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);margin-top:.35rem;text-align:right;opacity:.8}
+  .timer{font-family:var(--mono);font-weight:700;font-size:clamp(1.8rem,4.5vw,3rem);letter-spacing:-.02em;margin:.7rem 0 .15rem;line-height:1;
+    font-variant-numeric:tabular-nums}
+  .rpanel.cpu .timer{color:var(--accent-3)}
+  .rpanel.gpu .timer{color:var(--accent-2)}
+  .timer small{font-size:.4em;color:var(--fg-muted);font-weight:600;margin-left:.25em}
+  .bar-track{height:14px;background:#0a0f1a;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:.4rem}
+  .bar-fill{height:100%;border-radius:7px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+  .rpanel.cpu .bar-fill{background:linear-gradient(90deg,#b5673f,var(--accent-3))}
+  .rpanel.gpu .bar-fill{background:linear-gradient(90deg,#2d8d72,var(--accent-2))}
+  .bar-cap{font-family:var(--mono);font-size:.62rem;color:var(--fg-muted);margin-top:.35rem;display:flex;justify-content:space-between}
+
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:.8rem;margin-top:1.1rem}
+  .tile{background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:.85rem .9rem;text-align:center;position:relative}
+  .tile.hero{border-color:var(--accent-2);box-shadow:0 0 0 1px var(--accent-2),0 0 40px -16px var(--accent-2)}
+  .tile .tlab{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.07em;color:var(--fg-muted)}
+  .tile .tval{font-family:var(--serif);font-weight:800;font-size:clamp(1.3rem,3vw,2rem);line-height:1.05;margin-top:.35rem;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+  .tile .tval.big{color:var(--accent-2)}
+  .tile .tsub{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);margin-top:.25rem}
+  .tweet-flag{position:absolute;top:-.55rem;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:.54rem;text-transform:uppercase;letter-spacing:.08em;background:var(--accent-2);color:var(--bg);padding:.12rem .5rem;border-radius:999px;white-space:nowrap;font-weight:700}
+  .toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-top:.4rem}
+  .toggle b{font-family:var(--mono);font-size:.6rem;padding:.2rem .45rem}
+  .toggle b.on{background:var(--accent);color:var(--bg)}
+  .toggle b.off{color:var(--fg-muted)}
+
+  .mock-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.7rem;margin-top:1.1rem;padding-top:.9rem;border-top:1px solid var(--line)}
+  .same{display:inline-flex;align-items:center;gap:.5rem;font-family:var(--mono);font-size:.78rem;font-weight:600;color:var(--accent-2);
+    background:rgba(99,230,190,.08);border:1px solid rgba(99,230,190,.35);border-radius:999px;padding:.35rem .8rem}
+  .same .pip{width:9px;height:9px;border-radius:50%;background:var(--accent-2);box-shadow:0 0 8px var(--accent-2)}
+  .your-hw{font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .your-hw b{color:var(--accent)}
+
+  /* annotation pins over the mock */
+  .annos{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:1rem}
+  .anno{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem;display:grid;grid-template-columns:1.5rem 1fr;gap:.55rem;align-items:start}
+  .anno .pn{width:1.3rem;height:1.3rem;border-radius:50%;background:var(--accent);color:var(--bg);font-family:var(--mono);font-size:.66rem;font-weight:700;display:grid;place-items:center;flex:none}
+  .anno .at{font-size:.78rem;color:var(--fg)}
+  .anno .at b{color:var(--accent)}
+
+  /* ── compare grid (judgment call B) ── */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.6rem}
+  .ccard{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:1rem 1.1rem}
+  .ccard.bad{border-color:rgba(255,133,133,.4)}
+  .ccard.good{border-color:rgba(99,230,190,.4)}
+  .ccard h3{font-family:var(--serif);font-size:1.05rem;margin:.1rem 0 .6rem}
+  .ccard.bad h3{color:var(--warn)}
+  .ccard.good h3{color:var(--accent-2)}
+  .ccard .tag{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;padding:.15rem .5rem;border-radius:999px;display:inline-block;margin-bottom:.5rem}
+  .ccard.bad .tag{background:rgba(255,133,133,.14);color:var(--warn)}
+  .ccard.good .tag{background:rgba(99,230,190,.14);color:var(--accent-2)}
+  .ccard ul{margin:.2rem 0 0;padding-left:0;list-style:none}
+  .ccard li{font-size:.86rem;padding:.3rem 0 .3rem 1.3rem;position:relative;border-top:1px solid var(--line)}
+  .ccard li:first-child{border-top:none}
+  .ccard li::before{position:absolute;left:0;top:.3rem;font-family:var(--mono);font-size:.8rem}
+  .ccard.bad li::before{content:'✕';color:var(--warn)}
+  .ccard.good li::before{content:'✓';color:var(--accent-2)}
+  .ccard li code{font-family:var(--mono);font-size:.78rem;background:#0a0f1a;color:var(--accent-2);padding:.03rem .3rem;border-radius:4px}
+
+  /* ── files-as-built / to-build grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.74rem;color:var(--accent-2);background:#0a0f1a;border:1px solid var(--line);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .fp.new{color:var(--accent)}
+  .fcard .role{font-size:.8rem;color:var(--fg-muted);margin-top:.45rem}
+  .fcard .role b{color:var(--fg)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--line);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
+  .ac .txt{font-size:.9rem;color:var(--fg)}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:rgba(255,169,77,.14);color:var(--accent-3)}
+  .ac.done .box{background:var(--accent-2);border-color:var(--accent-2)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.done .status{background:var(--accent-2);color:var(--bg)}
+
+  footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
+  footer b{color:var(--fg-muted)}
+
+  @media(max-width:820px){
+    .panels{grid-template-columns:1fr}
+    .tiles{grid-template-columns:1fr 1fr}
+    .annos{grid-template-columns:1fr}
+    .cmp{grid-template-columns:1fr}
+    .files{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html">55.1 · WebGPU backend</a>
+  <a href="task-55.2 - Scaffold-Vite-site-and-GitHub-Pages-deploy.companion.html">55.2 · Vite /site + deploy</a>
+  <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html">55.3 · Race harness</a>
+  <span class="cur" aria-current="page">55.4 · Race UI</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#mockup">The layout</a>
+  <a href="#dataflow">How callbacks drive it</a>
+  <a href="#projection">32-D → 2-D scatter</a>
+  <a href="#sameresult">The "same result" check</a>
+  <a href="#build">What gets built</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.4 · Milestone M3 · the hero race UI · <span class="todopill" style="background:var(--accent-2)">Built · reviewed</span></div>
+    <h1 class="prose">The screenshot: two panels race, the timers count, the bars fill, one tile says <em>N.Nx faster</em></h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">The dual-panel race UI is the launch's minimum viable asset — the part people screenshot. It sits on the <code style="font-family:var(--mono);color:var(--accent-2)">run_race</code> harness from 55.3, turning its callbacks into live timers, racing bars, and the tweet-line speedup tile — every chart redraw kept out of the timed window.</p>
+    <div class="meta">
+      <span class="chip">left panel <strong>CPU</strong></span>
+      <span class="chip">right panel <strong>WebGPU / GPU</strong></span>
+      <span class="chip">headline tiles <strong>ms · N.Nx · pts/s · toggle</strong></span>
+      <span class="chip">same-result <strong>cross-backend checksum</strong></span>
+      <span class="chip">top fold <strong>doubles as 1200×630 og:image</strong></span>
+      <span class="chip">builds on <strong>task-55.3 run_race</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. THE LAYOUT — live mockup ════ -->
+  <section id="mockup">
+    <div class="eyebrow">Comprehension job 1 · the crux · react to it before it is coded</div>
+    <h2>The proposed layout, rendered — not described</h2>
+    <figure>
+      <div class="mock" role="img" aria-label="Mockup of the dual-panel race UI: a CPU panel on the left and a WebGPU panel on the right, each with a cluster scatter, a large millisecond timer, and a horizontal racing bar. Four headline tiles below: CPU ms, the N times faster multiplier flagged as the tweet line, points per second, and a steady-state versus first-run toggle. A same-result indicator and a numbers-from-your-hardware footer at the bottom.">
+        <div class="mock-eyebrow">clustering-tfjs · live WebGPU vs CPU race</div>
+        <div class="mock-title">Same clustering. <span class="grad">One runs ~24× faster.</span></div>
+
+        <div class="panels">
+          <!-- CPU PANEL -->
+          <div class="rpanel cpu">
+            <div class="rphead"><span class="name">CPU</span><span class="badge">tfjs-backend-cpu</span></div>
+            <svg class="scatter" viewBox="0 0 320 200" aria-hidden="true">
+              <g fill="#ffa94d" opacity=".9"><circle cx="74" cy="58" r="3"/><circle cx="88" cy="48" r="3"/><circle cx="66" cy="70" r="3"/><circle cx="82" cy="64" r="3"/><circle cx="58" cy="52" r="3"/><circle cx="92" cy="60" r="3"/><circle cx="76" cy="44" r="3"/></g>
+              <g fill="#7c9cff" opacity=".9"><circle cx="232" cy="62" r="3"/><circle cx="246" cy="52" r="3"/><circle cx="224" cy="74" r="3"/><circle cx="240" cy="68" r="3"/><circle cx="252" cy="58" r="3"/><circle cx="236" cy="48" r="3"/></g>
+              <g fill="#63e6be" opacity=".9"><circle cx="120" cy="146" r="3"/><circle cx="134" cy="156" r="3"/><circle cx="112" cy="138" r="3"/><circle cx="128" cy="150" r="3"/><circle cx="142" cy="142" r="3"/></g>
+              <g fill="#ff8585" opacity=".9"><circle cx="214" cy="150" r="3"/><circle cx="228" cy="160" r="3"/><circle cx="206" cy="142" r="3"/><circle cx="222" cy="148" r="3"/><circle cx="236" cy="156" r="3"/></g>
+            </svg>
+            <div class="scatter-note">drawn once · OUTSIDE the timed window</div>
+            <div class="timer">1,412<small>ms</small></div>
+            <div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>
+            <div class="bar-cap"><span>median of 7 reps</span><span>done</span></div>
+          </div>
+          <!-- GPU PANEL -->
+          <div class="rpanel gpu">
+            <div class="rphead"><span class="name">WebGPU</span><span class="badge">actual_backend ✓</span></div>
+            <svg class="scatter" viewBox="0 0 320 200" aria-hidden="true">
+              <g fill="#ffa94d" opacity=".9"><circle cx="74" cy="58" r="3"/><circle cx="88" cy="48" r="3"/><circle cx="66" cy="70" r="3"/><circle cx="82" cy="64" r="3"/><circle cx="58" cy="52" r="3"/><circle cx="92" cy="60" r="3"/><circle cx="76" cy="44" r="3"/></g>
+              <g fill="#7c9cff" opacity=".9"><circle cx="232" cy="62" r="3"/><circle cx="246" cy="52" r="3"/><circle cx="224" cy="74" r="3"/><circle cx="240" cy="68" r="3"/><circle cx="252" cy="58" r="3"/><circle cx="236" cy="48" r="3"/></g>
+              <g fill="#63e6be" opacity=".9"><circle cx="120" cy="146" r="3"/><circle cx="134" cy="156" r="3"/><circle cx="112" cy="138" r="3"/><circle cx="128" cy="150" r="3"/><circle cx="142" cy="142" r="3"/></g>
+              <g fill="#ff8585" opacity=".9"><circle cx="214" cy="150" r="3"/><circle cx="228" cy="160" r="3"/><circle cx="206" cy="142" r="3"/><circle cx="222" cy="148" r="3"/><circle cx="236" cy="156" r="3"/></g>
+            </svg>
+            <div class="scatter-note">identical seeded dataset · same projection</div>
+            <div class="timer">59<small>ms</small></div>
+            <div class="bar-track"><div class="bar-fill" style="width:4.2%"></div></div>
+            <div class="bar-cap"><span>median of 7 reps</span><span>done</span></div>
+          </div>
+        </div>
+
+        <div class="tiles">
+          <div class="tile">
+            <div class="tlab">CPU · GPU median</div>
+            <div class="tval" style="font-size:1.15rem">1,412 / 59<span style="font-size:.6em;color:var(--fg-muted)"> ms</span></div>
+            <div class="tsub">RBF affinity, n=2000</div>
+          </div>
+          <div class="tile hero">
+            <span class="tweet-flag">the tweet line</span>
+            <div class="tlab">WebGPU is</div>
+            <div class="tval big">23.9× faster</div>
+            <div class="tsub">median ÷ median</div>
+          </div>
+          <div class="tile">
+            <div class="tlab">throughput</div>
+            <div class="tval" style="font-size:1.4rem">33.9M</div>
+            <div class="tsub">points / sec (GPU)</div>
+          </div>
+          <div class="tile">
+            <div class="tlab">which number</div>
+            <div class="toggle"><b class="on">steady-state</b><b class="off">first run</b></div>
+            <div class="tsub">first run: 312 ms (cold)</div>
+          </div>
+        </div>
+
+        <div class="mock-foot">
+          <span class="same"><span class="pip"></span>Same result — both backends agree on the RBF affinity matrix (matching checksum)</span>
+          <span class="your-hw">These numbers come from <b>YOUR hardware</b>.</span>
+        </div>
+      </div>
+
+      <div class="annos">
+        <div class="anno"><span class="pn">A</span><span class="at"><b>Big live timer</b> counts wall-clock ms up during the run, then snaps to the reported median — tabular-nums so digits don't jitter.</span></div>
+        <div class="anno"><span class="pn">B</span><span class="at"><b>Racing bar</b> fills left→right; the slower lane reaches 100%, the faster lane stops short, so the gap is legible at a glance.</span></div>
+        <div class="anno"><span class="pn">C</span><span class="at"><b>First-run number lives behind a checkbox</b> only — ticking it reveals both lanes' cold (shader-compile) times; that figure never enters the headline <code>N.Nx</code> multiplier (AC #3).</span></div>
+      </div>
+      <figcaption class="prose"><b>This is the real proposed layout in the site's own dark theme</b> — same <code>--bg #0d1117</code>, <code>--accent #7c9cff</code>, <code>--accent-2 #63e6be</code>, <code>--accent-3 #ffa94d</code> as <code>site/src/style.css</code>. The whole block above the footer is sized to crop cleanly to the 1200×630 og:image: large legible timers, high-contrast cluster colors, the multiplier as the visual hero.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">Numbers shown are the recorded anchors</div>
+      <p>The mockup uses the harness's reference figures (CPU ~1,412 ms vs WebGPU ~59 ms ≈ 24× for <code>n=2000, d=32</code>). The live page substitutes the visitor's own median — the layout, not the values, is what to react to here.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 2. DATA FLOW — callbacks drive the UI ════ -->
+  <section id="dataflow">
+    <div class="eyebrow">Comprehension job 2 · the wiring · run_race callbacks → live UI</div>
+    <h2>The harness callbacks drive every pixel — and rendering stays out of the clock</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 940 360" role="img" aria-label="Data flow: the UI calls run_race from task 55.3 with three callbacks. on_progress fires init, warmup and timed phases per lane and drives the live ms timer counting up and the bar growing. on_lane_result delivers each RaceResult, which snaps the timer to median_ms, fills the bar to its final width, and writes the points_per_sec tile. on_lane_error shows a fallback banner. When both lanes resolve, run_race returns a RaceOutcome with cpu, gpu, gpu_backend and speedup, which fills the N times faster tile and the first-run toggle. Separately and only once, before the race, the main thread computes a 2D PCA projection of the seeded dataset and draws both scatters — strictly OUTSIDE the timed window.">
+          <defs>
+            <marker id="da" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#8b949e"/></marker>
+            <marker id="db" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
+            <marker id="dg" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#63e6be"/></marker>
+            <marker id="dw" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#ffa94d"/></marker>
+          </defs>
+
+          <!-- run_race origin -->
+          <rect x="20" y="146" width="186" height="74" rx="12" fill="#11182a" stroke="#7c9cff" stroke-width="1.6"/>
+          <text x="113" y="172" text-anchor="middle" fill="#7c9cff" font-size="11.5" font-weight="bold">run_race(config, cbs)</text>
+          <text x="113" y="190" text-anchor="middle" fill="#8b949e" font-size="9">task-55.3 · already built</text>
+          <text x="113" y="206" text-anchor="middle" fill="#8b949e" font-size="9">two workers · Promise.allSettled</text>
+
+          <!-- three callbacks column -->
+          <rect x="264" y="36" width="226" height="58" rx="11" fill="#0f1626" stroke="#7c9cff"/>
+          <text x="377" y="58" text-anchor="middle" fill="#7c9cff" font-size="10.5" font-weight="bold">on_progress(lane, phase, rep)</text>
+          <text x="377" y="74" text-anchor="middle" fill="#8b949e" font-size="9">init → warmup → timed · per rep</text>
+          <text x="377" y="88" text-anchor="middle" fill="#8b949e" font-size="8.5">fires many times while running</text>
+
+          <rect x="264" y="148" width="226" height="58" rx="11" fill="#0f1626" stroke="#63e6be"/>
+          <text x="377" y="170" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">on_lane_result(RaceResult)</text>
+          <text x="377" y="186" text-anchor="middle" fill="#8b949e" font-size="9">median_ms · points_per_sec</text>
+          <text x="377" y="200" text-anchor="middle" fill="#8b949e" font-size="8.5">first_run_ms · result_checksum</text>
+
+          <rect x="264" y="260" width="226" height="50" rx="11" fill="#0f1626" stroke="#ffa94d"/>
+          <text x="377" y="282" text-anchor="middle" fill="#ffa94d" font-size="10.5" font-weight="bold">on_lane_error(lane, msg)</text>
+          <text x="377" y="298" text-anchor="middle" fill="#8b949e" font-size="9">→ fallback banner (55.6)</text>
+
+          <line x1="206" y1="172" x2="260" y2="74" stroke="#7c9cff" stroke-width="1.5" marker-end="url(#db)"/>
+          <line x1="206" y1="183" x2="260" y2="177" stroke="#63e6be" stroke-width="1.5" marker-end="url(#dg)"/>
+          <line x1="206" y1="196" x2="260" y2="282" stroke="#ffa94d" stroke-width="1.5" marker-end="url(#dw)"/>
+
+          <!-- UI effects -->
+          <rect x="548" y="30" width="190" height="46" rx="10" fill="#11182a" stroke="#22304a"/>
+          <text x="643" y="50" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">timer counts up</text>
+          <text x="643" y="65" text-anchor="middle" fill="#8b949e" font-size="8.5">+ bar grows (rAF tween)</text>
+
+          <rect x="548" y="146" width="190" height="62" rx="10" fill="#11182a" stroke="#22304a"/>
+          <text x="643" y="167" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">timer snaps to median</text>
+          <text x="643" y="183" text-anchor="middle" fill="#8b949e" font-size="8.5">bar → final width</text>
+          <text x="643" y="197" text-anchor="middle" fill="#8b949e" font-size="8.5">pts/sec + checksum tiles</text>
+
+          <rect x="548" y="266" width="190" height="40" rx="10" fill="#11182a" stroke="#ffa94d"/>
+          <text x="643" y="290" text-anchor="middle" fill="#ffa94d" font-size="9.5">banner: "GPU unavailable"</text>
+
+          <line x1="490" y1="62" x2="544" y2="53" stroke="#8b949e" stroke-width="1.4" marker-end="url(#da)"/>
+          <line x1="490" y1="177" x2="544" y2="177" stroke="#8b949e" stroke-width="1.4" marker-end="url(#da)"/>
+          <line x1="490" y1="285" x2="544" y2="286" stroke="#8b949e" stroke-width="1.4" marker-end="url(#da)"/>
+
+          <!-- outcome -->
+          <rect x="780" y="120" width="146" height="116" rx="12" fill="#0f1626" stroke="#63e6be" stroke-width="1.8"/>
+          <text x="853" y="144" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">RaceOutcome</text>
+          <text x="853" y="164" text-anchor="middle" fill="#8b949e" font-size="9">resolves when both</text>
+          <text x="853" y="177" text-anchor="middle" fill="#8b949e" font-size="9">lanes settle</text>
+          <text x="853" y="198" text-anchor="middle" fill="#e6edf3" font-size="9">speedup → N.Nx tile</text>
+          <text x="853" y="212" text-anchor="middle" fill="#e6edf3" font-size="9">gpu_backend → label</text>
+          <text x="853" y="226" text-anchor="middle" fill="#e6edf3" font-size="9">first_run → toggle</text>
+          <line x1="738" y1="177" x2="776" y2="177" stroke="#63e6be" stroke-width="1.5" marker-end="url(#dg)"/>
+
+          <!-- the OUTSIDE-the-window render rail -->
+          <rect x="20" y="290" width="500" height="56" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="270" y="312" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">on_dataset → SCATTERS DRAWN ONCE — before the race, OUTSIDE the timed window</text>
+          <text x="270" y="330" text-anchor="middle" fill="#8b949e" font-size="9">main thread: 2-D PCA projection of the seeded dataset → 2D-canvas dots · never redrawn during a timed run</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#7c9cff"></i> progress → live timer + bar</span>
+        <span><i style="background:#63e6be"></i> result/outcome → final numbers</span>
+        <span><i style="background:#ffa94d"></i> error → fallback banner</span>
+        <span><i style="background:#10221c;border:1px solid #63e6be"></i> render rail (outside the clock)</span>
+      </div>
+      <figcaption class="prose"><b>The UI is a thin view over the existing harness.</b> <code>on_dataset</code> draws both scatters once; <code>on_progress</code> animates the timer and bar; <code>on_lane_result</code> snaps them to <code>median_ms</code> and writes <code>points_per_sec</code>; the resolved <code>RaceOutcome</code> fills the <code>speedup</code> multiplier and names <code>gpu_backend</code>.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">The one hard rule</div>
+      <p>Scatter rendering is a <b>setup step</b>, not a per-rep step: the 2-D projection and both canvas draws happen before <code>run_race</code> is awaited.</p>
+      <p style="margin-top:.45rem">The 2-D projection and both canvas draws happen in <code>on_dataset</code>, before the race. The live timer animates from <code>on_progress</code> pings — an rAF stopwatch reporting <b>elapsed</b> wall-clock only, never the median.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. JUDGMENT CALL A — projection ════ -->
+  <section id="projection">
+    <div class="eyebrow">Comprehension job 3 · judgment call A · resolved with rationale</div>
+    <h2>The dataset is 32-D; the scatter is 2-D — project once with a tiny deterministic PCA</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 940 220" role="img" aria-label="The seeded dataset from make_blobs_js is n by 32 float32 plus an Int32Array of ground-truth labels. A small deterministic 2D PCA, computed once on the main thread, takes the top two principal components and projects every row to an x,y pair. The points are drawn on a 2D canvas colored by their ground-truth label. The same projection is reused for both panels so the CPU and GPU scatters are visually identical.">
+          <defs>
+            <marker id="pa" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
+          </defs>
+          <rect x="20" y="66" width="210" height="92" rx="12" fill="#11182a" stroke="#22304a"/>
+          <text x="125" y="90" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">make_blobs_js(seed)</text>
+          <text x="125" y="110" text-anchor="middle" fill="#8b949e" font-size="9.5">data: Float32Array</text>
+          <text x="125" y="124" text-anchor="middle" fill="#8b949e" font-size="9.5">n × 32, row-major</text>
+          <text x="125" y="142" text-anchor="middle" fill="#63e6be" font-size="9.5">labels: Int32Array (truth)</text>
+
+          <rect x="300" y="56" width="240" height="112" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="420" y="80" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">2-D PCA — once, main thread</text>
+          <text x="420" y="100" text-anchor="middle" fill="#8b949e" font-size="9">center → covariance → top-2 PCs</text>
+          <text x="420" y="115" text-anchor="middle" fill="#8b949e" font-size="9">deterministic from the fixed seed</text>
+          <text x="420" y="133" text-anchor="middle" fill="#8b949e" font-size="9">pure JS · no tfjs · no engine init</text>
+          <text x="420" y="151" text-anchor="middle" fill="#8b949e" font-size="9">each row → (x, y)</text>
+
+          <rect x="610" y="56" width="230" height="112" rx="12" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="725" y="80" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">2-D canvas scatter</text>
+          <text x="725" y="100" text-anchor="middle" fill="#8b949e" font-size="9">dot per row at (x, y)</text>
+          <text x="725" y="115" text-anchor="middle" fill="#8b949e" font-size="9">colored by ground-truth label</text>
+          <text x="725" y="135" text-anchor="middle" fill="#e6edf3" font-size="9">SAME projection in both panels</text>
+          <text x="725" y="151" text-anchor="middle" fill="#8b949e" font-size="9">drawn once, outside the clock</text>
+
+          <line x1="230" y1="112" x2="296" y2="112" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#pa)"/>
+          <line x1="540" y1="112" x2="606" y2="112" stroke="#7c9cff" stroke-width="1.6" marker-end="url(#pa)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#7c9cff"></i> deterministic projection step</span>
+        <span><i style="background:#63e6be"></i> ground-truth color channel</span>
+      </div>
+      <figcaption class="prose"><b><code>make_blobs_js</code> returns <code>data</code> in 32 dimensions plus an <code>Int32Array</code> of ground-truth <code>labels</code></b> — a 2-D canvas needs an x,y per row. A small deterministic 2-D PCA (top two principal components), computed once in pure JS, gives each row a stable position colored by its ground-truth label, fed identically to both panels.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">Why this is the honest choice</div>
+      <p>PCA is <b>deterministic from the fixed seed</b> — every visitor sees the same picture, reproducible for the later permalink.</p>
+      <p style="margin-top:.45rem">It is pure JS, so the main thread <b>never initializes a tfjs engine</b> — all compute stays in the workers (per <code>make_blobs_js.ts</code>).</p>
+      <p style="margin-top:.45rem">Coloring by <b>ground-truth</b> label, not either backend's predictions, keeps the scatter a fixed reference image of the structure both lanes cluster — never a per-run output.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 4. JUDGMENT CALL B — same-result check ════ -->
+  <section id="sameresult">
+    <div class="eyebrow">Comprehension job 4 · judgment call B · resolved with rationale</div>
+    <h2>The "same result" check runs on the affinity checksum — not on fit_predict labels</h2>
+    <figure>
+      <div class="cmp">
+        <div class="ccard bad">
+          <span class="tag">tempting, but wrong</span>
+          <h3>Compare full fit_predict labels</h3>
+          <ul>
+            <li>The timed workload is <b>affinity construction only</b> — full <code>fit_predict</code> is a different, larger computation that the race never measures.</li>
+            <li><code>fit_predict</code> runs an internal <b>synchronous readback</b> mid-pipeline (the eigensolver / k-means stages).</li>
+            <li>A sync readback is <b>unsafe on the async-only WebGPU backend</b> — it can throw or stall, exactly on the lane the demo exists to celebrate.</li>
+            <li>Comparing labels would force the GPU lane to do work outside the measured region just to satisfy an equality check.</li>
+          </ul>
+        </div>
+        <div class="ccard good">
+          <span class="tag">the honest choice</span>
+          <h3>Compare result_checksum</h3>
+          <ul>
+            <li>Both lanes already return <code>result_checksum</code> — a cheap signature of the <b>actual timed output</b> (the affinity matrix), summed in identical row order.</li>
+            <li>It checks the <b>same tensor the race measures</b> — nothing extra is computed, nothing outside the window.</li>
+            <li>The single awaited <code>affinity.data()</code> readback is <b>already in the protocol</b> and is async-safe on WebGPU.</li>
+            <li>Matching kernels agree to several sig-figs despite float32; the gap is taken <b>relative to the larger lane's magnitude</b> (symmetric, <code>≤ 1e-3</code>), so a silent fallback or a divergent kernel shows up as a <b>mismatch</b>.</li>
+          </ul>
+        </div>
+      </div>
+      <figcaption class="prose"><b>The indicator verifies the thing the race actually computed.</b> The timed output is the dense RBF affinity matrix, so the check compares each lane's <code>result_checksum</code> within a symmetric relative tolerance (<code>1e-3</code>) — never <code>fit_predict</code> labels.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">What the indicator shows — three states, exact copy</div>
+      <p><b>Match</b> (symmetric relative gap <code>≤ 1e-3</code>): "Same result — both backends agree on the RBF affinity matrix (matching checksum)." It says <b>matching checksum</b>, deliberately not "identical matrix" — the checksum is a scalar sum of the affinity entries, not a bit-identical comparison of all ~4M cells.</p>
+      <p style="margin-top:.45rem"><b>Diverged</b> (gap exceeds the tolerance): "Results diverged — one backend fell back or computed a different kernel."</p>
+      <p style="margin-top:.45rem"><b>Error</b> (a lane crashed or timed out): a distinct neutral "Race incomplete" state — never the divergence warning, because no comparison was produced. The badge is backed by a real computed equality on the timed output, never a hard-coded checkmark.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 5. WHAT GETS BUILT ════ -->
+  <section id="build">
+    <div class="eyebrow">As built · what 55.4 added on top of the finished harness</div>
+    <h2>New UI code; the harness underneath only gains one callback</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp new">site/src/race_ui.ts</span><div class="role"><b>New.</b> The controller <code>make_race_ui</code> — wires the <code>run_race</code> callbacks to timers/bars/tiles and the parity badge. The lane-view factory, formatters and headline render all live here, <b>not</b> in separate <code>lane_view.ts</code> / <code>format.ts</code> files.</div></div>
+        <div class="fcard"><span class="fp new">site/src/project_2d.ts</span><div class="role"><b>New.</b> <code>project_2d_pca</code> — deterministic 2-D PCA via power iteration + deflation, float64 accumulators, a fixed start vector and fixed iteration count, sign-pinned eigenvectors. <b>File is <code>project_2d.ts</code>, not <code>pca_2d.ts</code>.</b></div></div>
+        <div class="fcard"><span class="fp new">site/src/project_2d.test.ts</span><div class="role"><b>New.</b> Colocated tests pinning determinism, centering, variance ordering, and blob separation.</div></div>
+        <div class="fcard"><span class="fp new">site/src/scatter_canvas.ts</span><div class="role"><b>New.</b> One-shot <code>render_scatter(canvas, projection, labels)</code> — devicePixelRatio-aware, 4-color palette <code>#7c9cff / #63e6be / #ffa94d / #ff8787</code>, no animation loop.</div></div>
+        <div class="fcard"><span class="fp new">site/src/stopwatch.ts</span><div class="role"><b>New.</b> <code>make_stopwatch</code>, the rAF elapsed-time primitive — reports main-thread <b>elapsed</b> only, never the median.</div></div>
+        <div class="fcard"><span class="fp">site/src/race.ts</span><div class="role"><b>One addition.</b> A new <code>on_dataset</code> callback on <code>RaceCallbacks</code>, fired once before any lane runs so the scatters render outside every timed window. Orchestrator, protocol and workers otherwise unchanged.</div></div>
+        <div class="fcard"><span class="fp">site/src/main.ts</span><div class="role"><b>Reduced.</b> Now a thin bootstrap that mounts the race UI.</div></div>
+        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> The dual-panel race fold — panels, timers, racing bars, four headline tiles incl. the multiplier tweet line, a first-run checkbox disclosure, the same-result parity line, the "numbers from YOUR hardware" footer; sized as the 1200×630 og:image.</div></div>
+        <div class="fcard"><span class="fp">site/src/style.css</span><div class="role"><b>Extended.</b> Panel, timer, racing-bar, tile and parity styles — reusing the existing <code>--accent</code> / <code>--accent-2</code> / <code>--accent-3</code> tokens.</div></div>
+      </div>
+      <figcaption class="prose"><b>55.4 is a presentation layer.</b> It adds the controller, the projection, its tests, the scatter renderer and the stopwatch; extends the hero markup and styles; reduces <code>main.ts</code> to a bootstrap — and touches the 55.3 harness only to add the single <code>on_dataset</code> callback.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. ACCEPTANCE CRITERIA ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means · status: built &amp; reviewed</div>
+    <h2>Acceptance criteria — six, all met</h2>
+    <div class="acs">
+      <div class="ac done"><span class="num">1</span><span class="box"></span><span class="txt">Both panels render the <b>same seeded dataset</b> and update timers/bars live from worker results.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">2</span><span class="box"></span><span class="txt">The speedup tile shows the <b>median-based</b> "N.Nx faster" and matches the harness numbers (<code>cpu.median_ms / gpu.median_ms</code>); a small-n CPU win shows as "CPU is faster".</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt"><b>First-run</b> (shader-compile) time is shown only behind the toggle, never in the headline multiplier.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">4</span><span class="box"></span><span class="txt">Scatter rendering occurs <b>outside</b> the timed region — no chart redraw inside measured runs.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt">The "same result" indicator reflects an actual cross-backend <b>result-equality</b> check on the timed affinity output — matching <code>result_checksum</code> within a symmetric relative tolerance (reconciled from "label-equality").</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">6</span><span class="box"></span><span class="txt">ESLint passes before commit (Python-style <code>snake_case</code> on the new <code>site/</code> sources).</span><span class="status">done</span></div>
+    </div>
+    <figcaption class="prose"><b>The two criteria that carry the "honest" claim are #3 and #4:</b> the cold first-run time stays out of the headline multiplier, and no chart redraw ever lands inside a measured run. All six are met and reviewed; tap any row to toggle it.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Companion for <b>task-55.4 — Race UI: dual scatter panels, live timers, racing bars, speedup tiles (Milestone M3, built &amp; reviewed)</b> ·
+  reconciled to the shipped sources: site/src/race_ui.ts, project_2d.ts, project_2d.test.ts, scatter_canvas.ts, stopwatch.ts, the on_dataset callback in race.ts, the thin main.ts, and index.html / style.css ·
+  dark theme matches site/src/style.css · self-contained, no external assets.
+</footer>
+
+<script>
+  // checklist toggle (progressive enhancement)
+  document.querySelectorAll('.ac').forEach(function(ac){
+    ac.style.cursor='pointer';
+    ac.addEventListener('click',function(){
+      ac.classList.toggle('done');
+      var st=ac.querySelector('.status');
+      st.textContent=ac.classList.contains('done')?'done':'to do';
+    });
+  });
+  // outline active-state via IntersectionObserver
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+</script>
+</body>
+</html>

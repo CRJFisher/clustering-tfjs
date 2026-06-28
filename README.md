@@ -5,33 +5,51 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
 
-Native TypeScript implementation of clustering algorithms powered by TensorFlow.js with full browser and Node.js support.
+**scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install.**
 
-## Features
+[![Schematic of the WebGPU-vs-CPU race: on Spectral RBF affinity the GPU lane finishes far ahead of the CPU lane. The live demo measures your own hardware.](https://CRJFisher.github.io/clustering-tfjs/race-reference.svg)](https://CRJFisher.github.io/clustering-tfjs/)
 
-- ✅ Pure TypeScript/JavaScript (no Python required)
-- ✅ Multiple clustering algorithms (K-Means, Spectral, Agglomerative, SOM, HDBSCAN)
-- ✅ Powered by TensorFlow.js for performance
-- ✅ **Works in both Node.js and browsers**
-- ✅ Platform-optimized bundles (49KB for browser, 163KB for Node.js)
-- ✅ TypeScript support with full type definitions
-- ✅ GPU acceleration available (WebGL in browser, CUDA in Node.js)
-- ✅ Automatic backend selection
-- ✅ Extensively tested for parity with scikit-learn
+**▶ [Open the live demo (no install) →](https://CRJFisher.github.io/clustering-tfjs/)**
+
+Watch WebGPU race CPU on the same dataset, then recreate the scikit-learn toy-dataset grid across all five algorithms — live, on **your** hardware.
+
+## 30-second quickstart
+
+```bash
+npm install clustering-tfjs
+```
+
+```typescript
+import { Clustering, KMeans } from 'clustering-tfjs';
+
+await Clustering.init(); // auto-detects the best available backend
+
+const model = new KMeans({ n_clusters: 3 });
+const labels = await model.fit_predict([
+  [1, 2],
+  [1.5, 1.8],
+  [5, 8],
+  [8, 8],
+  [1, 0.6],
+  [9, 11],
+]);
+console.log(labels); // [0, 0, 1, 1, 0, 2]
+```
 
 ## Table of Contents
 
 1. [Quick Start](#quick-start)
-2. [Installation](#installation)
-3. [Algorithms](#algorithms)
-4. [Validation Metrics](#validation-metrics)
-5. [Backend Selection](#backend-selection)
-6. [API Reference](#api-reference)
-7. [Examples](#examples)
-8. [Performance](#performance)
-9. [Migration from scikit-learn](#migration-from-scikit-learn)
-10. [Contributing](#contributing)
-11. [License](#license)
+2. [Features](#features)
+3. [Installation](#installation)
+4. [Algorithms](#algorithms)
+5. [Validation Metrics](#validation-metrics)
+6. [Backend Selection](#platform-detection--backend-selection)
+7. [API Reference](#api-reference)
+8. [Examples](#examples)
+9. [Performance](#performance)
+10. [Migration from scikit-learn](#migration-from-scikit-learn)
+11. [Contributing](#contributing)
+12. [License](#license)
 
 ## Quick Start
 
@@ -83,13 +101,13 @@ npm install clustering-tfjs
 #### Node.js
 
 ```typescript
-import { Clustering } from 'clustering-tfjs';
+import { Clustering, KMeans } from 'clustering-tfjs';
 
 // Initialize (optional - auto-detects best backend)
 await Clustering.init();
 
 // Use algorithms
-const kmeans = new Clustering.KMeans({ n_clusters: 3 });
+const kmeans = new KMeans({ n_clusters: 3 });
 const data = [
   [1, 2],
   [1.5, 1.8],
@@ -101,6 +119,17 @@ const data = [
 const labels = await kmeans.fit_predict(data);
 console.log(labels); // [0, 0, 1, 1, 0, 2]
 ```
+
+## Features
+
+- ✅ Pure TypeScript/JavaScript (no Python required)
+- ✅ Five clustering algorithms (K-Means, Spectral, Agglomerative, HDBSCAN, SOM)
+- ✅ GPU-accelerated with TensorFlow.js — WebGPU and WebGL in the browser, CUDA in Node.js
+- ✅ **Works in both Node.js and browsers**
+- ✅ Automatic backend selection with graceful WebGPU → WebGL → WASM → CPU fallback
+- ✅ Platform-optimized bundles (49KB for browser, 163KB for Node.js)
+- ✅ TypeScript support with full type definitions
+- ✅ Extensively tested for parity with scikit-learn
 
 ## Installation
 

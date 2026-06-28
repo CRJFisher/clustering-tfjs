@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.6 — WebGPU feature-detection, graceful fallback, and the methodology expander</title>
+<style>
+  :root{
+    /* site theme — matches site/src/style.css */
+    --bg:#0d1117; --bg-glow:#161b2e; --panel:#11182a; --panel-2:#0f1626;
+    --fg:#e6edf3; --fg-muted:#8b949e; --line:#22304a;
+    --accent:#7c9cff; --accent-2:#63e6be; --accent-3:#ffa94d; --warn:#ff8585;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:system-ui,-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;color:var(--fg);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased;
+    background:radial-gradient(circle at 50% -10%,var(--bg-glow),transparent 55%),var(--bg)}
+  .prose{max-width:70ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:rgba(13,17,23,.94);backdrop-filter:blur(6px);border-bottom:1px solid var(--line);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--line)}
+  .crossnav a{color:var(--fg);background:var(--panel)}
+  .crossnav a:hover{border-color:var(--accent);color:var(--accent)}
+  .crossnav span.cur{background:var(--accent);color:var(--bg);border-color:var(--accent);font-weight:600}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:rgba(15,22,38,.96);border-bottom:1px solid var(--line);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--fg-muted);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--accent);color:var(--bg)}
+
+  main{width:92%;max-width:1640px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.4rem;scroll-margin-top:98px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+  h1{font-family:var(--serif);font-weight:700;font-size:2.1rem;line-height:1.12;margin:.3rem 0 .5rem;letter-spacing:-.01em}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.7rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:.25rem .6rem;color:var(--fg-muted)}
+  .chip strong{color:var(--accent-2)}
+  .todopill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--accent-2);color:var(--bg);border-radius:999px;padding:.2rem .55rem;display:inline-block;font-weight:600}
+  figcaption{font-family:var(--sans);font-size:.88rem;color:var(--fg-muted);margin-top:.8rem}
+  figcaption b{color:var(--fg)}
+
+  .flowwrap{background:var(--panel-2);border:1px solid var(--line);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono)}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.9rem;font-family:var(--mono);font-size:.72rem;color:var(--fg-muted)}
+  .legend span{display:inline-flex;align-items:center;gap:.4rem}
+  .legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+
+  /* ── callout ── */
+  aside.callout{border-left:4px solid var(--accent);background:var(--panel);border-radius:0 12px 12px 0;padding:.95rem 1.1rem;margin-top:1.1rem}
+  aside.callout.go{border-left-color:var(--accent-2)}
+  aside.callout.warn{border-left-color:var(--accent-3)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  aside.callout.go .k{color:var(--accent-2)}
+  aside.callout.warn .k{color:var(--accent-3)}
+  aside.callout p{margin:.4rem 0 0;font-size:.92rem;color:var(--fg)}
+  aside.callout code,figcaption code,.outline code{font-family:var(--mono);font-size:.82rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .32rem;border-radius:4px;border:1px solid var(--line)}
+
+  /* ── code panel ── */
+  .code{background:#0a0f1a;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid var(--line)}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:var(--fg-muted);background:#0c1322;padding:.45rem .9rem;border-bottom:1px solid var(--line)}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.7;color:#cdd9e5;white-space:pre}
+  .code .kw{color:#ff9d76}.code .str{color:var(--accent-2)}.code .fn{color:var(--accent-3)}.code .cm{color:#5a6b82}.code .var{color:var(--accent)}.code .hl{background:rgba(124,156,255,.18);border-radius:3px;padding:0 2px}
+
+  /* ════════ THE TWO-PHASE HONESTY SIM ════════ */
+  .sim{background:#0a0e16;border:1px solid var(--line);border-radius:16px;padding:1.4rem clamp(1rem,2vw,1.8rem);margin-top:.6rem;
+    box-shadow:0 0 0 1px rgba(124,156,255,.08), 0 20px 60px -30px #000}
+  .sim-eyebrow{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.14em;color:var(--accent)}
+  /* the WebGPU toggle that drives the whole machine */
+  .gpuswitch{display:flex;flex-wrap:wrap;align-items:center;gap:.7rem;margin:.2rem 0 1.1rem}
+  .gpuswitch .lab{font-family:var(--mono);font-size:.74rem;color:var(--fg-muted)}
+  .seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:#0a0f1a}
+  .seg button{font-family:var(--mono);font-size:.72rem;padding:.4rem .9rem;border:none;background:transparent;color:var(--fg-muted);cursor:pointer}
+  .seg button.on{background:var(--accent);color:var(--bg);font-weight:700}
+  .seg button:not(.on):hover{color:var(--fg)}
+  .runbtn{font-family:var(--mono);font-size:.72rem;padding:.42rem 1rem;border-radius:999px;border:1px solid var(--accent-2);background:rgba(99,230,190,.1);color:var(--accent-2);cursor:pointer;font-weight:700}
+  .runbtn:hover{background:rgba(99,230,190,.2)}
+  .phasetag{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-left:auto}
+  .phasetag b{color:var(--accent)}
+
+  /* the mock page surfaces that react to the machine */
+  .mockpage{display:grid;gap:.7rem;margin-top:.4rem}
+  .mbanner{border-radius:10px;padding:.7rem .9rem;font-family:var(--sans);font-size:.82rem;border:1px solid var(--accent-3);background:rgba(255,169,77,.1);color:var(--fg);display:none}
+  .mbanner.show{display:block}
+  .mbanner b{color:var(--accent-3)}
+  .mref{border:1px dashed var(--accent);border-radius:10px;padding:.7rem .9rem;background:rgba(124,156,255,.06);display:none}
+  .mref.show{display:block}
+  .mref .rtag{font-family:var(--mono);font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:.1rem .45rem}
+  .mref .rcap{font-size:.78rem;color:var(--fg-muted);margin-top:.45rem}
+  .mref .rcap b{color:var(--fg)}
+  .mref .rbars{display:grid;gap:.3rem;margin-top:.5rem}
+  .mref .rbar{height:13px;border-radius:6px}
+  .mref .rbar.g{width:18%;background:linear-gradient(90deg,#2d8d72,var(--accent-2))}
+  .mref .rbar.c{width:100%;background:linear-gradient(90deg,#5b73c4,var(--accent))}
+  .mpanels{display:grid;grid-template-columns:1fr 1fr;gap:.7rem}
+  .mpanel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem;position:relative}
+  .mpanel .mlabel{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--fg-muted)}
+  .mpanel .mbackend{font-family:var(--mono);font-weight:700;font-size:1.25rem;letter-spacing:.02em;margin-top:.25rem;transition:color .25s}
+  .mpanel.gpu .mbackend{color:var(--accent-2)}
+  .mpanel.cpu .mbackend{color:var(--accent-3)}
+  .mpanel .msrc{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);margin-top:.3rem}
+  .mpanel .msrc b{color:var(--accent)}
+
+  .conf{background:#0a0f1a;border:1px solid var(--line);border-radius:12px;padding:.8rem 1rem;margin-top:.2rem}
+  .conf .ctitle{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--fg-muted);margin-bottom:.5rem}
+  .conf dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem .9rem;margin:0}
+  .conf .cell{border-left:2px solid var(--line);padding-left:.55rem}
+  .conf dt{font-family:var(--mono);font-size:.58rem;color:var(--fg-muted);text-transform:uppercase;letter-spacing:.04em}
+  .conf dd{font-family:var(--mono);font-size:.84rem;margin:.1rem 0 0;color:var(--fg)}
+  .conf dd.live{color:var(--accent-2)}
+  .conf dd.dash{color:var(--fg-muted)}
+  .simnote{font-family:var(--mono);font-size:.62rem;color:var(--fg-muted);margin-top:1rem;text-align:center;opacity:.85}
+
+  /* ── files grid ── */
+  .files{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.72rem;color:var(--accent-2);background:#0a0f1a;border:1px solid var(--line);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .fp.new{color:var(--accent)}
+  .fcard .role{font-size:.8rem;color:var(--fg-muted);margin-top:.45rem}
+  .fcard .role b{color:var(--fg)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:.7rem .9rem;align-items:start;cursor:pointer}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--line);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--accent);font-weight:700}
+  .ac .txt{font-size:.9rem;color:var(--fg)}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:#0a0f1a;color:var(--accent-2);padding:.05rem .3rem;border-radius:4px;border:1px solid var(--line)}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:rgba(255,169,77,.14);color:var(--accent-3)}
+  .ac.done .box{background:var(--accent-2);border-color:var(--accent-2)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.done .status{background:var(--accent-2);color:var(--bg)}
+  .ac.partial .box{background:var(--accent);border-color:var(--accent)}
+  .ac.partial .box::after{content:'';position:absolute;left:3px;top:0;width:6px;height:11px;border:solid var(--bg);border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.partial .status{background:var(--accent);color:var(--bg)}
+
+  footer{margin-top:3rem;padding:1.3rem 5%;border-top:1px solid var(--line);font-family:var(--mono);font-size:.7rem;color:var(--fg-muted)}
+  footer b{color:var(--fg-muted)}
+
+  @media(max-width:820px){
+    .mpanels{grid-template-columns:1fr}
+    .files{grid-template-columns:1fr}
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html">55.3 · Race harness</a>
+  <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html">55.4 · Race UI</a>
+  <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html">55.5 · Crossover slider</a>
+  <span class="cur" aria-current="page">55.6 · Fallback + methodology</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#sim">Flip WebGPU off · watch the page stay honest</a>
+  <a href="#chain">The fallback chain</a>
+  <a href="#methodology">Live methodology, not hardcoded</a>
+  <a href="#reference">The labelled placeholder clip</a>
+  <a href="#build">What was built</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.6 · Milestone M3 · degrade gracefully, survive scrutiny · <span class="todopill">Done</span></div>
+    <h1 class="prose">When the browser has no WebGPU, the GPU lane runs the next-fastest backend — and says so, in the visitor's own words</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--fg-muted);margin:.2rem 0 0">An <em>optimistic</em> <code style="font-family:var(--mono);color:var(--accent)">navigator.gpu</code> probe warns before the race; an <em>authoritative</em> <code style="font-family:var(--mono);color:var(--accent-2)">actual_backend</code> reconciliation after it is the source of truth — so the page never claims a WebGPU win it did not measure, and never shows an empty lane.</p>
+    <div class="meta">
+      <span class="chip">fallback chain <strong>webgpu → webgl → wasm → cpu</strong></span>
+      <span class="chip">two phases <strong>probe · reconcile</strong></span>
+      <span class="chip">methodology <strong>live from RaceResult</strong></span>
+      <span class="chip">footer <strong>"YOUR browser/GPU right now"</strong></span>
+      <span class="chip">real clip <strong>deferred to 55.10</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. THE TWO-PHASE HONESTY MACHINE — the crux ════ -->
+  <section id="sim">
+    <div class="eyebrow">Comprehension job 1 · the crux · two phases, one source of truth</div>
+    <h2>Toggle whether this browser has WebGPU, then run the race — watch which states the page enters</h2>
+    <figure>
+      <div class="sim">
+        <div class="sim-eyebrow">clustering-tfjs · pre-race probe vs post-race reconciliation</div>
+        <div class="gpuswitch">
+          <span class="lab">navigator.gpu in this browser</span>
+          <div class="seg" role="group" aria-label="WebGPU available">
+            <button id="gpu-yes" class="on" type="button">present</button>
+            <button id="gpu-no" type="button">absent</button>
+          </div>
+          <button class="runbtn" id="run-race" type="button">▶ run the race</button>
+          <span class="phasetag">phase: <b id="phase-label">idle — pre-race probe applied</b></span>
+        </div>
+
+        <div class="mockpage">
+          <!-- the load-bearing banner (race__banner) -->
+          <div class="mbanner" id="m-banner"><b>Heads up · </b><span id="m-banner-text"></span></div>
+
+          <!-- the reference clip (race-reference), shown only to non-WebGPU visitors -->
+          <div class="mref" id="m-ref">
+            <span class="rtag">illustrative reference · not your hardware</span>
+            <div class="rbars">
+              <div class="rbar g"></div>
+              <div class="rbar c"></div>
+            </div>
+            <div class="rcap"><b>n = 10,000 · ~26× on reference hardware.</b> The live race below still runs on <b>your</b> hardware; a recorded clip replaces this at launch (55.10).</div>
+          </div>
+
+          <!-- the two race panels — the GPU label is what reconciliation rewrites -->
+          <div class="mpanels">
+            <div class="mpanel cpu">
+              <div class="mlabel">CPU lane</div>
+              <div class="mbackend" id="m-cpu-backend">CPU</div>
+              <div class="msrc">label = <b id="m-cpu-src">"CPU"</b></div>
+            </div>
+            <div class="mpanel gpu">
+              <div class="mlabel">GPU lane</div>
+              <div class="mbackend" id="m-gpu-backend">WebGPU</div>
+              <div class="msrc">label = <b id="m-gpu-src">static "WebGPU"</b></div>
+            </div>
+          </div>
+
+          <!-- the live config block (race__config) -->
+          <div class="conf">
+            <div class="ctitle">"how this is timed" · live config block</div>
+            <dl>
+              <div class="cell"><dt>Samples (n)</dt><dd id="c-n">2,000</dd></div>
+              <div class="cell"><dt>Features (d)</dt><dd>32</dd></div>
+              <div class="cell"><dt>Warmups · reps</dt><dd>3 · 7</dd></div>
+              <div class="cell"><dt>CPU backend</dt><dd class="dash" id="c-cpu">—</dd></div>
+              <div class="cell"><dt>GPU backend</dt><dd class="dash" id="c-gpu">—</dd></div>
+              <div class="cell"><dt>tfjs version</dt><dd class="dash" id="c-ver">—</dd></div>
+            </dl>
+          </div>
+        </div>
+        <div class="simnote">This mirrors the shipped surfaces in site/src/race_ui.ts: <code>has_webgpu()</code> drives the pre-race state; <code>reconcile_fallback(actual_backend)</code> is the authority after the race. Config backend/version fields reset to "—" on every run.</div>
+      </div>
+      <figcaption class="prose"><b>Two phases that can disagree — and the second always wins.</b> With WebGPU <em>absent</em>, the pre-race probe already shows the banner, relabels the panel "GPU", and reveals the clip; the run then resolves down the chain and the config block fills with the real backend (<code>WEBGL</code>) and the loaded <code>tf.version_core</code>.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">Why two checks instead of one</div>
+      <p>The main-thread <code>navigator.gpu</code> probe is only a <em>signal</em> — a browser can expose <code>navigator.gpu</code> yet still fail to initialize the backend. So the worker's post-init <code>tf.getBackend()</code> is returned as <code>actual_backend</code> and <code>reconcile_fallback</code> trusts only that: a <code>"webgpu"</code> result clears the banner, anything else names the real backend and reveals the payoff clip.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 2. THE FALLBACK CHAIN — the lane is never empty ════ -->
+  <section id="chain">
+    <div class="eyebrow">Comprehension job 2 · the chain · why a GPU lane is never broken or blank</div>
+    <h2>The GPU lane walks webgpu → webgl → wasm → cpu until one backend initializes</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 960 320" role="img" aria-label="The init_lane function for the GPU lane. First it checks navigator.gpu: if absent, the webgpu candidate is filtered out of the chain so no heavy package is fetched only to fail. It then walks the candidate chain webgpu, webgl, wasm, cpu in order. For each candidate it awaits Clustering.init with that backend. On success it returns tf.getBackend, the honest label of what actually ran, and the lane is established. On failure it calls Clustering.reset to clear the failed backend's partial singleton state, then tries the next candidate. The cpu candidate is the universal floor that always initializes, so the loop always returns a real backend and the lane is never left empty or broken.">
+          <defs>
+            <marker id="ar" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#8b949e"/></marker>
+            <marker id="ag" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#63e6be"/></marker>
+            <marker id="ay" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#ffa94d"/></marker>
+          </defs>
+
+          <!-- navigator.gpu gate -->
+          <path d="M70 56 L150 26 L230 56 L150 86 Z" fill="#0f1626" stroke="#7c9cff" stroke-width="1.6"/>
+          <text x="150" y="52" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">navigator.gpu?</text>
+          <text x="150" y="67" text-anchor="middle" fill="#8b949e" font-size="8.5">skip webgpu if absent</text>
+          <text x="150" y="106" text-anchor="middle" fill="#ffa94d" font-size="9">absent → drop webgpu candidate ↓</text>
+
+          <!-- the chain row -->
+          <g>
+            <rect x="40" y="140" width="150" height="62" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+            <text x="115" y="164" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">try webgpu</text>
+            <text x="115" y="182" text-anchor="middle" fill="#8b949e" font-size="8.5">await Clustering.init</text>
+            <text x="115" y="194" text-anchor="middle" fill="#8b949e" font-size="8.5">({ backend })</text>
+
+            <rect x="248" y="140" width="150" height="62" rx="11" fill="#11182a" stroke="#22304a"/>
+            <text x="323" y="164" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">try webgl</text>
+            <text x="323" y="186" text-anchor="middle" fill="#8b949e" font-size="8.5">a real GPU lane too</text>
+
+            <rect x="456" y="140" width="150" height="62" rx="11" fill="#11182a" stroke="#22304a"/>
+            <text x="531" y="164" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="bold">try wasm</text>
+            <text x="531" y="186" text-anchor="middle" fill="#8b949e" font-size="8.5">CPU-SIMD floor</text>
+
+            <rect x="664" y="140" width="150" height="62" rx="11" fill="#1a130c" stroke="#ffa94d" stroke-width="1.6"/>
+            <text x="739" y="164" text-anchor="middle" fill="#ffa94d" font-size="11" font-weight="bold">cpu — the floor</text>
+            <text x="739" y="186" text-anchor="middle" fill="#8b949e" font-size="8.5">always initializes</text>
+
+            <!-- chain advance arrows (on failure) -->
+            <line x1="190" y1="171" x2="244" y2="171" stroke="#ffa94d" stroke-width="1.6" marker-end="url(#ay)"/>
+            <line x1="398" y1="171" x2="452" y2="171" stroke="#ffa94d" stroke-width="1.6" marker-end="url(#ay)"/>
+            <line x1="606" y1="171" x2="660" y2="171" stroke="#ffa94d" stroke-width="1.6" marker-end="url(#ay)"/>
+            <text x="217" y="132" text-anchor="middle" fill="#ffa94d" font-size="8">init failed</text>
+            <text x="425" y="132" text-anchor="middle" fill="#ffa94d" font-size="8">init failed</text>
+            <text x="633" y="132" text-anchor="middle" fill="#ffa94d" font-size="8">init failed</text>
+          </g>
+
+          <!-- navigator.gpu gate edge into the chain -->
+          <line x1="150" y1="86" x2="115" y2="136" stroke="#7c9cff" stroke-width="1.5" marker-end="url(#ar)"/>
+
+          <!-- the reset step between failed attempts -->
+          <rect x="190" y="228" width="424" height="44" rx="10" fill="#0f1626" stroke="#7c9cff" stroke-width="1.4"/>
+          <text x="402" y="250" text-anchor="middle" fill="#7c9cff" font-size="10" font-weight="bold">between each failed try → Clustering.reset()</text>
+          <text x="402" y="264" text-anchor="middle" fill="#8b949e" font-size="8.5">clears the failed backend's partial singleton before the next candidate</text>
+          <line x1="217" y1="202" x2="290" y2="226" stroke="#8b949e" stroke-width="1.2" marker-end="url(#ar)"/>
+          <line x1="425" y1="202" x2="425" y2="226" stroke="#8b949e" stroke-width="1.2" marker-end="url(#ar)"/>
+          <line x1="633" y1="202" x2="560" y2="226" stroke="#8b949e" stroke-width="1.2" marker-end="url(#ar)"/>
+
+          <!-- success terminal -->
+          <rect x="664" y="228" width="270" height="74" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.8"/>
+          <text x="799" y="252" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">return tf.getBackend()</text>
+          <text x="799" y="271" text-anchor="middle" fill="#e6edf3" font-size="9">the honest label of what actually ran</text>
+          <text x="799" y="287" text-anchor="middle" fill="#8b949e" font-size="8.5">lane established · never empty or broken</text>
+          <!-- success edges from each box -->
+          <line x1="115" y1="202" x2="115" y2="296" stroke="#63e6be" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#ag)" opacity=".6"/>
+          <line x1="739" y1="202" x2="739" y2="226" stroke="#63e6be" stroke-width="1.6" marker-end="url(#ag)"/>
+          <text x="86" y="250" fill="#63e6be" font-size="8" opacity=".7">init ok ↓</text>
+          <text x="60" y="290" fill="#63e6be" font-size="8.5" opacity=".7">→ return on first success</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#63e6be"></i> first backend that initializes wins — return its real label</span>
+        <span><i style="background:#ffa94d"></i> on failure: reset, advance to next candidate</span>
+        <span><i style="background:#7c9cff"></i> navigator.gpu gate · partial-state reset</span>
+      </div>
+      <figcaption class="prose"><b>The cpu candidate is the universal floor, so the loop can never fall off the end.</b> Each failed attempt calls <code>Clustering.reset()</code> to clear the failed backend's partial singleton before the next <code>Clustering.init</code>; the first success returns <code>tf.getBackend()</code> — the honest label, never a requested-but-unmet one. The <code>cpu</code> lane has nothing to fall back to and is itself the floor.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">The honest-label contract (race_protocol.ts)</div>
+      <p>A lane is <em>requested</em> as <code>"webgpu"</code> but the result carries <code>actual_backend = tf.getBackend()</code> — whatever truly ran. The UI relabels from that: a fell-back lane reports <code>WEBGL</code> in its panel header, so the page can never advertise a backend it did not measure. The same result now also carries <code>tfjs_version = tf.version_core</code>.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. METHODOLOGY — live, not hardcoded ════ -->
+  <section id="methodology">
+    <div class="eyebrow">Comprehension job 3 · methodology-as-a-feature · the config can't drift from the code</div>
+    <h2>The "how this is timed" panel reads live values from the real result — so it can't lie</h2>
+    <figure>
+      <div class="flowwrap" style="display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center">
+        <!-- WOULD-BE: hardcoded -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-3);margin-bottom:.5rem">A hardcoded methodology panel — drifts</div>
+          <svg viewBox="0 0 360 240" role="img" aria-label="A hardcoded panel: the documented warmup count, reps, backend names and tfjs version are string literals baked into the markup. When the real config or loaded backend changes, the displayed numbers silently disagree with what actually ran — the documentation drifts away from the code.">
+            <rect x="20" y="18" width="320" height="44" rx="11" fill="#1a130c" stroke="#ffa94d" stroke-width="1.4"/>
+            <text x="180" y="37" text-anchor="middle" fill="#ffa94d" font-size="10.5" font-weight="bold">literal strings in the HTML</text>
+            <text x="180" y="53" text-anchor="middle" fill="#8b949e" font-size="9">"3 warmups · 7 reps · WebGPU 4.22"</text>
+            <line x1="180" y1="62" x2="180" y2="88" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ma)"/>
+            <rect x="20" y="90" width="320" height="44" rx="11" fill="#11182a" stroke="#22304a"/>
+            <text x="180" y="109" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">real run uses a different config</text>
+            <text x="180" y="125" text-anchor="middle" fill="#8b949e" font-size="9">or the lane fell back to WEBGL</text>
+            <line x1="180" y1="134" x2="180" y2="160" stroke="#8b949e" stroke-width="1.4" marker-end="url(#ma)"/>
+            <rect x="20" y="162" width="320" height="62" rx="11" fill="#1a130c" stroke="#ff8585" stroke-width="1.6"/>
+            <text x="180" y="184" text-anchor="middle" fill="#ff8585" font-size="10.5" font-weight="bold">panel now lies</text>
+            <text x="180" y="202" text-anchor="middle" fill="#8b949e" font-size="9">says "WebGPU 4.22"; ran WEBGL</text>
+            <text x="180" y="216" text-anchor="middle" fill="#8b949e" font-size="9">documentation ≠ code</text>
+            <defs><marker id="ma" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker></defs>
+          </svg>
+        </div>
+
+        <div style="font-family:var(--serif);font-size:1.8rem;color:var(--accent);text-align:center">→</div>
+
+        <!-- AS BUILT: live -->
+        <div>
+          <div style="font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.1em;color:var(--accent-2);margin-bottom:.5rem">As built — live from the run</div>
+          <svg viewBox="0 0 360 240" role="img" aria-label="As built: the fixed schedule fields are seeded from DEFAULT_RACE_CONFIG at startup, so warmups, reps, and features always match the config the workers run. After each race the CPU backend, GPU backend, and tfjs version fields are written straight from the RaceResult of that very run. The fields reset to a dash on every run, so a failed or in-flight race never shows the previous race's config next to a new n.">
+            <rect x="20" y="14" width="320" height="48" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.6"/>
+            <text x="180" y="33" text-anchor="middle" fill="#63e6be" font-size="10" font-weight="bold">seed fixed fields ← DEFAULT_RACE_CONFIG</text>
+            <text x="180" y="49" text-anchor="middle" fill="#8b949e" font-size="8.5">warmups · reps · d · schedule — at startup</text>
+            <line x1="180" y1="62" x2="180" y2="84" stroke="#8b949e" stroke-width="1.4" marker-end="url(#mb)"/>
+            <rect x="20" y="86" width="320" height="42" rx="11" fill="#11182a" stroke="#22304a"/>
+            <text x="180" y="104" text-anchor="middle" fill="#e6edf3" font-size="10" font-weight="bold">each run starts: reset live fields → "—"</text>
+            <text x="180" y="120" text-anchor="middle" fill="#8b949e" font-size="8.5">backends + version cleared before racing</text>
+            <line x1="180" y1="128" x2="180" y2="150" stroke="#8b949e" stroke-width="1.4" marker-end="url(#mb)"/>
+            <rect x="20" y="152" width="320" height="72" rx="11" fill="#10221c" stroke="#63e6be" stroke-width="1.8"/>
+            <text x="180" y="174" text-anchor="middle" fill="#63e6be" font-size="10.5" font-weight="bold">on result → write live fields</text>
+            <text x="180" y="192" text-anchor="middle" fill="#8b949e" font-size="9">cpu.actual_backend · gpu.actual_backend</text>
+            <text x="180" y="206" text-anchor="middle" fill="#8b949e" font-size="9">gpu.tfjs_version · n from the slider</text>
+            <text x="180" y="220" text-anchor="middle" fill="#63e6be" font-size="8.5">panel ≡ what actually ran</text>
+            <defs><marker id="mb" markerWidth="10" markerHeight="10" refX="7.5" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8b949e"/></marker></defs>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#ffa94d"></i> hardcoded: a documented schedule that can drift from the code</span>
+        <span><i style="background:#63e6be"></i> as built: fixed fields seeded from config, measured fields from the result</span>
+        <span><i style="background:#ff8585"></i> the drift this prevents</span>
+      </div>
+      <div class="code">
+        <div class="fl">site/src/race_ui.ts — seed the fixed schedule from the config, write measured fields from the result (snake_case)</div>
+<pre><span class="cm">// Seed the panel's FIXED fields from the one config the workers actually run,</span>
+<span class="cm">// so the documented schedule can never drift from the code.</span>
+<span class="fn">require_el</span>(<span class="str">"#methodology-warmups"</span>).textContent = String(DEFAULT_RACE_CONFIG.warmups);
+<span class="fn">require_el</span>(<span class="str">"#methodology-reps"</span>).textContent    = String(DEFAULT_RACE_CONFIG.reps);
+<span class="fn">require_el</span>(<span class="str">"#config-d"</span>).textContent           = String(DEFAULT_RACE_CONFIG.n_features);
+
+<span class="cm">// Every run clears the MEASURED fields first, so a failed or in-flight race</span>
+<span class="cm">// never shows last race's backends/version next to this n.</span>
+config_cpu_backend.textContent = <span class="str">"—"</span>;
+config_gpu_backend.textContent = <span class="str">"—"</span>;
+config_tfjs_version.textContent = <span class="str">"—"</span>;
+
+<span class="cm">// …then, on a completed run, fill them straight off the RaceResult:</span>
+config_cpu_backend.textContent  = cpu_result.actual_backend.<span class="fn">toUpperCase</span>();
+config_gpu_backend.textContent  = gpu_result.actual_backend.<span class="fn">toUpperCase</span>();  <span class="cm">// WEBGPU or the fell-back lane</span>
+config_tfjs_version.textContent = gpu_result.tfjs_version;                  <span class="cm">// tf.version_core, loaded — not a literal</span>
+<span class="fn">reconcile_fallback</span>(gpu_result.actual_backend);                            <span class="cm">// banner authority</span></pre>
+      </div>
+      <figcaption class="prose"><b>Fixed schedule is seeded from <code>DEFAULT_RACE_CONFIG</code>; measured facts come from the <code>RaceResult</code>.</b> The always-visible "how this is timed" expander documents float32, 3 discarded warmups, the single readback, median-of-7, the <code>numTensors</code> leak abort, and the cross-lane checksum — its config block reports the run, not a guess.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">The methodology expander is always available — not gated on fallback</div>
+      <p>Unlike the banner and the reference clip (which appear only to non-WebGPU visitors), the <code>&lt;details&gt;</code> expander and the "YOUR browser/GPU" footer are <b>always present</b>, on every visit. Surviving scrutiny means the timing protocol is one click away whether or not a fallback happened.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 4. THE REFERENCE CLIP — a labelled placeholder ════ -->
+  <section id="reference">
+    <div class="eyebrow">Comprehension job 4 · the payoff clip · mechanism done, recording deferred</div>
+    <h2>Non-WebGPU visitors still see the payoff — via an honestly-labelled illustrative reference</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 960 230" role="img" aria-label="The reference clip is a self-contained SVG, public/race-reference.svg. Its src is set base-aware and the figure is unhidden only when reveal_reference runs, which happens on the pre-race probe when navigator.gpu is absent and again on post-race reconciliation when the lane did not run webgpu. The clip itself is an honestly-labelled illustrative schematic: two affinity-race lanes loop on a six-second CSS animation with the WebGPU bar finishing about twenty-six times sooner, and the figcaption states it is illustrative, not a hardware capture. Under prefers-reduced-motion the animation is disabled and the finished frame is held static, because a constantly-looping image is a vestibular hazard. The real recorded GIF or MP4 is deferred to task 55.10; this task delivers the reveal mechanism and the placeholder.">
+          <defs>
+            <marker id="rr" markerWidth="11" markerHeight="11" refX="8.5" refY="5" orient="auto"><path d="M0,0 L11,5 L0,10 Z" fill="#7c9cff"/></marker>
+          </defs>
+          <!-- trigger 1 -->
+          <rect x="16" y="40" width="218" height="64" rx="11" fill="#1a130c" stroke="#ffa94d" stroke-width="1.4"/>
+          <text x="125" y="64" text-anchor="middle" fill="#ffa94d" font-size="10.5" font-weight="bold">pre-race: navigator.gpu absent</text>
+          <text x="125" y="83" text-anchor="middle" fill="#8b949e" font-size="9">probe reveals clip before any race</text>
+          <text x="125" y="97" text-anchor="middle" fill="#8b949e" font-size="9">visitor sees the payoff immediately</text>
+
+          <!-- trigger 2 -->
+          <rect x="16" y="126" width="218" height="64" rx="11" fill="#1a130c" stroke="#ffa94d" stroke-width="1.4"/>
+          <text x="125" y="150" text-anchor="middle" fill="#ffa94d" font-size="10.5" font-weight="bold">post-race: actual ≠ webgpu</text>
+          <text x="125" y="169" text-anchor="middle" fill="#8b949e" font-size="9">reconcile_fallback also reveals it</text>
+          <text x="125" y="183" text-anchor="middle" fill="#8b949e" font-size="9">authoritative, even if probe was wrong</text>
+
+          <!-- reveal_reference -->
+          <rect x="288" y="76" width="208" height="78" rx="12" fill="#0f1626" stroke="#7c9cff" stroke-width="1.8"/>
+          <text x="392" y="100" text-anchor="middle" fill="#7c9cff" font-size="11" font-weight="bold">reveal_reference()</text>
+          <text x="392" y="121" text-anchor="middle" fill="#8b949e" font-size="9">set src base-aware (Pages sub-path)</text>
+          <text x="392" y="136" text-anchor="middle" fill="#8b949e" font-size="9">unhide once · so it animates only when seen</text>
+          <line x1="234" y1="72" x2="284" y2="98" stroke="#7c9cff" stroke-width="1.5" marker-end="url(#rr)"/>
+          <line x1="234" y1="158" x2="284" y2="132" stroke="#7c9cff" stroke-width="1.5" marker-end="url(#rr)"/>
+
+          <!-- the clip -->
+          <rect x="550" y="30" width="394" height="170" rx="12" fill="#0a0f1a" stroke="#63e6be" stroke-width="1.6"/>
+          <text x="747" y="54" text-anchor="middle" fill="#63e6be" font-size="11" font-weight="bold">race-reference.svg — illustrative</text>
+          <rect x="572" y="70" width="74" height="13" rx="6" fill="#63e6be"/>
+          <text x="660" y="80" fill="#8b949e" font-size="9">WebGPU ≈ finishes ~26× sooner</text>
+          <rect x="572" y="92" width="350" height="13" rx="6" fill="#7c9cff"/>
+          <text x="660" y="124" fill="#e6edf3" font-size="9">figcaption: "illustrative, NOT a hardware capture"</text>
+          <text x="660" y="140" fill="#8b949e" font-size="9">6s CSS loop · prefers-reduced-motion → static frame</text>
+          <text x="660" y="160" fill="#ffa94d" font-size="9">real recorded GIF/MP4 → task 55.10</text>
+          <text x="660" y="176" fill="#8b949e" font-size="9">this task ships the reveal + the placeholder</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#ffa94d"></i> two reveal triggers: pre-race probe · post-race reconcile</span>
+        <span><i style="background:#7c9cff"></i> reveal_reference: base-aware src, unhide once</span>
+        <span><i style="background:#63e6be"></i> honestly-labelled illustrative clip</span>
+      </div>
+      <figcaption class="prose"><b>The clip never pretends to be the visitor's hardware.</b> It is an animated CSS schematic (disabled under <code>prefers-reduced-motion</code>, holding a static finished frame) whose caption reads "illustrative reference … the live race below still runs on <b>your</b> hardware." The reveal mechanism is complete; the real ≤6s recorded clip lands with the launch assets in task 55.10.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 5. WHAT WAS BUILT ════ -->
+  <section id="build">
+    <div class="eyebrow">As built · what 55.6 added on top of the shipped 55.5 race</div>
+    <h2>A fallback chain in the worker, a reconciliation pass in the UI, one new protocol field, one new asset</h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp">site/src/race_worker.ts</span><div class="role"><b>Extended.</b> <code>init_lane</code> now walks <code>GPU_FALLBACK_CHAIN = [webgpu, webgl, wasm, cpu]</code>, resetting the singleton between failed attempts, skipping the webgpu attempt when <code>navigator.gpu</code> is absent, and returning <code>tf.getBackend()</code> as the honest label. Reports <code>tf.version_core</code>.</div></div>
+        <div class="fcard"><span class="fp">site/src/race_protocol.ts</span><div class="role"><b>Extended.</b> <code>RaceResult</code> gains <code>tfjs_version</code> — the engine version that actually ran the lane, so the methodology panel reports the loaded version, not a hardcoded string.</div></div>
+        <div class="fcard"><span class="fp">site/src/race_ui.ts</span><div class="role"><b>Extended.</b> A main-thread <code>has_webgpu()</code> pre-race probe (banner + "GPU" relabel), the authoritative <code>reconcile_fallback(actual_backend)</code>, the live config block, and the <code>reveal_reference()</code> base-aware clip reveal. Config backend/version reset to "—" each run.</div></div>
+        <div class="fcard"><span class="fp">site/index.html</span><div class="role"><b>Extended.</b> Adds the <code>#fallback-banner</code>, the reference <code>&lt;figure&gt;</code>, the always-available <code>&lt;details&gt;</code> "How this is timed" expander (float32, 3 warmups, median-of-7, single readback, <code>numTensors</code> baseline assert, cross-lane checksum) and the hardware-honest footer.</div></div>
+        <div class="fcard"><span class="fp new">site/public/race-reference.svg</span><div class="role"><b>New.</b> An honestly-labelled <em>illustrative</em> animated reference race (CSS animation, disabled under <code>prefers-reduced-motion</code> holding a static finished frame), shown only to non-WebGPU visitors. The real recorded clip is deferred to 55.10.</div></div>
+        <div class="fcard"><span class="fp">site/src/race.ts · crossover.ts</span><div class="role"><b>Untouched.</b> The orchestrator, the workers' fairness protocol, and the crossover estimator from 55.3–55.5 stay exactly as they were — 55.6 is feature-detection, relabelling, and documentation, not a change to how the race is measured.</div></div>
+      </div>
+      <figcaption class="prose"><b>55.6 is honesty plumbing, not a measurement change.</b> The worker gains a fallback loop and an extra reported field; the UI gains a two-phase probe/reconcile pair plus the always-on methodology expander; the markup gains the banner, the figure, the <code>&lt;details&gt;</code> and the footer; one new SVG asset stands in for the launch clip — while <code>run_race</code> and the timing harness are untouched.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. ACCEPTANCE CRITERIA ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means · status: done</div>
+    <h2>Acceptance criteria — five, all met (one delivered as the reveal mechanism + placeholder)</h2>
+    <div class="acs">
+      <div class="ac done"><span class="num">1</span><span class="box"></span><span class="txt">On a non-WebGPU browser the <b>GPU lane gracefully becomes WebGL</b> (then wasm, then cpu) with a clear banner and <b>no broken UI</b> — the lane is never empty.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">2</span><span class="box"></span><span class="txt">The methodology expander lists <b>float32, warmup/run counts, the single-readback rule, median reporting</b>, and <b>live config values</b> (real backends + <code>tfjs_version</code> from the result).</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt">A <b>permanent footer</b> states the times are from the visitor's own hardware — "Times are from <b>YOUR</b> browser/GPU right now."</span><span class="status">done</span></div>
+      <div class="ac partial"><span class="num">4</span><span class="box"></span><span class="txt">A reference race is shown to visitors whose browser lacks WebGPU — delivered as the <b>reveal mechanism + an honestly-labelled placeholder SVG</b>; the real recorded GIF/MP4 lands in <code>55.10</code>.</span><span class="status">mechanism</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt"><b>ESLint passes</b> (Python-style <code>snake_case</code> across the extended <code>site/</code> sources).</span><span class="status">done</span></div>
+    </div>
+    <figcaption class="prose"><b>The load-bearing criterion is #1:</b> the fallback banner is not optional — WebGPU is absent on Firefox-Linux/Android and older Safari, and most social-traffic visitors arrive on mobile, so a graceful, honestly-labelled degrade is what lets the demo survive that audience. #4 ships the reveal plumbing and a clearly-labelled placeholder, with the recorded clip scheduled for the launch assets. Tap a row to toggle it.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Companion for <b>task-55.6 — WebGPU feature-detection, graceful fallback, and methodology expander (Milestone M3, done)</b> ·
+  reconciled to the shipped sources: site/src/race_worker.ts (GPU_FALLBACK_CHAIN, init_lane, tf.version_core), race_protocol.ts (RaceResult.tfjs_version), race_ui.ts (has_webgpu pre-race probe, reconcile_fallback authority, live config block, reveal_reference), index.html (banner · reference figure · always-available "How this is timed" details · hardware-honest footer), site/public/race-reference.svg (illustrative animated reference, prefers-reduced-motion aware) · race.ts and crossover.ts untouched · dark theme matches site/src/style.css · self-contained, no external assets.
+</footer>
+
+<script>
+(function(){
+  // ── the two-phase honesty machine (mirrors site/src/race_ui.ts) ──
+  // Pre-race: navigator.gpu probe sets the optimistic state.
+  // Post-race: reconcile_fallback(actual_backend) is the authority.
+  var has_gpu = true;            // toggled by the visitor
+  var phase   = 'idle';          // 'idle' | 'running' | 'done'
+
+  var banner    = document.getElementById('m-banner');
+  var banner_tx = document.getElementById('m-banner-text');
+  var ref       = document.getElementById('m-ref');
+  var gpu_back  = document.getElementById('m-gpu-backend');
+  var gpu_src   = document.getElementById('m-gpu-src');
+  var c_cpu = document.getElementById('c-cpu');
+  var c_gpu = document.getElementById('c-gpu');
+  var c_ver = document.getElementById('c-ver');
+  var phase_lab = document.getElementById('phase-label');
+
+  var PRE_TEXT =
+    "WebGPU isn't available in this browser — the GPU lane will race your fastest " +
+    "available backend (WebGL → WASM → CPU). The timings below are real, measured on your hardware.";
+  function post_text(name){
+    return "WebGPU isn't available in this browser — the GPU lane is running " + name +
+      ", your fastest available backend. The timings below are real, measured on your hardware.";
+  }
+
+  function set_live(dd, text, live){
+    dd.textContent = text;
+    dd.className = live ? 'live' : (text === '—' ? 'dash' : '');
+  }
+
+  // PRE-RACE PROBE — runs whenever the toggle flips and at idle.
+  function apply_probe(){
+    if(has_gpu){
+      gpu_back.textContent = 'WebGPU';
+      gpu_src.textContent  = 'static "WebGPU"';
+      banner.classList.remove('show');
+      ref.classList.remove('show');
+    } else {
+      // navigator.gpu absent: relabel "GPU", warn, reveal the clip — before any race.
+      gpu_back.textContent = 'GPU';
+      gpu_src.textContent  = 'relabelled "GPU"';
+      banner_tx.textContent = PRE_TEXT;
+      banner.classList.add('show');
+      ref.classList.add('show');
+    }
+    // Measured fields are always "—" until a race resolves.
+    set_live(c_cpu, '—', false);
+    set_live(c_gpu, '—', false);
+    set_live(c_ver, '—', false);
+  }
+
+  // POST-RACE RECONCILE — authoritative; trusts only actual_backend.
+  function reconcile(actual){
+    if(actual === 'webgpu'){
+      banner.classList.remove('show');
+      ref.classList.remove('show');
+    } else {
+      var name = actual.toUpperCase();
+      banner_tx.textContent = post_text(name);
+      banner.classList.add('show');
+      ref.classList.add('show');
+    }
+  }
+
+  function run_race(){
+    phase = 'running';
+    phase_lab.textContent = 'running — reset live fields to "—"';
+    // reset_headline: clear measured fields before racing.
+    gpu_back.textContent = has_gpu ? 'WebGPU' : 'GPU';
+    set_live(c_cpu, '—', false);
+    set_live(c_gpu, '—', false);
+    set_live(c_ver, '—', false);
+
+    setTimeout(function(){
+      // The worker walked the chain and returned the honest label.
+      var actual = has_gpu ? 'webgpu' : 'webgl';   // demo: present→webgpu, absent→fell back to webgl
+      var label  = actual.toUpperCase();
+      gpu_back.textContent = label;
+      gpu_src.textContent  = 'actual_backend = "' + actual + '"';
+      // write live config straight off the RaceResult
+      set_live(c_cpu, 'CPU', true);
+      set_live(c_gpu, label, true);
+      set_live(c_ver, '4.22.0', true);
+      reconcile(actual);
+      phase = 'done';
+      phase_lab.textContent = has_gpu
+        ? 'done — actual_backend = webgpu → banner cleared'
+        : 'done — actual_backend = webgl → banner names WEBGL';
+    }, 700);
+  }
+
+  document.getElementById('gpu-yes').addEventListener('click', function(){
+    this.classList.add('on'); document.getElementById('gpu-no').classList.remove('on');
+    has_gpu = true; phase = 'idle';
+    phase_lab.textContent = 'idle — pre-race probe applied';
+    apply_probe();
+  });
+  document.getElementById('gpu-no').addEventListener('click', function(){
+    this.classList.add('on'); document.getElementById('gpu-yes').classList.remove('on');
+    has_gpu = false; phase = 'idle';
+    phase_lab.textContent = 'idle — pre-race probe applied';
+    apply_probe();
+  });
+  document.getElementById('run-race').addEventListener('click', run_race);
+
+  apply_probe();   // initial pre-race state
+
+  // ── acceptance checklist: tap to toggle ──
+  Array.prototype.forEach.call(document.querySelectorAll('.ac'), function(row){
+    row.addEventListener('click', function(){
+      var done = row.classList.contains('done') || row.classList.contains('partial');
+      var st = row.querySelector('.status');
+      if(done){
+        row.dataset.prev = row.classList.contains('partial') ? 'partial' : 'done';
+        row.dataset.prevlabel = st.textContent;
+        row.classList.remove('done','partial');
+        st.textContent = 'open';
+      } else {
+        row.classList.add(row.dataset.prev || 'done');
+        st.textContent = row.dataset.prevlabel || 'done';
+      }
+    });
+  });
+
+  // ── outline active-link highlight ──
+  var links = Array.prototype.slice.call(document.querySelectorAll('.outline a'));
+  var map = {};
+  links.forEach(function(a){ var id=a.getAttribute('href').slice(1); var s=document.getElementById(id); if(s) map[id]=a; });
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(l){ l.classList.remove('active'); });
+        if(map[e.target.id]) map[e.target.id].classList.add('active');
+      }
+    });
+  }, {rootMargin:'-30% 0px -60% 0px'});
+  Object.keys(map).forEach(function(id){ io.observe(document.getElementById(id)); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='10' cy='12' r='4' fill='%237c9cff'/%3E%3Ccircle cx='22' cy='11' r='4' fill='%2363e6be'/%3E%3Ccircle cx='16' cy='23' r='4' fill='%23ffa94d'/%3E%3C/svg%3E"
+    />
+    <title>clustering-tfjs — GPU-accelerated clustering in your browser</title>
+    <meta
+      name="description"
+      content="scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://CRJFisher.github.io/clustering-tfjs/" />
+    <meta property="og:title" content="clustering-tfjs" />
+    <meta
+      property="og:description"
+      content="scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install."
+    />
+    <meta
+      property="og:image"
+      content="https://CRJFisher.github.io/clustering-tfjs/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="clustering-tfjs — scikit-learn clustering, GPU-accelerated, 100% in your browser. WebGPU races CPU live."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="clustering-tfjs" />
+    <meta
+      name="twitter:description"
+      content="scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install."
+    />
+    <meta
+      name="twitter:image"
+      content="https://CRJFisher.github.io/clustering-tfjs/og-image.png"
+    />
+    <meta
+      name="twitter:image:alt"
+      content="clustering-tfjs — scikit-learn clustering, GPU-accelerated, 100% in your browser. WebGPU races CPU live."
+    />
+    <meta name="theme-color" content="#0d1117" />
+  </head>
+  <body>
+    <main class="hero">
+      <p class="eyebrow">clustering-tfjs</p>
+      <h1 class="hook">
+        scikit-learn clustering,
+        <span class="accent">GPU-accelerated</span>, 100% in your browser
+      </h1>
+      <p class="subhook">No Python. No install.</p>
+
+      <div class="hero-cta" id="hero-cta">
+        <div class="hero-cta__install">
+          <code class="hero-cta__cmd" id="hero-install-cmd"
+            >npm install clustering-tfjs</code
+          >
+          <button
+            type="button"
+            class="hero-cta__copy"
+            id="hero-install-copy"
+            aria-label="Copy install command"
+          >
+            Copy
+          </button>
+        </div>
+        <a
+          class="hero-cta__star"
+          id="hero-star-link"
+          href="https://github.com/CRJFisher/clustering-tfjs"
+          target="_blank"
+          rel="noopener"
+          aria-label="Star clustering-tfjs on GitHub (opens in a new tab)"
+        >
+          ★ Star on GitHub
+        </a>
+        <span class="sr-only" id="hero-cta-live" role="status" aria-live="polite"
+        ></span>
+      </div>
+
+      <section id="race" class="race" aria-label="WebGPU vs CPU clustering race">
+        <p
+          class="race__banner"
+          id="fallback-banner"
+          role="status"
+          aria-live="polite"
+          hidden
+        >
+          <span id="fallback-banner-text"></span>
+        </p>
+
+        <figure class="race-reference" id="race-reference" hidden>
+          <img
+            class="race-reference__media"
+            id="race-reference-media"
+            alt="Reference WebGPU-vs-CPU race: the GPU bar finishes far ahead of the CPU bar at n = 10,000."
+            width="720"
+            height="200"
+          />
+          <figcaption class="race-reference__caption">
+            Illustrative reference race (n = 10,000, ~26× on reference
+            hardware). This browser can't run WebGPU, so this shows the payoff
+            you'd see on a WebGPU-capable device — the live race below still
+            runs on <b>your</b> hardware. A recorded clip replaces this at
+            launch.
+          </figcaption>
+        </figure>
+
+        <div class="race__panels">
+          <article class="race-panel" id="panel-cpu" data-lane="cpu">
+            <header class="race-panel__head">
+              <span class="race-panel__backend" id="cpu-backend">CPU</span>
+              <span class="race-panel__phase" id="cpu-phase" aria-live="polite"
+                >ready</span
+              >
+            </header>
+            <canvas
+              class="race-panel__scatter"
+              id="cpu-scatter"
+              width="320"
+              height="320"
+              role="img"
+              aria-label="Seeded dataset, clustered on CPU"
+            ></canvas>
+            <div class="race-panel__timer">
+              <span class="race-panel__timer-value" id="cpu-timer">0</span>
+              <span class="race-panel__timer-unit">ms</span>
+            </div>
+            <span class="race-panel__caption" id="cpu-caption">ready</span>
+            <div class="race-panel__track" aria-hidden="true">
+              <div class="race-panel__bar" id="cpu-bar"></div>
+            </div>
+          </article>
+
+          <article class="race-panel" id="panel-gpu" data-lane="gpu">
+            <header class="race-panel__head">
+              <span class="race-panel__backend" id="gpu-backend">WebGPU</span>
+              <span class="race-panel__phase" id="gpu-phase" aria-live="polite"
+                >ready</span
+              >
+            </header>
+            <canvas
+              class="race-panel__scatter"
+              id="gpu-scatter"
+              width="320"
+              height="320"
+              role="img"
+              aria-label="Seeded dataset, clustered on GPU"
+            ></canvas>
+            <div class="race-panel__timer">
+              <span class="race-panel__timer-value" id="gpu-timer">0</span>
+              <span class="race-panel__timer-unit">ms</span>
+            </div>
+            <span class="race-panel__caption" id="gpu-caption">ready</span>
+            <div class="race-panel__track" aria-hidden="true">
+              <div class="race-panel__bar" id="gpu-bar"></div>
+            </div>
+          </article>
+        </div>
+
+        <div class="race__tiles">
+          <div class="tile">
+            <span class="tile__value" id="tile-cpu-ms">—</span>
+            <span class="tile__label">CPU median</span>
+          </div>
+          <div class="tile tile--multiplier">
+            <span class="tile__value" id="tile-speedup">—</span>
+            <span class="tile__label" id="tile-speedup-label">speedup</span>
+          </div>
+          <div class="tile">
+            <span class="tile__value" id="tile-gpu-ms">—</span>
+            <span class="tile__label">GPU median</span>
+          </div>
+          <div class="tile">
+            <span class="tile__value" id="tile-throughput">—</span>
+            <span class="tile__label">throughput</span>
+          </div>
+        </div>
+
+        <p class="race__parity" id="parity" data-state="idle" aria-live="polite">
+          <span class="race__parity-mark" aria-hidden="true"></span>
+          <span id="parity-text">Run the race to compare both backends.</span>
+        </p>
+
+        <div class="race__disclosure">
+          <label class="race__toggle">
+            <input type="checkbox" id="first-run-toggle" />
+            Show first-run (shader compile)
+          </label>
+          <span class="race__first-run" id="first-run-readout" hidden></span>
+        </div>
+
+        <div class="race__slider">
+          <label class="race__slider-label" for="n-slider">
+            Samples (n)
+            <span class="race__slider-value" id="n-value">2,000</span>
+          </label>
+          <div class="race__slider-track-wrap">
+            <input
+              id="n-slider"
+              class="race__slider-input"
+              type="range"
+              min="200"
+              max="5000"
+              step="50"
+              value="2000"
+              aria-describedby="crossover-caption"
+              aria-valuetext="2,000 samples"
+            />
+            <span
+              class="race__crossover-mark"
+              id="crossover-mark"
+              data-state="unknown"
+              aria-hidden="true"
+            ></span>
+          </div>
+          <p
+            class="race__crossover-caption"
+            id="crossover-caption"
+            aria-live="polite"
+          >
+            Drag the slider to find the crossover — where the GPU overtakes the CPU.
+          </p>
+        </div>
+
+        <div class="race__controls">
+          <button id="run-race" type="button" class="race__run">
+            Run the race
+          </button>
+        </div>
+
+        <details class="race__methodology" id="methodology">
+          <summary class="race__methodology-summary">
+            How this is timed
+          </summary>
+          <div class="race__methodology-body">
+            <ul class="race__methodology-list">
+              <li>
+                Every lane runs <b>float32</b> on byte-identical input tensors.
+              </li>
+              <li>
+                The dataset is uploaded to each backend
+                <b>once, outside the timed region</b> — timing measures compute,
+                not host→device transfer.
+              </li>
+              <li>
+                <b id="methodology-warmups">3</b> warmup runs are discarded to
+                absorb shader compile / wasm init / lazy kernel registration; the
+                cold first run is reported separately (toggle above) and never
+                enters the headline multiplier.
+              </li>
+              <li>
+                Each timed rep brackets the affinity construction
+                <b>plus its single awaited readback</b>
+                (<code>await affinity.data()</code>), so deferred GPU work is
+                counted.
+              </li>
+              <li>
+                The reported figure is the
+                <b>median of <span id="methodology-reps">7</span> timed reps</b>
+                (protocol floor: ≥ 5).
+              </li>
+              <li>
+                After every rep <code>tf.memory().numTensors</code> must return
+                to baseline — a leak <b>aborts</b> the race instead of reporting
+                a drifting number.
+              </li>
+              <li>
+                A cross-lane <b>checksum</b> on the affinity matrix confirms both
+                backends computed the same kernel.
+              </li>
+            </ul>
+            <dl class="race__config" aria-label="Live race configuration">
+              <div>
+                <dt>Workload</dt>
+                <dd>Spectral RBF affinity · O(n²·d)</dd>
+              </div>
+              <div>
+                <dt>Samples (n)</dt>
+                <dd id="config-n">2,000</dd>
+              </div>
+              <div>
+                <dt>Features (d)</dt>
+                <dd id="config-d">32</dd>
+              </div>
+              <div>
+                <dt>Dtype</dt>
+                <dd>float32</dd>
+              </div>
+              <div>
+                <dt>Warmups · reps</dt>
+                <dd id="config-schedule">3 · 7</dd>
+              </div>
+              <div>
+                <dt>CPU backend</dt>
+                <dd id="config-cpu-backend">—</dd>
+              </div>
+              <div>
+                <dt>GPU backend</dt>
+                <dd id="config-gpu-backend">—</dd>
+              </div>
+              <div>
+                <dt>tfjs version</dt>
+                <dd id="config-tfjs-version">—</dd>
+              </div>
+            </dl>
+          </div>
+        </details>
+
+        <p class="race__footer">
+          Times are from <b>YOUR</b> browser/GPU right now — not a cherry-picked
+          machine; numbers vary by hardware.
+        </p>
+      </section>
+
+      <section
+        id="grid"
+        class="grid-section"
+        aria-label="scikit-learn toy-dataset clustering grid"
+      >
+        <h2 class="grid-section__title">
+          The scikit-learn clustering you know — live in your browser
+        </h2>
+        <p class="grid-section__intro">
+          Five toy datasets (rows) × five algorithms (columns). Every cell is
+          coloured by the labels the real library computes off the main thread,
+          using a colorblind-safe palette. Noise points are gray.
+        </p>
+        <p class="grid-section__meta">
+          <span class="grid-section__status" id="grid-status" aria-live="polite"
+            >Computing 0 / 25 cells…</span
+          >
+          <span class="grid-section__backend"
+            >Backend: <b id="grid-backend">—</b></span
+          >
+        </p>
+
+        <div class="grid-controls-panel">
+          <p class="grid-controls-panel__intro">
+            Adjust a parameter to re-cluster the grid live. Every control starts at
+            <b>Auto</b> — the scikit-learn-tuned default chosen per dataset. Move
+            one and the affected cells switch to <b>your params</b>: they stop
+            claiming scikit-learn parity, because that exact combination was never
+            checked against it. Reset to restore the verified grid.
+          </p>
+          <form
+            id="grid-controls"
+            class="grid-controls"
+            aria-label="Live clustering parameters"
+          ></form>
+        </div>
+
+        <div class="demo-grid" id="demo-grid"></div>
+
+        <p class="grid-section__footnote" id="grid-footnote"></p>
+      </section>
+
+      <section
+        id="code"
+        class="code-section"
+        aria-label="Runnable code for the selected cell"
+      >
+        <h2 class="code-section__title">
+          Run this exact result in your own code
+        </h2>
+        <p class="code-section__intro">
+          Click any cell in the grid above (or focus one and use the arrow keys,
+          Enter to select) to see the real, runnable code — the same constructor
+          calls and parameters this page just ran, on the backend it's using now.
+        </p>
+
+        <div class="code-panel" id="code-panel">
+          <header class="code-panel__head">
+            <span class="code-panel__caption" id="code-panel-caption"
+              >Blobs · Spectral</span
+            >
+            <button
+              type="button"
+              class="code-panel__copy"
+              id="code-panel-copy"
+              aria-label="Copy code snippet"
+            >
+              Copy
+            </button>
+          </header>
+          <pre
+            class="code-panel__pre"
+          ><code class="code-panel__code" id="code-panel-code"></code></pre>
+          <span
+            class="sr-only"
+            id="code-panel-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+
+        <div class="code-cta" id="code-cta">
+          <div class="code-cta__install">
+            <code class="code-cta__cmd" id="code-install-cmd"
+              >npm install clustering-tfjs</code
+            >
+            <button
+              type="button"
+              class="code-cta__copy"
+              id="code-install-copy"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </div>
+          <a
+            class="code-cta__star"
+            id="code-star-link"
+            href="https://github.com/CRJFisher/clustering-tfjs"
+            target="_blank"
+            rel="noopener"
+            aria-label="Star clustering-tfjs on GitHub (opens in a new tab)"
+          >
+            ★ Star on GitHub
+          </a>
+          <button type="button" class="code-cta__share" id="code-share-btn">
+            Share this result
+          </button>
+          <span
+            class="sr-only"
+            id="code-cta-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+          <span
+            class="sr-only"
+            id="code-share-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+      </section>
+
+      <a
+        class="repo-link"
+        href="https://github.com/CRJFisher/clustering-tfjs"
+        target="_blank"
+        rel="noopener"
+        aria-label="View the clustering-tfjs library on GitHub (opens in a new tab)"
+        >View the library on GitHub →</a
+      >
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

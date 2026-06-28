@@ -1,0 +1,1043 @@
+:root {
+  --bg: #0d1117;
+  --bg-glow: #161b2e;
+  --panel: #11162a;
+  --fg: #e6edf3;
+  --fg-muted: #8b949e;
+  --accent: #7c9cff;
+  --accent-2: #63e6be;
+  --accent-3: #ffa94d;
+  --cluster-4: #ff8787;
+  --ok: #63e6be;
+  --warn: #ffa94d;
+  --line: rgba(124, 156, 255, 0.18);
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 2rem;
+  color: var(--fg);
+  background:
+    radial-gradient(circle at 50% 0%, var(--bg-glow), transparent 60%),
+    var(--bg);
+}
+
+.hero {
+  max-width: min(72rem, 95vw);
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.hook {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.5rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.accent {
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.subhook {
+  margin: 1rem 0 0;
+  font-size: clamp(1rem, 2.5vw, 1.35rem);
+  color: var(--fg-muted);
+}
+
+/* The race fold. This whole section is sized to double as the 1200×630
+   og:image: dual panels side by side, large legible numbers, dark theme. */
+.race {
+  margin-top: 2.5rem;
+}
+
+/* Load-bearing fallback notice: non-apologetic, states which GPU backend the
+   race actually used when WebGPU was unavailable. Hidden until the environment
+   probe (or a post-race reconciliation) finds the GPU lane is not WebGPU. */
+.race__banner {
+  margin: 0 0 1.5rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  text-align: center;
+  color: var(--fg);
+  background: rgba(255, 169, 77, 0.1);
+  border: 1px solid rgba(255, 169, 77, 0.4);
+  border-radius: 10px;
+}
+
+/* Reference clip shown to visitors whose browser can't run WebGPU (and mobile):
+   they still get the live fallback race below, but this guarantees they see the
+   WebGPU payoff. The img holds an illustrative animated SVG until the recorded
+   clip ships with the launch assets. */
+.race-reference {
+  margin: 0 0 1.5rem;
+}
+
+.race-reference__media {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  display: block;
+}
+
+.race-reference__caption {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+  line-height: 1.45;
+}
+
+.race__panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(1rem, 3vw, 2rem);
+}
+
+.race-panel {
+  display: grid;
+  grid-template-rows: auto auto auto auto auto;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.race-panel--won {
+  border-color: var(--accent-2);
+  box-shadow: 0 0 28px rgba(99, 230, 190, 0.22);
+}
+
+.race-panel--failed {
+  border-color: var(--warn);
+}
+
+.race-panel__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.race-panel__backend {
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.race-panel__phase {
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.race-panel__scatter {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  height: auto;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.race-panel__timer {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 0.4rem;
+}
+
+.race-panel__timer-value {
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.race-panel__timer-unit {
+  font-size: 1.1rem;
+  color: var(--fg-muted);
+}
+
+.race-panel__caption {
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+  min-height: 1.2em;
+}
+
+.race-panel__track {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.race-panel__bar {
+  width: 0;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  transition: width 90ms linear;
+}
+
+.race-panel[data-lane="cpu"] .race-panel__bar {
+  background: linear-gradient(90deg, var(--accent-3), var(--cluster-4));
+}
+
+.race-panel--won .race-panel__bar {
+  box-shadow: 0 0 14px var(--accent-2);
+}
+
+.race__tiles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.75rem;
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1rem 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.tile__value {
+  font-size: clamp(1.4rem, 4vw, 2.4rem);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.tile__label {
+  font-size: 0.8rem;
+  color: var(--fg-muted);
+}
+
+/* The tweet line: emphasize the multiplier above every other tile. */
+.tile--multiplier {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, rgba(124, 156, 255, 0.16), var(--panel));
+}
+
+.tile--multiplier .tile__value {
+  color: var(--accent-2);
+}
+
+.race__parity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 1.5rem auto 0;
+  font-size: 0.95rem;
+  color: var(--fg-muted);
+}
+
+.race__parity-mark {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--fg-muted);
+  flex: none;
+}
+
+.race__parity[data-state="match"] .race__parity-mark {
+  background: var(--ok);
+}
+
+.race__parity[data-state="match"] {
+  color: var(--fg);
+}
+
+.race__parity[data-state="diverged"] {
+  color: var(--warn);
+}
+
+.race__parity[data-state="diverged"] .race__parity-mark {
+  background: var(--warn);
+}
+
+/* Incomplete race (a lane crashed or timed out): no verdict to show, so it stays
+   neutral rather than borrowing the divergence warning colour. */
+.race__parity[data-state="error"] .race__parity-mark {
+  background: var(--fg-muted);
+}
+
+.race__disclosure {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.race__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+}
+
+.race__first-run {
+  display: block;
+  margin-top: 0.5rem;
+}
+
+.race__slider {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 32rem;
+  margin: 1.75rem auto 0;
+}
+
+.race__slider-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.race__slider-value {
+  color: var(--fg);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Anchors the absolutely-positioned crossover mark to the track. The vertical
+   padding leaves room for the mark's label above the input. */
+.race__slider-track-wrap {
+  position: relative;
+  padding-top: 1.4rem;
+}
+
+.race__slider-input {
+  width: 100%;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* The mark is positioned from JS via --crossover-left and only shown in the
+   `bracketed` state — the one state backed by two measured, sign-straddling runs.
+   In the directional-hint states it sits at an edge and shows an arrow instead of
+   a value, so the page never draws a tick at a guessed n. */
+.race__crossover-mark {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--crossover-left, 50%);
+  width: 2px;
+  transform: translateX(-50%);
+  background: var(--accent-2);
+}
+
+.race__crossover-mark[data-state="unknown"] {
+  display: none;
+}
+
+.race__crossover-mark::after {
+  content: attr(data-label);
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-2);
+}
+
+/* When the crossover sits near a track end, the centred label would spill off
+   the slider; anchor it inward from the relevant edge instead. */
+.race__crossover-mark[data-edge="min"]::after {
+  left: 0;
+  transform: none;
+}
+
+.race__crossover-mark[data-edge="max"]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+/* Directional hints: no measured bracket yet, so pin to the edge the crossover
+   lies beyond and point that way rather than marking a position. */
+.race__crossover-mark[data-state="below_range"] {
+  left: 0;
+  background: transparent;
+}
+
+.race__crossover-mark[data-state="above_range"] {
+  left: 100%;
+  background: transparent;
+}
+
+.race__crossover-mark[data-state="below_range"]::after {
+  left: 0;
+  transform: none;
+  color: var(--fg-muted);
+}
+
+.race__crossover-mark[data-state="above_range"]::after {
+  left: auto;
+  right: 0;
+  transform: none;
+  color: var(--fg-muted);
+}
+
+.race__crossover-caption {
+  margin: 0;
+  min-height: 2.4em;
+  text-align: center;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.race__controls {
+  margin-top: 1.5rem;
+}
+
+.race__run {
+  padding: 0.65rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.race__run:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+/* Always-available "how this is timed" disclosure. Collapsed by default to keep
+   the fold clean, but never hidden — the protocol is one click from any visitor
+   who wants to audit the numbers. */
+.race__methodology {
+  max-width: 44rem;
+  margin: 2rem auto 0;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.race__methodology-summary {
+  padding: 0.85rem 1.1rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--fg);
+  cursor: pointer;
+}
+
+.race__methodology-body {
+  padding: 0 1.1rem 1.1rem;
+}
+
+.race__methodology-list {
+  margin: 0 0 1.1rem;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.race__methodology-list li {
+  margin-bottom: 0.4rem;
+}
+
+.race__methodology-list b {
+  color: var(--fg);
+}
+
+.race__methodology-list code,
+.race__methodology code {
+  font-size: 0.82em;
+  color: var(--accent-2);
+}
+
+/* Live config: each backend/version cell is filled from the worker's real
+   result so the panel never asserts a config the race did not run. */
+.race__config {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1.5rem;
+  margin: 0;
+  font-size: 0.82rem;
+}
+
+.race__config > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.race__config dt {
+  color: var(--fg-muted);
+}
+
+.race__config dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--fg);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.race__footer {
+  margin: 1.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.repo-link {
+  display: inline-block;
+  margin-top: 2.5rem;
+  color: var(--fg);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.15rem;
+  transition: color 0.15s ease;
+}
+
+.repo-link:hover {
+  color: var(--accent);
+}
+
+/* The sklearn-parity grid: 5 datasets × 5 algorithms, each cell a live scatter
+   coloured by the library's own labels. Sells "the clustering you know, in your
+   browser" — about parity, not speed, so it has no timers or bars. */
+.grid-section {
+  margin-top: 4rem;
+}
+
+.grid-section__title {
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+.grid-section__intro {
+  max-width: 44rem;
+  margin: 0 auto 1rem;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.grid-section__meta {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin: 0 0 1.5rem;
+  font-size: 0.85rem;
+  color: var(--fg-muted);
+}
+
+.grid-section__backend b {
+  color: var(--fg);
+}
+
+/* Live parameter controls that drive the grid. Each control starts in Auto (the
+   curated per-dataset value); moving it off Auto re-clusters the affected cells and
+   drops their scikit-learn parity badge. */
+.grid-controls-panel {
+  max-width: 44rem;
+  margin: 0 auto 1.75rem;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.grid-controls-panel__intro {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+.grid-controls-panel__intro b {
+  color: var(--fg);
+}
+
+.grid-controls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+}
+
+.grid-controls__control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.grid-controls__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.grid-controls__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.grid-controls__value {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-controls__widget {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.grid-controls__auto {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  color: var(--fg-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.grid-controls__slider {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.grid-controls__select {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font: inherit;
+  font-size: 0.82rem;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.grid-controls__slider:disabled,
+.grid-controls__select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.grid-controls__caption {
+  margin: 0;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--fg-muted);
+}
+
+.grid-controls__reset {
+  grid-column: 1 / -1;
+  justify-self: start;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.grid-controls__reset:enabled:hover {
+  border-color: var(--accent-2);
+}
+
+.grid-controls__reset:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* One label column plus five algorithm columns. The cells flow row-major after
+   the header row, so the markup order in grid_ui matches the visual order. */
+.demo-grid {
+  display: grid;
+  grid-template-columns: auto repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.demo-grid__col-head {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--fg);
+  padding-bottom: 0.25rem;
+}
+
+.demo-grid__row-head {
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-align: right;
+  padding-right: 0.6rem;
+  color: var(--fg);
+}
+
+.demo-grid__cell {
+  margin: 0;
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.4rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  transition: opacity 0.2s ease;
+}
+
+/* A cell waiting for its fit is dimmed; it brightens the instant labels land. */
+.demo-grid__cell[data-state="pending"] {
+  opacity: 0.4;
+}
+
+.demo-grid__cell[data-state="error"] {
+  border-color: rgba(255, 135, 135, 0.5);
+}
+
+.demo-grid__scatter {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1;
+  display: block;
+  border-radius: 6px;
+}
+
+.demo-grid__annotation {
+  font-size: 0.66rem;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--fg-muted);
+}
+
+/* The drift tier is the honest one to make legible: tint its caption warm so the
+   "boundary points differ under float32" cells stand out from the quiet matches. */
+.demo-grid__cell[data-parity="drifts"] .demo-grid__annotation {
+  color: var(--warn);
+}
+
+.demo-grid__cell[data-parity="no-truth"] .demo-grid__annotation,
+.demo-grid__cell[data-parity="no-reference"] .demo-grid__annotation {
+  font-style: italic;
+}
+
+/* An exploratory cell (a control moved off Auto) has dropped its scikit-learn
+   parity claim. Override every parity-tier annotation style with one neutral
+   "your params" look, and accent the cell border so the edited column reads as a
+   live sandbox distinct from the verified grid. */
+.demo-grid__cell[data-explore="true"] {
+  border-color: var(--accent);
+}
+
+.demo-grid__cell[data-explore="true"] .demo-grid__annotation {
+  color: var(--accent);
+  font-style: normal;
+}
+
+.grid-section__footnote {
+  max-width: 44rem;
+  margin: 1.5rem auto 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--fg-muted);
+}
+
+@media (max-width: 720px) {
+  .race__panels {
+    grid-template-columns: 1fr;
+  }
+
+  .race__tiles {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .race__config {
+    grid-template-columns: 1fr;
+  }
+
+  .grid-controls {
+    grid-template-columns: 1fr;
+  }
+
+  /* Drop the dataset row labels and tighten the gap so five cells still fit on a
+     phone; each cell's aria-label and column header keep it identifiable. */
+  .demo-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.25rem;
+  }
+
+  .demo-grid__corner,
+  .demo-grid__row-head {
+    display: none;
+  }
+
+  .demo-grid__annotation {
+    font-size: 0.55rem;
+  }
+}
+
+/* Visually-hidden live regions: announced by screen readers, invisible on screen.
+   The motion-independent feedback channel for the copy/share affordances. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Hero conversion bar: the install one-liner and a persistent Star button, kept
+   above the fold so the path to install/star is visible without scrolling. */
+.hero-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0;
+}
+
+.hero-cta__install,
+.code-cta__install {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem 0.35rem 0.85rem;
+}
+
+.hero-cta__cmd,
+.code-cta__cmd {
+  font-size: 0.88rem;
+  color: var(--accent-2);
+}
+
+/* Subtle pill copy buttons; the "copied" tint is a color swap (no motion), paired
+   with the live-region announcement. */
+.hero-cta__copy,
+.code-cta__copy,
+.code-panel__copy {
+  padding: 0.3rem 0.65rem;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--fg-muted);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.hero-cta__copy:hover,
+.code-cta__copy:hover,
+.code-panel__copy:hover {
+  color: var(--fg);
+  border-color: var(--accent);
+}
+
+.hero-cta__copy[data-copied="true"],
+.code-cta__copy[data-copied="true"],
+.code-panel__copy[data-copied="true"] {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+}
+
+/* Star links read as buttons; the share button is the filled primary call. */
+.hero-cta__star,
+.code-cta__star {
+  display: inline-block;
+  padding: 0.45rem 1rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--fg);
+  text-decoration: none;
+  background: var(--panel);
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.hero-cta__star:hover,
+.code-cta__star:hover {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.code-cta__share {
+  padding: 0.45rem 1.1rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.code-cta__share:hover {
+  opacity: 0.88;
+}
+
+/* Section 3 — the runnable code mirror for the selected grid cell. */
+.code-section {
+  margin-top: 4rem;
+}
+
+.code-section__title {
+  font-size: clamp(1.3rem, 3vw, 1.9rem);
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+.code-section__intro {
+  max-width: 44rem;
+  margin: 0 auto 1.5rem;
+  color: var(--fg-muted);
+  line-height: 1.5;
+}
+
+.code-panel {
+  max-width: 44rem;
+  margin: 0 auto;
+  text-align: left;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.code-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.code-panel__caption {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--fg);
+}
+
+.code-panel__pre {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+}
+
+.code-panel__code {
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--accent-2);
+  white-space: pre;
+}
+
+.code-cta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  max-width: 44rem;
+  margin: 1.25rem auto 0;
+}
+
+/* A grid cell is a selectable button: a pointer cursor, a focus ring for keyboard
+   navigation, and an accent halo on the selected cell that mirrors into the code
+   panel. The halo is a box-shadow so it never fights the parity/explore borders. */
+.demo-grid__cell {
+  cursor: pointer;
+}
+
+.demo-grid__cell:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.demo-grid__cell[aria-pressed="true"] {
+  box-shadow: 0 0 0 2px var(--accent-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .race-panel__bar {
+    transition: none;
+  }
+
+  .hero-cta__copy,
+  .code-cta__copy,
+  .code-panel__copy,
+  .hero-cta__star,
+  .code-cta__star,
+  .code-cta__share {
+    transition: none;
+  }
+}

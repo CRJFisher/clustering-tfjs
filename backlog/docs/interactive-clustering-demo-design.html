@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Interactive clustering demo — design &amp; architecture</title>
+<style>
+  :root {
+    --bg:        #0d1117;
+    --bg-2:      #131a24;
+    --panel:     #1a2230;
+    --panel-2:   #212c3d;
+    --ink:       #e8edf4;
+    --ink-2:     #aab6c6;
+    --ink-3:     #6f7e92;
+    --line:      #28313f;
+    --line-2:    #38465a;
+    /* colorblind-safe cluster accent palette (Okabe-Ito derived) */
+    --cpu:       #e8a13a;   /* amber  — CPU lane */
+    --gpu:       #4cc4d6;   /* cyan   — GPU lane */
+    --cl-a:      #56b4e9;
+    --cl-b:      #e69f00;
+    --cl-c:      #009e73;
+    --cl-d:      #cc79a7;
+    --cl-e:      #f0e442;
+    --good:      #3fb27f;
+    --warn:      #e8a13a;
+    --bad:       #e0607e;
+    --accent:    #7c8cf8;
+    --serif: ui-serif, "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --sans:  ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono:  ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(900px 500px at 80% -8%, rgba(76,196,214,.10), transparent 60%),
+      radial-gradient(900px 500px at 0% 0%, rgba(232,161,58,.08), transparent 55%),
+      var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .prose { max-width: 68ch; }
+
+  /* ---------- nav rails ---------- */
+  nav.crossdoc {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(13,17,23,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 10px max(5vw, 18px);
+    display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  }
+  nav.crossdoc .wordmark {
+    font-family: var(--mono); font-size: 13px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--gpu); font-weight: 700;
+  }
+  nav.crossdoc .wordmark b { color: var(--cpu); }
+  nav.outline {
+    position: sticky; top: 41px; z-index: 19;
+    background: rgba(19,26,36,.95);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    padding: 8px max(5vw, 18px);
+    display: flex; flex-wrap: wrap; gap: 7px;
+  }
+  nav.outline a {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--ink-2); text-decoration: none;
+    border: 1px solid var(--line-2); border-radius: 999px;
+    padding: 4px 11px; transition: .15s;
+  }
+  nav.outline a:hover, nav.outline a.active {
+    color: var(--bg); background: var(--gpu); border-color: var(--gpu);
+  }
+
+  main { width: 90%; max-width: 1500px; margin-inline: auto; padding: 28px 0 90px; }
+  section { margin: 46px 0; scroll-margin-top: 96px; }
+
+  .eyebrow {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--gpu); margin: 0 0 8px;
+  }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px, 4.4vw, 52px); line-height: 1.04; margin: 0 0 14px; letter-spacing: -.01em; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: clamp(22px, 2.8vw, 32px); margin: 0 0 6px; letter-spacing: -.01em; }
+  h3 { font-family: var(--sans); font-weight: 600; font-size: 17px; margin: 0 0 6px; color: var(--ink); }
+  .sec-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .sec-num { font-family: var(--mono); font-size: 13px; color: var(--ink-3); }
+  figcaption, .cap { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+
+  /* ---------- hero ---------- */
+  .hook {
+    font-family: var(--serif);
+    font-size: clamp(20px, 2.6vw, 30px);
+    line-height: 1.3;
+    color: var(--ink);
+    border-left: 4px solid var(--gpu);
+    padding: 4px 0 4px 20px;
+    margin: 22px 0 8px;
+    max-width: 24ch;
+  }
+  .hook .em { color: var(--gpu); }
+  .duality { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 26px; }
+  .duality .pane { border-radius: var(--radius); padding: 20px; border: 1px solid var(--line-2); position: relative; overflow: hidden; }
+  .duality .pane.speed { background: linear-gradient(150deg, rgba(76,196,214,.14), rgba(76,196,214,.03)); }
+  .duality .pane.trust { background: linear-gradient(150deg, rgba(0,158,115,.14), rgba(0,158,115,.03)); }
+  .duality .pane .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-2); }
+  .duality .pane h3 { font-size: 22px; font-family: var(--serif); margin: 4px 0 6px; }
+  .duality .pane.speed h3 { color: var(--gpu); }
+  .duality .pane.trust h3 { color: var(--cl-c); }
+  .duality .pane p { margin: 0; font-size: 14px; color: var(--ink-2); }
+
+  /* ---------- callouts ---------- */
+  .callout {
+    border-left: 4px solid var(--accent);
+    background: var(--bg-2);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    padding: 16px 20px; margin: 18px 0;
+  }
+  .callout.gpu  { border-left-color: var(--gpu); }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.bad  { border-left-color: var(--bad); }
+  .callout.good { border-left-color: var(--good); }
+  .callout .k { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 5px; }
+  .callout p { margin: 0; font-size: 14.5px; }
+  .callout.invert { background: var(--gpu); border: none; color: #06222a; }
+  .callout.invert .k { color: rgba(6,34,42,.7); }
+  .callout.invert b { color: #06222a; }
+
+  /* ---------- crossover widget ---------- */
+  .xover { display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: stretch; }
+  @media (max-width: 880px){ .xover { grid-template-columns: 1fr; } }
+  .xover .plot { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  .xover .plot svg { width: 100%; height: auto; display: block; }
+  .controls { display: flex; flex-direction: column; gap: 16px; }
+  .ctl-row label { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-2); display: flex; justify-content: space-between; margin-bottom: 7px; }
+  .ctl-row label b { color: var(--gpu); font-size: 15px; }
+  input[type=range] {
+    -webkit-appearance: none; appearance: none; width: 100%; height: 6px;
+    background: linear-gradient(90deg, var(--line-2), var(--line-2)); border-radius: 999px; outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--gpu); border: 3px solid var(--bg); cursor: grab; box-shadow: 0 0 0 1px var(--gpu);
+  }
+  input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--gpu); border: 3px solid var(--bg); cursor: grab; }
+  .readouts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .readout { background: var(--panel-2); border: 1px solid var(--line-2); border-radius: 12px; padding: 14px; }
+  .readout .lab { font-family: var(--mono); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-3); }
+  .readout .val { font-family: var(--serif); font-size: 30px; line-height: 1; margin-top: 6px; font-weight: 600; }
+  .readout.cpu .val { color: var(--cpu); }
+  .readout.gpu .val { color: var(--gpu); }
+  .readout .unit { font-family: var(--mono); font-size: 12px; color: var(--ink-3); margin-left: 4px; }
+  .speedup-banner {
+    border-radius: 12px; padding: 16px 18px; text-align: center;
+    background: var(--panel-2); border: 1px solid var(--line-2);
+  }
+  .speedup-banner .big { font-family: var(--serif); font-size: 38px; font-weight: 700; line-height: 1; }
+  .speedup-banner .flip { font-size: 14px; margin-top: 8px; color: var(--ink-2); min-height: 2.6em; }
+  .speedup-banner.cpuwin .big { color: var(--cpu); }
+  .speedup-banner.gpuwin .big { color: var(--gpu); }
+
+  /* ---------- generic table ---------- */
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); border-bottom: 1px solid var(--line-2); }
+  td code, th code, .mono { font-family: var(--mono); font-size: 12.5px; }
+  td.num { font-family: var(--mono); white-space: nowrap; }
+
+  /* magnitude bars */
+  .bar-cell { display: flex; align-items: center; gap: 10px; }
+  .bar { height: 10px; border-radius: 999px; background: var(--gpu); min-width: 3px; }
+  .bar.cpu { background: var(--cpu); }
+  .bar.dim { background: var(--ink-3); }
+  .bar-val { font-family: var(--mono); font-size: 13px; }
+
+  /* ---------- fairness checklist ---------- */
+  .checklist { display: grid; gap: 10px; }
+  .check {
+    display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: start;
+    background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gpu);
+    border-radius: 10px; padding: 13px 16px;
+  }
+  .check .badge {
+    width: 26px; height: 26px; border-radius: 50%; background: rgba(76,196,214,.16);
+    color: var(--gpu); font-family: var(--mono); font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .check .t { font-weight: 600; font-size: 14.5px; }
+  .check .d { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+
+  /* ---------- diagrams ---------- */
+  .diagram { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; overflow-x: auto; }
+  .diagram svg { display: block; width: 100%; height: auto; min-width: 560px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12.5px; color: var(--ink-2); }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; font-family: var(--mono); }
+  .swatch { width: 22px; height: 4px; border-radius: 2px; display: inline-block; }
+  .dot-leg { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+
+  /* roadmap dag */
+  .dag svg { min-width: 720px; }
+
+  /* fact corrections */
+  .facts { display: grid; gap: 12px; }
+  .fact { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; grid-template-columns: 22px 1fr; gap: 12px; }
+  .fact .mk { font-family: var(--mono); font-weight: 700; }
+  .fact.corr .mk { color: var(--bad); }
+  .fact.note .mk { color: var(--warn); }
+  .fact p { margin: 0; font-size: 13.5px; color: var(--ink-2); }
+  .fact b { color: var(--ink); }
+  .fact s { color: var(--ink-3); }
+
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0 16px; margin: 12px 0; }
+  details summary { cursor: pointer; padding: 14px 0; font-weight: 600; list-style: none; display: flex; align-items: center; gap: 10px; }
+  details summary::-webkit-details-marker { display: none; }
+  details summary::before { content: "▸"; color: var(--gpu); transition: .2s; }
+  details[open] summary::before { transform: rotate(90deg); }
+  details .body { padding: 0 0 16px; }
+
+  footer { border-top: 1px solid var(--line); margin-top: 60px; padding-top: 22px; color: var(--ink-3); font-family: var(--mono); font-size: 12px; }
+
+  @media (max-width: 720px){
+    .duality, .readouts { grid-template-columns: 1fr; }
+    nav.outline { display: none; }
+    nav.crossdoc { top: 0; }
+    nav.outline { top: 0; }
+  }
+</style>
+</head>
+<body>
+
+<nav class="crossdoc" aria-label="Project">
+  <span class="wordmark">clustering-<b>tfjs</b> · demo plan</span>
+  <span style="font-family:var(--mono);font-size:11px;color:var(--ink-3);">task-55 · WebGPU-vs-CPU race + sklearn grid</span>
+</nav>
+
+<nav class="outline" aria-label="Sections">
+  <a href="#idea">The idea</a>
+  <a href="#crossover">Crossover model</a>
+  <a href="#arch">One worker / backend</a>
+  <a href="#fairness">Fairness protocol</a>
+  <a href="#sequence">Timed sequence</a>
+  <a href="#workload">Spectral, not KMeans</a>
+  <a href="#roadmap">Roadmap M0–M6</a>
+  <a href="#fallback">WebGPU fallback</a>
+  <a href="#risks">Risks</a>
+  <a href="#facts">Fact-check</a>
+</nav>
+
+<main>
+
+  <!-- ============ HERO / THE IDEA ============ -->
+  <section id="idea">
+    <p class="eyebrow">Interactive clustering demo · design &amp; architecture</p>
+    <h1>scikit-learn clustering,<br>GPU-accelerated, in the browser.</h1>
+    <p class="hook prose">Two of the library's claims, made <span class="em">visible in 30 seconds</span> with zero install — speed you can watch, parity you already recognize.</p>
+
+    <div class="duality">
+      <div class="pane speed">
+        <span class="tag">Section 1 — the hero</span>
+        <h3>Speed · the race</h3>
+        <p>WebGPU vs CPU on one seeded dataset, side by side, with honest wall-clock timers and a "GPU is N.Nx faster" headline.</p>
+      </div>
+      <div class="pane trust">
+        <span class="tag">Section 2 — trust</span>
+        <h3>Trust · the grid</h3>
+        <p>The iconic scikit-learn toy-dataset grid recreated live across all five algorithms — instant "this is the sklearn I know."</p>
+      </div>
+    </div>
+
+    <div class="callout gpu">
+      <span class="k">The headline gap that IS the feature</span>
+      <p class="prose">WebGPU is not wired into the library today (only <code>cpu</code> / <code>webgl</code> / <code>wasm</code> / <code>tensorflow</code>). Adding <code>@tensorflow/tfjs-backend-webgpu</code> behind a per-backend ESM loader (M0) is the one library change worth making — and without it there is no race.</p>
+    </div>
+  </section>
+
+  <!-- ============ CROSSOVER MODEL ============ -->
+  <section id="crossover">
+    <div class="sec-head"><span class="sec-num">02</span><h2>The crossover model — drag <code>n</code>, watch it flip</h2></div>
+    <p class="cap prose">The most shareable, least cherry-pickable control: at small <code>n</code> the CPU wins on overhead; past the crossover the <code>O(n²·d)</code> math dominates and the GPU pulls ahead. <b>Illustrative cost model, not a live benchmark.</b></p>
+
+    <div class="card xover">
+      <div class="plot">
+        <svg id="xplot" viewBox="0 0 520 320" role="img" aria-label="Wall-time vs n cost curves for CPU and GPU lanes with a marked crossover point"></svg>
+        <div class="legend">
+          <span><span class="swatch" style="background:var(--cpu)"></span>CPU ≈ k·n²·d</span>
+          <span><span class="swatch" style="background:var(--gpu)"></span>GPU ≈ overhead + k·n²·d</span>
+          <span><span class="dot-leg" style="background:var(--accent)"></span>crossover</span>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="ctl-row">
+          <label>n (points) — fixed d = 32 <b id="nval">1000</b></label>
+          <input id="nslider" type="range" min="200" max="5000" step="50" value="1000" />
+          <div class="cap" style="margin-top:6px;display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink-3)"><span>200</span><span>crossover ≈ n=<b id="xn" style="color:var(--accent)">—</b></span><span>5000 cap</span></div>
+        </div>
+
+        <div class="readouts">
+          <div class="readout cpu"><div class="lab">CPU lane</div><div class="val"><span id="cpums">—</span><span class="unit">ms</span></div></div>
+          <div class="readout gpu"><div class="lab">WebGPU lane</div><div class="val"><span id="gpums">—</span><span class="unit">ms</span></div></div>
+        </div>
+
+        <div class="speedup-banner" id="suband">
+          <div class="big" id="subig">—</div>
+          <div class="flip" id="subflip">Drag the slider.</div>
+        </div>
+
+        <div class="callout warn" style="margin:0">
+          <span class="k">Reading anchors</span>
+          <p class="prose" style="font-size:13px">Model tuned to the real Spectral-affinity measurements: <code>1000×50 ≈ 21×</code>, <code>10000×100 ≈ 26×</code> on the native backend. At d=32 the on-page numbers approximate those.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ARCHITECTURE ============ -->
+  <section id="arch">
+    <div class="sec-head"><span class="sec-num">03</span><h2>One global engine per context → one worker per backend</h2></div>
+    <p class="cap prose">TensorFlow.js keeps a single global engine per JS context (<code>src/backend/backend.ts</code> is a module-level singleton; <code>Clustering.init</code> calls <code>tf.setBackend</code> once). WebGPU and CPU cannot be active together on the main thread — so a fair concurrent race <b>requires</b> a dedicated Web Worker per backend, each its own JS realm with its own engine. This is the only correct design.</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 880 430" role="img" aria-label="Architecture: main thread seeds one dataset and posts identical copies to a CPU worker and a WebGPU worker, each with its own tfjs engine, which return timings to the renderer">
+        <defs>
+          <marker id="arr" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#7c8cf8"/></marker>
+          <marker id="arrG" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#4cc4d6"/></marker>
+          <marker id="arrC" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#e8a13a"/></marker>
+        </defs>
+
+        <!-- main thread -->
+        <rect x="20" y="20" width="840" height="120" rx="12" fill="#161e2a" stroke="#38465a" stroke-dasharray="5 4"/>
+        <text x="36" y="44" font-family="ui-monospace,monospace" font-size="12" fill="#aab6c6" letter-spacing="2">MAIN THREAD · UI ORCHESTRATOR</text>
+        <rect x="40" y="58" width="200" height="62" rx="9" fill="#212c3d" stroke="#38465a"/>
+        <text x="140" y="84" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#e8edf4">Controls</text>
+        <text x="140" y="103" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#aab6c6">algorithm · n · run</text>
+        <rect x="262" y="58" width="240" height="62" rx="9" fill="#212c3d" stroke="#7c8cf8"/>
+        <text x="382" y="84" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#e8edf4">Seed ONE float32 dataset</text>
+        <text x="382" y="103" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#aab6c6">identical bytes to each lane</text>
+        <rect x="524" y="58" width="316" height="62" rx="9" fill="#212c3d" stroke="#38465a"/>
+        <text x="682" y="84" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="13" fill="#e8edf4">Render scatters · timers · bars</text>
+        <text x="682" y="103" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#3fb27f">OUTSIDE the timed window</text>
+
+        <!-- CPU worker -->
+        <rect x="20" y="210" width="400" height="170" rx="12" fill="#1a1407" stroke="#e8a13a"/>
+        <text x="36" y="236" font-family="ui-monospace,monospace" font-size="12" fill="#e8a13a" letter-spacing="2">WEB WORKER · CPU LANE</text>
+        <rect x="40" y="250" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="220" y="272" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">import core + backend-cpu + clustering-tfjs</text>
+        <rect x="40" y="290" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="220" y="312" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">Clustering.init(backend=cpu) — own engine</text>
+        <rect x="40" y="330" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="220" y="352" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">harness: warmup + timed Spectral affinity</text>
+
+        <!-- GPU worker -->
+        <rect x="460" y="210" width="400" height="170" rx="12" fill="#06222a" stroke="#4cc4d6"/>
+        <text x="476" y="236" font-family="ui-monospace,monospace" font-size="12" fill="#4cc4d6" letter-spacing="2">WEB WORKER · WEBGPU LANE</text>
+        <rect x="480" y="250" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="660" y="272" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">navigator.gpu? getBackend()=='webgpu'?</text>
+        <rect x="480" y="290" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="660" y="312" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">import core + backend-webgpu + clustering-tfjs</text>
+        <rect x="480" y="330" width="360" height="34" rx="7" fill="#212c3d" stroke="#38465a"/>
+        <text x="660" y="352" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11.5" fill="#e8edf4">harness: warmup + timed Spectral affinity</text>
+
+        <!-- edges -->
+        <path d="M382 120 L220 210" fill="none" stroke="#e8a13a" stroke-width="2" marker-end="url(#arrC)"/>
+        <path d="M382 120 L660 210" fill="none" stroke="#4cc4d6" stroke-width="2" marker-end="url(#arrG)"/>
+        <path d="M220 210 C 220 175, 600 175, 640 130" fill="none" stroke="#e8a13a" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrC)" opacity=".8"/>
+        <path d="M660 210 C 660 180, 720 175, 720 130" fill="none" stroke="#4cc4d6" stroke-width="1.6" stroke-dasharray="5 4" marker-end="url(#arrG)" opacity=".8"/>
+        <text x="150" y="170" font-family="ui-monospace,monospace" font-size="10.5" fill="#e8a13a">postMessage: identical copy ↓</text>
+        <text x="560" y="195" font-family="ui-monospace,monospace" font-size="10.5" fill="#4cc4d6">results: median_ms ↑</text>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#e8a13a"></span>CPU lane</span>
+        <span><span class="swatch" style="background:#4cc4d6"></span>WebGPU lane</span>
+        <span><span class="swatch" style="background:#7c8cf8"></span>seed dispatch</span>
+        <span><span class="swatch" style="background:#aab6c6;border-top:2px dashed #aab6c6;height:0"></span>postMessage (dashed)</span>
+      </div>
+    </div>
+
+    <div class="callout invert">
+      <span class="k">Load-bearing constraint</span>
+      <p class="prose">tfjs has <b>one global engine per JS context</b> — separate workers are not a preference, they are the only way to run two backends concurrently for a fair race.</p>
+    </div>
+  </section>
+
+  <!-- ============ FAIRNESS PROTOCOL ============ -->
+  <section id="fairness">
+    <div class="sec-head"><span class="sec-num">04</span><h2>The fairness protocol — honesty as a feature</h2></div>
+    <p class="cap prose">The demo faces Hacker News scrutiny, so the timing rules are surfaced in the UI, not buried. The same harness runs in every worker.</p>
+
+    <div class="checklist">
+      <div class="check"><div class="badge">1</div><div><div class="t">One float32 input, identical across lanes</div><div class="d">Never compare a float64 JS path against float32 GPU — the "speedup" would be partly a precision artifact.</div></div></div>
+      <div class="check"><div class="badge">2</div><div><div class="t">2–3 discarded warmups per backend</div><div class="d">Absorb WGSL shader compile, wasm instantiation, lazy kernel registration before any timed run.</div></div></div>
+      <div class="check"><div class="badge">3</div><div><div class="t">Time the full call including the awaited readback</div><div class="d"><code>await tensor.data()</code> is inside the timer. Timing only JS dispatch produces a fake ~100× and reads as dishonest.</div></div></div>
+      <div class="check"><div class="badge">4</div><div><div class="t">Exactly one readback boundary per run</div><div class="d">Identical across lanes, so no lane is advantaged by skipping a transfer.</div></div></div>
+      <div class="check"><div class="badge">5</div><div><div class="t">≥5 timed reps; report the median</div><div class="d">Plus min/max — never a single best run.</div></div></div>
+      <div class="check"><div class="badge">6</div><div><div class="t">Dispose between runs; assert numTensors returns to baseline</div><div class="d"><code>tf.memory().numTensors</code> back to baseline so leaks don't skew results.</div></div></div>
+      <div class="check"><div class="badge">7</div><div><div class="t">First-run shader-compile time disclosed separately</div><div class="d">Behind a toggle, never folded into the headline multiplier.</div></div></div>
+    </div>
+  </section>
+
+  <!-- ============ TIMED SEQUENCE ============ -->
+  <section id="sequence">
+    <div class="sec-head"><span class="sec-num">05</span><h2>Inside one timed run</h2></div>
+    <p class="cap prose">The timed region brackets the full Spectral-affinity compute <b>plus</b> the single awaited readback; first-run cost stays out of the headline.</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 880 300" role="img" aria-label="Sequence of one timed run: warmups discarded, then five-plus timed reps each bracketing compute and a single readback, then median reported separately from first-run time">
+        <defs>
+          <marker id="arr2" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#aab6c6"/></marker>
+        </defs>
+        <!-- lifelines -->
+        <text x="80" y="26" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#aab6c6">Worker</text>
+        <text x="440" y="26" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#aab6c6">tfjs engine</text>
+        <text x="790" y="26" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#aab6c6">GPU / CPU device</text>
+        <line x1="80" y1="34" x2="80" y2="290" stroke="#38465a"/>
+        <line x1="440" y1="34" x2="440" y2="290" stroke="#38465a"/>
+        <line x1="790" y1="34" x2="790" y2="290" stroke="#38465a"/>
+
+        <!-- warmup band -->
+        <rect x="50" y="48" width="800" height="56" rx="8" fill="#1a1407" stroke="#e8a13a" opacity=".9"/>
+        <text x="64" y="68" font-family="ui-monospace,monospace" font-size="11" fill="#e8a13a">2–3 WARMUPS · discarded</text>
+        <line x1="80" y1="84" x2="790" y2="84" stroke="#e8a13a" stroke-width="1.6" marker-end="url(#arr2)"/>
+        <text x="430" y="98" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11.5" fill="#e8edf4">first warmup absorbs WGSL compile / wasm init / kernel registration</text>
+
+        <!-- timed band -->
+        <rect x="50" y="118" width="800" height="120" rx="8" fill="#06222a" stroke="#4cc4d6"/>
+        <text x="64" y="138" font-family="ui-monospace,monospace" font-size="11" fill="#4cc4d6">≥5 TIMED REPS · median reported</text>
+        <text x="80" y="160" font-family="ui-monospace,monospace" font-size="11" fill="#3fb27f">t0 = now()</text>
+        <line x1="100" y1="174" x2="788" y2="174" stroke="#4cc4d6" stroke-width="1.8" marker-end="url(#arr2)"/>
+        <text x="440" y="170" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11.5" fill="#e8edf4">Spectral affinity compute</text>
+        <line x1="788" y1="196" x2="102" y2="196" stroke="#4cc4d6" stroke-width="1.8" stroke-dasharray="5 4" marker-end="url(#arr2)"/>
+        <text x="440" y="192" text-anchor="middle" font-family="ui-monospace,monospace" font-size="11" fill="#4cc4d6">await tensor.data() — SINGLE readback</text>
+        <text x="80" y="218" font-family="ui-monospace,monospace" font-size="11" fill="#3fb27f">t1 = now() · dispose · assert numTensors==baseline</text>
+        <text x="64" y="232" font-family="ui-monospace,monospace" font-size="10" fill="#aab6c6">↑ timed window INCLUDES the readback</text>
+
+        <!-- output -->
+        <rect x="50" y="252" width="800" height="34" rx="8" fill="#212c3d" stroke="#38465a"/>
+        <text x="440" y="274" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="12" fill="#e8edf4">return { median_ms, min/max, first_run_ms (kept separate), labels } → UI same-result check</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ============ WORKLOAD ============ -->
+  <section id="workload">
+    <div class="sec-head"><span class="sec-num">06</span><h2>Why Spectral affinity is the headline — not KMeans</h2></div>
+    <p class="cap prose">Spectral RBF affinity construction (<code>O(n²·d)</code>) is essentially one big matmul/exp block with a single readback before the eigensolver — the cleanest, largest, most defensible gap. KMeans is a trap: its Lloyd loop reads back every iteration and reduces centroids in a pure-JS double loop, stalling the GPU on the bus.</p>
+
+    <div class="card">
+      <table>
+        <thead><tr><th>Workload · config</th><th>CPU</th><th>Native tensor</th><th>Speedup</th><th style="width:34%">relative GPU win</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Spectral affinity · <code>1000 × 50</code></td>
+            <td class="num">~1,410 ms</td><td class="num">~67 ms</td><td class="num" style="color:var(--gpu);font-weight:700">~21×</td>
+            <td><div class="bar-cell"><span class="bar" style="width:80%"></span><span class="bar-val" style="color:var(--gpu)">21×</span></div></td>
+          </tr>
+          <tr>
+            <td>Spectral affinity · <code>10000 × 100</code></td>
+            <td class="num">~140,738 ms</td><td class="num">~5,392 ms</td><td class="num" style="color:var(--gpu);font-weight:700">~26×</td>
+            <td><div class="bar-cell"><span class="bar" style="width:100%"></span><span class="bar-val" style="color:var(--gpu)">26×</span></div></td>
+          </tr>
+          <tr>
+            <td>KMeans · Lloyd loop <span class="mono" style="color:var(--ink-3)">(reads back every iter)</span></td>
+            <td class="num" style="color:var(--ink-3)">—</td><td class="num" style="color:var(--ink-3)">—</td><td class="num" style="color:var(--warn);font-weight:700">~1.2×</td>
+            <td><div class="bar-cell"><span class="bar dim" style="width:5%"></span><span class="bar-val" style="color:var(--warn)">1.2× · grid eye-candy only</span></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="callout warn">
+      <span class="k">Harness honesty</span>
+      <p class="prose">The harness calls the <b>real published library</b>, never <code>benchmarks/browser_backend.ts</code> — that file runs a simulated fake KMeans on random tensors and must not produce marketing numbers.</p>
+    </div>
+  </section>
+
+  <!-- ============ ROADMAP ============ -->
+  <section id="roadmap">
+    <div class="sec-head"><span class="sec-num">07</span><h2>Delivery roadmap — M0 → M6, tasks 55.1 → 55.10</h2></div>
+    <p class="cap prose">A dependency DAG: each subtask maps to a milestone; an arrow means "must land first." The race MVP (M2) is the screenshot-worthy core; everything to its right is conversion and polish.</p>
+
+    <div class="diagram dag">
+      <svg viewBox="0 0 980 360" role="img" aria-label="Dependency graph of subtasks 55.1 through 55.10 grouped by milestone M0 to M6">
+        <defs>
+          <marker id="dep" markerWidth="8" markerHeight="8" refX="6.5" refY="4" orient="auto"><path d="M0 0L8 4L0 8Z" fill="#6f7e92"/></marker>
+        </defs>
+        <!-- milestone column labels -->
+        <g font-family="ui-monospace,monospace" font-size="11" fill="#4cc4d6" letter-spacing="1">
+          <text x="60"  y="24">M0</text><text x="190" y="24">M1</text><text x="320" y="24">M2</text>
+          <text x="500" y="24">M3</text><text x="680" y="24">M4</text><text x="830" y="24">M5</text><text x="910" y="24">M6</text>
+        </g>
+
+        <!-- edges (draw under nodes) -->
+        <g fill="none" stroke="#6f7e92" stroke-width="1.6" marker-end="url(#dep)">
+          <path d="M120 70 L260 100"/>            <!-- 55.1 -> 55.3 -->
+          <path d="M120 200 L260 130"/>           <!-- 55.2 -> 55.3 -->
+          <path d="M380 115 L440 115"/>           <!-- 55.3 -> 55.4 -->
+          <path d="M560 115 L620 70"/>            <!-- 55.4 -> 55.5 -->
+          <path d="M740 75 L800 75"/>             <!-- 55.5 -> 55.6 -->
+          <path d="M560 130 L620 200"/>           <!-- 55.4 -> 55.7 -->
+          <path d="M740 205 L800 205"/>           <!-- 55.7 -> 55.8 -->
+          <path d="M880 90 L900 130"/>            <!-- 55.6 -> 55.9 -->
+          <path d="M880 200 L905 155"/>           <!-- 55.8 -> 55.9 -->
+          <path d="M945 145 L945 300"/>           <!-- 55.9 -> 55.10 -->
+        </g>
+
+        <!-- nodes: helper rect+two texts -->
+        <g font-family="ui-monospace,monospace">
+          <!-- 55.1 -->
+          <rect x="40" y="50" width="100" height="44" rx="8" fill="#212c3d" stroke="#4cc4d6"/>
+          <text x="90" y="70" text-anchor="middle" font-size="13" fill="#e8edf4">55.1</text>
+          <text x="90" y="86" text-anchor="middle" font-size="9.5" fill="#aab6c6">WebGPU loader</text>
+          <!-- 55.2 -->
+          <rect x="40" y="180" width="100" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="90" y="200" text-anchor="middle" font-size="13" fill="#e8edf4">55.2</text>
+          <text x="90" y="216" text-anchor="middle" font-size="9.5" fill="#aab6c6">Vite + Pages</text>
+          <!-- 55.3 -->
+          <rect x="260" y="93" width="120" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="320" y="113" text-anchor="middle" font-size="13" fill="#e8edf4">55.3</text>
+          <text x="320" y="129" text-anchor="middle" font-size="9.5" fill="#aab6c6">race harness</text>
+          <!-- 55.4 -->
+          <rect x="440" y="93" width="120" height="44" rx="8" fill="#1a2230" stroke="#4cc4d6" stroke-width="2"/>
+          <text x="500" y="113" text-anchor="middle" font-size="13" fill="#4cc4d6">55.4 ★</text>
+          <text x="500" y="129" text-anchor="middle" font-size="9.5" fill="#aab6c6">dual-panel race UI</text>
+          <!-- 55.5 -->
+          <rect x="620" y="50" width="120" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="680" y="70" text-anchor="middle" font-size="13" fill="#e8edf4">55.5</text>
+          <text x="680" y="86" text-anchor="middle" font-size="9.5" fill="#aab6c6">crossover slider</text>
+          <!-- 55.6 -->
+          <rect x="800" y="53" width="100" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="850" y="73" text-anchor="middle" font-size="13" fill="#e8edf4">55.6</text>
+          <text x="850" y="89" text-anchor="middle" font-size="9.5" fill="#aab6c6">fallback + method</text>
+          <!-- 55.7 -->
+          <rect x="620" y="180" width="120" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="680" y="200" text-anchor="middle" font-size="13" fill="#e8edf4">55.7</text>
+          <text x="680" y="216" text-anchor="middle" font-size="9.5" fill="#aab6c6">sklearn grid</text>
+          <!-- 55.8 -->
+          <rect x="800" y="183" width="100" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="850" y="203" text-anchor="middle" font-size="13" fill="#e8edf4">55.8</text>
+          <text x="850" y="219" text-anchor="middle" font-size="9.5" fill="#aab6c6">param sliders</text>
+          <!-- 55.9 -->
+          <rect x="895" y="120" width="100" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="945" y="140" text-anchor="middle" font-size="13" fill="#e8edf4">55.9</text>
+          <text x="945" y="156" text-anchor="middle" font-size="9.5" fill="#aab6c6">code + CTA</text>
+          <!-- 55.10 -->
+          <rect x="895" y="300" width="100" height="44" rx="8" fill="#212c3d" stroke="#38465a"/>
+          <text x="945" y="320" text-anchor="middle" font-size="13" fill="#e8edf4">55.10</text>
+          <text x="945" y="336" text-anchor="middle" font-size="9.5" fill="#aab6c6">launch kit</text>
+        </g>
+      </svg>
+      <div class="legend">
+        <span><span class="dot-leg" style="background:var(--gpu)"></span>M0 library change</span>
+        <span>★ = the screenshot-worthy MVP (race UI)</span>
+        <span><span class="swatch" style="background:#6f7e92"></span>must land first</span>
+      </div>
+    </div>
+
+    <details>
+      <summary>Milestone → task map</summary>
+      <div class="body">
+        <table>
+          <thead><tr><th>Milestone</th><th>Task</th><th>Goal</th></tr></thead>
+          <tbody>
+            <tr><td>M0</td><td><code>55.1</code></td><td>Wire up WebGPU + per-backend ESM loader (the one library change)</td></tr>
+            <tr><td>M1</td><td><code>55.2</code></td><td>Vite site skeleton + GitHub Pages deploy; blank-but-live proves the pipeline</td></tr>
+            <tr><td>M2</td><td><code>55.3, 55.4</code></td><td>Race MVP: fair worker harness → dual-panel race UI</td></tr>
+            <tr><td>M3</td><td><code>55.5, 55.6</code></td><td>Crossover slider, methodology expander, graceful fallback + recorded GIF</td></tr>
+            <tr><td>M4</td><td><code>55.7, 55.8</code></td><td>The familiar grid + per-algorithm sliders</td></tr>
+            <tr><td>M5</td><td><code>55.9</code></td><td>Conversion: code panel, install CTA, star button, permalinks</td></tr>
+            <tr><td>M6</td><td><code>55.10</code></td><td>Launch polish: README hero, npm metadata, og:image, race GIF, Show HN kit</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ FALLBACK ============ -->
+  <section id="fallback">
+    <div class="sec-head"><span class="sec-num">08</span><h2>Graceful WebGPU fallback — the banner is load-bearing</h2></div>
+    <p class="cap prose">WebGPU is not clean cross-browser: Chrome/Edge 113+, Safari (macOS/iOS 26), Firefox 141+ Win / 145+ macOS-ARM — <b>Firefox on Linux/Android has none yet</b>, and much social traffic is mobile. So the fallback is core, not an afterthought.</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 880 300" role="img" aria-label="Fallback decision flow from establishing the GPU lane through navigator.gpu and getBackend checks to either a genuine WebGPU lane or an honestly relabelled WebGL or CPU lane, with a recorded GIF shown to everyone">
+        <defs>
+          <marker id="arr3" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#aab6c6"/></marker>
+          <marker id="arr3y" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#3fb27f"/></marker>
+          <marker id="arr3n" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#e8a13a"/></marker>
+        </defs>
+
+        <rect x="20" y="60" width="120" height="46" rx="9" fill="#212c3d" stroke="#38465a"/>
+        <text x="80" y="88" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="12.5" fill="#e8edf4">Establish GPU lane</text>
+
+        <!-- Q1 diamond -->
+        <path d="M250 83 L300 53 L350 83 L300 113 Z" fill="#212c3d" stroke="#7c8cf8"/>
+        <text x="300" y="80" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="#e8edf4">navigator.gpu?</text>
+        <text x="300" y="94" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="#e8edf4"></text>
+
+        <!-- import + setBackend -->
+        <rect x="420" y="36" width="150" height="40" rx="9" fill="#212c3d" stroke="#38465a"/>
+        <text x="495" y="60" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10.5" fill="#e8edf4">import backend-webgpu</text>
+
+        <!-- Q2 diamond -->
+        <path d="M650 56 L700 26 L750 56 L700 86 Z" fill="#212c3d" stroke="#7c8cf8"/>
+        <text x="700" y="53" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#e8edf4">getBackend()</text>
+        <text x="700" y="65" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#e8edf4">=='webgpu'?</text>
+
+        <!-- READY -->
+        <rect x="780" y="36" width="90" height="40" rx="9" fill="#06222a" stroke="#4cc4d6"/>
+        <text x="825" y="55" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11" fill="#4cc4d6">genuine</text>
+        <text x="825" y="69" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11" fill="#4cc4d6">WebGPU lane</text>
+
+        <!-- WebGL promote -->
+        <rect x="420" y="130" width="200" height="44" rx="9" fill="#1a1407" stroke="#e8a13a"/>
+        <text x="520" y="150" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11.5" fill="#e8edf4">Promote WebGL as "GPU"</text>
+        <text x="520" y="166" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#e8a13a">honest banner</text>
+
+        <!-- FB chain -->
+        <rect x="650" y="130" width="200" height="44" rx="9" fill="#1a1407" stroke="#e8a13a"/>
+        <text x="750" y="150" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="11.5" fill="#e8edf4">webgl → wasm → cpu</text>
+        <text x="750" y="166" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9.5" fill="#e8a13a">relabel honestly</text>
+
+        <!-- GIF -->
+        <rect x="300" y="230" width="560" height="46" rx="9" fill="#212c3d" stroke="#cc79a7"/>
+        <text x="580" y="250" text-anchor="middle" font-family="ui-sans-serif,system-ui" font-size="12" fill="#e8edf4">Non-WebGPU / mobile visitors ALSO see a recorded ≤6s race GIF/MP4</text>
+        <text x="580" y="266" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#cc79a7">always show the payoff</text>
+
+        <!-- edges -->
+        <path d="M140 83 L246 83" fill="none" stroke="#aab6c6" stroke-width="1.6" marker-end="url(#arr3)"/>
+        <path d="M350 83 L417 60" fill="none" stroke="#3fb27f" stroke-width="1.6" marker-end="url(#arr3y)"/>
+        <text x="378" y="64" font-family="ui-monospace,monospace" font-size="10" fill="#3fb27f">yes</text>
+        <path d="M300 113 L300 152 L416 152" fill="none" stroke="#e8a13a" stroke-width="1.6" marker-end="url(#arr3n)"/>
+        <text x="306" y="132" font-family="ui-monospace,monospace" font-size="10" fill="#e8a13a">no</text>
+        <path d="M570 56 L648 56" fill="none" stroke="#aab6c6" stroke-width="1.6" marker-end="url(#arr3)"/>
+        <path d="M750 56 L778 56" fill="none" stroke="#3fb27f" stroke-width="1.6" marker-end="url(#arr3y)"/>
+        <text x="755" y="48" font-family="ui-monospace,monospace" font-size="10" fill="#3fb27f">yes</text>
+        <path d="M700 86 L700 130" fill="none" stroke="#e8a13a" stroke-width="1.6" marker-end="url(#arr3n)"/>
+        <text x="706" y="112" font-family="ui-monospace,monospace" font-size="10" fill="#e8a13a">no</text>
+        <path d="M520 174 L520 230" fill="none" stroke="#aab6c6" stroke-width="1.4" marker-end="url(#arr3)"/>
+        <path d="M750 174 L740 230" fill="none" stroke="#aab6c6" stroke-width="1.4" marker-end="url(#arr3)"/>
+      </svg>
+      <div class="legend">
+        <span><span class="swatch" style="background:#3fb27f"></span>yes / genuine lane</span>
+        <span><span class="swatch" style="background:#e8a13a"></span>no / honest fallback</span>
+        <span><span class="swatch" style="background:#cc79a7"></span>payoff shown to everyone</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RISKS ============ -->
+  <section id="risks">
+    <div class="sec-head"><span class="sec-num">09</span><h2>Risks → mitigations baked into the plan</h2></div>
+    <div class="card">
+      <table>
+        <thead><tr><th style="width:42%">Risk</th><th>Mitigation</th></tr></thead>
+        <tbody>
+          <tr><td>Dishonest / cherry-picked benchmark → HN backlash</td><td>Fairness protocol surfaced in the UI; small-<code>n</code> CPU win shown openly; "numbers from YOUR hardware" footer; permalinks for "try your own".</td></tr>
+          <tr><td>WebGPU cold-start makes GPU look slower on first click</td><td>Discarded warmups; first-run time disclosed separately, never in the headline.</td></tr>
+          <tr><td>Float32 GPU label drift vs sklearn-parity claim</td><td>Curate grid datasets/params where parity holds; annotate expected differences rather than hide them.</td></tr>
+          <tr><td>Non-WebGPU / mobile visitors see a broken lane</td><td>Feature-detect + verify <code>getBackend()</code>; relabel to WebGL; embed a recorded race GIF for everyone.</td></tr>
+          <tr><td>Scope creep / polish trap</td><td>Ship ONE page (race + grid + code + CTA); WASM-threads descoped; existing <code>examples/</code> treated as throwaway.</td></tr>
+          <tr><td>Demo link bit-rot</td><td>Pin all tfjs backends to <code>4.22.x</code>; CI guard fails if the site bundle stops building.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ============ FACT-CHECK ============ -->
+  <section id="facts">
+    <div class="sec-head"><span class="sec-num">10</span><h2>Fact-check corrections folded into the plan</h2></div>
+    <p class="cap prose">An adversarial fact-check returned minor issues on every dimension; the corrections are now load-bearing.</p>
+    <div class="facts">
+      <div class="fact corr"><span class="mk">✗</span><p>The COOP/COEP service-worker shim is <b>gzuidhof/coi-serviceworker</b> (Guido Zuidhof), <s>not "Tomayac"</s> — Thomas Steiner only blogged about it.</p></div>
+      <div class="fact note"><span class="mk">!</span><p>WebGPU is <b>not cleanly "Baseline 2026"</b>: Chrome/Edge 113+, Safari (macOS/iOS 26), Firefox 141+ Win / 145+ macOS-ARM — <b>Firefox on Linux/Android has none yet</b>. The degradation banner is load-bearing.</p></div>
+      <div class="fact note"><span class="mk">!</span><p>Pin <code>tfjs-core</code>, <code>-backend-cpu</code>, <code>-backend-webgl</code>, <code>-backend-webgpu</code>, <code>-backend-wasm</code> all to the same <b>4.22.x</b> to avoid kernel-registry mismatches; this locks the demo to the 4.x line (no 5.x backend line is published).</p></div>
+      <div class="fact note"><span class="mk">!</span><p>The "~3× WebGPU-over-WebGL" figure is <b>real but the commonly-cited TF blog URL 404s</b>; cite <code>developer.chrome.com/blog/webgpu-io2023</code> or the tfjs-backend-webgpu README. Defend the clustering win with the repo's own Spectral-affinity numbers.</p></div>
+      <div class="fact corr"><span class="mk">✗</span><p><b>KMeans is the wrong default for the multiplier</b> (~1.2×, reads back every Lloyd iteration) — animation eye-candy only. <b>Spectral RBF affinity</b> is the headline workload.</p></div>
+      <div class="fact corr"><span class="mk">✗</span><p>Do <b>not</b> reuse <code>benchmarks/browser_backend.ts</code> for marketing numbers — it runs a simulated fake KMeans on random tensors. The harness calls the real published library.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    comprehension companion for backlog/docs/interactive-clustering-demo-design.md · task-55 (M0–M6, subtasks 55.1–55.10)<br>
+    crossover figures are an ILLUSTRATIVE cost model, not a live benchmark · self-contained, opens offline
+  </footer>
+
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---- crossover cost model ----------------------------------------------
+  // Illustrative only. Spectral RBF affinity is O(n^2 * d); we hold d = 32.
+  // CPU wall time has effectively no fixed overhead and scales with the math.
+  // GPU wall time = a fixed dispatch+upload+readback overhead + the same math
+  // divided by a large parallel throughput factor. Constants are tuned so the
+  // large-n speedup approaches the recorded anchors (~21x..~26x) and the two
+  // curves cross at a small, plausible n.
+  var D = 32;
+  var K_CPU = 1.45e-6;          // ms per (n^2 * d) unit on the CPU lane
+  var GPU_OVERHEAD = 6.0;       // ms fixed per run (dispatch + upload + single readback)
+  var K_GPU = K_CPU / 70;       // GPU does the same math ~70x faster per unit
+
+  var work = function (n) { return n * n * D; };
+  var cpu_ms = function (n) { return K_CPU * work(n); };
+  var gpu_ms = function (n) { return GPU_OVERHEAD + K_GPU * work(n); };
+
+  // crossover: K_CPU*w = OVH + K_GPU*w  ->  w = OVH / (K_CPU - K_GPU)
+  var w_cross = GPU_OVERHEAD / (K_CPU - K_GPU);
+  var n_cross = Math.round(Math.sqrt(w_cross / D));
+
+  var N_MIN = 200, N_MAX = 5000;
+
+  // --- plot geometry ---
+  var W = 520, H = 320, PADL = 52, PADR = 16, PADT = 18, PADB = 40;
+  var plotW = W - PADL - PADR, plotH = H - PADT - PADB;
+
+  // y-axis uses a log scale so both small-n and large-n are legible
+  var yMax = cpu_ms(N_MAX);
+  var yMin = 1; // ms floor for log
+  function lx(n) { return PADL + (n - N_MIN) / (N_MAX - N_MIN) * plotW; }
+  function ly(ms) {
+    var v = Math.max(ms, yMin);
+    var t = (Math.log10(v) - Math.log10(yMin)) / (Math.log10(yMax) - Math.log10(yMin));
+    return PADT + (1 - t) * plotH;
+  }
+
+  function curvePath(fn) {
+    var d = "", first = true;
+    for (var n = N_MIN; n <= N_MAX; n += 60) {
+      d += (first ? "M" : "L") + lx(n).toFixed(1) + " " + ly(fn(n)).toFixed(1) + " ";
+      first = false;
+    }
+    return d.trim();
+  }
+
+  function gridlines() {
+    var g = "";
+    [1, 10, 100, 1000, 10000].forEach(function (ms) {
+      if (ms > yMax) return;
+      var y = ly(ms);
+      g += '<line x1="' + PADL + '" y1="' + y.toFixed(1) + '" x2="' + (W - PADR) + '" y2="' + y.toFixed(1) + '" stroke="#28313f" stroke-width="1"/>';
+      g += '<text x="' + (PADL - 6) + '" y="' + (y + 4).toFixed(1) + '" text-anchor="end" font-family="ui-monospace,monospace" font-size="9" fill="#6f7e92">' + ms + 'ms</text>';
+    });
+    [200, 1500, 3000, 5000].forEach(function (n) {
+      var x = lx(n);
+      g += '<text x="' + x.toFixed(1) + '" y="' + (H - PADB + 16) + '" text-anchor="middle" font-family="ui-monospace,monospace" font-size="9" fill="#6f7e92">' + n + '</text>';
+    });
+    return g;
+  }
+
+  var svg = document.getElementById("xplot");
+
+  function drawPlot(n) {
+    var xc = lx(n_cross), yc = ly(cpu_ms(n_cross));
+    var markerX = lx(n);
+    var parts = [];
+    parts.push(gridlines());
+    // axes
+    parts.push('<line x1="' + PADL + '" y1="' + PADT + '" x2="' + PADL + '" y2="' + (H - PADB) + '" stroke="#38465a"/>');
+    parts.push('<line x1="' + PADL + '" y1="' + (H - PADB) + '" x2="' + (W - PADR) + '" y2="' + (H - PADB) + '" stroke="#38465a"/>');
+    // curves
+    parts.push('<path d="' + curvePath(cpu_ms) + '" fill="none" stroke="#e8a13a" stroke-width="2.4"/>');
+    parts.push('<path d="' + curvePath(gpu_ms) + '" fill="none" stroke="#4cc4d6" stroke-width="2.4"/>');
+    // crossover marker
+    parts.push('<line x1="' + xc.toFixed(1) + '" y1="' + PADT + '" x2="' + xc.toFixed(1) + '" y2="' + (H - PADB) + '" stroke="#7c8cf8" stroke-width="1" stroke-dasharray="4 4" opacity=".7"/>');
+    parts.push('<circle cx="' + xc.toFixed(1) + '" cy="' + yc.toFixed(1) + '" r="5" fill="#7c8cf8" stroke="#0d1117" stroke-width="1.5"/>');
+    // live n marker
+    parts.push('<line x1="' + markerX.toFixed(1) + '" y1="' + PADT + '" x2="' + markerX.toFixed(1) + '" y2="' + (H - PADB) + '" stroke="#e8edf4" stroke-width="1.2" opacity=".55"/>');
+    parts.push('<circle cx="' + markerX.toFixed(1) + '" cy="' + ly(cpu_ms(n)).toFixed(1) + '" r="4" fill="#e8a13a"/>');
+    parts.push('<circle cx="' + markerX.toFixed(1) + '" cy="' + ly(gpu_ms(n)).toFixed(1) + '" r="4" fill="#4cc4d6"/>');
+    // axis titles
+    parts.push('<text x="' + (PADL + plotW / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-family="ui-monospace,monospace" font-size="10" fill="#aab6c6">n (points) · log-time</text>');
+    svg.innerHTML = parts.join("");
+  }
+
+  function fmt(ms) {
+    if (ms >= 1000) return (ms / 1000).toFixed(ms >= 10000 ? 0 : 1) + " s";
+    if (ms >= 100) return Math.round(ms) + "";
+    return ms.toFixed(1);
+  }
+  function fmtRaw(ms) {
+    if (ms >= 1000) return (ms / 1000).toFixed(1) + "k";
+    return Math.round(ms) + "";
+  }
+
+  var els = {
+    n: document.getElementById("nslider"),
+    nval: document.getElementById("nval"),
+    cpu: document.getElementById("cpums"),
+    gpu: document.getElementById("gpums"),
+    band: document.getElementById("suband"),
+    big: document.getElementById("subig"),
+    flip: document.getElementById("subflip"),
+    xn: document.getElementById("xn")
+  };
+  els.xn.textContent = n_cross;
+
+  function update() {
+    var n = parseInt(els.n.value, 10);
+    var c = cpu_ms(n), g = gpu_ms(n);
+    els.nval.textContent = n;
+    els.cpu.textContent = fmtRaw(c);
+    els.gpu.textContent = fmtRaw(g);
+
+    var gpuWins = g < c;
+    var ratio = gpuWins ? (c / g) : (g / c);
+    els.big.textContent = (gpuWins ? "GPU " : "CPU ") + ratio.toFixed(1) + "× faster";
+    els.band.className = "speedup-banner " + (gpuWins ? "gpuwin" : "cpuwin");
+    els.flip.textContent = gpuWins
+      ? "GPU pulls ahead — the O(n²·d) math now dwarfs the fixed dispatch + upload + readback overhead."
+      : "At small n, CPU wins — GPU transfer + dispatch cost more than the math at this size.";
+
+    drawPlot(n);
+  }
+
+  els.n.addEventListener("input", update);
+  update();
+
+  // ---- scrollspy for the outline rail ------------------------------------
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.outline a"));
+  var map = {};
+  links.forEach(function (a) { map[a.getAttribute("href").slice(1)] = a; });
+  if ("IntersectionObserver" in window) {
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting && map[e.target.id]) {
+          links.forEach(function (l) { l.classList.remove("active"); });
+          map[e.target.id].classList.add("active");
+        }
+      });
+    }, { rootMargin: "-45% 0px -50% 0px" });
+    Object.keys(map).forEach(function (id) {
+      var s = document.getElementById(id);
+      if (s) obs.observe(s);
+    });
+  }
+})();
+</script>
+</body>
+</html>

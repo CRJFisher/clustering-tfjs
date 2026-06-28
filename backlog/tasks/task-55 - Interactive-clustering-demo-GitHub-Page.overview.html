@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55 — Interactive clustering demo (WebGPU vs CPU race)</title>
+<style>
+  :root{
+    --ivory:#f7f4ec; --slate:#2b2a26; --clay:#b5673f; --olive:#6f7a46; --oat:#e7dfca; --rust:#8f3a26;
+    --g100:#efeadd; --g200:#ddd6c4; --g300:#bdb6a3; --g400:#8d877a; --g500:#5d584e;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .prose{max-width:68ch}
+
+  .crossnav{position:sticky;top:0;z-index:10;background:var(--ivory);border-bottom:1px solid var(--g200);padding:.5rem 5%}
+  .crossnav .row{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-right:.3rem;width:100%;margin-bottom:.15rem}
+  .crossnav a,.crossnav span.cur,.crossnav span.pending{font-family:var(--mono);font-size:.7rem;text-decoration:none;padding:.26rem .55rem;border-radius:999px;border:1px solid var(--g200);display:inline-flex;align-items:center;gap:.35rem}
+  .crossnav a{color:var(--slate);background:#fff}
+  .crossnav a:hover{border-color:var(--clay)}
+  .crossnav span.cur{background:var(--slate);color:var(--ivory);border-color:var(--slate)}
+  .crossnav span.pending{color:var(--g400);background:transparent;border-style:dashed}
+  .crossnav .dot{width:7px;height:7px;border-radius:50%;flex:none}
+  .crossnav .pending .ng{font-size:.6rem;color:var(--g300);text-transform:uppercase;letter-spacing:.05em}
+  .crossnav a .ng{font-size:.6rem;text-transform:uppercase;letter-spacing:.05em}
+
+  main{width:90%;max-width:1600px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.2rem;scroll-margin-top:88px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--clay)}
+  h1{font-family:var(--serif);font-weight:600;font-size:2.2rem;line-height:1.1;margin:.3rem 0 .5rem}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .hook{font-family:var(--serif);font-style:italic;font-size:1.15rem;color:var(--g500);border-left:3px solid var(--clay);padding-left:.9rem;margin:.7rem 0}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--g200);border-radius:999px;padding:.25rem .6rem}
+  .chip strong{color:var(--clay)}
+  figcaption{font-family:var(--sans);font-size:.86rem;color:var(--g500);margin-top:.7rem}
+  figcaption b{color:var(--slate)}
+
+  /* hero diagram */
+  .hero{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .hero svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono);font-size:11px}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.8rem;font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* milestone timeline */
+  .tl{display:grid;gap:0;margin-top:.6rem}
+  .ms{display:grid;grid-template-columns:5.5rem 2rem 1fr;gap:.2rem;align-items:start}
+  .ms .when{font-family:var(--mono);font-size:.78rem;color:var(--clay);padding-top:.55rem;font-weight:600}
+  .ms .spine{display:flex;flex-direction:column;align-items:center}
+  .ms .d{width:15px;height:15px;border-radius:50%;background:var(--g300);border:3px solid var(--ivory);margin-top:.6rem;flex:none;z-index:1}
+  .ms.done .d{background:var(--olive)}
+  .ms.now .d{background:var(--clay)}
+  .ms .line{width:2px;flex:1;background:var(--g200);min-height:1.2rem}
+  .ms:last-child .line{display:none}
+  .ms .body{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:.7rem .9rem;margin:.35rem 0 .8rem}
+  .ms.done .body{border-color:var(--olive)}
+  .ms.now .body{border-color:var(--clay);box-shadow:0 0 0 1px var(--clay)}
+  .ms .body h3{font-family:var(--serif);font-size:1.05rem;margin:0 0 .25rem;display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+  .ms .body h3 .pill{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.15rem .45rem;font-style:normal;font-weight:400}
+  .ms.done h3 .pill{background:var(--olive);color:var(--ivory)}
+  .ms.now h3 .pill{background:var(--clay);color:var(--ivory)}
+  .ms .body .sub{font-size:.86rem;color:var(--g500)}
+  .ms .tasks{display:flex;flex-wrap:wrap;gap:.3rem;margin-top:.5rem}
+  .ms .tasks a,.ms .tasks span{font-family:var(--mono);font-size:.68rem;text-decoration:none;padding:.18rem .5rem;border-radius:999px;border:1px solid var(--g200);display:inline-flex;align-items:center;gap:.3rem}
+  .ms .tasks a{color:var(--slate);background:var(--g100)}
+  .ms .tasks a:hover{border-color:var(--clay)}
+  .ms .tasks span{color:var(--g400);border-style:dashed}
+  .ms .tasks .dot{width:6px;height:6px;border-radius:50%;flex:none}
+
+  aside.callout{border-left:4px solid var(--clay);background:#fff;border-radius:0 12px 12px 0;padding:.9rem 1.1rem;margin-top:1rem}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+  aside.callout p{margin:.35rem 0 0;font-size:.92rem}
+  aside.callout code{font-family:var(--mono);font-size:.82rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+
+  footer{margin-top:3rem;padding:1.2rem 5%;border-top:1px solid var(--g200);font-family:var(--mono);font-size:.7rem;color:var(--g400)}
+  @media(max-width:760px){.ms{grid-template-columns:4.2rem 1.6rem 1fr}}
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Task 55 sub-tasks">
+  <div class="home">Task 55 · ten sub-tasks · this page frames them all</div>
+  <div class="row">
+    <span class="cur" aria-current="page">Overview (Task 55)</span>
+    <a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html"><span class="dot" style="background:var(--olive)"></span>55.1 WebGPU + ESM loader <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.2 - Scaffold-Vite-site-and-GitHub-Pages-deploy.companion.html"><span class="dot" style="background:var(--olive)"></span>55.2 Vite + Pages deploy <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html"><span class="dot" style="background:var(--olive)"></span>55.3 Race harness <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html"><span class="dot" style="background:var(--olive)"></span>55.4 Race UI <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 Crossover slider <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html"><span class="dot" style="background:var(--olive)"></span>55.6 Fallback + methodology <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html"><span class="dot" style="background:var(--olive)"></span>55.7 scikit-learn grid <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.8 - Per-algorithm-parameter-sliders.companion.html"><span class="dot" style="background:var(--olive)"></span>55.8 Param sliders <span class="ng" style="color:var(--olive)">done</span></a>
+    <a href="task-55.9 - Conversion-surfaces-code-panel-CTA-permalinks.companion.html"><span class="dot" style="background:var(--olive)"></span>55.9 Conversion surfaces <span class="ng" style="color:var(--olive)">done</span></a>
+    <span class="pending"><span class="dot" style="background:var(--g300)"></span>55.10 Launch assets <span class="ng">soon</span></span>
+  </div>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55 · marketing · demo · github-pages</div>
+    <h1 class="prose">A live WebGPU-vs-CPU clustering race, hosted as a GitHub Page</h1>
+    <p class="hook prose">"scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install."</p>
+    <p class="prose" style="font-size:.95rem;color:var(--g500);margin:.2rem 0 0">One page, two tangible claims: <b style="color:var(--slate)">speed</b> (same seeded dataset racing on WebGPU vs CPU with live timers and an "N.Nx faster" headline) and <b style="color:var(--slate)">trust</b> (the familiar scikit-learn grid, live across five algorithms).</p>
+    <div class="meta">
+      <span class="chip">headline workload <strong>Spectral RBF affinity O(n²·d)</strong></span>
+      <span class="chip">measured <strong>~26× @ 10000×100</strong></span>
+      <span class="chip">5 algorithms</span>
+      <span class="chip">progress <strong>M0–M5 done · 55.10 launch assets next</strong></span>
+    </div>
+  </header>
+
+  <!-- hero: how the pieces fit -->
+  <section id="shape">
+    <div class="eyebrow">How the ten sub-tasks compose</div>
+    <h2>The shape of the demo — M0–M5 done (the race, crossover, the scikit-learn grid and its sliders, and the conversion surfaces), launch assets (55.10) next</h2>
+    <figure>
+      <div class="hero">
+        <svg viewBox="0 0 920 330" role="img" aria-label="Architecture: task 55.1 (done) wires WebGPU into the library, which feeds a worker-per-backend race harness, a race UI, a crossover slider, the sklearn grid, and conversion surfaces. Task 55.2 (done) stands up the Vite site and GitHub Pages deploy that hosts all of it. The worker race harness in 55.3 is next.">
+          <defs>
+            <marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="mo" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+            <marker id="mc" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#b5673f"/></marker>
+          </defs>
+
+          <!-- 55.1 the unblocker (DONE) -->
+          <rect x="20" y="120" width="170" height="92" rx="11" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="105" y="142" text-anchor="middle" fill="#384021" font-weight="bold">55.1 · M0 ✓ done</text>
+          <text x="105" y="160" text-anchor="middle" fill="#384021" font-size="10">WebGPU backend +</text>
+          <text x="105" y="174" text-anchor="middle" fill="#384021" font-size="10">per-backend ESM loader</text>
+          <text x="105" y="194" text-anchor="middle" fill="#5d584e" font-size="9">the one library change</text>
+          <text x="105" y="206" text-anchor="middle" fill="#5d584e" font-size="9">unblocks everything →</text>
+
+          <!-- 55.2 pipeline (DONE) -->
+          <rect x="250" y="20" width="150" height="56" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="42" text-anchor="middle" fill="#384021" font-weight="bold">55.2 · M1 ✓ done</text>
+          <text x="325" y="58" text-anchor="middle" fill="#384021" font-size="9">Vite site + Pages deploy</text>
+
+          <!-- 55.3 + 55.4 race core (DONE) -->
+          <rect x="250" y="100" width="150" height="64" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="122" text-anchor="middle" fill="#384021" font-weight="bold">55.3 / 55.4 · M2 ✓ done</text>
+          <text x="325" y="138" text-anchor="middle" fill="#384021" font-size="9">worker-per-backend race</text>
+          <text x="325" y="152" text-anchor="middle" fill="#384021" font-size="9">the screenshot-worthy core</text>
+
+          <!-- 55.5 + 55.6 (DONE) -->
+          <rect x="250" y="188" width="150" height="56" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="210" text-anchor="middle" fill="#384021" font-weight="bold">55.5 / 55.6 · M3 ✓ done</text>
+          <text x="325" y="226" text-anchor="middle" fill="#384021" font-size="9">crossover + fallback</text>
+
+          <!-- 55.7 grid (DONE) + 55.8 sliders (NEXT) -->
+          <rect x="250" y="262" width="150" height="28" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="280" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">55.7 · M4 ✓ scikit-learn grid</text>
+          <rect x="250" y="296" width="150" height="26" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="325" y="313" text-anchor="middle" fill="#384021" font-size="9.5" font-weight="bold">55.8 · M4 ✓ param sliders</text>
+
+          <!-- 55.9 conversion -->
+          <rect x="460" y="120" width="160" height="92" rx="11" fill="#e4ead4" stroke="#6f7a46" stroke-width="2"/>
+          <text x="540" y="148" text-anchor="middle" fill="#384021" font-weight="bold">55.9 · M5 ✓ done</text>
+          <text x="540" y="168" text-anchor="middle" fill="#384021" font-size="9.5">code panel · CTA</text>
+          <text x="540" y="182" text-anchor="middle" fill="#384021" font-size="9.5">star · permalinks</text>
+
+          <!-- 55.10 launch -->
+          <rect x="680" y="120" width="160" height="92" rx="11" fill="#2b2a26" stroke="#2b2a26"/>
+          <text x="760" y="150" text-anchor="middle" fill="#f7f4ec" font-weight="bold">55.10 · M6</text>
+          <text x="760" y="168" text-anchor="middle" fill="#e7dfca" font-size="9.5">README hero · og:image</text>
+          <text x="760" y="182" text-anchor="middle" fill="#e7dfca" font-size="9.5">race GIF · Show HN kit</text>
+          <text x="760" y="200" text-anchor="middle" fill="#cdbf9a" font-size="9">launch</text>
+
+          <!-- edges from 55.1 -->
+          <line x1="190" y1="150" x2="246" y2="125" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
+          <line x1="190" y1="166" x2="246" y2="206" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
+          <line x1="190" y1="135" x2="246" y2="50" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#mo)"/>
+          <line x1="190" y1="180" x2="246" y2="290" stroke="#6f7a46" stroke-width="1.4" marker-end="url(#mo)"/>
+          <!-- 55.2 hosts the race core (olive done, hosts the active dependency) -->
+          <line x1="325" y1="76" x2="325" y2="96" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#mo)"/>
+          <text x="392" y="90" fill="#384021" font-size="9">hosts ↓</text>
+          <!-- race core → conversion -->
+          <line x1="400" y1="132" x2="456" y2="155" stroke="#5d584e" stroke-width="1.6" marker-end="url(#m)"/>
+          <line x1="400" y1="216" x2="456" y2="175" stroke="#5d584e" stroke-width="1.4" marker-end="url(#m)"/>
+          <!-- conversion → launch -->
+          <line x1="620" y1="166" x2="676" y2="166" stroke="#5d584e" stroke-width="1.6" marker-end="url(#m)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#6f7a46"></i> M0–M3 done — library change, deploy, the race, crossover + fallback</span>
+        <span><i style="background:#6f7a46"></i> M0–M5 done — through the conversion surfaces (code panel, CTA, permalinks)</span>
+        <span><i style="background:#2b2a26"></i> launch</span>
+      </div>
+      <figcaption class="prose"><b>One global TF.js engine per JS context forces one Web Worker per backend</b>, so WebGPU and CPU race fairly off the main thread (55.3 / 55.4). The <code>n</code>-slider flips CPU-wins-small to GPU-wins-large (55.5); a <code>webgpu → webgl → wasm → cpu</code> fallback + methodology expander keep it honest on any browser (55.6). <b>M4 is done</b> — the scikit-learn grid renders 25 live cells with honest parity tiers (55.7) and per-algorithm sliders that never fake a parity (55.8). <b>55.9 (M5) is done</b> — the conversion surfaces (code panel mirroring the selected cell, install + star CTA, versioned shareable permalinks); only the launch assets (55.10) remain.</figcaption>
+    </figure>
+  </section>
+
+  <!-- milestone narrative -->
+  <section id="milestones">
+    <div class="eyebrow">Delivery milestones M0 → M6</div>
+    <h2>The build order</h2>
+    <div class="tl">
+      <div class="ms done">
+        <div class="when">M0</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Wire up WebGPU + per-backend ESM loader <span class="pill">done</span></h3>
+          <div class="sub prose">The one library change: <code>@tensorflow/tfjs-backend-webgpu@4.22.0</code> behind a <code>backend → import()</code> map, with <code>getBackend()</code> verification and graceful fallback.</div>
+          <div class="tasks"><a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html"><span class="dot" style="background:var(--olive)"></span>55.1 · companion</a></div>
+        </div>
+      </div>
+      <div class="ms done">
+        <div class="when">M1</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Vite site skeleton + GitHub Pages pipeline <span class="pill">done</span></h3>
+          <div class="sub prose">A blank-but-live placeholder proves the deploy pipeline — and the PR build guard — before any UI lands. <code>base: '/clustering-tfjs/'</code>; two-job workflow; no library import yet (YAGNI). The live URL lands once the work reaches main and Pages source is set to GitHub Actions.</div>
+          <div class="tasks"><a href="task-55.2 - Scaffold-Vite-site-and-GitHub-Pages-deploy.companion.html"><span class="dot" style="background:var(--olive)"></span>55.2 · companion</a></div>
+        </div>
+      </div>
+      <div class="ms done">
+        <div class="when">M2</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Race MVP — worker-per-backend harness + dual-panel UI <span class="pill">done</span></h3>
+          <div class="sub prose">The fairness protocol then the racing UI: identical float32 input, timing including the awaited readback, first-run shader compile shown separately. The screenshot-worthy core — and where the library-link strategy (npm vs file: vs workspace) and the site-ESLint wiring are finally decided in 55.3.</div>
+          <div class="tasks"><a href="task-55.3 - Worker-per-backend-race-harness-with-fairness-protocol.companion.html"><span class="dot" style="background:var(--olive)"></span>55.3 · companion</a><a href="task-55.4 - Race-UI-dual-panels-timers-bars-speedup-tiles.companion.html"><span class="dot" style="background:var(--olive)"></span>55.4 · companion</a></div>
+        </div>
+      </div>
+      <div class="ms done">
+        <div class="when">M3</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Crossover slider + methodology + WebGPU fallback <span class="pill">done</span></h3>
+          <div class="sub prose">The <code>n</code>-slider (200–5000) visibly flips CPU-wins-small to GPU-wins-large; a <code>webgpu → webgl → wasm → cpu</code> fallback chain keeps the GPU lane honest and never empty, an always-visible "how this is timed" expander reads live config from the run, and non-WebGPU/mobile visitors see an honestly-labelled reference clip.</div>
+          <div class="tasks"><a href="task-55.5 - Crossover-n-slider-with-flipping-caption.companion.html"><span class="dot" style="background:var(--olive)"></span>55.5 · companion</a><a href="task-55.6 - WebGPU-fallback-and-methodology-expander.companion.html"><span class="dot" style="background:var(--olive)"></span>55.6 · companion</a></div>
+        </div>
+      </div>
+      <div class="ms done">
+        <div class="when">M4</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>The scikit-learn toy-dataset grid + per-algorithm sliders <span class="pill">done</span></h3>
+          <div class="sub prose">Moons / circles / blobs / aniso / no-structure, live across all five algorithms — the trust signal. The grid (55.7) streams 25 cells from one <code>webgl → wasm → cpu</code> worker with honest parity tiers (9 ✓, 7 ≈, 5 ◇, 4 ∅); the sliders (55.8) drive it live, dropping a cell's badge the instant an override forces an untested combination.</div>
+          <div class="tasks"><a href="task-55.7 - Interactive-scikit-learn-toy-dataset-grid-across-all-five-algorithms.companion.html"><span class="dot" style="background:var(--olive)"></span>55.7 · companion · done</a><a href="task-55.8 - Per-algorithm-parameter-sliders.companion.html"><span class="dot" style="background:var(--olive)"></span>55.8 · companion · done</a></div>
+        </div>
+      </div>
+      <div class="ms done">
+        <div class="when">M5</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Conversion surfaces — code panel, install + star CTA, shareable permalinks <span class="pill">done</span></h3>
+          <div class="sub prose">Each grid cell becomes selectable; a code panel renders that cell's runnable ~5 lines from the same <code>resolve_params</code> the demo fits with (SOM the two-call exception). An <code>npm install</code> one-liner and a persistent ★ star sit at the hero with no scroll, and "Share this result" encodes the cell + race <code>n</code> + overrides into a versioned (<code>v=1</code>) URL hash that restores all three. One <code>with_utm</code> helper tags every link.</div>
+          <div class="tasks"><a href="task-55.9 - Conversion-surfaces-code-panel-CTA-permalinks.companion.html"><span class="dot" style="background:var(--olive)"></span>55.9 · companion · done</a></div>
+        </div>
+      </div>
+      <div class="ms">
+        <div class="when">M6</div><div class="spine"><div class="d"></div><div class="line"></div></div>
+        <div class="body">
+          <h3>Launch polish</h3>
+          <div class="sub prose">README hero, npm metadata, 1200×630 og:image, ≤6s race GIF/MP4, Show HN / Reddit / Bluesky kit.</div>
+          <div class="tasks"><span><span class="dot" style="background:var(--g300)"></span>55.10 · not yet generated</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="callout">
+    <div class="k">Honesty is a feature, not a footnote</div>
+    <p>Fairness is baked in: every lane runs float32 on identical input; timing includes the awaited readback; first-run shader-compile cost is shown separately, never in the headline multiplier; the small-<code>n</code> CPU win is a first-class part of the crossover slider. <b>Spectral RBF affinity</b> — not KMeans (~1.2×) — is the headline workload.</p>
+  </aside>
+</main>
+
+<footer>
+  Overview for <b style="color:var(--g500)">task-55 — Interactive clustering demo GitHub Page (WebGPU vs CPU race)</b> ·
+  sub-task companions re-scanned from this directory · 55.1–55.9 done (companions present), 55.10 not yet generated ·
+  self-contained, no external assets.
+</footer>
+</body>
+</html>

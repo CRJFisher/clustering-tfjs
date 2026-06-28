@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.1 — WebGPU backend &amp; per-backend ESM loader</title>
+<style>
+  :root{
+    --ivory:#f7f4ec; --slate:#2b2a26; --clay:#b5673f; --olive:#6f7a46; --oat:#e7dfca; --rust:#8f3a26;
+    --g100:#efeadd; --g200:#ddd6c4; --g300:#bdb6a3; --g400:#8d877a; --g500:#5d584e;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .prose{max-width:68ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:var(--ivory);border-bottom:1px solid var(--g200);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--g200)}
+  .crossnav a{color:var(--slate);background:#fff}
+  .crossnav a:hover{border-color:var(--clay)}
+  .crossnav span.cur{background:var(--slate);color:var(--ivory);border-color:var(--slate)}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:var(--g100);border-bottom:1px solid var(--g200);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--g500);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--slate);color:var(--ivory)}
+
+  main{width:90%;max-width:1600px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.2rem;scroll-margin-top:96px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--clay)}
+  h1{font-family:var(--serif);font-weight:600;font-size:2.1rem;line-height:1.1;margin:.3rem 0 .5rem}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--g200);border-radius:999px;padding:.25rem .6rem}
+  .chip strong{color:var(--clay)}
+  figcaption{font-family:var(--sans);font-size:.86rem;color:var(--g500);margin-top:.7rem}
+  figcaption b{color:var(--slate)}
+
+  /* ── before/after ── */
+  .ba{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch;margin-top:.6rem}
+  .ba .panel{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1rem .9rem}
+  .ba .ptitle{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--g400);margin-bottom:.5rem}
+  .ba .panel.after .ptitle{color:var(--olive)}
+  .ba .arrowcol{display:flex;align-items:center;justify-content:center}
+  .ba .arrowcol .big{font-family:var(--serif);font-size:2rem;color:var(--clay)}
+  .ba svg{width:100%;height:auto;display:block}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.8rem;font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* svg shared text */
+  svg text{font-family:var(--mono);font-size:11px}
+
+  /* ── flow diagram ── */
+  .flowwrap{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+
+  /* ── decision resolved ── */
+  .cmp{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.6rem}
+  .opt{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem;display:flex;flex-direction:column}
+  .opt.win{border-color:var(--olive);box-shadow:0 0 0 1px var(--olive)}
+  .opt.dimmed{opacity:.62}
+  .opt .badge{display:inline-flex;align-items:center;gap:.45rem;font-family:var(--mono);font-size:.72rem}
+  .opt .badge .num{width:1.4rem;height:1.4rem;border-radius:50%;display:grid;place-items:center;background:var(--slate);color:var(--ivory);font-size:.72rem}
+  .opt.win .badge .num{background:var(--olive)}
+  .opt h3{font-family:var(--serif);font-size:1.15rem;margin:.5rem 0 .2rem}
+  .opt .where{font-family:var(--mono);font-size:.7rem;color:var(--g400)}
+  .pc{margin-top:.7rem;border-top:1px solid var(--g200);padding-top:.7rem;display:grid;gap:.3rem}
+  .pc div{font-size:.84rem;padding-left:1.1rem;position:relative}
+  .pc .pro::before,.pc .con::before{content:'';position:absolute;left:0;top:.5em;width:7px;height:7px;border-radius:50%}
+  .pc .pro::before{background:var(--olive)}
+  .pc .con::before{background:var(--rust)}
+  .rec{margin-top:auto;padding-top:.7rem}
+  .rec .tag{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em;color:var(--olive)}
+  .chosenpill{font-family:var(--mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.08em;background:var(--olive);color:var(--ivory);border-radius:999px;padding:.15rem .5rem;margin-left:.4rem}
+
+  aside.callout{border-left:4px solid var(--clay);background:#fff;border-radius:0 12px 12px 0;padding:.9rem 1.1rem;margin-top:1rem}
+  aside.callout.go{border-left-color:var(--olive)}
+  aside.callout.warn{border-left-color:var(--rust)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+  aside.callout.go .k{color:var(--olive)}
+  aside.callout.warn .k{color:var(--rust)}
+  aside.callout p{margin:.35rem 0 0;font-size:.92rem}
+  aside.callout code{font-family:var(--mono);font-size:.82rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--g300);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac.done .box{background:var(--olive);border-color:var(--olive)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac.partial .box{background:var(--clay);border-color:var(--clay)}
+  .ac.partial .box::after{content:'';position:absolute;left:3px;top:5px;width:11px;height:2px;background:#fff}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--clay);font-weight:600}
+  .ac .txt{font-size:.9rem}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem}
+  .ac.done .status{background:var(--olive);color:var(--ivory)}
+  .ac.partial .status{background:var(--clay);color:var(--ivory)}
+
+  /* ── code panel ── */
+  .code{background:#23211c;border-radius:12px;overflow:hidden;margin-top:.6rem;border:1px solid #322f29}
+  .code .fl{font-family:var(--mono);font-size:.7rem;color:#b8b1a0;background:#1b1915;padding:.45rem .9rem;border-bottom:1px solid #322f29}
+  .code pre{margin:0;padding:.9rem 1rem;overflow-x:auto;font-family:var(--mono);font-size:.78rem;line-height:1.65;color:#e7e1d3;white-space:pre}
+  .code .kw{color:#cf8a63}.code .str{color:#a3b07a}.code .fn{color:#e0c071}.code .cm{color:#6f6a5e}.code .add{display:inline-block;width:100%;background:rgba(111,122,70,.22)}.code .del{display:inline-block;width:100%;background:rgba(143,58,38,.25)}.code .hl{background:rgba(181,103,63,.25);border-radius:3px}
+
+  footer{margin-top:3rem;padding:1.2rem 5%;border-top:1px solid var(--g200);font-family:var(--mono);font-size:.7rem;color:var(--g400)}
+  @media(max-width:760px){.ba{grid-template-columns:1fr}.ba .arrowcol .big{transform:rotate(90deg)}.cmp{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <span class="cur" aria-current="page">55.1 · WebGPU backend + ESM loader</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#change">The change</a>
+  <a href="#webgpu">WebGPU init flow</a>
+  <a href="#decision">Resolved decision</a>
+  <a href="#done">Done means</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.1 · Milestone M0 · the one library change · status DONE</div>
+    <h1 class="prose">A WebGPU backend behind a per-backend ESM loader</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--g500);margin:.2rem 0 0">The browser loader no longer imports the monolith: it loads <code style="font-family:var(--mono)">tfjs-core</code> once, then dynamically imports exactly the one requested backend package — unblocking code-splitting and the WebGPU-vs-CPU race.</p>
+    <div class="meta">
+      <span class="chip">edits <strong>loader.browser.ts</strong></span>
+      <span class="chip">+dep <strong>@tensorflow/tfjs-backend-webgpu@4.22.0</strong></span>
+      <span class="chip">backends <strong>cpu · webgl · webgpu · wasm</strong></span>
+      <span class="chip">AC <strong>4 met · 2 mechanism-done</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. before / after ════ -->
+  <section id="change">
+    <div class="eyebrow">Comprehension job 1 · before vs built</div>
+    <h2>The browser backend-loading path, before and after</h2>
+    <figure>
+      <div class="ba">
+        <!-- BEFORE -->
+        <div class="panel before">
+          <div class="ptitle">Before</div>
+          <svg viewBox="0 0 300 300" role="img" aria-label="Before path: backend.ts calls loader.browser which hard-imports the monolithic tfjs bundle containing all backends, WebGL only, no code-splitting">
+            <defs>
+              <marker id="aA" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#8d877a"/></marker>
+            </defs>
+            <!-- backend.ts -->
+            <rect x="60" y="14" width="180" height="40" rx="9" fill="#e7dfca" stroke="#bdb6a3"/>
+            <text x="150" y="32" text-anchor="middle" fill="#2b2a26">backend.ts</text>
+            <text x="150" y="46" text-anchor="middle" fill="#5d584e" font-size="9">load_backend()</text>
+            <line x1="150" y1="54" x2="150" y2="78" stroke="#8d877a" stroke-width="1.6" marker-end="url(#aA)"/>
+            <!-- loader.browser -->
+            <rect x="60" y="80" width="180" height="40" rx="9" fill="#fff" stroke="#bdb6a3"/>
+            <text x="150" y="98" text-anchor="middle" fill="#2b2a26">loader.browser.ts</text>
+            <text x="150" y="112" text-anchor="middle" fill="#5d584e" font-size="9">load_tensor_flow()</text>
+            <line x1="150" y1="120" x2="150" y2="144" stroke="#8d877a" stroke-width="1.6" marker-end="url(#aA)"/>
+            <!-- monolith import (REMOVED) -->
+            <rect x="40" y="146" width="220" height="48" rx="9" fill="#f3ddd6" stroke="#8f3a26"/>
+            <text x="150" y="166" text-anchor="middle" fill="#8f3a26">import('@tensorflow/tfjs')</text>
+            <text x="150" y="182" text-anchor="middle" fill="#8f3a26" font-size="9">the whole monolith</text>
+            <line x1="150" y1="194" x2="150" y2="216" stroke="#8d877a" stroke-width="1.6" marker-end="url(#aA)"/>
+            <!-- bundle -->
+            <rect x="34" y="218" width="232" height="70" rx="9" fill="#efeadd" stroke="#bdb6a3"/>
+            <text x="150" y="237" text-anchor="middle" fill="#2b2a26">bundle contains:</text>
+            <text x="150" y="254" text-anchor="middle" fill="#5d584e" font-size="9.5">core + cpu + webgl (all)</text>
+            <text x="150" y="270" text-anchor="middle" fill="#8f3a26" font-size="9.5">WebGL only · no WebGPU</text>
+            <text x="150" y="283" text-anchor="middle" fill="#8f3a26" font-size="9.5">no code-splitting</text>
+          </svg>
+        </div>
+        <div class="arrowcol"><span class="big">→</span></div>
+        <!-- BUILT -->
+        <div class="panel after">
+          <div class="ptitle">Built</div>
+          <svg viewBox="0 0 300 300" role="img" aria-label="Built path: backend.ts passes the requested backend to loader.browser, which dispatches through a four-entry backend-to-import map loading tfjs-core plus exactly one backend package (cpu rides along under the GPU lanes), then setBackend and getBackend verify">
+            <defs>
+              <marker id="aB" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#8d877a"/></marker>
+              <marker id="aBo" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 Z" fill="#6f7a46"/></marker>
+            </defs>
+            <rect x="60" y="14" width="180" height="40" rx="9" fill="#e7dfca" stroke="#bdb6a3"/>
+            <text x="150" y="32" text-anchor="middle" fill="#2b2a26">backend.ts</text>
+            <text x="150" y="46" text-anchor="middle" fill="#5d584e" font-size="9">passes config.backend</text>
+            <line x1="150" y1="54" x2="150" y2="78" stroke="#8d877a" stroke-width="1.6" marker-end="url(#aB)"/>
+            <rect x="60" y="80" width="180" height="40" rx="9" fill="#fff" stroke="#bdb6a3"/>
+            <text x="150" y="98" text-anchor="middle" fill="#2b2a26">loader.browser.ts</text>
+            <text x="150" y="112" text-anchor="middle" fill="#5d584e" font-size="9">load_tensor_flow(name)</text>
+            <line x1="150" y1="120" x2="150" y2="144" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#aBo)"/>
+            <!-- the map (ADDED) -->
+            <rect x="40" y="146" width="220" height="48" rx="9" fill="#e4ead4" stroke="#6f7a46"/>
+            <text x="150" y="165" text-anchor="middle" fill="#384021">BROWSER_BACKEND_IMPORTERS</text>
+            <text x="150" y="181" text-anchor="middle" fill="#5d584e" font-size="9">cpu · webgl · webgpu · wasm</text>
+            <line x1="150" y1="194" x2="150" y2="216" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#aBo)"/>
+            <!-- result -->
+            <rect x="34" y="218" width="232" height="70" rx="9" fill="#efeadd" stroke="#bdb6a3"/>
+            <text x="150" y="234" text-anchor="middle" fill="#2b2a26">bundle contains:</text>
+            <text x="150" y="250" text-anchor="middle" fill="#384021" font-size="9">core + requested + cpu fallback</text>
+            <text x="150" y="265" text-anchor="middle" fill="#384021" font-size="9">webgpu now selectable</text>
+            <text x="150" y="280" text-anchor="middle" fill="#384021" font-size="9">webgl vs webgpu chunks split</text>
+          </svg>
+        </div>
+      </div>
+      <div class="legend">
+        <span><i style="background:#8f3a26"></i> removed (monolith import)</span>
+        <span><i style="background:#6f7a46"></i> added (core + four-entry importer map)</span>
+        <span><i style="background:#e7dfca;border:1px solid #bdb6a3"></i> unchanged dispatch (backend.ts → loader)</span>
+      </div>
+      <figcaption class="prose"><b>The heart of the change:</b> the loader returns the <code>tfjs-core</code> namespace with one backend registered, and because <code>webgl</code> and <code>webgpu</code> both depend on <code>-backend-cpu</code>, cpu kernels co-register as the fallback — only the <code>webgl</code>-vs-<code>webgpu</code> chunks are mutually exclusive.</figcaption>
+    </figure>
+
+    <div class="code">
+      <div class="fl">src/backend/loader.browser.ts — the importer map that replaced the monolith import</div>
+<pre><span class="cm">// BEFORE — one hard import of the whole bundle (WebGL only):</span>
+<span class="del"><span class="kw">const</span> tf = <span class="kw">await</span> <span class="fn">import</span>(<span class="str">'@tensorflow/tfjs'</span>);</span>
+
+<span class="cm">// BUILT — core once, then dispatch to exactly one backend package:</span>
+<span class="add"><span class="kw">const</span> <span class="hl">BROWSER_BACKEND_IMPORTERS</span>: Partial&lt;Record&lt;TensorFlowBackend, () =&gt; Promise&lt;unknown&gt;&gt;&gt; = {</span>
+<span class="add">  cpu:    () =&gt; <span class="fn">import</span>(<span class="str">'@tensorflow/tfjs-backend-cpu'</span>),</span>
+<span class="add">  webgl:  () =&gt; <span class="fn">import</span>(<span class="str">'@tensorflow/tfjs-backend-webgl'</span>),</span>
+<span class="add">  webgpu: () =&gt; <span class="fn">import</span>(<span class="str">'@tensorflow/tfjs-backend-webgpu'</span>),</span>
+<span class="add">  wasm:   () =&gt; <span class="fn">import</span>(<span class="str">'@tensorflow/tfjs-backend-wasm'</span>),</span>
+<span class="add">};</span>
+<span class="add"><span class="kw">const</span> tf = <span class="kw">await</span> load_core();           <span class="cm">// @tensorflow/tfjs-core</span></span>
+<span class="add"><span class="kw">await</span> BROWSER_BACKEND_IMPORTERS[requested]();  <span class="cm">// registers that backend (+ cpu under a GPU lane)</span></span>
+</pre>
+    </div>
+  </section>
+
+  <!-- ════ 2. WebGPU init flow ════ -->
+  <section id="webgpu">
+    <div class="eyebrow">Comprehension job 2 · the honesty crux + the script-tag hatch</div>
+    <h2>WebGPU init: two distinct failure points, one real-lane guard</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 900 280" role="img" aria-label="Loader entry: window.tf script-tag hatch returns the global only when its backend matches and is truthy, otherwise falls through to load the requested backend; WebGPU init has two failure exits: navigator.gpu absent, and silent fallback after setBackend init failure detected by getBackend re-check">
+          <defs>
+            <marker id="fa" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="fr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8f3a26"/></marker>
+            <marker id="fo" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+          </defs>
+
+          <!-- node 0: window.tf hatch (diamond) -->
+          <path d="M85,18 L160,52 L85,86 L10,52 Z" fill="#e7dfca" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="85" y="48" text-anchor="middle" fill="#2b2a26">window.tf live</text>
+          <text x="85" y="61" text-anchor="middle" fill="#2b2a26">&amp; matches?</text>
+          <!-- hatch return -->
+          <rect x="210" y="30" width="150" height="44" rx="9" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="285" y="49" text-anchor="middle" fill="#384021">return global tf</text>
+          <text x="285" y="63" text-anchor="middle" fill="#384021" font-size="9.5">imports nothing</text>
+          <line x1="160" y1="52" x2="206" y2="52" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#fo)"/>
+          <text x="184" y="44" text-anchor="middle" fill="#384021" font-size="9.5">yes</text>
+          <!-- fall through -->
+          <line x1="85" y1="86" x2="85" y2="120" stroke="#5d584e" stroke-width="1.6" marker-end="url(#fa)"/>
+          <text x="98" y="106" fill="#5d584e" font-size="9.5">no / mismatch → load requested</text>
+
+          <!-- node 1: navigator.gpu? (diamond) -->
+          <path d="M90,123 L150,158 L90,193 L30,158 Z" fill="#e7dfca" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="90" y="155" text-anchor="middle" fill="#2b2a26">navigator</text>
+          <text x="90" y="168" text-anchor="middle" fill="#2b2a26">.gpu ?</text>
+
+          <!-- node 2: import backend pkg -->
+          <rect x="210" y="136" width="130" height="44" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="275" y="155" text-anchor="middle" fill="#2b2a26">import webgpu</text>
+          <text x="275" y="169" text-anchor="middle" fill="#5d584e" font-size="9.5">lazy import()</text>
+
+          <!-- node 3: await setBackend → bool -->
+          <rect x="400" y="136" width="140" height="44" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="470" y="153" text-anchor="middle" fill="#2b2a26">await setBackend</text>
+          <text x="470" y="167" text-anchor="middle" fill="#5d584e" font-size="9.5">→ boolean</text>
+
+          <!-- node 4: getBackend === 'webgpu'? (diamond) -->
+          <path d="M660,123 L735,158 L660,193 L585,158 Z" fill="#e7dfca" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="660" y="154" text-anchor="middle" fill="#2b2a26">getBackend()</text>
+          <text x="660" y="167" text-anchor="middle" fill="#2b2a26">==='webgpu'?</text>
+
+          <!-- node 5: REAL lane -->
+          <rect x="795" y="134" width="90" height="48" rx="9" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="840" y="154" text-anchor="middle" fill="#384021">REAL</text>
+          <text x="840" y="168" text-anchor="middle" fill="#384021" font-size="9.5">webgpu lane</text>
+
+          <!-- edges happy -->
+          <line x1="150" y1="158" x2="206" y2="158" stroke="#5d584e" stroke-width="1.6" marker-end="url(#fa)"/>
+          <text x="178" y="149" text-anchor="middle" fill="#384021" font-size="9.5">yes</text>
+          <line x1="340" y1="158" x2="396" y2="158" stroke="#5d584e" stroke-width="1.6" marker-end="url(#fa)"/>
+          <line x1="540" y1="158" x2="581" y2="158" stroke="#5d584e" stroke-width="1.6" marker-end="url(#fa)"/>
+          <line x1="735" y1="158" x2="791" y2="158" stroke="#6f7a46" stroke-width="1.8" marker-end="url(#fo)"/>
+          <text x="763" y="149" text-anchor="middle" fill="#384021" font-size="9.5">yes</text>
+
+          <!-- FAILURE 1: no navigator.gpu -->
+          <line x1="90" y1="193" x2="90" y2="232" stroke="#8f3a26" stroke-width="1.8" marker-end="url(#fr)"/>
+          <text x="100" y="216" fill="#8f3a26" font-size="9.5">no</text>
+          <rect x="20" y="232" width="180" height="40" rx="9" fill="#f3ddd6" stroke="#8f3a26"/>
+          <text x="110" y="250" text-anchor="middle" fill="#8f3a26" font-size="9.5">FAIL ①: no WebGPU API</text>
+          <text x="110" y="263" text-anchor="middle" fill="#8f3a26" font-size="9">clean detectable throw, nothing imported</text>
+
+          <!-- FAILURE 2: silent fallback (getBackend != webgpu) -->
+          <line x1="660" y1="193" x2="660" y2="232" stroke="#8f3a26" stroke-width="1.8" marker-end="url(#fr)"/>
+          <text x="672" y="216" fill="#8f3a26" font-size="9.5">no</text>
+          <rect x="555" y="232" width="210" height="40" rx="9" fill="#f3ddd6" stroke="#8f3a26"/>
+          <text x="660" y="248" text-anchor="middle" fill="#8f3a26" font-size="9.5">FAIL ②: silent fallback</text>
+          <text x="660" y="261" text-anchor="middle" fill="#8f3a26" font-size="9">setBackend false OR active ≠ webgpu</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#6f7a46"></i> real lane confirmed / hatch hit</span>
+        <span><i style="background:#8f3a26"></i> the two failure exits (the honesty crux)</span>
+        <span><i style="background:#e7dfca;border:1px solid #b5673f"></i> decision</span>
+      </div>
+      <figcaption class="prose"><b>The script-tag window.tf hatch fires</b> only when its <code>getBackend()</code> is truthy and matches the request (or none was made); otherwise the loader loads the requested backend, then catches two failures cleanly — <code>navigator.gpu</code> absent, and <code>setBackend</code> false or silently keeping another backend — via the <code>getBackend()</code> re-check.</figcaption>
+    </figure>
+
+    <aside class="callout warn">
+      <div class="k">What to watch</div>
+      <p>The <code>'webgpu'</code> backend is <b>async-only / experimental</b>: init and verification work, but the clustering algorithms read tensors back <b>synchronously</b>, so running <code>fit</code> / <code>fit_predict</code> on <code>'webgpu'</code> is not yet supported (documented on <code>Clustering.init</code>). The race harness drives WebGPU with raw tensors, not the algorithms; making the algorithms webgpu-safe end-to-end is a separate follow-up.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 3. resolved decision ════ -->
+  <section id="decision">
+    <div class="eyebrow">Comprehension job 3 · the decision, resolved</div>
+    <h2>Where does the per-backend loader map live? <span class="chosenpill">resolved → src/backend</span></h2>
+    <figure>
+      <div class="cmp">
+        <article class="opt win">
+          <div class="badge"><span class="num">A</span> CHOSEN · BUILT</div>
+          <h3>In <span style="font-family:var(--mono);font-size:.9rem">src/backend/</span></h3>
+          <div class="where">a library feature</div>
+          <div class="pc">
+            <div class="pro">The public contract is <code style="font-family:var(--mono);font-size:.78rem">Clustering.init({ backend })</code> — that lives in the library, so the loader does too.</div>
+            <div class="pro">The race workers (task-55.3) import the published clustering classes and reuse one tested loader, so every lane is identical.</div>
+            <div class="pro">Each entry is a distinct literal <code style="font-family:var(--mono);font-size:.78rem">import()</code> specifier, exactly what a code-splitting bundler needs to emit one chunk per backend.</div>
+            <div class="con">Backend packages join the dep matrix, pinned together at <code style="font-family:var(--mono);font-size:.78rem">4.22.0</code>.</div>
+          </div>
+          <div class="rec"><span class="tag">why it won</span> the contract and the race harness both speak the library API, not the site.</div>
+        </article>
+        <article class="opt dimmed">
+          <div class="badge"><span class="num">B</span> NOT TAKEN</div>
+          <h3>Local to <span style="font-family:var(--mono);font-size:.9rem">/site</span></h3>
+          <div class="where">smaller public surface, but rejected</div>
+          <div class="pc">
+            <div class="pro">Keeps the library's public surface untouched; backend deps stay out of the published package.</div>
+            <div class="con"><code style="font-family:var(--mono);font-size:.78rem">Clustering.init({ backend:'webgpu' })</code> could not be satisfied if WebGPU only existed in <code>/site</code>.</div>
+            <div class="con">Two loaders to keep in sync once the feature was contributed later — the no-shim rule means a future move forces caller rewrites.</div>
+          </div>
+          <div class="rec"><span class="tag" style="color:var(--clay)">why not</span> it contradicts the public-API contract the race depends on.</div>
+        </article>
+      </div>
+      <figcaption class="prose">Both columns scored the same axes; the deciding factor was that the contract is phrased against the public API and the race workers reuse the loader.</figcaption>
+    </figure>
+    <aside class="callout go">
+      <div class="k">Resolution</div>
+      <p>The per-backend map ships in <code>src/backend/loader.browser.ts</code> as a library feature. The <code>BROWSER_BACKEND_IMPORTERS</code> map is keyed by <code>TensorFlowBackend</code> with four entries — <code>cpu</code>, <code>webgl</code>, <code>webgpu</code>, <code>wasm</code> — and <code>backend.ts</code> early-returns this browser loader while node and react-native keep the generic flag / setBackend / ready tail.</p>
+    </aside>
+  </section>
+
+  <!-- ════ 4. ACs ════ -->
+  <section id="done">
+    <div class="eyebrow">Comprehension job 4 · what "done" means, honestly</div>
+    <h2>Acceptance criteria: four met here, two mechanism-done</h2>
+    <div class="acs">
+      <div class="ac partial"><span class="num">1</span><span class="box"></span><span class="txt"><code>Clustering.init({ backend: 'webgpu' })</code> succeeds and <code>tf.getBackend()</code> returns <code>'webgpu'</code> — code-complete and unit-covered; the real-browser <code>getBackend()</code> check lands with <code>/site</code>.</span><span class="status">mechanism · verify in 55.3</span></div>
+      <div class="ac partial"><span class="num">2</span><span class="box"></span><span class="txt">Requesting one backend does not bundle the others — verified as distinct literal <code>import()</code> specifiers with no eager monolith import; chunk-split inspection lands with the Vite bundle.</span><span class="status">mechanism · verify in 55.2</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt"><code>navigator.gpu</code> absence yields a clean, detectable throw (nothing imported) so the caller can fall back to webgl.</span><span class="status">met</span></div>
+      <div class="ac done"><span class="num">4</span><span class="box"></span><span class="txt"><code>tfjs-core</code>, <code>-backend-cpu</code>, <code>-backend-webgl</code>, <code>-backend-webgpu</code>, <code>-backend-wasm</code> pinned to identical <strong>4.22.0</strong> — no kernel-registry mismatch.</span><span class="status">met</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt">A colocated test covers per-backend selection (cpu · webgl · webgpu · wasm), <code>navigator.gpu</code> detection, the <code>getBackend()</code> verification (both <code>setBackend</code>-false and silent-fallback), and the <code>window.tf</code> hatch.</span><span class="status">met</span></div>
+      <div class="ac done"><span class="num">6</span><span class="box"></span><span class="txt">ESLint passes before commit.</span><span class="status">met</span></div>
+    </div>
+    <figcaption class="prose">AC #1 and #2 are <b>mechanism-done and unit-covered</b> here; their empirical check — a real WebGPU browser, a real chunk-split bundle — is downstream in <code>/site</code> (tasks 55.2 / 55.3). AC #3–#6 are fully met.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Generated companion for <b style="color:var(--g500)">task-55.1 — Add WebGPU backend support and per-backend ESM loader (status: Done)</b> ·
+  grounded in src/backend/{loader.browser,backend}.ts, loader.browser.test.ts &amp; the task's High-level summary ·
+  self-contained, no external assets.
+</footer>
+
+<script>
+  // checklist toggle (progressive enhancement): cycle none → done → partial → none
+  document.querySelectorAll('.ac').forEach(function(ac){
+    ac.style.cursor='pointer';
+    ac.addEventListener('click',function(){
+      if(ac.classList.contains('done')){ ac.classList.remove('done'); ac.classList.add('partial'); }
+      else if(ac.classList.contains('partial')){ ac.classList.remove('partial'); }
+      else { ac.classList.add('done'); }
+    });
+  });
+  // outline active-state via IntersectionObserver
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+</script>
+</body>
+</html>

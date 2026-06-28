@@ -1,0 +1,100 @@
+name: Deploy Site
+
+# Build on every PR (the guard that keeps the live-demo link from rotting) and
+# on push to main (build + deploy). workflow_dispatch allows a manual re-deploy
+# without a new commit.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Least-privilege scopes for the Pages deploy chain:
+#   contents: read   -> checkout
+#   pages: write     -> publish the Pages deployment
+#   id-token: write  -> mint the OIDC token deploy-pages exchanges with Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          # Cache against both lockfiles: the library root is built so the site's
+          # `clustering-tfjs: file:..` dependency resolves to a fresh dist/.
+          cache-dependency-path: |
+            package-lock.json
+            site/package-lock.json
+
+      # The site depends on the library through a file: link, so dist/ must exist
+      # before the site installs and builds. Build the library from this same
+      # checkout rather than the published npm package, so the demo always
+      # exercises the WebGPU lane that ships with this branch.
+      # --ignore-scripts skips @tensorflow/tfjs-node's native libtensorflow
+      # download and Puppeteer's Chromium fetch — neither is needed to type-check
+      # the library into dist/, and both are slow, large, and a deploy-failure
+      # risk irrelevant to a browser site. It also skips the root `prepare` build
+      # so the library builds exactly once, in the explicit step below.
+      - name: Install library dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Build library
+        run: npm run build
+
+      - name: Install site dependencies
+        run: npm ci
+        working-directory: site
+
+      # Enforce the project's snake_case convention on the site sources in CI.
+      - name: Lint site
+        run: npm run lint
+        working-directory: site
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      # Fails the whole workflow if the bundle stops building. On PRs this is the
+      # only thing that runs, so a broken site never reaches main.
+      - name: Build site
+        run: npm run build
+        working-directory: site
+
+      # Path is repo-root-relative, so it must be site/dist (the Vite outDir).
+      # Only the runs that can deploy need the artifact; PRs are a build-only
+      # guard, so skip the upload for them.
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    # PRs are a build-only guard and never publish; a push to main or a manual
+    # workflow_dispatch deploys.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # Serialize Pages publishes. cancel-in-progress is false so an in-flight
+    # deploy finishes rather than leaving the site half-published. Scoped to the
+    # deploy job so PR guard builds never queue behind a publish.
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

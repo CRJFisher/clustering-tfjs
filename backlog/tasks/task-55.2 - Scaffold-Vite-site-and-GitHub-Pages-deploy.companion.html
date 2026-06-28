@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Task 55.2 — Vite /site scaffold &amp; GitHub Pages deploy</title>
+<style>
+  :root{
+    --ivory:#f7f4ec; --slate:#2b2a26; --clay:#b5673f; --olive:#6f7a46; --oat:#e7dfca; --rust:#8f3a26;
+    --g100:#efeadd; --g200:#ddd6c4; --g300:#bdb6a3; --g400:#8d877a; --g500:#5d584e;
+    --serif:ui-serif,Georgia,'Times New Roman',serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:ui-monospace,'SF Mono',Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--ivory);color:var(--slate);font-family:var(--sans);line-height:1.5;-webkit-font-smoothing:antialiased}
+  .prose{max-width:68ch}
+
+  /* ── top nav ── */
+  .crossnav{position:sticky;top:0;z-index:10;background:var(--ivory);border-bottom:1px solid var(--g200);padding:.5rem 5%;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+  .crossnav .home{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-right:.4rem}
+  .crossnav a,.crossnav span.cur{font-family:var(--mono);font-size:.72rem;text-decoration:none;padding:.28rem .6rem;border-radius:999px;border:1px solid var(--g200)}
+  .crossnav a{color:var(--slate);background:#fff}
+  .crossnav a:hover{border-color:var(--clay)}
+  .crossnav span.cur{background:var(--slate);color:var(--ivory);border-color:var(--slate)}
+
+  /* ── section outline ── */
+  .outline{position:sticky;top:43px;z-index:9;background:var(--g100);border-bottom:1px solid var(--g200);padding:.4rem 5%;display:flex;flex-wrap:wrap;gap:.35rem}
+  .outline a{font-family:var(--mono);font-size:.68rem;text-decoration:none;color:var(--g500);padding:.22rem .55rem;border-radius:999px}
+  .outline a:hover,.outline a.active{background:var(--slate);color:var(--ivory)}
+
+  main{width:90%;max-width:1600px;margin-inline:auto;padding:1.6rem 0 5rem}
+  section{padding-top:2.2rem;scroll-margin-top:96px}
+  .eyebrow{font-family:var(--mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:var(--clay)}
+  h1{font-family:var(--serif);font-weight:600;font-size:2.1rem;line-height:1.1;margin:.3rem 0 .5rem}
+  h2{font-family:var(--serif);font-weight:600;font-size:1.4rem;margin:.2rem 0 .9rem}
+  .meta{display:flex;flex-wrap:wrap;gap:.5rem;margin-top:.6rem}
+  .chip{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--g200);border-radius:999px;padding:.25rem .6rem}
+  .chip strong{color:var(--clay)}
+  .donepill{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.06em;background:var(--olive);color:var(--ivory);border-radius:999px;padding:.2rem .55rem;display:inline-block}
+  figcaption{font-family:var(--sans);font-size:.86rem;color:var(--g500);margin-top:.7rem}
+  figcaption b{color:var(--slate)}
+
+  .flowwrap{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem;margin-top:.6rem}
+  .flowwrap svg{width:100%;height:auto;display:block}
+  svg text{font-family:var(--mono);font-size:11px}
+  .legend{display:flex;flex-wrap:wrap;gap:.9rem;margin-top:.8rem;font-family:var(--mono);font-size:.72rem;color:var(--g500)}
+  .legend span{display:inline-flex;align-items:center;gap:.35rem}
+  .legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+  /* ── before/after base ── */
+  .ba{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:stretch;margin-top:.6rem}
+  .ba .panel{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1rem .9rem}
+  .ba .panel.bad{border-color:var(--rust)}
+  .ba .panel.good{border-color:var(--olive)}
+  .ba .ptitle{font-family:var(--mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--g400);margin-bottom:.5rem}
+  .ba .panel.bad .ptitle{color:var(--rust)}
+  .ba .panel.good .ptitle{color:var(--olive)}
+  .ba .arrowcol{display:flex;align-items:center;justify-content:center}
+  .ba .arrowcol .big{font-family:var(--serif);font-size:2rem;color:var(--clay)}
+  .ba svg{width:100%;height:auto;display:block}
+
+  /* ── files-as-built grid ── */
+  .files{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem;margin-top:.6rem}
+  .fcard{background:#fff;border:1px solid var(--g200);border-radius:12px;padding:.8rem .9rem}
+  .fcard .fp{font-family:var(--mono);font-size:.78rem;color:var(--slate);background:var(--g100);border-radius:5px;padding:.12rem .4rem;display:inline-block}
+  .fcard .role{font-size:.82rem;color:var(--g500);margin-top:.45rem}
+  .fcard.guard{border-color:var(--clay)}
+  .fcard .tag{font-family:var(--mono);font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--clay);float:right}
+
+  /* ── ships vs deferred grid ── */
+  .scope{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:.6rem}
+  .scol{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:1.1rem}
+  .scol.ships{border-color:var(--olive)}
+  .scol.defer{border-color:var(--g300)}
+  .scol h3{font-family:var(--serif);font-size:1.1rem;margin:.1rem 0 .2rem}
+  .scol .lbl{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.08em}
+  .scol.ships .lbl{color:var(--olive)}
+  .scol.defer .lbl{color:var(--g400)}
+  .scol ul{list-style:none;margin:.7rem 0 0;padding:0;display:grid;gap:.45rem}
+  .scol li{font-size:.86rem;padding-left:1.2rem;position:relative}
+  .scol li::before{content:'';position:absolute;left:0;top:.45em;width:8px;height:8px;border-radius:2px}
+  .scol.ships li::before{background:var(--olive)}
+  .scol.defer li::before{background:var(--g300);border-radius:50%}
+  .scol li code,.scol li .sub{font-family:var(--mono);font-size:.78rem;background:var(--g100);padding:.03rem .3rem;border-radius:4px}
+  .scol li .to{font-family:var(--mono);font-size:.68rem;color:var(--clay);margin-left:.3rem}
+
+  aside.callout{border-left:4px solid var(--clay);background:#fff;border-radius:0 12px 12px 0;padding:.9rem 1.1rem;margin-top:1rem}
+  aside.callout.go{border-left-color:var(--olive)}
+  aside.callout.warn{border-left-color:var(--rust)}
+  aside.callout .k{font-family:var(--mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.1em;color:var(--clay)}
+  aside.callout.go .k{color:var(--olive)}
+  aside.callout.warn .k{color:var(--rust)}
+  aside.callout p{margin:.35rem 0 0;font-size:.92rem}
+  aside.callout code{font-family:var(--mono);font-size:.82rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+  aside.callout .owner{font-family:var(--mono);font-size:.68rem;color:var(--g400);margin-top:.5rem}
+
+  /* ── open decision options ── */
+  .opts{display:grid;grid-template-columns:repeat(3,1fr);gap:.7rem;margin-top:.7rem}
+  .ocard{background:var(--g100);border:1px dashed var(--g300);border-radius:10px;padding:.7rem .8rem}
+  .ocard .on{font-family:var(--mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--clay)}
+  .ocard h4{font-family:var(--mono);font-size:.84rem;margin:.3rem 0 .25rem;color:var(--slate)}
+  .ocard p{margin:0;font-size:.8rem;color:var(--g500)}
+
+  /* ── checklist ── */
+  .acs{display:grid;gap:.5rem;margin-top:.6rem}
+  .ac{display:grid;grid-template-columns:1.6rem 1fr auto;gap:.7rem;background:#fff;border:1px solid var(--g200);border-radius:10px;padding:.7rem .9rem;align-items:start}
+  .ac .box{width:1.25rem;height:1.25rem;border:2px solid var(--g300);border-radius:5px;margin-top:.1rem;position:relative;flex:none}
+  .ac.done .box{background:var(--olive);border-color:var(--olive)}
+  .ac.done .box::after{content:'';position:absolute;left:3px;top:0px;width:6px;height:11px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(40deg)}
+  .ac .num{font-family:var(--mono);font-size:.7rem;color:var(--clay);font-weight:600}
+  .ac .txt{font-size:.9rem}
+  .ac .txt code{font-family:var(--mono);font-size:.8rem;background:var(--g100);padding:.05rem .3rem;border-radius:4px}
+  .ac .status{font-family:var(--mono);font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;border-radius:999px;padding:.2rem .5rem;white-space:nowrap;align-self:start;margin-top:.1rem;background:var(--g200);color:var(--g500)}
+  .ac.done .status{background:var(--olive);color:var(--ivory)}
+  .ac .status.pend{background:#f1e3d6;color:var(--clay)}
+
+  footer{margin-top:3rem;padding:1.2rem 5%;border-top:1px solid var(--g200);font-family:var(--mono);font-size:.7rem;color:var(--g400)}
+  @media(max-width:760px){.ba{grid-template-columns:1fr}.ba .arrowcol .big{transform:rotate(90deg)}.scope{grid-template-columns:1fr}.opts{grid-template-columns:1fr}.files{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<nav class="crossnav" aria-label="Related documents">
+  <span class="home">Task 55 family</span>
+  <a href="task-55 - Interactive-clustering-demo-GitHub-Page.overview.html">↑ Overview (Task 55)</a>
+  <a href="task-55.1 - Add-WebGPU-backend-and-per-backend-ESM-loader.companion.html">55.1 · WebGPU backend</a>
+  <span class="cur" aria-current="page">55.2 · Vite /site + Pages deploy</span>
+</nav>
+
+<nav class="outline" aria-label="On this page">
+  <a href="#model">Two repos, one folder</a>
+  <a href="#pipeline">Deploy pipeline</a>
+  <a href="#built">What shipped</a>
+  <a href="#base">Why base matters</a>
+  <a href="#scope">Ships vs deferred</a>
+  <a href="#decision">The deferred decision</a>
+  <a href="#done">Acceptance criteria</a>
+</nav>
+
+<main>
+  <header>
+    <div class="eyebrow">Task 55.2 · Milestone M1 · scaffold + deploy pipeline · <span class="donepill">Done</span></div>
+    <h1 class="prose">A blank-but-live page that proves the GitHub Pages pipeline end to end</h1>
+    <p class="prose" style="font-size:.95rem;color:var(--g500);margin:.2rem 0 0">A new <code style="font-family:var(--mono)">site/</code> Vite + vanilla-TypeScript app and a two-job GitHub Actions pipeline ship a branded placeholder page — <b style="color:var(--slate)">before any compute lands</b>, so the deploy is proven separately from the race.</p>
+    <div class="meta">
+      <span class="chip">new folder <strong>site/ (snake_case)</strong></span>
+      <span class="chip">vite base <strong>/clustering-tfjs/</strong></span>
+      <span class="chip">build guard <strong>tsc --noEmit &amp;&amp; vite build</strong></span>
+      <span class="chip">pages source <strong>GitHub Actions (manual)</strong></span>
+      <span class="chip">no library import <strong>yet (YAGNI)</strong></span>
+    </div>
+  </header>
+
+  <!-- ════ 1. two repos one folder ════ -->
+  <section id="model">
+    <div class="eyebrow">The mental model</div>
+    <h2>Two independent builds living in one folder</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 300" role="img" aria-label="The repo holds two independent builds. The library lane: src compiles to dist, publishes to npm, unchanged by this task. The site lane: the new site Vite app builds to a static bundle deployed to GitHub Pages. The site does not yet import the library; that dependency edge is deferred to 55.3.">
+          <defs>
+            <marker id="m" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="mo" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+            <marker id="md" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8d877a"/></marker>
+          </defs>
+
+          <!-- LIBRARY lane container -->
+          <rect x="14" y="14" width="892" height="118" rx="12" fill="#f3efe4" stroke="#ddd6c4"/>
+          <text x="30" y="36" fill="#5d584e" font-size="10.5" font-weight="bold">LIBRARY — unchanged by this task</text>
+
+          <rect x="40" y="52" width="150" height="56" rx="10" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="115" y="76" text-anchor="middle" fill="#2b2a26">src/ (snake_case)</text>
+          <text x="115" y="92" text-anchor="middle" fill="#5d584e" font-size="9">the clustering library</text>
+
+          <rect x="250" y="52" width="170" height="56" rx="10" fill="#fff" stroke="#bdb6a3"/>
+          <text x="335" y="76" text-anchor="middle" fill="#2b2a26">build-multi-platform.js</text>
+          <text x="335" y="92" text-anchor="middle" fill="#5d584e" font-size="9">→ dist/ ESM·CJS·browser</text>
+
+          <rect x="480" y="52" width="150" height="56" rx="10" fill="#fff" stroke="#bdb6a3"/>
+          <text x="555" y="76" text-anchor="middle" fill="#2b2a26">dist/</text>
+          <text x="555" y="92" text-anchor="middle" fill="#5d584e" font-size="9">built artifacts</text>
+
+          <rect x="690" y="52" width="180" height="56" rx="10" fill="#efeadd" stroke="#bdb6a3"/>
+          <text x="780" y="76" text-anchor="middle" fill="#2b2a26">npm: clustering-tfjs</text>
+          <text x="780" y="92" text-anchor="middle" fill="#5d584e" font-size="9">published 0.6.1 + CDN</text>
+
+          <line x1="190" y1="80" x2="246" y2="80" stroke="#5d584e" stroke-width="1.6" marker-end="url(#m)"/>
+          <line x1="420" y1="80" x2="476" y2="80" stroke="#5d584e" stroke-width="1.6" marker-end="url(#m)"/>
+          <line x1="630" y1="80" x2="686" y2="80" stroke="#5d584e" stroke-width="1.6" marker-end="url(#m)"/>
+
+          <!-- SITE lane container -->
+          <rect x="14" y="168" width="892" height="118" rx="12" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="30" y="190" fill="#384021" font-size="10.5" font-weight="bold">MARKETING SITE — what this task built</text>
+
+          <rect x="40" y="206" width="190" height="56" rx="10" fill="#fff" stroke="#6f7a46"/>
+          <text x="135" y="228" text-anchor="middle" fill="#384021">site/ (NEW)</text>
+          <text x="135" y="244" text-anchor="middle" fill="#5d584e" font-size="9">Vite + vanilla TS, own lockfile</text>
+
+          <rect x="290" y="206" width="180" height="56" rx="10" fill="#fff" stroke="#6f7a46"/>
+          <text x="380" y="225" text-anchor="middle" fill="#384021">vite build</text>
+          <text x="380" y="240" text-anchor="middle" fill="#5d584e" font-size="9">base='/clustering-tfjs/'</text>
+          <text x="380" y="252" text-anchor="middle" fill="#5d584e" font-size="9">→ site/dist static bundle</text>
+
+          <rect x="530" y="206" width="180" height="56" rx="10" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.8"/>
+          <text x="620" y="228" text-anchor="middle" fill="#384021" font-weight="bold">GitHub Pages</text>
+          <text x="620" y="244" text-anchor="middle" fill="#5d584e" font-size="9">live at the repo sub-path</text>
+
+          <line x1="230" y1="234" x2="286" y2="234" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#mo)"/>
+          <line x1="470" y1="234" x2="526" y2="234" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#mo)"/>
+
+          <!-- deferred dependency edge npm -> /site -->
+          <path d="M780,108 C780,150 200,150 135,200" fill="none" stroke="#8d877a" stroke-width="1.5" stroke-dasharray="5 4" marker-end="url(#md)"/>
+          <rect x="430" y="138" width="320" height="24" rx="6" fill="#f3efe4" stroke="#bdb6a3"/>
+          <text x="590" y="154" text-anchor="middle" fill="#5d584e" font-size="9.5">site imports library — DEFERRED to 55.3 (no compute in M1)</text>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#e7dfca;border:1px solid #bdb6a3"></i> library lane (untouched)</span>
+        <span><i style="background:#e4ead4;border:1px solid #6f7a46"></i> site lane (this task)</span>
+        <span><i style="background:#8d877a"></i> deferred dependency edge (55.3)</span>
+      </div>
+      <figcaption class="prose"><b>The two builds never block each other.</b> The library compiles and publishes as before; the new <code>site/</code> Vite app carries its own <code>package-lock.json</code> and builds independently to <code>site/dist</code>. M1 stood up the entire bottom lane — the dashed edge wiring how <code>site/</code> consumes the library is left for the worker race harness in 55.3.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 2. deploy pipeline ════ -->
+  <section id="pipeline">
+    <div class="eyebrow">The pipeline shape</div>
+    <h2>One workflow, two jobs: build on every PR, deploy off PRs</h2>
+    <figure>
+      <div class="flowwrap">
+        <svg viewBox="0 0 920 340" role="img" aria-label="The deploy-site workflow has two jobs. The build job runs on push, pull_request, and workflow_dispatch: npm ci then configure-pages then npm run build (tsc --noEmit then vite build), which either fails the workflow or succeeds; upload-pages-artifact runs only when the event is not a pull request. The deploy job needs build, runs only when the event is not a pull request, holds a deploy-scoped concurrency group, and runs deploy-pages to the live URL. On a pull request the same build runs as a guard but nothing uploads or deploys.">
+          <defs>
+            <marker id="pa" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#5d584e"/></marker>
+            <marker id="po" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#6f7a46"/></marker>
+            <marker id="pr" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 Z" fill="#8f3a26"/></marker>
+          </defs>
+
+          <!-- build job container -->
+          <rect x="14" y="14" width="560" height="312" rx="12" fill="#f3efe4" stroke="#ddd6c4"/>
+          <text x="30" y="36" fill="#5d584e" font-size="10.5" font-weight="bold">job: build — runs on push · pull_request · workflow_dispatch</text>
+
+          <!-- triggers -->
+          <rect x="30" y="58" width="120" height="40" rx="9" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="90" y="74" text-anchor="middle" fill="#2b2a26" font-size="10">push / dispatch</text>
+          <text x="90" y="88" text-anchor="middle" fill="#5d584e" font-size="9">deploy path</text>
+
+          <rect x="30" y="240" width="120" height="40" rx="9" fill="#e7dfca" stroke="#bdb6a3"/>
+          <text x="90" y="256" text-anchor="middle" fill="#2b2a26" font-size="10">pull request</text>
+          <text x="90" y="270" text-anchor="middle" fill="#5d584e" font-size="9">guard only</text>
+
+          <!-- npm ci -->
+          <rect x="180" y="120" width="110" height="44" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="235" y="139" text-anchor="middle" fill="#2b2a26" font-size="10">npm ci</text>
+          <text x="235" y="153" text-anchor="middle" fill="#5d584e" font-size="9">site/ lockfile</text>
+
+          <!-- configure-pages -->
+          <rect x="180" y="58" width="110" height="44" rx="9" fill="#fff" stroke="#bdb6a3"/>
+          <text x="235" y="77" text-anchor="middle" fill="#2b2a26" font-size="10">configure-pages</text>
+          <text x="235" y="91" text-anchor="middle" fill="#5d584e" font-size="9">v5</text>
+
+          <!-- build guard -->
+          <rect x="320" y="118" width="160" height="50" rx="9" fill="#f1e3d6" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="400" y="137" text-anchor="middle" fill="#7a3f20" font-weight="bold" font-size="10.5">npm run build</text>
+          <text x="400" y="151" text-anchor="middle" fill="#7a3f20" font-size="9">tsc --noEmit &amp;&amp; vite build</text>
+          <text x="400" y="162" text-anchor="middle" fill="#7a3f20" font-size="8.5">the shared guard</text>
+
+          <!-- decision -->
+          <path d="M400,196 L455,224 L400,252 L345,224 Z" fill="#e7dfca" stroke="#b5673f" stroke-width="1.6"/>
+          <text x="400" y="221" text-anchor="middle" fill="#2b2a26" font-size="10">bundle</text>
+          <text x="400" y="234" text-anchor="middle" fill="#2b2a26" font-size="10">builds?</text>
+
+          <!-- fail -->
+          <rect x="200" y="288" width="160" height="32" rx="8" fill="#f3ddd6" stroke="#8f3a26"/>
+          <text x="280" y="308" text-anchor="middle" fill="#8f3a26" font-size="10">FAIL workflow · link can't rot</text>
+
+          <!-- upload (non-PR only) -->
+          <rect x="320" y="190" width="160" height="44" rx="9" fill="#e4ead4" stroke="#6f7a46"/>
+          <text x="400" y="209" text-anchor="middle" fill="#384021" font-size="9.5">upload-pages-artifact</text>
+          <text x="400" y="223" text-anchor="middle" fill="#5d584e" font-size="9">if not PR · path site/dist</text>
+
+          <!-- deploy job container -->
+          <rect x="606" y="120" width="300" height="120" rx="12" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+          <text x="622" y="142" fill="#384021" font-size="10.5" font-weight="bold">job: deploy</text>
+          <text x="622" y="158" fill="#5d584e" font-size="9">needs: build · if event != pull_request</text>
+          <text x="622" y="172" fill="#5d584e" font-size="9">concurrency group: pages (deploy-scoped)</text>
+
+          <rect x="640" y="182" width="230" height="44" rx="9" fill="#fff" stroke="#6f7a46" stroke-width="1.8"/>
+          <text x="755" y="201" text-anchor="middle" fill="#384021" font-weight="bold" font-size="10.5">deploy-pages → live URL</text>
+          <text x="755" y="215" text-anchor="middle" fill="#5d584e" font-size="9">environment: github-pages</text>
+
+          <!-- PR stop -->
+          <rect x="606" y="260" width="300" height="40" rx="9" fill="#efeadd" stroke="#bdb6a3"/>
+          <text x="756" y="280" text-anchor="middle" fill="#2b2a26" font-size="10">on a PR: deploy job is skipped entirely</text>
+          <text x="756" y="294" text-anchor="middle" fill="#5d584e" font-size="9">PR is build-only — no upload, no publish</text>
+
+          <!-- edges -->
+          <line x1="150" y1="78" x2="176" y2="80" stroke="#5d584e" stroke-width="1.5" marker-end="url(#pa)"/>
+          <line x1="235" y1="102" x2="235" y2="116" stroke="#5d584e" stroke-width="1.5" marker-end="url(#pa)"/>
+          <line x1="150" y1="260" x2="200" y2="150" stroke="#5d584e" stroke-width="1.4" stroke-dasharray="5 4" marker-end="url(#pa)"/>
+          <text x="150" y="200" fill="#5d584e" font-size="9">same npm ci + build</text>
+          <line x1="290" y1="143" x2="316" y2="143" stroke="#5d584e" stroke-width="1.5" marker-end="url(#pa)"/>
+          <line x1="400" y1="168" x2="400" y2="194" stroke="#5d584e" stroke-width="1.5" marker-end="url(#pa)"/>
+          <line x1="370" y1="245" x2="320" y2="285" stroke="#8f3a26" stroke-width="1.6" marker-end="url(#pr)"/>
+          <text x="318" y="262" fill="#8f3a26" font-size="9.5">no</text>
+          <line x1="400" y1="196" x2="400" y2="234" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#po)"/>
+          <text x="412" y="186" fill="#384021" font-size="9.5">yes · not PR</text>
+          <!-- upload -> deploy job -->
+          <path d="M480,200 C540,180 560,180 636,196" fill="none" stroke="#6f7a46" stroke-width="1.6" marker-end="url(#po)"/>
+        </svg>
+      </div>
+      <div class="legend">
+        <span><i style="background:#f1e3d6;border:1px solid #b5673f"></i> shared build guard (every trigger)</span>
+        <span><i style="background:#e4ead4;border:1px solid #6f7a46"></i> deploy job (non-PR only)</span>
+        <span><i style="background:#8f3a26"></i> guard failure (blocks merge)</span>
+      </div>
+      <figcaption class="prose"><b>The build is the single guard; the deploy job is the privileged tail.</b> Both jobs share Pages-scoped <code>permissions</code>; the <code>concurrency</code> group lives on the deploy job alone, so PR guard builds never queue behind a publish. The gate is <code>github.event_name != 'pull_request'</code> — so a manual <code>workflow_dispatch</code> can also deploy, not just a push to main.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 3. what shipped ════ -->
+  <section id="built">
+    <div class="eyebrow">As built · the files in site/</div>
+    <h2>What landed in <code style="font-family:var(--mono);font-size:1rem">site/</code></h2>
+    <figure>
+      <div class="files">
+        <div class="fcard"><span class="fp">package.json</span><div class="role">Own <code>vite@^8.1</code> + <code>typescript@^6.0</code> devDeps, <code>private</code>, <code>type: module</code>; build script <code>tsc --noEmit &amp;&amp; vite build</code>.</div></div>
+        <div class="fcard"><span class="fp">package-lock.json</span><div class="role">Committed so CI <code>npm ci</code> resolves the site's deps independently of the library root.</div></div>
+        <div class="fcard"><span class="fp">vite.config.ts</span><div class="role">Just <code>base: '/clustering-tfjs/'</code> — the one config that keeps assets from 404-ing on the sub-path.</div></div>
+        <div class="fcard"><span class="fp">tsconfig.json</span><div class="role">One strict config covering both <code>src/</code> and <code>vite.config.ts</code>; <code>strict</code>, <code>noEmit</code>.</div></div>
+        <div class="fcard"><span class="fp">index.html</span><div class="role">Branded dark placeholder + inline data-URI favicon; hook copy, no external assets.</div></div>
+        <div class="fcard"><span class="fp">src/main.ts</span><div class="role">Imports the stylesheet so Vite base-prefixes its URL — a bare <code>&lt;link&gt;</code> would bypass the rewrite.</div></div>
+        <div class="fcard"><span class="fp">src/style.css</span><div class="role">The placeholder's styling, emitted through Vite's asset pipeline.</div></div>
+        <div class="fcard guard"><span class="tag">guard had teeth</span><span class="fp">src/vite-env.d.ts</span><div class="role">Added during the build: TS 6.0 rejected the bare CSS import until <code>/// &lt;reference types="vite/client" /&gt;</code> supplied the ambient types.</div></div>
+      </div>
+      <figcaption class="prose"><b>One file is the proof the guard works.</b> The bare <code>import "./style.css"</code> failed at <code>tsc --noEmit</code> until <code>src/vite-env.d.ts</code> was added — the type check caught a real issue before the bundle ever built.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 4. base ════ -->
+  <section id="base">
+    <div class="eyebrow">The one config that 404s everything</div>
+    <h2>Why <code style="font-family:var(--mono);font-size:1.05rem">base: '/clustering-tfjs/'</code> is non-negotiable</h2>
+    <figure>
+      <div class="ba">
+        <!-- WRONG -->
+        <div class="panel bad">
+          <div class="ptitle">Wrong — base '/' (the default)</div>
+          <svg viewBox="0 0 320 200" role="img" aria-label="With base set to root slash, the bundle requests assets at /assets/index.js, but project Pages serve under /clustering-tfjs/, so every asset request 404s and the page is blank.">
+            <rect x="20" y="14" width="280" height="36" rx="8" fill="#fff" stroke="#bdb6a3"/>
+            <text x="160" y="32" text-anchor="middle" fill="#2b2a26" font-size="10">served from</text>
+            <text x="160" y="44" text-anchor="middle" fill="#2b2a26" font-size="9.5">CRJFisher.github.io/clustering-tfjs/</text>
+            <line x1="160" y1="50" x2="160" y2="74" stroke="#8d877a" stroke-width="1.5"/>
+            <rect x="20" y="76" width="280" height="40" rx="8" fill="#f3ddd6" stroke="#8f3a26"/>
+            <text x="160" y="94" text-anchor="middle" fill="#8f3a26" font-size="9.5">HTML requests asset at</text>
+            <text x="160" y="108" text-anchor="middle" fill="#8f3a26" font-size="9.5">/assets/index.js  (root!)</text>
+            <line x1="160" y1="116" x2="160" y2="138" stroke="#8f3a26" stroke-width="1.6"/>
+            <rect x="20" y="140" width="280" height="48" rx="8" fill="#f3ddd6" stroke="#8f3a26" stroke-width="1.6"/>
+            <text x="160" y="160" text-anchor="middle" fill="#8f3a26" font-weight="bold" font-size="11">404 — every asset, every worker</text>
+            <text x="160" y="176" text-anchor="middle" fill="#8f3a26" font-size="9.5">blank page, console full of red</text>
+          </svg>
+        </div>
+        <div class="arrowcol"><span class="big">→</span></div>
+        <!-- RIGHT -->
+        <div class="panel good">
+          <div class="ptitle">Right — base '/clustering-tfjs/' (shipped)</div>
+          <svg viewBox="0 0 320 200" role="img" aria-label="With base set to slash clustering-tfjs slash, the bundle requests assets prefixed under the sub-path, matching where Pages serves them, so every asset resolves and the page loads. vite preview returns 200 at the sub-path and 302-redirects bare slash to it.">
+            <rect x="20" y="14" width="280" height="36" rx="8" fill="#fff" stroke="#bdb6a3"/>
+            <text x="160" y="32" text-anchor="middle" fill="#2b2a26" font-size="10">served from</text>
+            <text x="160" y="44" text-anchor="middle" fill="#2b2a26" font-size="9.5">CRJFisher.github.io/clustering-tfjs/</text>
+            <line x1="160" y1="50" x2="160" y2="74" stroke="#8d877a" stroke-width="1.5"/>
+            <rect x="20" y="76" width="280" height="40" rx="8" fill="#e4ead4" stroke="#6f7a46"/>
+            <text x="160" y="94" text-anchor="middle" fill="#384021" font-size="9.5">HTML requests asset at</text>
+            <text x="160" y="108" text-anchor="middle" fill="#384021" font-size="9.5">/clustering-tfjs/assets/index.js</text>
+            <line x1="160" y1="116" x2="160" y2="138" stroke="#6f7a46" stroke-width="1.6"/>
+            <rect x="20" y="140" width="280" height="48" rx="8" fill="#e4ead4" stroke="#6f7a46" stroke-width="1.6"/>
+            <text x="160" y="160" text-anchor="middle" fill="#384021" font-weight="bold" font-size="11">200 — assets resolve</text>
+            <text x="160" y="176" text-anchor="middle" fill="#384021" font-size="9.5">vite preview confirms the sub-path</text>
+          </svg>
+        </div>
+      </div>
+      <figcaption class="prose"><b>Project Pages serve under the repo sub-path, not root.</b> The slug is the lowercase git-remote and npm-package name — <code>clustering-tfjs</code> — so the base and the live URL <code>https://CRJFisher.github.io/clustering-tfjs/</code> agree. <code>vite preview</code> serves <code>200</code> at the sub-path and <code>302</code>-redirects bare <code>/</code> to it; no worker or wasm exists yet to base-break.</figcaption>
+    </figure>
+    <aside class="callout">
+      <div class="k">Forward-looking note for later sub-tasks</div>
+      <p>Once workers exist, their URLs must use <code>new Worker(new URL('./x.ts', import.meta.url))</code> so Vite rewrites them under the base — a hard-coded path 404s only after deploy.</p>
+      <p style="margin-top:.45rem">If wasm is ever added, <code>setWasmPaths</code> must point at the base-prefixed asset URL for the same reason. <b>Notes for 55.3+, not M1 work.</b></p>
+    </aside>
+  </section>
+
+  <!-- ════ 5. scope ════ -->
+  <section id="scope">
+    <div class="eyebrow">The scope boundary</div>
+    <h2>What M1 shipped — and what is deliberately deferred</h2>
+    <figure>
+      <div class="scope">
+        <div class="scol ships">
+          <div class="lbl">Shipped in this task (M1)</div>
+          <h3>A blank-but-live page + a proven pipeline</h3>
+          <ul>
+            <li>A new <code>site/</code> Vite + vanilla-TS app, <code>base</code> set, own lockfile</li>
+            <li>A branded dark placeholder page (wordmark + hook, no compute)</li>
+            <li>A two-job GitHub Actions workflow using <code>actions/deploy-pages</code></li>
+            <li>Repo Pages source set to <span class="sub">GitHub Actions</span> — no <code>gh-pages</code> branch, no <code>docs/</code> folder</li>
+            <li>A CI build guard that also runs on pull requests</li>
+            <li>Repo ESLint passing (<code>eslint src test_support benchmarks</code>)</li>
+          </ul>
+        </div>
+        <div class="scol defer">
+          <div class="lbl">Out of scope — later sub-tasks</div>
+          <h3>Everything that computes, converts, or links</h3>
+          <ul>
+            <li>The worker-per-backend race harness <span class="to">→ 55.3</span></li>
+            <li>How <code>site/</code> imports the library <span class="to">→ 55.3</span></li>
+            <li>Wiring <code>site/</code> into ESLint (snake_case rules) <span class="to">→ 55.3</span></li>
+            <li>The dual-panel race UI, timers, bars <span class="to">→ 55.4</span></li>
+            <li>Crossover <code>n</code>-slider + methodology <span class="to">→ 55.5/55.6</span></li>
+            <li>The scikit-learn toy-dataset grid <span class="to">→ 55.7/55.8</span></li>
+          </ul>
+        </div>
+      </div>
+      <figcaption class="prose"><b>M1 isolated the deploy from the compute.</b> A live placeholder proves the pipeline on its own; when the race lands in 55.3+, any failure is unambiguously the compute, never the deploy. <code>site/</code> is intentionally outside the repo's ESLint scope here because its only TypeScript is a one-line CSS import.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ════ 6. deferred decision ════ -->
+  <section id="decision">
+    <div class="eyebrow">The one decision left open on purpose</div>
+    <h2>How will <code style="font-family:var(--mono);font-size:1rem">site/</code> depend on the library?</h2>
+    <figure>
+      <div class="opts">
+        <div class="ocard">
+          <div class="on">Option A</div>
+          <h4>Published npm package</h4>
+          <p>Import <code style="font-family:var(--mono);font-size:.74rem">clustering-tfjs</code> from npm. Simplest, but 0.6.1 predates the WebGPU loader from 55.1 — no good until a release ships.</p>
+        </div>
+        <div class="ocard">
+          <div class="on">Option B</div>
+          <h4>file: link to dist/</h4>
+          <p>Point <code style="font-family:var(--mono);font-size:.74rem">file:../</code> at the local build. Uses 55.1 immediately; needs <code style="font-family:var(--mono);font-size:.74rem">dist/</code> built in CI.</p>
+        </div>
+        <div class="ocard">
+          <div class="on">Option C</div>
+          <h4>Workspace</h4>
+          <p>npm/pnpm workspace ties <code style="font-family:var(--mono);font-size:.74rem">site/</code> to the root package. Cleanest dev loop; restructures the repo.</p>
+        </div>
+      </div>
+      <figcaption class="prose">Three viable shapes, each with a different cost; none was needed to prove the pipeline, so M1 picked none.</figcaption>
+    </figure>
+    <aside class="callout warn">
+      <div class="k">Deferred — by design</div>
+      <p>M1 shipped <b>no library import at all</b> — no compute runs in the placeholder, and the published 0.6.1 predates the 55.1 WebGPU loader, so picking a linking strategy now would be premature (YAGNI).</p>
+      <p style="margin-top:.45rem">The decision lands in <b>55.3</b>, where the worker harness is the first code that actually consumes the library and can prove the chosen link end to end.</p>
+      <div class="owner">owner · resolve in task-55.3 (worker race harness)</div>
+    </aside>
+  </section>
+
+  <!-- ════ 7. done ════ -->
+  <section id="done">
+    <div class="eyebrow">What "done" means</div>
+    <h2>Acceptance criteria — four met, one pending the live URL</h2>
+    <div class="acs">
+      <div class="ac"><span class="num">1</span><span class="box"></span><span class="txt">A placeholder page is reachable at <code>https://CRJFisher.github.io/clustering-tfjs/</code> after a push to main.</span><span class="status pend">pending merge</span></div>
+      <div class="ac done"><span class="num">2</span><span class="box"></span><span class="txt">Vite <code>base</code> is <code>/clustering-tfjs/</code> and no asset URL 404s on the deployed sub-path (<code>vite preview</code> serves <code>200</code>).</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">3</span><span class="box"></span><span class="txt">The workflow uses <code>actions/deploy-pages</code> — no <code>gh-pages</code> branch, no <code>docs/</code> folder.</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">4</span><span class="box"></span><span class="txt">CI fails if the site bundle fails to build (the PR <code>build</code> job is the guard).</span><span class="status">done</span></div>
+      <div class="ac done"><span class="num">5</span><span class="box"></span><span class="txt">ESLint passes before commit.</span><span class="status">done</span></div>
+    </div>
+    <figcaption class="prose"><b>AC #1 is confirmable only after the work reaches <code>main</code> and Settings → Pages → Source is set to GitHub Actions</b> — a one-time manual setting no YAML can apply. The pipeline itself is verified end to end locally.</figcaption>
+  </section>
+</main>
+
+<footer>
+  Build-half companion for <b style="color:var(--g500)">task-55.2 — Scaffold Vite /site and GitHub Pages deploy pipeline (Milestone M1, status: Done)</b> ·
+  grounded in the as-built site/, .github/workflows/deploy-site.yml, the task doc, and parent task-55 ·
+  self-contained, no external assets.
+</footer>
+
+<script>
+  // checklist toggle (progressive enhancement): cycle to/from done
+  document.querySelectorAll('.ac').forEach(function(ac){
+    ac.style.cursor='pointer';
+    ac.addEventListener('click',function(){ ac.classList.toggle('done'); });
+  });
+  // outline active-state via IntersectionObserver
+  var links={};
+  document.querySelectorAll('.outline a').forEach(function(a){ links[a.getAttribute('href').slice(1)]=a; });
+  var io=new IntersectionObserver(function(es){
+    es.forEach(function(e){ if(e.isIntersecting){
+      Object.values(links).forEach(function(l){l.classList.remove('active');});
+      var l=links[e.target.id]; if(l) l.classList.add('active');
+    }});
+  },{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('main section[id]').forEach(function(s){io.observe(s);});
+</script>
+</body>
+</html>
