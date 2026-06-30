@@ -1,13 +1,11 @@
 import { mulberry32, next_gaussian } from "./make_blobs_js";
 
-// The five scikit-learn "toy datasets" the parity grid races every algorithm
-// against, generated in plain JS on the main thread. The library only ships
-// make_blobs; moons/circles/anisotropic/no-structure have no generator, so they
-// live here — seeded from one mulberry32 stream (shared with make_blobs_js) so
-// every visitor sees the byte-identical grid. These reproduce the SHAPE and math
-// of sklearn's make_moons/make_circles/aniso example, not NumPy's exact RNG bit
-// stream: the parity claim is "same clustering result on the same shape", checked
-// per-cell, never "label-identical to a Python fixture".
+// The five "toy datasets" the clustering grid runs every algorithm against,
+// generated in plain JS on the main thread. The library only ships make_blobs;
+// the moons / circles / anisotropic / no-structure shapes have no generator, so
+// they live here — seeded from one mulberry32 stream (shared with make_blobs_js)
+// so every visitor sees the byte-identical grid. Each is a deterministic
+// reproduction of a classic clustering-benchmark shape.
 
 export type ToyDatasetId =
   | "moons"
@@ -31,10 +29,9 @@ export interface ToyDataset {
 // small enough that 25 sequential fits in one worker stay snappy.
 const N_SAMPLES = 300;
 
-// Re-centre and rescale each column to zero mean and unit variance. sklearn's
-// plot_cluster_comparison StandardScales every dataset before clustering; doing
-// the same here is what lets one fixed gamma / n_neighbors / min_cluster_size in
-// grid_config serve all five rows without per-row recalibration.
+// Re-centre and rescale each column to zero mean and unit variance. Standardizing
+// every dataset before clustering is what lets one fixed gamma / n_neighbors /
+// min_cluster_size in grid_config serve all five rows without per-row recalibration.
 function standardize(data: Float32Array, n_samples: number): void {
   for (let col = 0; col < 2; col++) {
     let mean = 0;
@@ -53,11 +50,10 @@ function standardize(data: Float32Array, n_samples: number): void {
   }
 }
 
-// Two interleaving half-circles (sklearn make_moons). The outer moon is the
-// upper unit semicircle; the inner moon is its point-reflection shifted right and
-// down so the two arcs interlock — the canonical "can your algorithm follow a
-// curved manifold?" test. Row order is irrelevant to clustering, so the shuffle
-// sklearn applies is omitted.
+// Two interleaving half-circles ("two moons"). The outer moon is the upper unit
+// semicircle; the inner moon is its point-reflection shifted right and down so the
+// two arcs interlock — the canonical "can your algorithm follow a curved manifold?"
+// test. Row order is irrelevant to clustering, so no shuffle is applied.
 function make_moons(noise: number, random_state: number): ToyDataset {
   const rand = mulberry32(random_state);
   const n_out = N_SAMPLES >> 1;
@@ -84,9 +80,9 @@ function make_moons(noise: number, random_state: number): ToyDataset {
   return { data, n_samples: N_SAMPLES, labels };
 }
 
-// Two concentric circles (sklearn make_circles). The inner circle's radius is
-// `factor` times the outer; a clustering that keys on Euclidean compactness
-// cannot separate them, which is the whole point of the row.
+// Two concentric circles. The inner circle's radius is `factor` times the outer;
+// a clustering that keys on Euclidean compactness cannot separate them, which is
+// the whole point of the row.
 function make_circles(
   noise: number,
   factor: number,
@@ -149,11 +145,10 @@ function make_blobs(cluster_std: number, random_state: number): ToyDataset {
   return { data, n_samples: N_SAMPLES, labels };
 }
 
-// The anisotropic transform from sklearn's example: isotropic blobs run through a
-// fixed shear so the clusters become stretched, correlated ellipses. K-Means'
-// spherical assumption breaks here while connectivity-aware methods cope — that
-// contrast is the row's purpose. Matrix is applied as the row-vector product
-// `[x, y] · T` sklearn uses.
+// The anisotropic transform: isotropic blobs run through a fixed shear so the
+// clusters become stretched, correlated ellipses. K-Means' spherical assumption
+// breaks here while connectivity-aware methods cope — that contrast is the row's
+// purpose. The matrix is applied as the row-vector product `[x, y] · T`.
 const ANISO_TRANSFORM: readonly [number, number, number, number] = [
   0.6, -0.6, -0.4, 0.8,
 ];
@@ -191,9 +186,9 @@ function make_no_structure(random_state: number): ToyDataset {
   return { data, n_samples: N_SAMPLES, labels };
 }
 
-// Drawn AFTER all structured coordinates are placed (sklearn adds noise as a
-// final pass over the whole array). Skipped entirely when noise is 0 so a clean
-// shape keeps the PRNG stream tidy and never risks a vanishing 0×gaussian draw.
+// Drawn AFTER all structured coordinates are placed, as a final pass over the
+// whole array. Skipped entirely when noise is 0 so a clean shape keeps the PRNG
+// stream tidy and never risks a vanishing 0×gaussian draw.
 function add_gaussian_noise(
   data: Float32Array,
   rand: () => number,

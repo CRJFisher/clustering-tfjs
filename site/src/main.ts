@@ -1,5 +1,5 @@
 import "./style.css";
-import { make_race_ui } from "./race_ui";
+import { make_benchmark_ui } from "./benchmark_ui";
 import { make_grid_ui } from "./grid_ui";
 import { make_code_panel } from "./code_panel";
 import { wire_copy_button } from "./copy_button";
@@ -23,14 +23,12 @@ function require_el<T extends HTMLElement>(selector: string): T {
 }
 
 function init(): void {
-  // Decode once on load (pure, DOM-free). Each restore below applies only the
+  // Decode once on load (pure, DOM-free). The restore below applies only the
   // fields that survived validation; everything else keeps its own default.
   const decoded = read_url_state();
-  const has_overrides = Object.values(decoded.overrides).some(
-    (value) => value !== undefined,
-  );
 
-  const race = make_race_ui();
+  // Self-wires its own Run button; no handle needed on the main thread.
+  make_benchmark_ui();
   const grid = make_grid_ui();
   const code_panel = make_code_panel({
     code_el: require_el("#code-panel-code"),
@@ -39,22 +37,13 @@ function init(): void {
     live_el: require_el("#code-panel-live"),
   });
 
-  // Mirror the grid into the code panel: the selected cell, the live params, and
-  // the real backend the worker came up on.
+  // Mirror the grid into the code panel: the selected cell and the real backend
+  // the worker came up on.
   grid.on_selection_change((cell_id) => code_panel.set_selection(cell_id));
-  grid.on_overrides_change((overrides) => code_panel.set_overrides(overrides));
-  let overrides_restored = false;
   grid.on_backend((actual_backend, live) => {
     if (!live) return;
     const backend = to_backend_arg(actual_backend);
     if (backend) code_panel.set_backend(backend);
-    // Override restore waits for a live backend: only then are the controls
-    // enabled and the worker warm enough to re-cluster. The latch stops a re-fired
-    // on_done (a later worker crash) from re-applying over a dead worker.
-    if (has_overrides && !overrides_restored) {
-      overrides_restored = true;
-      grid.apply_overrides(decoded.overrides);
-    }
   });
 
   // Selection restore is worker-independent — pure DOM state — so it runs at load,
@@ -66,11 +55,14 @@ function init(): void {
   grid.select_cell(initial_cell);
   code_panel.set_selection(initial_cell);
 
-  // Race restore: set n and run exactly once (the race never auto-runs otherwise).
-  if (decoded.n !== undefined) {
-    race.set_n(decoded.n);
-    race.run();
-  }
+  // The grid runs only on explicit click — clustering 25 cells costs real compute,
+  // so the page never spends it unasked. (The benchmark UI self-wires its own Run
+  // button.) Disable the button once used so a second click can't re-trigger it.
+  const populate_button = require_el<HTMLButtonElement>("#populate-grid");
+  populate_button.addEventListener("click", () => {
+    populate_button.disabled = true;
+    grid.populate();
+  });
 
   // Conversion surfaces: install copy buttons, UTM-tagged star/repo links.
   wire_copy_button(
@@ -111,10 +103,8 @@ function init(): void {
     const selected = grid.get_selected_cell();
     const cell = selected ? get_grid_cell(selected) : undefined;
     const state: PermalinkState = {
-      n: race.get_n(),
       dataset_id: cell ? cell.dataset_id : "blobs",
       algorithm_id: cell ? cell.algorithm_id : "spectral",
-      overrides: grid.get_overrides(),
     };
     write_url_state(state);
     void copy_text(location.href).then((ok) => {

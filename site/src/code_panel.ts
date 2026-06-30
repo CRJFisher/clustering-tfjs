@@ -4,8 +4,6 @@ import {
   GRID_DATASETS,
   get_grid_cell,
 } from "./grid_config";
-import { resolve_params } from "./grid_controls";
-import type { ControlOverrides } from "./grid_controls";
 import {
   DEFAULT_BACKEND_ARG,
   generate_code,
@@ -14,10 +12,9 @@ import type { BackendArg } from "./generate_code";
 import { wire_copy_button } from "./copy_button";
 
 // The conversion code panel: it mirrors the selected grid cell as the real ~5
-// lines a visitor would write, regenerated whenever the selection, the live
-// parameter overrides, or the worker's backend change. The code comes straight
-// from the same resolve_params the grid fits with, so what the panel shows can
-// never drift from what the cell actually computed.
+// lines a visitor would write, regenerated whenever the selection or the worker's
+// backend changes. The code comes straight from the cell's params the grid fits
+// with, so what the panel shows can never drift from what the cell computed.
 
 export interface CodePanelElements {
   code_el: HTMLElement;
@@ -28,7 +25,6 @@ export interface CodePanelElements {
 
 export interface CodePanel {
   set_selection: (cell_id: string) => void;
-  set_overrides: (overrides: ControlOverrides) => void;
   set_backend: (backend: BackendArg) => void;
   get_code: () => string;
 }
@@ -42,13 +38,12 @@ const ALGORITHM_LABELS = new Map(
 
 export function make_code_panel(elements: CodePanelElements): CodePanel {
   let current_cell = GRID_CELLS[0];
-  let current_overrides: ControlOverrides = {};
   let current_backend: BackendArg = DEFAULT_BACKEND_ARG;
   let current_code = "";
 
   function render(): void {
     current_code = generate_code({
-      params: resolve_params(current_cell, current_overrides),
+      params: current_cell.params,
       backend: current_backend,
     });
     elements.code_el.textContent = current_code;
@@ -71,10 +66,6 @@ export function make_code_panel(elements: CodePanelElements): CodePanel {
       const cell = get_grid_cell(cell_id);
       if (!cell) return;
       current_cell = cell;
-      render();
-    },
-    set_overrides: (overrides: ControlOverrides): void => {
-      current_overrides = overrides;
       render();
     },
     set_backend: (backend: BackendArg): void => {

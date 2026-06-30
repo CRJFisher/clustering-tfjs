@@ -1,10 +1,10 @@
 import type { ToyDatasetId } from "./make_toy_datasets";
 
-// The single source of truth for the parity grid: the five datasets (rows), the
-// five algorithms (columns), the exact per-cell params the worker constructs each
-// estimator with, and the parity tier each cell honestly advertises. Both the
-// worker (what to run) and the UI (headers, render targets, annotations) read
-// this, so the rendered grid can never drift from what was computed.
+// The single source of truth for the clustering grid: the five datasets (rows),
+// the five algorithms (columns), and the exact per-cell params the worker
+// constructs each estimator with. Both the worker (what to run) and the UI
+// (headers, render targets, annotations) read this, so the rendered grid can never
+// drift from what was computed.
 
 export type GridDatasetId = ToyDatasetId;
 
@@ -81,21 +81,11 @@ export type GridParams =
       cluster_linkage: "ward" | "average";
     };
 
-// The four honest parity tiers a cell can claim, mirroring the race fold's
-// precise-over-salesy labelling:
-// - matches: the library's float32 labels reproduce scikit-learn's result.
-// - drifts: cluster cores match scikit-learn, but a few boundary points move
-//   under float32 (Spectral's eigen-embedding, HDBSCAN's density tree).
-// - no-reference: SOM has no scikit-learn counterpart in this comparison.
-// - no-truth: uniform data has no real clusters to recover.
-export type ParityTier = "matches" | "drifts" | "no-reference" | "no-truth";
-
 export interface GridCell {
   cell_id: string;
   dataset_id: GridDatasetId;
   algorithm_id: GridAlgorithmId;
   params: GridParams;
-  parity: ParityTier;
 }
 
 // One fixed seed across every randomized algorithm, so the whole matrix is
@@ -205,27 +195,6 @@ function params_for(
   }
 }
 
-// The parity tier is data, not inference: SOM is always reference-free; uniform
-// no-structure has no truth for any sklearn algorithm; Spectral and HDBSCAN drift
-// at the float32 boundary on the shapes the task flags; everything else matches.
-function parity_for(
-  algorithm_id: GridAlgorithmId,
-  dataset_id: GridDatasetId,
-): ParityTier {
-  if (algorithm_id === "som") return "no-reference";
-  if (dataset_id === "none") return "no-truth";
-  if (algorithm_id === "hdbscan") return "drifts";
-  if (
-    algorithm_id === "spectral" &&
-    (dataset_id === "moons" ||
-      dataset_id === "circles" ||
-      dataset_id === "aniso")
-  ) {
-    return "drifts";
-  }
-  return "matches";
-}
-
 export function cell_id_of(
   dataset_id: GridDatasetId,
   algorithm_id: GridAlgorithmId,
@@ -240,13 +209,8 @@ export const GRID_CELLS: GridCell[] = GRID_DATASETS.flatMap((dataset) =>
     dataset_id: dataset.id,
     algorithm_id: algorithm.id,
     params: params_for(algorithm.id, dataset.id),
-    parity: parity_for(algorithm.id, dataset.id),
   })),
 );
-
-export function count_parity(tier: ParityTier): number {
-  return GRID_CELLS.filter((cell) => cell.parity === tier).length;
-}
 
 const CELL_BY_ID = new Map<string, GridCell>(
   GRID_CELLS.map((cell) => [cell.cell_id, cell]),

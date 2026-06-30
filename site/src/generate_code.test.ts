@@ -5,7 +5,6 @@ import {
 } from "./generate_code";
 import type { BackendArg } from "./generate_code";
 import { GRID_CELLS } from "./grid_config";
-import { resolve_params } from "./grid_controls";
 
 const CLASS_BY_ALGORITHM: Record<string, string> = {
   kmeans: "KMeans",
@@ -19,7 +18,7 @@ describe("every curated cell generates valid code", () => {
   test("each snippet imports the right class, inits a backend, and fits", () => {
     for (const cell of GRID_CELLS) {
       const code = generate_code({
-        params: resolve_params(cell, {}),
+        params: cell.params,
         backend: DEFAULT_BACKEND_ARG,
       });
       const class_name = CLASS_BY_ALGORITHM[cell.algorithm_id];
@@ -34,7 +33,7 @@ describe("every curated cell generates valid code", () => {
   test("no snippet ever emits an `undefined` value", () => {
     for (const cell of GRID_CELLS) {
       const code = generate_code({
-        params: resolve_params(cell, {}),
+        params: cell.params,
         backend: DEFAULT_BACKEND_ARG,
       });
       expect(code).not.toContain("undefined");
@@ -46,7 +45,7 @@ describe("per-algorithm shape", () => {
   function code_for(cell_id: string, backend: BackendArg = "webgl"): string {
     const cell = GRID_CELLS.find((c) => c.cell_id === cell_id);
     if (!cell) throw new Error(`No grid cell ${cell_id}`);
-    return generate_code({ params: resolve_params(cell, {}), backend });
+    return generate_code({ params: cell.params, backend });
   }
 
   test("the four partitioning algorithms end in fit_predict", () => {
@@ -70,46 +69,29 @@ describe("per-algorithm shape", () => {
 
 describe("spectral affinity branches", () => {
   test("an rbf cell emits gamma and no n_neighbors", () => {
+    // blobs:spectral is curated with the rbf affinity + gamma.
     const cell = GRID_CELLS.find((c) => c.cell_id === "blobs:spectral");
     if (!cell) throw new Error("missing blobs:spectral");
-    const code = generate_code({
-      params: resolve_params(cell, { spectral_affinity: "rbf" }),
-      backend: "webgl",
-    });
+    const code = generate_code({ params: cell.params, backend: "webgl" });
     expect(code).toContain("gamma:");
     expect(code).not.toContain("n_neighbors:");
   });
 
   test("a nearest_neighbors cell emits n_neighbors and no gamma", () => {
+    // moons:spectral is curated with the nearest_neighbors affinity.
     const cell = GRID_CELLS.find((c) => c.cell_id === "moons:spectral");
     if (!cell) throw new Error("missing moons:spectral");
-    const code = generate_code({
-      params: resolve_params(cell, { spectral_affinity: "nearest_neighbors" }),
-      backend: "webgl",
-    });
+    const code = generate_code({ params: cell.params, backend: "webgl" });
     expect(code).toContain("n_neighbors:");
     expect(code).not.toContain("gamma:");
   });
 });
 
-describe("overrides and backend flow into the snippet", () => {
-  test("an n_clusters override appears in the constructor", () => {
-    const cell = GRID_CELLS.find((c) => c.cell_id === "blobs:kmeans");
-    if (!cell) throw new Error("missing blobs:kmeans");
-    const code = generate_code({
-      params: resolve_params(cell, { n_clusters: 5 }),
-      backend: "webgl",
-    });
-    expect(code).toContain("n_clusters: 5");
-  });
-
+describe("the backend arg flows into the snippet", () => {
   test("the backend arg is reflected in the init line", () => {
     const cell = GRID_CELLS.find((c) => c.cell_id === "blobs:kmeans");
     if (!cell) throw new Error("missing blobs:kmeans");
-    const code = generate_code({
-      params: resolve_params(cell, {}),
-      backend: "wasm",
-    });
+    const code = generate_code({ params: cell.params, backend: "wasm" });
     expect(code).toContain('await Clustering.init({ backend: "wasm" });');
   });
 });

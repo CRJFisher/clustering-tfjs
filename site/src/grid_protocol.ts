@@ -1,12 +1,12 @@
-// The main↔worker contract for the sklearn-parity grid. Imported by both the
+// The main↔worker contract for the clustering grid. Imported by both the
 // main-thread orchestrator (grid.ts) and the worker (grid_worker.ts) so the two
 // ends can never drift. One worker runs every cell sequentially, streaming a
-// result per cell — the grid sells parity, not speed, so there is no race here.
+// result per cell.
 
 import type { GridAlgorithmId, GridDatasetId, GridParams } from "./grid_config";
 
 // A single 2-D dataset, generated once on the main thread and shared by every
-// algorithm column that races it. Sent once per dataset (not once per cell) so
+// algorithm column that clusters it. Sent once per dataset (not once per cell) so
 // the request never duplicates the same points five times.
 export interface GridDatasetPayload {
   id: GridDatasetId;
@@ -31,16 +31,7 @@ export interface GridRequest {
   jobs: GridJob[];
 }
 
-// main → worker: re-fit a subset of cells with new params (a parameter control
-// moved off Auto). The worker stays alive after the initial run holding the
-// already-uploaded datasets and the warm backend, so a re-cluster pays neither
-// dataset transfer nor backend init — just the milliseconds of the fits.
-export interface GridRecluster {
-  type: "recluster";
-  jobs: GridJob[];
-}
-
-export type GridInbound = GridRequest | GridRecluster;
+export type GridInbound = GridRequest;
 
 // worker → main: how far through the matrix the worker is, so the UI can show a
 // live "N / 25 computed" readout without waiting for the whole grid.
@@ -78,16 +69,8 @@ export interface GridDone {
   tfjs_version: string;
 }
 
-// worker → main: a re-cluster batch finished streaming its cell results, so the UI
-// can re-enable the controls. Carries no backend label — a re-cluster reuses the
-// same warm backend the `done` message already reported.
-export interface GridReclusterDone {
-  type: "recluster_done";
-}
-
 export type GridOutbound =
   | GridProgress
   | GridCellResult
   | GridCellError
-  | GridDone
-  | GridReclusterDone;
+  | GridDone;

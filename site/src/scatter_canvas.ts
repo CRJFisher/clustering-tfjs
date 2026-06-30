@@ -20,9 +20,9 @@ export interface ScatterOptions {
 }
 
 // Draws the seeded dataset once. There is no animation loop and no
-// requestAnimationFrame: the caller invokes this a single time, before the race
-// starts, so a chart redraw can never land inside a measured run and compete
-// with the GPU for frames.
+// requestAnimationFrame: the caller invokes this a single time, before timing
+// starts, so a redraw can never land inside a measured run and compete with the
+// GPU for frames.
 export function render_scatter(
   canvas: HTMLCanvasElement,
   projection: Projection2d,

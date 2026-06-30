@@ -7,15 +7,11 @@ import type {
   GridOutbound,
 } from "./grid_protocol";
 
-// Main-thread orchestrator for the parity grid: it generates the five datasets
+// Main-thread orchestrator for the clustering grid: it generates the five datasets
 // once, hands them plus the 25 jobs to one worker, and streams the worker's
-// per-cell results back to the UI. Like the race orchestrator it never
+// per-cell results back to the UI. Like the benchmark orchestrator it never
 // initializes tfjs — all compute is off the main thread so the page never freezes
 // while 25 cells fit.
-//
-// The worker is LONG-LIVED: after the initial sweep it stays up holding the warm
-// backend and uploaded datasets, and `run_grid` returns a controller the UI drives
-// to re-cluster affected cells whenever a parameter control moves off Auto.
 
 export interface GridDatasets {
   by_id: Map<GridDatasetId, ToyDataset>;
@@ -34,15 +30,6 @@ export interface GridCallbacks {
   ) => void;
   on_cell_error: (cell_id: string, message: string) => void;
   on_done: (actual_backend: string, tfjs_version: string) => void;
-  // Fires when a re-cluster batch (a control change) has finished streaming its
-  // cell results, so the UI can re-enable the controls.
-  on_recluster_done: () => void;
-}
-
-export interface GridController {
-  // Re-fit the given cells with new params. Results stream back through the same
-  // on_cell_result / on_cell_error callbacks, ending with on_recluster_done.
-  recluster: (jobs: GridJob[]) => void;
 }
 
 // A wedged worker (a backend that hangs on init, an algorithm that never returns)
@@ -56,7 +43,7 @@ function spawn_worker(): Worker {
   });
 }
 
-export function run_grid(callbacks: GridCallbacks): GridController {
+export function run_grid(callbacks: GridCallbacks): void {
   const by_id = new Map<GridDatasetId, ToyDataset>();
   const payloads: GridDatasetPayload[] = GRID_DATASETS.map((spec) => {
     const dataset = make_toy_dataset(spec.id);
@@ -82,12 +69,9 @@ export function run_grid(callbacks: GridCallbacks): GridController {
   // Set once the worker can no longer serve re-clusters — an init timeout or a
   // crash both terminate it. `recluster` becomes a no-op afterwards, and the UI
   // disables its controls (it keys off the non-live backend label in `on_done`).
-  let worker_dead = false;
-  // Watchdog for the INITIAL sweep only: a backend that wedges on init would
-  // otherwise hang the grid forever. Cleared the instant the first `done` lands,
-  // after which the worker lives on to serve re-clusters with no timeout.
+  // A backend that wedges on init would otherwise hang the grid forever. The
+  // watchdog terminates the worker and reports failure so the section never hangs.
   const timer = setTimeout(() => {
-    worker_dead = true;
     worker.terminate();
     callbacks.on_done("timed out", "");
   }, GRID_TIMEOUT_MS);
@@ -110,12 +94,10 @@ export function run_grid(callbacks: GridCallbacks): GridController {
         callbacks.on_cell_error(message.cell_id, message.message);
         return;
       case "done":
-        // Keep the worker alive for re-clusters; just retire the init watchdog.
+        // The sweep is the worker's whole job; retire the watchdog and the worker.
         clearTimeout(timer);
+        worker.terminate();
         callbacks.on_done(message.actual_backend, message.tfjs_version);
-        return;
-      case "recluster_done":
-        callbacks.on_recluster_done();
         return;
       default: {
         const unreachable: never = message;
@@ -125,20 +107,10 @@ export function run_grid(callbacks: GridCallbacks): GridController {
   };
 
   worker.onerror = (event) => {
-    worker_dead = true;
     clearTimeout(timer);
     worker.terminate();
     callbacks.on_done(`worker error: ${event.message}`, "");
   };
 
   worker.postMessage({ type: "run", datasets: payloads, jobs });
-
-  return {
-    recluster: (recluster_jobs: GridJob[]): void => {
-      // A dead worker (init timeout or crash) can't re-cluster; the UI disables its
-      // controls in that state, but guard so a stray call is a no-op, not a throw.
-      if (worker_dead) return;
-      worker.postMessage({ type: "recluster", jobs: recluster_jobs });
-    },
-  };
 }

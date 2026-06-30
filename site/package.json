@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Marketing demo site for clustering-tfjs (WebGPU vs CPU race + sklearn grid)",
+  "description": "Marketing demo site for clustering-tfjs (live scaling benchmark + clustering grid)",
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",

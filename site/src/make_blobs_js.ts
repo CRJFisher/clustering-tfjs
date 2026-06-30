@@ -10,7 +10,7 @@ export interface MakeBlobsOptions {
   n_features: number;
   centers: number;
   cluster_std: number;
-  // Fixed seed → the race is reproducible and shareable via permalink later.
+  // Fixed seed → the benchmark is reproducible across visitors.
   random_state: number;
 }
 
@@ -22,7 +22,7 @@ export interface MakeBlobsResult {
 }
 
 // mulberry32: a tiny, fast, well-distributed 32-bit PRNG. Deterministic from a
-// single integer seed so every visitor with the same n/seed sees the same race.
+// single integer seed so every visitor with the same n/seed sees the same data.
 // Exported so the toy-dataset generators draw from the identical PRNG character
 // as the blobs here — one seeded stream, no forked randomness across the site.
 export function mulberry32(seed: number): () => number {

@@ -95,7 +95,7 @@ export async function run_affinity_bench(
     reps_ms.push(ms);
     if (i === 0) result_checksum = checksum(data);
 
-    // Only genuine accumulation aborts the race: numTensors growing past the
+    // Only genuine accumulation aborts the benchmark: numTensors growing past the
     // baseline means a rep failed to release the affinity matrix. A count at or
     // below baseline is never a leak, so a benign lazy-backend transient cannot
     // false-trip and discard an otherwise-valid measurement.
