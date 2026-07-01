@@ -1,5 +1,5 @@
-import { run_grid } from "./grid";
-import type { GridDatasets } from "./grid";
+import { create_grid_runner } from "./grid";
+import type { GridDatasets, GridRunner } from "./grid";
 import {
   GRID_ALGORITHMS,
   GRID_CELLS,
@@ -139,16 +139,6 @@ export interface GridSection {
   populate: () => void;
 }
 
-// Backends that actually came up. The init-failure labels (`grid.ts`) are the
-// sentinels to exclude so the code panel only ever emits a runnable backend.
-function backend_is_live(actual_backend: string): boolean {
-  return (
-    actual_backend !== "none" &&
-    actual_backend !== "timed out" &&
-    !actual_backend.startsWith("worker error")
-  );
-}
-
 export function make_grid_ui(): GridSection {
   const container = require_el<HTMLElement>("#demo-grid");
   const status = require_el<HTMLElement>("#grid-status");
@@ -165,6 +155,22 @@ export function make_grid_ui(): GridSection {
     | ((actual_backend: string, live: boolean) => void)
     | null = null;
   let selected_cell_id: string | null = null;
+
+  // Spawn the worker and warm the backend NOW, at page load — long before the
+  // visitor clicks to cluster. The backend label fills in as soon as init
+  // resolves, and the fits later run on the already-warm engine.
+  backend.textContent = "initializing…";
+  const runner: GridRunner = create_grid_runner({
+    on_backend_ready: (actual_backend) => {
+      backend.textContent = actual_backend.toUpperCase();
+      // A resolved backend is always a runnable one; mirror it into the code panel.
+      backend_listener?.(actual_backend, true);
+    },
+    on_backend_error: (message) => {
+      backend.textContent = "unavailable";
+      footnote.textContent = `Backend init failed: ${message}`;
+    },
+  });
   const ordered_cell_ids = GRID_CELLS.map((cell) => cell.cell_id);
 
   // Roving tabindex: exactly one cell is in the tab order at a time, so the whole
@@ -253,7 +259,7 @@ export function make_grid_ui(): GridSection {
       view.annotation.textContent = "…";
     }
 
-    run_grid({
+    runner.run({
       on_datasets: (generated) => {
         datasets = generated;
       },
@@ -284,12 +290,11 @@ export function make_grid_ui(): GridSection {
         view.annotation.textContent = `failed: ${message}`;
         view.figure.dataset.state = "error";
       },
-      on_done: (actual_backend) => {
-        backend.textContent = actual_backend.toUpperCase();
-        backend_listener?.(actual_backend, backend_is_live(actual_backend));
-        // Terminal sweep: a mid-stream timeout or crash leaves cells unreported.
-        // Mark every still-pending cell failed and make the status reflect what
-        // actually finished, never a frozen "Computing N / 25".
+      on_done: () => {
+        // The backend label was already filled in at init (on_backend_ready), so a
+        // terminal sweep only reconciles the cells. A mid-stream timeout or crash
+        // leaves cells unreported: mark every still-pending cell failed and make the
+        // status reflect what actually finished, never a frozen "Computing N / 25".
         let done = 0;
         let failed = 0;
         for (const view of views.values()) {

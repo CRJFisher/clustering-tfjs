@@ -24,12 +24,18 @@ import type {
   GridOutbound,
 } from "./grid_protocol";
 
-// One worker computes the whole clustering grid: it initializes ONE backend, keeps
-// the tfjs engine warm, and fits all 25 cells in sequence, streaming each cell's
-// labels the instant they land. The page never freezes because every fit is off
-// the main thread.
+// One worker computes the whole clustering grid: it initializes ONE backend (on
+// the `init` message, sent at page load), keeps the tfjs engine warm, and fits all
+// 25 cells in sequence on the `run` message, streaming each cell's labels the
+// instant they land. The page never freezes because every fit is off the main
+// thread, and the honest backend label is known before any clustering starts.
 
 const worker_self = self as DedicatedWorkerGlobalScope;
+
+// The single backend init, kicked off on `init` and reused by `run`. Held as a
+// promise so a `run` that arrives mid-init simply awaits the same warm-up rather
+// than racing a second init onto the shared tfjs engine.
+let init_promise: Promise<string> | null = null;
 
 function post(message: GridOutbound): void {
   worker_self.postMessage(message);
@@ -157,6 +163,26 @@ async function fit_cell(
   }
 }
 
+// Kick off the backend init and report the honest label the moment it lands, so
+// the UI can fill "Backend:" before any clustering. The promise is retained for
+// `run` to await.
+async function handle_init(): Promise<void> {
+  init_promise = init_backend();
+  try {
+    const actual_backend = await init_promise;
+    post({
+      type: "backend_ready",
+      actual_backend,
+      tfjs_version: tf.version_core,
+    });
+  } catch (error) {
+    post({
+      type: "backend_error",
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
 async function handle_run(
   datasets: GridDatasetPayload[],
   jobs: GridJob[],
@@ -169,17 +195,19 @@ async function handle_run(
   const total = jobs.length;
   post({ type: "progress", completed: 0, total });
 
-  let actual_backend: string;
   try {
-    actual_backend = await init_backend();
+    // Reuse the init started at page load; only init here if `run` somehow beat
+    // the `init` message (it never should, but the fallback keeps run self-sufficient).
+    await (init_promise ??= init_backend());
   } catch (error) {
     // Init failure is fatal for the whole grid: report every cell as failed so no
-    // canvas is left in a permanent "computing" state, then stop.
+    // canvas is left in a permanent "computing" state, then stop. The
+    // backend_error from handle_init already told the UI the backend is unavailable.
     const message = error instanceof Error ? error.message : String(error);
     for (const job of jobs) {
       post({ type: "cell_error", cell_id: job.cell_id, message });
     }
-    post({ type: "done", actual_backend: "none", tfjs_version: tf.version_core });
+    post({ type: "done" });
     return;
   }
 
@@ -190,18 +218,21 @@ async function handle_run(
     post({ type: "progress", completed, total });
   }
 
-  post({ type: "done", actual_backend, tfjs_version: tf.version_core });
+  post({ type: "done" });
 }
 
 worker_self.onmessage = (event: MessageEvent<GridInbound>) => {
   const message = event.data;
   switch (message.type) {
+    case "init":
+      void handle_init();
+      return;
     case "run":
       void handle_run(message.datasets, message.jobs);
       return;
     default: {
-      const unreachable: never = message.type;
-      throw new Error(`Unhandled worker message: ${unreachable}`);
+      const unreachable: never = message;
+      throw new Error(`Unhandled worker message: ${JSON.stringify(unreachable)}`);
     }
   }
 };

@@ -31,9 +31,32 @@ const LANES: { series: SeriesId; lane: BackendLane }[] = [
 
 // A lane that wedges on init or on a single size (a GPU that never flushes, a
 // backend that hangs) would otherwise leave its promise pending forever. The
-// timeout rejects so the orchestrator can retire that lane and keep going.
+// timeout rejects so the orchestrator can retire that lane and keep going. This is
+// a hard safety net; the adaptive budget below normally stops a slow lane long
+// before a size could approach it.
 const INIT_TIMEOUT_MS = 60_000;
 const BENCH_TIMEOUT_MS = 60_000;
+
+// The wall-clock a single size may cost a lane before it is stopped. Each size runs
+// warmups + reps computations whose per-run cost grows ~O(n²), so the CPU lane's
+// top sizes would otherwise take minutes and trip the timeout. Before benching a
+// size, the orchestrator projects its cost from the lane's previous measured median
+// and stops the lane — with an honest "too slow" reason — rather than spending the
+// budget and plotting a number no visitor waits for. The accelerated lane stays far
+// under this and sweeps the full range, so the divergence still draws itself.
+const SIZE_BUDGET_MS = 10_000;
+
+// Project a size's total cost for a lane from its previous measured single-run
+// median, scaled by the O(n²) growth in n and multiplied by the runs-per-size.
+function project_size_ms(
+  prev_median_ms: number,
+  prev_n: number,
+  n: number,
+  runs_per_size: number,
+): number {
+  const growth = (n / prev_n) ** 2;
+  return prev_median_ms * growth * runs_per_size;
+}
 
 export interface BenchmarkCallbacks {
   // Fires once per size with the seeded dataset before its lanes run, so the UI
@@ -156,6 +179,10 @@ export async function run_benchmark(
   const accel = new Map<number, { ms: number; pts_per_sec: number }>();
   // A retired lane's worker is terminated; skip it for the rest of the sweep.
   const retired = new Set<SeriesId>();
+  // The lane's most recent measured point, used to project the next size's cost
+  // against the budget before committing to it.
+  const last_point = new Map<SeriesId, { n: number; median_ms: number }>();
+  const runs_per_size = config.warmups + config.reps;
 
   try {
     for (const worker of workers) {
@@ -186,6 +213,30 @@ export async function run_benchmark(
 
       for (const worker of workers) {
         if (retired.has(worker.series)) continue;
+
+        // Stop a lane before attempting a size projected to blow the per-size
+        // budget, rather than spending minutes on it and tripping the timeout.
+        const prev = last_point.get(worker.series);
+        if (prev) {
+          const projected = project_size_ms(
+            prev.median_ms,
+            prev.n,
+            n_samples,
+            runs_per_size,
+          );
+          if (projected > SIZE_BUDGET_MS) {
+            retired.add(worker.series);
+            worker.terminate();
+            callbacks.on_lane_stopped?.(
+              worker.series,
+              `too slow past n=${prev.n.toLocaleString()} ` +
+                `(next size projected ~${Math.round(projected / 1000)}s, ` +
+                `over the ${SIZE_BUDGET_MS / 1000}s per-size budget)`,
+            );
+            continue;
+          }
+        }
+
         callbacks.on_lane_start?.(worker.series, n_samples);
         try {
           const point = await worker.bench({
@@ -206,6 +257,10 @@ export async function run_benchmark(
               pts_per_sec: point.points_per_sec,
             });
           }
+          last_point.set(worker.series, {
+            n: n_samples,
+            median_ms: point.median_ms,
+          });
           callbacks.on_point?.({
             series: worker.series,
             n_samples,

@@ -23,15 +23,23 @@ export interface GridJob {
   params: GridParams;
 }
 
-// main → worker: compute the whole grid. The worker initializes one backend, then
-// fits every job in order against the matching dataset.
+// main → worker: initialize the backend now, before any clustering. Sent the
+// instant the worker is spawned (page load) so the honest backend label lands in
+// the UI long before the visitor clicks to populate the grid.
+export interface GridInit {
+  type: "init";
+}
+
+// main → worker: compute the whole grid. The worker reuses the already-warm
+// backend from the earlier init, then fits every job in order against the
+// matching dataset.
 export interface GridRequest {
   type: "run";
   datasets: GridDatasetPayload[];
   jobs: GridJob[];
 }
 
-export type GridInbound = GridRequest;
+export type GridInbound = GridInit | GridRequest;
 
 // worker → main: how far through the matrix the worker is, so the UI can show a
 // live "N / 25 computed" readout without waiting for the whole grid.
@@ -61,15 +69,31 @@ export interface GridCellError {
   message: string;
 }
 
-// worker → main: the whole matrix is done. Carries the honest backend label and
-// engine version that actually computed every cell.
-export interface GridDone {
-  type: "done";
+// worker → main: the backend finished initializing. Fires in response to `init`,
+// before any clustering, so the UI can show the honest backend label and engine
+// version immediately. Carries the label the fits will actually run on.
+export interface GridBackendReady {
+  type: "backend_ready";
   actual_backend: string;
   tfjs_version: string;
 }
 
+// worker → main: every candidate backend failed to initialize. The grid cannot
+// cluster; the UI marks the backend unavailable.
+export interface GridBackendError {
+  type: "backend_error";
+  message: string;
+}
+
+// worker → main: the whole matrix is done. The backend label was already reported
+// by `backend_ready`, so this only signals the sweep's terminal edge.
+export interface GridDone {
+  type: "done";
+}
+
 export type GridOutbound =
+  | GridBackendReady
+  | GridBackendError
   | GridProgress
   | GridCellResult
   | GridCellError

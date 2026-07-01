@@ -83,6 +83,118 @@
       </div>
 
       <section
+        id="grid"
+        class="grid-section"
+        aria-label="Toy-dataset clustering grid"
+      >
+        <h2 class="grid-section__title">
+          Five algorithms, five shapes — clustered live in your browser
+        </h2>
+        <p class="grid-section__intro">
+          Five toy datasets (rows) × five algorithms (columns). Click below to
+          cluster every cell off the main thread on the accelerated backend, each
+          coloured by its computed labels using a colorblind-safe palette. Noise
+          points are gray.
+        </p>
+        <p class="grid-section__meta">
+          <button id="populate-grid" type="button" class="grid-section__run">
+            Populate the grid
+          </button>
+          <span class="grid-section__status" id="grid-status" aria-live="polite"
+            >Click to cluster all 25 cells.</span
+          >
+          <span class="grid-section__backend"
+            >Backend: <b id="grid-backend">—</b></span
+          >
+        </p>
+
+        <div class="demo-grid" id="demo-grid"></div>
+
+        <p class="grid-section__footnote" id="grid-footnote"></p>
+      </section>
+
+      <section
+        id="code"
+        class="code-section"
+        aria-label="Runnable code for the selected cell"
+      >
+        <h2 class="code-section__title">
+          Run this exact result in your own code
+        </h2>
+        <p class="code-section__intro">
+          Click any cell in the grid above (or focus one and use the arrow keys,
+          Enter to select) to see the real, runnable code — the same constructor
+          calls and parameters this page just ran, on the backend it's using now.
+        </p>
+
+        <div class="code-panel" id="code-panel">
+          <header class="code-panel__head">
+            <span class="code-panel__caption" id="code-panel-caption"
+              >Blobs · Spectral</span
+            >
+            <button
+              type="button"
+              class="code-panel__copy"
+              id="code-panel-copy"
+              aria-label="Copy code snippet"
+            >
+              Copy
+            </button>
+          </header>
+          <pre
+            class="code-panel__pre"
+          ><code class="code-panel__code" id="code-panel-code"></code></pre>
+          <span
+            class="sr-only"
+            id="code-panel-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+
+        <div class="code-cta" id="code-cta">
+          <div class="code-cta__install">
+            <code class="code-cta__cmd" id="code-install-cmd"
+              >npm install clustering-tfjs</code
+            >
+            <button
+              type="button"
+              class="code-cta__copy"
+              id="code-install-copy"
+              aria-label="Copy install command"
+            >
+              Copy
+            </button>
+          </div>
+          <a
+            class="code-cta__star"
+            id="code-star-link"
+            href="https://github.com/CRJFisher/clustering-tfjs"
+            target="_blank"
+            rel="noopener"
+            aria-label="Star clustering-tfjs on GitHub (opens in a new tab)"
+          >
+            ★ Star on GitHub
+          </a>
+          <button type="button" class="code-cta__share" id="code-share-btn">
+            Share this result
+          </button>
+          <span
+            class="sr-only"
+            id="code-cta-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+          <span
+            class="sr-only"
+            id="code-share-live"
+            role="status"
+            aria-live="polite"
+          ></span>
+        </div>
+      </section>
+
+      <section
         id="benchmark"
         class="benchmark"
         aria-label="Accelerated clustering scaling benchmark"
@@ -230,118 +342,6 @@
           Times are from <b>YOUR</b> browser/GPU right now — not a cherry-picked
           machine; numbers vary by hardware.
         </p>
-      </section>
-
-      <section
-        id="grid"
-        class="grid-section"
-        aria-label="Toy-dataset clustering grid"
-      >
-        <h2 class="grid-section__title">
-          Five algorithms, five shapes — clustered live in your browser
-        </h2>
-        <p class="grid-section__intro">
-          Five toy datasets (rows) × five algorithms (columns). Click below to
-          cluster every cell off the main thread on the accelerated backend, each
-          coloured by its computed labels using a colorblind-safe palette. Noise
-          points are gray.
-        </p>
-        <p class="grid-section__meta">
-          <button id="populate-grid" type="button" class="grid-section__run">
-            Populate the grid
-          </button>
-          <span class="grid-section__status" id="grid-status" aria-live="polite"
-            >Click to cluster all 25 cells.</span
-          >
-          <span class="grid-section__backend"
-            >Backend: <b id="grid-backend">—</b></span
-          >
-        </p>
-
-        <div class="demo-grid" id="demo-grid"></div>
-
-        <p class="grid-section__footnote" id="grid-footnote"></p>
-      </section>
-
-      <section
-        id="code"
-        class="code-section"
-        aria-label="Runnable code for the selected cell"
-      >
-        <h2 class="code-section__title">
-          Run this exact result in your own code
-        </h2>
-        <p class="code-section__intro">
-          Click any cell in the grid above (or focus one and use the arrow keys,
-          Enter to select) to see the real, runnable code — the same constructor
-          calls and parameters this page just ran, on the backend it's using now.
-        </p>
-
-        <div class="code-panel" id="code-panel">
-          <header class="code-panel__head">
-            <span class="code-panel__caption" id="code-panel-caption"
-              >Blobs · Spectral</span
-            >
-            <button
-              type="button"
-              class="code-panel__copy"
-              id="code-panel-copy"
-              aria-label="Copy code snippet"
-            >
-              Copy
-            </button>
-          </header>
-          <pre
-            class="code-panel__pre"
-          ><code class="code-panel__code" id="code-panel-code"></code></pre>
-          <span
-            class="sr-only"
-            id="code-panel-live"
-            role="status"
-            aria-live="polite"
-          ></span>
-        </div>
-
-        <div class="code-cta" id="code-cta">
-          <div class="code-cta__install">
-            <code class="code-cta__cmd" id="code-install-cmd"
-              >npm install clustering-tfjs</code
-            >
-            <button
-              type="button"
-              class="code-cta__copy"
-              id="code-install-copy"
-              aria-label="Copy install command"
-            >
-              Copy
-            </button>
-          </div>
-          <a
-            class="code-cta__star"
-            id="code-star-link"
-            href="https://github.com/CRJFisher/clustering-tfjs"
-            target="_blank"
-            rel="noopener"
-            aria-label="Star clustering-tfjs on GitHub (opens in a new tab)"
-          >
-            ★ Star on GitHub
-          </a>
-          <button type="button" class="code-cta__share" id="code-share-btn">
-            Share this result
-          </button>
-          <span
-            class="sr-only"
-            id="code-cta-live"
-            role="status"
-            aria-live="polite"
-          ></span>
-          <span
-            class="sr-only"
-            id="code-share-live"
-            role="status"
-            aria-live="polite"
-          ></span>
-        </div>
       </section>
 
       <a
