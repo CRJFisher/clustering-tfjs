@@ -7,17 +7,26 @@
       rel="icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='10' cy='12' r='4' fill='%237c9cff'/%3E%3Ccircle cx='22' cy='11' r='4' fill='%2363e6be'/%3E%3Ccircle cx='16' cy='23' r='4' fill='%23ffa94d'/%3E%3C/svg%3E"
     />
-    <title>clustering-tfjs — GPU-accelerated clustering in your browser</title>
+    <title>clustering-tfjs — JavaScript &amp; TypeScript clustering library</title>
     <meta
       name="description"
-      content="GPU-accelerated clustering, 100% in your browser — no Python, no install."
+      content="scikit-learn-compatible clustering for JavaScript & TypeScript: K-Means, Spectral, Agglomerative, HDBSCAN and SOM. GPU-accelerated with TensorFlow.js, in the browser or Node.js."
+    />
+    <link rel="canonical" href="https://CRJFisher.github.io/clustering-tfjs/" />
+    <meta
+      name="keywords"
+      content="clustering, JavaScript clustering, TypeScript clustering, clustering library, k-means, spectral clustering, agglomerative clustering, HDBSCAN, self-organizing map, SOM, scikit-learn, TensorFlow.js, WebGPU, GPU, unsupervised learning, machine learning, browser, Node.js"
     />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="clustering-tfjs" />
     <meta property="og:url" content="https://CRJFisher.github.io/clustering-tfjs/" />
-    <meta property="og:title" content="clustering-tfjs" />
+    <meta
+      property="og:title"
+      content="clustering-tfjs — Clustering for JavaScript & TypeScript"
+    />
     <meta
       property="og:description"
-      content="GPU-accelerated clustering, 100% in your browser — no Python, no install."
+      content="scikit-learn-compatible clustering for JS & TS: K-Means, Spectral, Agglomerative, HDBSCAN and SOM, GPU-accelerated with TensorFlow.js + WebGPU. Browser and Node.js."
     />
     <meta
       property="og:image"
@@ -27,13 +36,16 @@
     <meta property="og:image:height" content="630" />
     <meta
       property="og:image:alt"
-      content="clustering-tfjs — GPU-accelerated clustering, 100% in your browser, benchmarked live against CPU."
+      content="clustering-tfjs — GPU-accelerated K-Means, Spectral, Agglomerative, HDBSCAN and SOM clustering for JavaScript and TypeScript, benchmarked live against CPU."
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="clustering-tfjs" />
+    <meta
+      name="twitter:title"
+      content="clustering-tfjs — Clustering for JavaScript & TypeScript"
+    />
     <meta
       name="twitter:description"
-      content="GPU-accelerated clustering, 100% in your browser — no Python, no install."
+      content="scikit-learn-compatible clustering for JS & TS: K-Means, Spectral, Agglomerative, HDBSCAN and SOM, GPU-accelerated with TensorFlow.js + WebGPU. Browser and Node.js."
     />
     <meta
       name="twitter:image"
@@ -41,18 +53,48 @@
     />
     <meta
       name="twitter:image:alt"
-      content="clustering-tfjs — GPU-accelerated clustering, 100% in your browser, benchmarked live against CPU."
+      content="clustering-tfjs — GPU-accelerated K-Means, Spectral, Agglomerative, HDBSCAN and SOM clustering for JavaScript and TypeScript, benchmarked live against CPU."
     />
     <meta name="theme-color" content="#0d1117" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareSourceCode",
+        "name": "clustering-tfjs",
+        "description": "A scikit-learn-compatible clustering library for JavaScript and TypeScript: K-Means, Spectral, Agglomerative, HDBSCAN and SOM, GPU-accelerated with TensorFlow.js and WebGPU. Runs in the browser and Node.js.",
+        "url": "https://CRJFisher.github.io/clustering-tfjs/",
+        "codeRepository": "https://github.com/CRJFisher/clustering-tfjs",
+        "programmingLanguage": ["TypeScript", "JavaScript"],
+        "runtimePlatform": ["Node.js", "Web browser"],
+        "license": "https://opensource.org/licenses/MIT",
+        "keywords": [
+          "clustering",
+          "k-means",
+          "spectral clustering",
+          "agglomerative clustering",
+          "HDBSCAN",
+          "self-organizing map",
+          "scikit-learn",
+          "TensorFlow.js",
+          "WebGPU",
+          "unsupervised learning",
+          "TypeScript",
+          "JavaScript"
+        ]
+      }
+    </script>
   </head>
   <body>
     <main class="hero">
       <p class="eyebrow">clustering-tfjs</p>
       <h1 class="hook">
-        <span class="accent">GPU-accelerated</span> clustering, 100% in your
-        browser
+        <span class="accent">GPU-accelerated</span> clustering for JavaScript
+        &amp; TypeScript
       </h1>
-      <p class="subhook">No Python. No install.</p>
+      <p class="subhook">
+        K-Means, Spectral, Agglomerative, HDBSCAN and SOM — a
+        scikit-learn-style API for Node.js and the browser.
+      </p>
 
       <div class="hero-cta" id="hero-cta">
         <div class="hero-cta__install">
@@ -88,7 +130,8 @@
         aria-label="Toy-dataset clustering grid"
       >
         <h2 class="grid-section__title">
-          Five algorithms, five shapes — clustered live in your browser
+          K-Means, Spectral, Agglomerative, HDBSCAN and SOM — clustered live in
+          your browser
         </h2>
         <p class="grid-section__intro">
           Five toy datasets (rows) × five algorithms (columns). Click below to

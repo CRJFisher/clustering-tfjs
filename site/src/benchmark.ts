@@ -32,19 +32,20 @@ const LANES: { series: SeriesId; lane: BackendLane }[] = [
 // A lane that wedges on init or on a single size (a GPU that never flushes, a
 // backend that hangs) would otherwise leave its promise pending forever. The
 // timeout rejects so the orchestrator can retire that lane and keep going. This is
-// a hard safety net; the adaptive budget below normally stops a slow lane long
-// before a size could approach it.
+// a hard safety net; the adaptive budget below normally stops a slow lane one size
+// before it could approach it. Set to 5 min so the slow CPU lane is given room to
+// plot as many of the larger sizes as it can before the net catches it.
 const INIT_TIMEOUT_MS = 60_000;
-const BENCH_TIMEOUT_MS = 60_000;
+const BENCH_TIMEOUT_MS = 300_000;
 
 // The wall-clock a single size may cost a lane before it is stopped. Each size runs
-// warmups + reps computations whose per-run cost grows ~O(n²), so the CPU lane's
-// top sizes would otherwise take minutes and trip the timeout. Before benching a
+// warmups + reps computations whose per-run cost grows ~O(n²). Before benching a
 // size, the orchestrator projects its cost from the lane's previous measured median
-// and stops the lane — with an honest "too slow" reason — rather than spending the
-// budget and plotting a number no visitor waits for. The accelerated lane stays far
-// under this and sweeps the full range, so the divergence still draws itself.
-const SIZE_BUDGET_MS = 10_000;
+// and stops the lane — with an honest "too slow" reason — one size before it would
+// blow the budget, so the CPU lane gets a graceful stop rather than a hard timeout.
+// Kept just under BENCH_TIMEOUT_MS so the last size a lane runs still lands inside
+// the net. The accelerated lane stays far under this and sweeps the full range.
+const SIZE_BUDGET_MS = 240_000;
 
 // Project a size's total cost for a lane from its previous measured single-run
 // median, scaled by the O(n²) growth in n and multiplied by the runs-per-size.
