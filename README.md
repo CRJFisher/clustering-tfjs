@@ -7,8 +7,6 @@
 
 **scikit-learn clustering, GPU-accelerated, 100% in your browser — no Python, no install.**
 
-[![Schematic of the WebGPU-vs-CPU race: on Spectral RBF affinity the GPU lane finishes far ahead of the CPU lane. The live demo measures your own hardware.](https://CRJFisher.github.io/clustering-tfjs/race-reference.svg)](https://CRJFisher.github.io/clustering-tfjs/)
-
 **▶ [Open the live demo (no install) →](https://CRJFisher.github.io/clustering-tfjs/)**
 
 Watch WebGPU race CPU on the same dataset, then recreate the scikit-learn toy-dataset grid across all five algorithms — live, on **your** hardware.
